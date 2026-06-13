@@ -82,5 +82,21 @@ app.use("/api/ai",aiRoutes);
 const adRoutes = require("./routes/adRoutes");
 app.use("/api/ads", adRoutes);
 
+// Serve static assets from frontend build in production
+const frontendDist = path.join(__dirname, "../frontend/dist");
+app.use(express.static(frontendDist));
+
+// Wildcard middleware to redirect all frontend reloads/refresh to index.html
+app.use((req, res, next) => {
+  if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
+    return res.sendFile(path.join(frontendDist, "index.html"), (err) => {
+      if (err) {
+        // If frontend dist is not built yet (development mode), skip fallback
+        next();
+      }
+    });
+  }
+  next();
+});
 
 module.exports=app;
