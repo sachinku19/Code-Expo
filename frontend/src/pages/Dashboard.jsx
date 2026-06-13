@@ -1152,36 +1152,115 @@ function Dashboard() {
   };
 
   const handleFollowToggle = async (candidateId) => {
+    // Keep copies of original states for potential rollback
+    const prevFollowingList = [...followingList];
+    const prevOnlineFollows = [...onlineFollows];
+    const prevSuggestions = [...suggestions];
+    const prevFollowersList = [...followersList];
+    const prevUser = user ? { ...user } : null;
+    const prevViewingUser = viewingUserProfile ? { ...viewingUserProfile } : null;
+
+    const isFollowing = followingList.some(f => String(f._id || f) === String(candidateId));
+    let targetUser = suggestions.find(s => String(s._id || s) === String(candidateId)) ||
+                     followersList.find(f => String(f._id || f) === String(candidateId)) ||
+                     (viewingUserProfile && String(viewingUserProfile._id) === String(candidateId) ? viewingUserProfile : null) ||
+                     { _id: candidateId, username: "Developer", isOnline: false };
+
+    // Optimistic UI updates
+    if (isFollowing) {
+      // Unfollow
+      setFollowingList(prev => prev.filter(f => String(f._id || f) !== String(candidateId)));
+      setOnlineFollows(prev => prev.filter(f => String(f._id || f) !== String(candidateId)));
+      if (user) {
+        setUser(prev => ({ ...prev, followingCount: Math.max(0, (prev.followingCount || 1) - 1) }));
+      }
+      setSuggestions(prev => prev.map(s => {
+        if (String(s._id || s) === String(candidateId)) {
+          return { ...s, followersCount: Math.max(0, (s.followersCount || 1) - 1), isFollowing: false };
+        }
+        return s;
+      }));
+      setFollowersList(prev => prev.map(f => {
+        if (String(f._id || f) === String(candidateId)) {
+          return { ...f, isFollowing: false };
+        }
+        return f;
+      }));
+      if (viewingUserProfile && String(viewingUserProfile._id) === String(candidateId)) {
+        setViewingUserProfile(prev => ({ ...prev, followersCount: Math.max(0, (prev.followersCount || 1) - 1), isFollowing: false }));
+      }
+    } else {
+      // Follow
+      const newFollowItem = { ...targetUser, isFollowing: true };
+      setFollowingList(prev => [...prev, newFollowItem]);
+      if (targetUser.isOnline === "true" || targetUser.isOnline === true) {
+        setOnlineFollows(prev => [...prev, newFollowItem]);
+      }
+      if (user) {
+        setUser(prev => ({ ...prev, followingCount: (prev.followingCount || 0) + 1 }));
+      }
+      setSuggestions(prev => prev.map(s => {
+        if (String(s._id || s) === String(candidateId)) {
+          return { ...s, followersCount: (s.followersCount || 0) + 1, isFollowing: true };
+        }
+        return s;
+      }));
+      setFollowersList(prev => prev.map(f => {
+        if (String(f._id || f) === String(candidateId)) {
+          return { ...f, isFollowing: true };
+        }
+        return f;
+      }));
+      if (viewingUserProfile && String(viewingUserProfile._id) === String(candidateId)) {
+        setViewingUserProfile(prev => ({ ...prev, followersCount: (prev.followersCount || 0) + 1, isFollowing: true }));
+      }
+    }
+
     try {
       const res = await toggleFollowUser(candidateId);
       if (res.success) {
         addToast(res.message, "success");
+        // Silent background synchronization
         fetchSocialDashboardData();
-        const profileRes = await getUserProfile();
-        if (profileRes.success) {
-          setUser(profileRes.user);
-          localStorage.setItem("user", JSON.stringify(profileRes.user));
-        }
+      } else {
+        throw new Error(res.message || "Failed to toggle follow status");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      // Rollback to previous states on failure
+      setFollowingList(prevFollowingList);
+      setOnlineFollows(prevOnlineFollows);
+      setSuggestions(prevSuggestions);
+      setFollowersList(prevFollowersList);
+      if (prevUser) setUser(prevUser);
+      if (prevViewingUser) setViewingUserProfile(prevViewingUser);
     }
   };
 
   const handleRemoveFollower = async (followerId) => {
+    const prevFollowersList = [...followersList];
+    const prevUser = user ? { ...user } : null;
+
+    // Optimistically remove follower from UI
+    setFollowersList(prev => prev.filter(f => String(f._id || f) !== String(followerId)));
+    if (user) {
+      setUser(prev => ({ ...prev, followersCount: Math.max(0, (prev.followersCount || 1) - 1) }));
+    }
+
     try {
       const res = await removeFollower(followerId);
       if (res.success) {
         addToast(res.message, "success");
+        // Silent background synchronization
         fetchSocialDashboardData();
-        const profileRes = await getUserProfile();
-        if (profileRes.success) {
-          setUser(profileRes.user);
-          localStorage.setItem("user", JSON.stringify(profileRes.user));
-        }
+      } else {
+        throw new Error(res.message || "Failed to remove follower");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      // Rollback to previous states on failure
+      setFollowersList(prevFollowersList);
+      if (prevUser) setUser(prevUser);
     }
   };
 
@@ -1191,82 +1270,111 @@ function Dashboard() {
       setAnimatingLikes(prev => ({ ...prev, [roomId]: false }));
     }, 600);
 
-    try {
-      const wasLiked = isRoomLiked(roomId);
+    const prevLikedRooms = [...likedRooms];
+    const prevTrendingRooms = [...trendingRooms];
+    const prevHistoryRooms = [...historyRooms];
+    const prevViewingUserLikedRooms = [...viewingUserLikedRooms];
 
-      // 1. Update likedRooms locally
+    const wasLiked = isRoomLiked(roomId);
+
+    // Optimistically update states
+    if (wasLiked) {
+      setLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
+    } else {
+      const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
+        trendingRooms.find(r => r.roomId === roomId) ||
+        viewingUserRooms.find(r => r.roomId === roomId);
+      if (matchedRoom) {
+        setLikedRooms(prev => [...prev, matchedRoom]);
+      }
+    }
+
+    setTrendingRooms(prev => prev.map(r => {
+      if (r.roomId === roomId) {
+        return {
+          ...r,
+          likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
+        };
+      }
+      return r;
+    }));
+
+    setHistoryRooms(prev => prev.map(r => {
+      if (r.roomId === roomId) {
+        return {
+          ...r,
+          likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
+        };
+      }
+      return r;
+    }));
+
+    if (viewingUserProfile) {
       if (wasLiked) {
-        setLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
+        setViewingUserLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
       } else {
         const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
           trendingRooms.find(r => r.roomId === roomId) ||
           viewingUserRooms.find(r => r.roomId === roomId);
         if (matchedRoom) {
-          setLikedRooms(prev => [...prev, matchedRoom]);
+          setViewingUserLikedRooms(prev => [...prev, matchedRoom]);
         }
       }
+    }
 
-      // 2. Update trendingRooms likes count locally (avoids layout shift)
-      setTrendingRooms(prev => prev.map(r => {
-        if (r.roomId === roomId) {
-          return {
-            ...r,
-            likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
-          };
-        }
-        return r;
-      }));
-
-      // 3. Update historyRooms likes count locally
-      setHistoryRooms(prev => prev.map(r => {
-        if (r.roomId === roomId) {
-          return {
-            ...r,
-            likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
-          };
-        }
-        return r;
-      }));
-
-      // 4. Update public viewing user liked rooms list if applicable
-      if (viewingUserProfile) {
-        if (wasLiked) {
-          setViewingUserLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
-        } else {
-          const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
-            trendingRooms.find(r => r.roomId === roomId) ||
-            viewingUserRooms.find(r => r.roomId === roomId);
-          if (matchedRoom) {
-            setViewingUserLikedRooms(prev => [...prev, matchedRoom]);
-          }
-        }
-      }
-
+    try {
       const res = await toggleLikeRoom(roomId);
       if (res.success) {
         addToast(res.message, "success");
-        // Refetch notifications silently without triggering full social dashboard refresh
+        // Refetch notifications silently in the background
         const notifRes = await getNotifications().catch(() => ({ success: false, notifications: [], unreadCount: 0 }));
         if (notifRes.success) {
           setNotificationsList(notifRes.notifications || []);
           setUnreadNotificationsCount(notifRes.unreadCount || 0);
         }
+      } else {
+        throw new Error(res.message || "Failed to update like status");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      // Rollback on failure
+      setLikedRooms(prevLikedRooms);
+      setTrendingRooms(prevTrendingRooms);
+      setHistoryRooms(prevHistoryRooms);
+      setViewingUserLikedRooms(prevViewingUserLikedRooms);
     }
   };
 
   const handleBookmarkRoom = async (roomId) => {
+    const prevSavedRooms = [...savedRooms];
+    const isBookmarked = savedRooms.some(r => r && (r.roomId === roomId || r._id === roomId));
+
+    // Optimistically update bookmark state
+    if (isBookmarked) {
+      setSavedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
+    } else {
+      const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
+        trendingRooms.find(r => r.roomId === roomId) ||
+        viewingUserRooms.find(r => r.roomId === roomId);
+      if (matchedRoom) {
+        setSavedRooms(prev => [...prev, matchedRoom]);
+      }
+    }
+
     try {
       const res = await toggleBookmarkRoom(roomId);
       if (res.success) {
         addToast(res.message, "success");
-        fetchSocialDashboardData();
-        fetchDashboardData();
+        // Silent background synchronization
+        const savedRes = await getBookmarkedRooms().catch(() => ({ success: false, rooms: [] }));
+        if (savedRes.success) setSavedRooms(savedRes.rooms || []);
+      } else {
+        throw new Error(res.message || "Failed to toggle bookmark status");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      // Rollback on failure
+      setSavedRooms(prevSavedRooms);
     }
   };
 

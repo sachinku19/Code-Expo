@@ -120,32 +120,102 @@ const Profile = () => {
   };
 
   const handleRemoveFollower = async (followerId) => {
+    const prevProfileUser = profileUser ? { ...profileUser } : null;
+    const prevFollowersList = [...followersList];
+    const prevAuthUser = authUser ? { ...authUser } : null;
+
+    // Optimistically remove follower
+    setFollowersList(prev => prev.filter(f => String(f._id || f) !== String(followerId)));
+    if (profileUser) {
+      setProfileUser(prev => ({ ...prev, followersCount: Math.max(0, (prev.followersCount || 1) - 1) }));
+    }
+    if (authUser) {
+      setAuthUser(prev => ({ ...prev, followersCount: Math.max(0, (prev.followersCount || 1) - 1) }));
+    }
+
     try {
       const res = await removeFollower(followerId);
       if (res.success) {
         addToast(res.message, "success");
-        fetchProfileData();
-        const data = await getUserProfile();
-        setAuthUser(data.user);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        // Silent background sync
+        const [followersRes, profileRes] = await Promise.all([
+          getFollowers(profileUser._id).catch(() => ({ success: false, followers: [] })),
+          getUserProfile().catch(() => ({ success: false }))
+        ]);
+        if (followersRes.success) setFollowersList(followersRes.followers || []);
+        if (profileRes.success) {
+          setProfileUser(profileRes.user);
+          setAuthUser(profileRes.user);
+          localStorage.setItem("user", JSON.stringify(profileRes.user));
+        }
+      } else {
+        throw new Error(res.message || "Failed to remove follower");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      // Rollback on failure
+      if (prevProfileUser) setProfileUser(prevProfileUser);
+      setFollowersList(prevFollowersList);
+      if (prevAuthUser) setAuthUser(prevAuthUser);
     }
   };
 
   const handleFollowToggle = async (candidateId) => {
+    const prevProfileUser = profileUser ? { ...profileUser } : null;
+    const prevFollowersList = [...followersList];
+    const prevFollowingList = [...followingList];
+    const prevAuthUser = authUser ? { ...authUser } : null;
+
+    const isFollowing = followingList.some(f => String(f._id || f) === String(candidateId));
+    let targetUser = followersList.find(f => String(f._id || f) === String(candidateId)) ||
+                     followingList.find(f => String(f._id || f) === String(candidateId)) ||
+                     { _id: candidateId, username: "Developer" };
+
+    // Optimistically toggle following state
+    if (isFollowing) {
+      setFollowingList(prev => prev.filter(f => String(f._id || f) !== String(candidateId)));
+      if (profileUser) {
+        setProfileUser(prev => ({ ...prev, followingCount: Math.max(0, (prev.followingCount || 1) - 1) }));
+      }
+      if (authUser) {
+        setAuthUser(prev => ({ ...prev, followingCount: Math.max(0, (prev.followingCount || 1) - 1) }));
+      }
+    } else {
+      const newFollowItem = { ...targetUser };
+      setFollowingList(prev => [...prev, newFollowItem]);
+      if (profileUser) {
+        setProfileUser(prev => ({ ...prev, followingCount: (prev.followingCount || 0) + 1 }));
+      }
+      if (authUser) {
+        setAuthUser(prev => ({ ...prev, followingCount: (prev.followingCount || 0) + 1 }));
+      }
+    }
+
     try {
       const res = await toggleFollowUser(candidateId);
       if (res.success) {
         addToast(res.message, "success");
-        fetchProfileData();
-        const data = await getUserProfile();
-        setAuthUser(data.user);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        // Silent background sync
+        const [followingRes, profileRes] = await Promise.all([
+          getFollowing(profileUser._id).catch(() => ({ success: false, following: [] })),
+          getUserProfile().catch(() => ({ success: false }))
+        ]);
+        if (followingRes.success) setFollowingList(followingRes.following || []);
+        if (profileRes.success) {
+          setProfileUser(profileRes.user);
+          setAuthUser(profileRes.user);
+          localStorage.setItem("user", JSON.stringify(profileRes.user));
+        }
+      } else {
+        throw new Error(res.message || "Failed to update follow status");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      // Rollback on failure
+      if (prevProfileUser) setProfileUser(prevProfileUser);
+      setFollowersList(prevFollowersList);
+      setFollowingList(prevFollowingList);
+      if (prevAuthUser) setAuthUser(prevAuthUser);
     }
   };
 
@@ -154,26 +224,79 @@ const Profile = () => {
     setTimeout(() => {
       setAnimatingLikes(prev => ({ ...prev, [roomId]: false }));
     }, 600);
+
+    const prevLikedRooms = [...likedRooms];
+    const prevHistoryRooms = [...historyRooms];
+    const wasLiked = isRoomLiked(roomId);
+
+    // Optimistically toggle like state
+    if (wasLiked) {
+      setLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
+    } else {
+      const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
+        savedRooms.find(r => r.roomId === roomId);
+      if (matchedRoom) {
+        setLikedRooms(prev => [...prev, matchedRoom]);
+      }
+    }
+
+    setHistoryRooms(prev => prev.map(r => {
+      if (r.roomId === roomId) {
+        return {
+          ...r,
+          likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
+        };
+      }
+      return r;
+    }));
+
     try {
       const res = await toggleLikeRoom(roomId);
       if (res.success) {
         addToast(res.message, "success");
-        fetchProfileData();
+        // Silent background sync
+        const likedRes = await getLikedRooms().catch(() => ({ success: false, rooms: [] }));
+        if (likedRes.success) setLikedRooms(likedRes.rooms || []);
+      } else {
+        throw new Error(res.message || "Failed to toggle like");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      // Rollback on failure
+      setLikedRooms(prevLikedRooms);
+      setHistoryRooms(prevHistoryRooms);
     }
   };
 
   const handleBookmarkRoom = async (roomId) => {
+    const prevSavedRooms = [...savedRooms];
+    const isBookmarked = savedRooms.some(r => r && (r.roomId === roomId || r._id === roomId));
+
+    // Optimistically toggle bookmark state
+    if (isBookmarked) {
+      setSavedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
+    } else {
+      const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
+        likedRooms.find(r => r.roomId === roomId);
+      if (matchedRoom) {
+        setSavedRooms(prev => [...prev, matchedRoom]);
+      }
+    }
+
     try {
       const res = await toggleBookmarkRoom(roomId);
       if (res.success) {
         addToast(res.message, "success");
-        fetchProfileData();
+        // Silent background sync
+        const savedRes = await getBookmarkedRooms().catch(() => ({ success: false, rooms: [] }));
+        if (savedRes.success) setSavedRooms(savedRes.rooms || []);
+      } else {
+        throw new Error(res.message || "Failed to toggle bookmark");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      // Rollback on failure
+      setSavedRooms(prevSavedRooms);
     }
   };
 
