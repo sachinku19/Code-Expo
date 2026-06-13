@@ -18,6 +18,10 @@ const activeCursors = {};
 const activeOwnerships = {};
 const pendingOwnershipSaves = {};
 
+// High-frequency socket database write throttling caches
+const lastFileWriteTimes = {};
+const lastRoomActivityTimes = {};
+
 const saveOwnershipToDB = (roomId, fileId) => {
   const fileKey = fileId || "null";
   const key = `${roomId}:${fileKey}`;
@@ -370,11 +374,16 @@ const socketHandler = (io) => {
         code
       );
 
-      // Throttle update lastActivity
-      try {
-        await Room.updateOne({ roomId }, { lastActivity: Date.now() });
-      } catch (err) {
-        console.error(err);
+      // Throttle database update to once every 30 seconds per room
+      const now = Date.now();
+      const lastUpdate = lastRoomActivityTimes[roomId] || 0;
+      if (now - lastUpdate > 30000) {
+        lastRoomActivityTimes[roomId] = now;
+        try {
+          await Room.updateOne({ roomId }, { lastActivity: now });
+        } catch (err) {
+          console.error("Socket code-change lastActivity update error:", err);
+        }
       }
     });
 
@@ -432,11 +441,25 @@ const socketHandler = (io) => {
     // 1. Real-time multi-file keystroke sync
     socket.on("file-content-changed", async ({ roomId, fileId, content }) => {
       socket.to(roomId).emit("receive-file-content", { fileId, content });
+      
+      const now = Date.now();
+      const lastFileWrite = lastFileWriteTimes[fileId] || 0;
+      const lastRoomActivity = lastRoomActivityTimes[roomId] || 0;
+
       try {
-        await WorkspaceItem.updateOne({ _id: fileId }, { content });
-        await Room.updateOne({ roomId }, { lastActivity: Date.now() });
+        // Throttle file saves in DB to once every 5 seconds
+        if (now - lastFileWrite > 5000) {
+          lastFileWriteTimes[fileId] = now;
+          await WorkspaceItem.updateOne({ _id: fileId }, { content });
+        }
+        
+        // Throttle room lastActivity updates to once every 30 seconds
+        if (now - lastRoomActivity > 30000) {
+          lastRoomActivityTimes[roomId] = now;
+          await Room.updateOne({ roomId }, { lastActivity: now });
+        }
       } catch (err) {
-        console.error("Socket file-content-changed error:", err.message);
+        console.error("Socket file-content-changed update error:", err.message);
       }
     });
 

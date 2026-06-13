@@ -3762,15 +3762,18 @@ function CallParticipantCard({ id, username, stream, isLocal, isMuted, isCameraO
 
   return (
     <div className={`ce-call-participant-card ${isSpeaking ? "speaking" : ""}`}>
-      {stream && !isCameraOff ? (
+      {stream && (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isLocal}
           className="participant-video-feed"
+          style={{ display: !isCameraOff ? "block" : "none" }}
         />
-      ) : (
+      )}
+
+      {(!stream || isCameraOff) && (
         <div className="participant-avatar-container">
           <div
             className={`participant-avatar-large ${isSpeaking ? "pulse-speaking" : ""}`}
