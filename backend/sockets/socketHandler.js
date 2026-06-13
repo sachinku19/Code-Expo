@@ -1,7 +1,7 @@
 const Room = require("../models/Room");
 const Message = require("../models/Message");
 const WorkspaceItem = require("../models/WorkspaceItem");
-const { spawnDockerWorkspaceCode, removeDirectoryRecursively } = require("../services/dockerStreamCompiler");
+const { executeCode } = require("../services/jdoodleService");
 
 // Import Collaboration models
 const LineOwnership = require("../models/LineOwnership");
@@ -441,7 +441,7 @@ const socketHandler = (io) => {
     // 1. Real-time multi-file keystroke sync
     socket.on("file-content-changed", async ({ roomId, fileId, content }) => {
       socket.to(roomId).emit("receive-file-content", { fileId, content });
-      
+
       const now = Date.now();
       const lastFileWrite = lastFileWriteTimes[fileId] || 0;
       const lastRoomActivity = lastRoomActivityTimes[roomId] || 0;
@@ -452,7 +452,7 @@ const socketHandler = (io) => {
           lastFileWriteTimes[fileId] = now;
           await WorkspaceItem.updateOne({ _id: fileId }, { content });
         }
-        
+
         // Throttle room lastActivity updates to once every 30 seconds
         if (now - lastRoomActivity > 30000) {
           lastRoomActivityTimes[roomId] = now;
@@ -889,7 +889,7 @@ const socketHandler = (io) => {
     // ======================
     // DISCONNECT
     // ======================
-    // Realtime Interactive Code Execution via Docker spawn
+    // Realtime Code Execution via JDoodle (Render deployment friendly)
     socket.on("execute-code", async (data) => {
       if (!data || !data.roomId || !data.language) {
         socket.emit("terminal-output", {
@@ -900,22 +900,10 @@ const socketHandler = (io) => {
 
       const { roomId, language, activeFileId } = data;
 
-      // 1. Kill any existing active process for this socket
-      if (activeExecutions[socket.id]) {
-        try {
-          const oldProc = activeExecutions[socket.id];
-          oldProc.child.kill("SIGKILL");
-          removeDirectoryRecursively(oldProc.executionDir);
-        } catch (e) {
-          console.error("Error killing old process:", e);
-        }
-        delete activeExecutions[socket.id];
-      }
-
       try {
         // Broadcast that execution is starting
         io.to(roomId).emit("terminal-output", {
-          text: `\r\n\x1b[33m[System] Starting interactive execution for ${language.toUpperCase()}...\x1b[0m\r\n`
+          text: `\r\n\x1b[33m[System] Starting execution for ${language.toUpperCase()}...\x1b[0m\r\n`
         });
 
         // Log the execution activity to increment stats and award points
@@ -928,75 +916,98 @@ const socketHandler = (io) => {
           await User.findByIdAndUpdate(socket.userId, { $inc: { executionsCount: 1 } });
         }
 
-        const { child, executionDir } = await spawnDockerWorkspaceCode(roomId, language, activeFileId);
+        // 1. Fetch code and optional stdin from workspace/room
+        let sourceCode = "";
+        let stdin = "";
 
-        activeExecutions[socket.id] = { child, executionDir };
+        const items = await WorkspaceItem.find({ roomId });
+        const files = items.filter(item => item.type === "file");
 
-        // Handle process output (stdout)
-        child.stdout.on("data", (chunk) => {
-          const text = chunk.toString("utf8");
-          io.to(roomId).emit("terminal-output", { text });
-        });
-
-        // Handle process error output (stderr)
-        child.stderr.on("data", (chunk) => {
-          const text = chunk.toString("utf8");
-          io.to(roomId).emit("terminal-output", { text });
-        });
-
-        // Handle process exit/close
-        child.on("close", (code) => {
-          io.to(roomId).emit("terminal-exit", {
-            code,
-            message: `\r\n\x1b[32m[System] Process finished with exit code ${code}\x1b[0m\r\n`
-          });
-
-          // Clean up temp directory
-          removeDirectoryRecursively(executionDir);
-          delete activeExecutions[socket.id];
-        });
-
-        child.on("error", (err) => {
-          io.to(roomId).emit("terminal-output", {
-            text: `\r\n\x1b[31m[System Error] ${err.message}\x1b[0m\r\n`
-          });
-          removeDirectoryRecursively(executionDir);
-          delete activeExecutions[socket.id];
-        });
-
-        // Strict timeout limit (20 seconds) to prevent runaway infinite processes
-        setTimeout(() => {
-          if (activeExecutions[socket.id] && activeExecutions[socket.id].child === child) {
-            try {
-              child.kill("SIGKILL");
-              io.to(roomId).emit("terminal-output", {
-                text: `\r\n\x1b[31m[System Error] Execution Timed Out (Max 20 seconds limit exceeded).\x1b[0m\r\n`
-              });
-            } catch (err) {
-              console.error(err);
-            }
+        if (files.length > 0) {
+          // Find the active file first, then check entryPoint, then defaults, then fallback by ext
+          let entryPoint;
+          if (activeFileId) {
+            entryPoint = files.find((item) => item._id.toString() === activeFileId.toString());
           }
-        }, 20000);
+          if (!entryPoint) {
+            entryPoint = files.find((item) => item.isEntryPoint);
+          }
+
+          // Fallbacks if no entry point configured
+          if (!entryPoint) {
+            const defaults = {
+              javascript: "index.js",
+              python: "main.py",
+              cpp: "main.cpp",
+              java: "Main.java"
+            };
+            const defaultName = defaults[language];
+            entryPoint = files.find((item) => item.name === defaultName);
+          }
+
+          // If still no entry point, take first file of matching language extension
+          if (!entryPoint) {
+            const exts = {
+              javascript: ".js",
+              python: ".py",
+              cpp: ".cpp",
+              java: ".java"
+            };
+            const ext = exts[language];
+            entryPoint = files.find((item) => item.name.endsWith(ext));
+          }
+
+          if (!entryPoint) {
+            throw new Error(`No entry point selected or default file found for ${language}.`);
+          }
+
+          sourceCode = entryPoint.content || "";
+
+          // Support standard input via input.txt file inside the workspace
+          const inputItem = files.find(item => item.name === "input.txt");
+          if (inputItem) {
+            stdin = inputItem.content || "";
+          }
+        } else {
+          // Fallback to legacy single file room code
+          sourceCode = roomObj ? roomObj.code : "";
+        }
+
+        // 2. Execute via JDoodle
+        const output = await executeCode(language, sourceCode, stdin);
+
+        // Send output to the terminal
+        io.to(roomId).emit("terminal-output", { text: output + "\r\n" });
+
+        // Signal completion
+        io.to(roomId).emit("terminal-exit", {
+          code: 0,
+          message: `\r\n\x1b[32m[System] Process finished.\x1b[0m\r\n`
+        });
 
       } catch (error) {
-        socket.emit("terminal-output", {
+        io.to(roomId).emit("terminal-output", {
           text: `\r\n\x1b[31m[System Error] ${error.message || String(error)}\x1b[0m\r\n`
+        });
+        io.to(roomId).emit("terminal-exit", {
+          code: 1,
+          message: `\r\n\x1b[31m[System] Process exited with errors.\x1b[0m\r\n`
         });
       }
     });
 
-    // Receive interactive terminal input and pipe to child stdin
+    // Receive interactive terminal input (informs user that interactive console input is disabled)
     socket.on("terminal-input", (data) => {
       if (!data || !data.input) return;
-      const execution = activeExecutions[socket.id];
-      if (execution && execution.child && !execution.child.killed) {
-        // Echo input to all users in the room so they can see what was entered
-        const roomId = socket.roomId;
-        if (roomId) {
-          io.to(roomId).emit("terminal-output", { text: data.input + "\n" });
-        }
-        // Write to stdin of the running child process
-        execution.child.stdin.write(data.input + "\n");
+      const roomId = socket.roomId;
+      if (roomId) {
+        io.to(roomId).emit("terminal-output", {
+          text: `\r\n\x1b[33m[System Tip] Interactive input is not supported in this environment. Please create a file named 'input.txt' in your workspace to supply stdin.\x1b[0m\r\n`
+        });
+        io.to(roomId).emit("terminal-exit", {
+          code: 0,
+          message: ""
+        });
       }
     });
 

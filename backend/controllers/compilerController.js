@@ -1,68 +1,15 @@
-// const {submitCode,getSubmissionResult} = require("../services/judge0Service");
-
-// const runCode=async(req,res)=>{
-
-//     try{
-
-//         const {language,code}=req.body;
-
-//         if(!language || !code){
-//             return res.status(400).json({
-//                 success:false,
-//                 message:"Language and code are required"
-//             });
-//         }
-
-//         const token=await submitCode(
-//             language,
-//             code
-//         );
-
-//         // Wait For Execution
-//         setTimeout(async ()=>{
-         
-//             try{
-
-//                 const result=await getSubmissionResult(token);
-
-//                 res.status(200).json({success:true,result});
-
-//             }catch(error){
-
-//                 res.status(500).json({
-//                     success:false,
-//                     message:error.message
-//                 })
-//             }
-//         },3000);
-
-//     }catch(error){
-//         res.status(500).json({success:false,message:error.message});
-//     }
-// };
-
-// module.exports={
-//     runCode,
-
-// }
-
-
-const {runjavascript}=require("../services/compilerService");
-const { runCpp } = require("../services/cppCompiler");
-const { runJava } = require("../services/javaCompiler");
-const { runPython } = require("../services/pythonCompiler");
-const { runDockerWorkspaceCode } = require("../services/dockerCompiler");
+const { executeCode } = require("../services/jdoodleService");
 const WorkspaceItem = require("../models/WorkspaceItem");
 const { logActivity } = require("./activityControllers");
+const User = require("../models/User");
 
+const runCode = async (req, res) => {
+    console.log(req.body);
 
-const runCode=async(req,res)=>{
-     console.log(req.body);
+    try {
+        const { language, code, input, roomId, roomTitle } = req.body;
 
-    try{
-        const {language,code,input,roomId,roomTitle}=req.body;
-
-         // Validation (code is required only as fallback for legacy sandboxes)
+        // Validation
         if (!language) {
             return res.status(400).json({
                 success: false,
@@ -70,59 +17,77 @@ const runCode=async(req,res)=>{
             });
         }
 
-        let output;
+        let sourceCode = code;
         
         // 1. Check if this room contains any workspace files
         const workspaceCount = await WorkspaceItem.countDocuments({ roomId, type: "file" });
         
         if (workspaceCount > 0) {
-            // Run as a multi-file workspace compile
-            output = await runDockerWorkspaceCode(roomId, language, input);
-        } else {
-            // Fallback: Run legacy single-file code buffer
-            if (!code) {
+            // Find compilation/execution Entry Point
+            const items = await WorkspaceItem.find({ roomId, type: "file" });
+            let entryPoint = items.find((item) => item.isEntryPoint);
+
+            // Fallbacks if no entry point configured
+            if (!entryPoint) {
+                const defaults = {
+                    javascript: "index.js",
+                    python: "main.py",
+                    cpp: "main.cpp",
+                    java: "Main.java"
+                };
+                const defaultName = defaults[language];
+                entryPoint = items.find((item) => item.name === defaultName);
+            }
+
+            // If still no entry point, take first file of matching language extension
+            if (!entryPoint) {
+                const exts = {
+                    javascript: ".js",
+                    python: ".py",
+                    cpp: ".cpp",
+                    java: ".java"
+                };
+                const ext = exts[language];
+                entryPoint = items.find((item) => item.name.endsWith(ext));
+            }
+
+            if (!entryPoint) {
                 return res.status(400).json({
                     success: false,
-                    message: "Code is required for single-file buffer execution"
+                    message: `No entry point selected or default file found for ${language}. Please select an entry point file.`
                 });
             }
 
-            if(language==="javascript"){
-                output=await runjavascript(code,input);
-            }
-            else if(language=="python"){
-                output=await runPython(code,input);
-            }
-            else if(language=="cpp"){
-              output=await runCpp(code,input);
-            }
-            else if(language=="java"){
-              output=await runJava(code,input);
-            }
-            else
-            {
+            sourceCode = entryPoint.content || "";
+        } else {
+            // Fallback: Run legacy single-file code buffer
+            if (!sourceCode) {
                 return res.status(400).json({
-                    success:false,
-                    message:"Language not supported"
+                    success: false,
+                    message: "Code is required for execution"
                 });
             }
         }
 
-        const User = require("../models/User");
-        await User.findByIdAndUpdate(req.user._id, { $inc: { executionsCount: 1 } });
+        // Execute via JDoodle
+        const output = await executeCode(language, sourceCode, input);
 
+        await User.findByIdAndUpdate(req.user._id, { $inc: { executionsCount: 1 } });
         await logActivity(req.user._id, req.user.username, roomId || null, roomTitle || "Sandbox", "executed");
        
         res.status(200).json({
-            success:true,
+            success: true,
             output
         });
 
-    }catch(error){
-        res.status(500).json({success:false,output:error.message || String(error)})
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            output: error.message || String(error)
+        });
     }
-}
+};
 
-module.exports={
+module.exports = {
     runCode,
-}
+};
