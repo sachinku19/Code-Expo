@@ -5120,3 +5120,101 @@ html.light {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
   background: rgba(0, 0, 0, 0.01) !important;
 }
+
+/* SUGGESTION & MODAL FOLLOW BUTTONS STYLING */
+.suggestion-follow-btn,
+.ce-modal-follow-btn {
+  padding: 5px 12px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 6px;
+  color: var(--ce-primary, #3b82f6);
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-weight: 600;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.22s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.suggestion-follow-btn:hover,
+.ce-modal-follow-btn.follow:hover,
+.ce-modal-follow-btn.follow-back:hover {
+  background: var(--ce-primary, #3b82f6);
+  color: #ffffff !important;
+  border-color: var(--ce-primary, #3b82f6);
+  transform: translateY(-1.5px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.suggestion-follow-btn:active,
+.ce-modal-follow-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.suggestion-follow-btn.following,
+.ce-modal-follow-btn.following {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  color: var(--ce-text-muted, #94a3b8);
+}
+
+.suggestion-follow-btn.following:hover,
+.ce-modal-follow-btn.following:hover {
+  background: rgba(248, 81, 73, 0.08);
+  border-color: rgba(248, 81, 73, 0.25);
+  color: var(--ce-danger, #f85149) !important;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(248, 81, 73, 0.15);
+}
+
+.ce-remove-follower-btn {
+  padding: 5px 12px;
+  background: rgba(248, 81, 73, 0.08);
+  border: 1px solid rgba(248, 81, 73, 0.25);
+  border-radius: 6px;
+  color: var(--ce-danger, #f85149);
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.22s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.ce-remove-follower-btn:hover {
+  background: var(--ce-danger, #f85149);
+  color: #ffffff !important;
+  border-color: var(--ce-danger, #f85149);
+  transform: translateY(-1.5px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(248, 81, 73, 0.25);
+}
+
+.ce-remove-follower-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* Light Theme overrides */
+.light .suggestion-follow-btn,
+.light .ce-modal-follow-btn {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.light .suggestion-follow-btn.following,
+.light .ce-modal-follow-btn.following {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #64748b;
+}
+
+.light .suggestion-follow-btn.following:hover,
+.light .ce-modal-follow-btn.following:hover {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444 !important;
+}

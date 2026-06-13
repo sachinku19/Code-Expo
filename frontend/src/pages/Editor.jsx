@@ -2217,8 +2217,40 @@ function Editor() {
   if (!room) {
     return (
       <div className="editor-loading-screen">
-        <div className="editor-loader" />
-        <h2>Setting up your MERN workspace...</h2>
+        <div className="tech-grid-overlay"></div>
+        <div className="hologram-container">
+          <div className="hologram-ring ring-outer"></div>
+          <div className="hologram-ring ring-middle"></div>
+          <div className="hologram-ring ring-inner"></div>
+          <div className="hologram-core"></div>
+        </div>
+        <h2 className="loading-status-text">Workspace is ready for you...</h2>
+        
+        <div className="loading-progress-container">
+          <div className="loading-progress-bar">
+            <div className="loading-progress-fill"></div>
+          </div>
+          <span className="loading-progress-percentage">BOOTING ENVIRONMENT</span>
+        </div>
+
+        {/* Animated Boot Logs Terminal Console */}
+        <div className="tech-terminal-console">
+          <div className="console-header">
+            <span className="console-dot dot-red"></span>
+            <span className="console-dot dot-yellow"></span>
+            <span className="console-dot dot-green"></span>
+            <span className="console-title">system_connection_terminal</span>
+          </div>
+          <div className="console-body">
+            <div className="console-line line-1">&gt; INITIATING DEVI_ENVIRONMENT HANDSHAKE... SUCCESS</div>
+            <div className="console-line line-2">&gt; SPINNING UP MONACO EDITOR CONTROLLER... ONLINE</div>
+            <div className="console-line line-3">&gt; MOUNTING MULTI-USER DOCUMENT CONTEXT... ONLINE</div>
+            <div className="console-line line-4">&gt; SYNCING COLLABORATION SOCKET PIPELINE... ESTABLISHED</div>
+            <div className="console-line line-5">&gt; INITIALIZING WEBRTC AUDIO GRID ROUTING... READY</div>
+          </div>
+        </div>
+
+        <p className="loading-substatus-text">Configuring real-time socket signals & WebRTC audio nodes...</p>
       </div>
     );
   }

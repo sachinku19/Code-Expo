@@ -1274,50 +1274,64 @@ function Dashboard() {
     const prevTrendingRooms = [...trendingRooms];
     const prevHistoryRooms = [...historyRooms];
     const prevViewingUserLikedRooms = [...viewingUserLikedRooms];
+    const prevPublicRooms = [...publicRooms];
+    const prevLiveRooms = [...liveRooms];
+    const prevRecentRooms = [...recentRooms];
+    const prevViewingUserRooms = [...viewingUserRooms];
+    const prevSavedRooms = [...savedRooms];
 
     const wasLiked = isRoomLiked(roomId);
 
-    // Optimistically update states
+    // Optimistically update likedRooms list
     if (wasLiked) {
       setLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
     } else {
-      const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
-        trendingRooms.find(r => r.roomId === roomId) ||
-        viewingUserRooms.find(r => r.roomId === roomId);
+      const matchedRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+        trendingRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+        publicRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+        liveRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+        recentRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+        savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+        viewingUserRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
       if (matchedRoom) {
-        setLikedRooms(prev => [...prev, matchedRoom]);
+        setLikedRooms(prev => [...prev, { ...matchedRoom, likesCount: (matchedRoom.likesCount || 0) + 1 }]);
       }
     }
 
-    setTrendingRooms(prev => prev.map(r => {
-      if (r.roomId === roomId) {
-        return {
-          ...r,
-          likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
-        };
-      }
-      return r;
-    }));
+    // Helper map updater
+    const updateLikesCount = (roomsArray) =>
+      roomsArray.map(r => {
+        if (r && (r.roomId === roomId || r._id === roomId)) {
+          return {
+            ...r,
+            likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
+          };
+        }
+        return r;
+      });
 
-    setHistoryRooms(prev => prev.map(r => {
-      if (r.roomId === roomId) {
-        return {
-          ...r,
-          likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
-        };
-      }
-      return r;
-    }));
+    // Optimistically update counts on all relevant lists
+    setTrendingRooms(prev => updateLikesCount(prev));
+    setHistoryRooms(prev => updateLikesCount(prev));
+    setPublicRooms(prev => updateLikesCount(prev));
+    setLiveRooms(prev => updateLikesCount(prev));
+    setRecentRooms(prev => updateLikesCount(prev));
+    setViewingUserRooms(prev => updateLikesCount(prev));
+    setSavedRooms(prev => updateLikesCount(prev));
 
     if (viewingUserProfile) {
       if (wasLiked) {
         setViewingUserLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
       } else {
-        const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
-          trendingRooms.find(r => r.roomId === roomId) ||
-          viewingUserRooms.find(r => r.roomId === roomId);
+        const matchedRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+          trendingRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+          publicRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+          liveRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+          recentRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+          savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+          viewingUserRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
         if (matchedRoom) {
-          setViewingUserLikedRooms(prev => [...prev, matchedRoom]);
+          setViewingUserLikedRooms(prev => [...prev, { ...matchedRoom, likesCount: (matchedRoom.likesCount || 0) + 1 }]);
         }
       }
     }
@@ -1342,6 +1356,11 @@ function Dashboard() {
       setTrendingRooms(prevTrendingRooms);
       setHistoryRooms(prevHistoryRooms);
       setViewingUserLikedRooms(prevViewingUserLikedRooms);
+      setPublicRooms(prevPublicRooms);
+      setLiveRooms(prevLiveRooms);
+      setRecentRooms(prevRecentRooms);
+      setViewingUserRooms(prevViewingUserRooms);
+      setSavedRooms(prevSavedRooms);
     }
   };
 
@@ -2685,11 +2704,18 @@ function Dashboard() {
                             </div>
                           </div>
                           <button
-                            className="suggestion-follow-btn"
+                            className={`suggestion-follow-btn ${followingList.some(f => String(f._id || f) === String(s._id)) ? "following" : ""}`}
                             onClick={() => handleFollowToggle(s._id)}
-                            style={{ padding: "4px 8px", background: "rgba(88, 166, 255, 0.1)", border: "1px solid rgba(88, 166, 255, 0.2)", borderRadius: "4px", color: "var(--ce-primary)", fontSize: "0.7rem", cursor: "pointer", fontWeight: "600", flexShrink: 0 }}
                           >
-                            <Plus size={10} style={{ marginRight: "2px", verticalAlign: "middle" }} /> Follow
+                            {followingList.some(f => String(f._id || f) === String(s._id)) ? (
+                              <>
+                                <Check size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Following
+                              </>
+                            ) : (
+                              <>
+                                <Plus size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Follow
+                              </>
+                            )}
                           </button>
                         </div>
                       ))}
@@ -3574,14 +3600,7 @@ function Dashboard() {
                           followingList.some(f => String(f._id || f) === String(viewingUserProfile._id)) ? (
                             <button
                               className="profile-follow-btn unfollow"
-                              onClick={async () => {
-                                await handleFollowToggle(viewingUserProfile._id);
-                                const res = await getUserPublicProfile(viewingUserProfile._id);
-                                if (res.success) {
-                                  setViewingUserProfile(res.user);
-                                  setViewingUserStats(res.stats || null);
-                                }
-                              }}
+                              onClick={() => handleFollowToggle(viewingUserProfile._id)}
                               style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text-muted)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}
                             >
                               Unfollow
@@ -3589,14 +3608,7 @@ function Dashboard() {
                           ) : (
                             <button
                               className="profile-follow-btn follow"
-                              onClick={async () => {
-                                await handleFollowToggle(viewingUserProfile._id);
-                                const res = await getUserPublicProfile(viewingUserProfile._id);
-                                if (res.success) {
-                                  setViewingUserProfile(res.user);
-                                  setViewingUserStats(res.stats || null);
-                                }
-                              }}
+                              onClick={() => handleFollowToggle(viewingUserProfile._id)}
                               style={{ width: "100%", padding: "8px", background: "var(--ce-primary)", border: "none", borderRadius: "6px", color: "#fff", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}
                             >
                               Follow
@@ -4675,42 +4687,41 @@ function Dashboard() {
                           <div style={{ display: "flex", gap: "6px" }}>
                             {!isSelf && (
                               <button
-                                onClick={async () => {
-                                  await handleFollowToggle(item._id);
+                                onClick={() => {
+                                  handleFollowToggle(item._id);
                                   const activeId = viewingUserProfile ? viewingUserProfile._id : user?.id || user?._id;
-                                  const followersRes = await getFollowers(activeId).catch(() => ({ success: false, followers: [] }));
-                                  if (followersRes.success) setTargetFollowersList(followersRes.followers || []);
-                                  if (viewingUserProfile) {
-                                    const res = await getUserPublicProfile(viewingUserProfile._id);
-                                    if (res.success) {
-                                      setViewingUserProfile(res.user);
-                                      setViewingUserStats(res.stats || null);
-                                    }
+                                  if (activeId) {
+                                    Promise.all([
+                                      getFollowers(activeId).catch(() => ({ success: false, followers: [] })),
+                                      viewingUserProfile ? getUserPublicProfile(viewingUserProfile._id).catch(() => ({ success: false })) : Promise.resolve(null)
+                                    ]).then(([followersRes, profileRes]) => {
+                                      if (followersRes?.success) setTargetFollowersList(followersRes.followers || []);
+                                      if (profileRes?.success && profileRes.user) {
+                                        setViewingUserProfile(profileRes.user);
+                                        setViewingUserStats(profileRes.stats || null);
+                                      }
+                                    });
                                   }
                                 }}
-                                style={{
-                                  padding: "4px 8px",
-                                  background: isFollowingUser ? "rgba(255, 255, 255, 0.05)" : "rgba(88, 166, 255, 0.1)",
-                                  border: isFollowingUser ? "1px solid var(--ce-border)" : "1px solid rgba(88, 166, 255, 0.2)",
-                                  borderRadius: "4px",
-                                  color: isFollowingUser ? "var(--ce-text-muted)" : "var(--ce-primary)",
-                                  fontSize: "0.7rem",
-                                  cursor: "pointer",
-                                  fontWeight: "600"
-                                }}
+                                className={`ce-modal-follow-btn ${isFollowingUser ? "following" : "follow-back"}`}
                               >
                                 {isFollowingUser ? "Following" : "Follow Back"}
                               </button>
                             )}
                             {!viewingUserProfile && (
                               <button
-                                onClick={async () => {
-                                  await handleRemoveFollower(item._id);
+                                onClick={() => {
+                                  handleRemoveFollower(item._id);
                                   const activeId = user?.id || user?._id;
-                                  const followersRes = await getFollowers(activeId).catch(() => ({ success: false, followers: [] }));
-                                  if (followersRes.success) setTargetFollowersList(followersRes.followers || []);
+                                  if (activeId) {
+                                    getFollowers(activeId)
+                                      .catch(() => ({ success: false, followers: [] }))
+                                      .then(followersRes => {
+                                        if (followersRes.success) setTargetFollowersList(followersRes.followers || []);
+                                      });
+                                  }
                                 }}
-                                style={{ padding: "4px 8px", background: "rgba(248, 81, 73, 0.1)", border: "1px solid rgba(248, 81, 73, 0.2)", borderRadius: "4px", color: "var(--ce-danger, #f85149)", fontSize: "0.7rem", cursor: "pointer", fontWeight: "600" }}
+                                className="ce-remove-follower-btn"
                               >
                                 Remove
                               </button>
@@ -4770,29 +4781,26 @@ function Dashboard() {
                           </div>
                           {!isSelf && (
                             <button
-                              onClick={async () => {
-                                await handleFollowToggle(item._id);
+                              onClick={() => {
+                                handleFollowToggle(item._id);
+                                if (!viewingUserProfile) {
+                                  setTargetFollowingList(prev => prev.filter(f => String(f._id || f) !== String(item._id)));
+                                }
                                 const activeId = viewingUserProfile ? viewingUserProfile._id : user?.id || user?._id;
-                                const followingRes = await getFollowing(activeId).catch(() => ({ success: false, following: [] }));
-                                if (followingRes.success) setTargetFollowingList(followingRes.following || []);
-                                if (viewingUserProfile) {
-                                  const res = await getUserPublicProfile(viewingUserProfile._id);
-                                  if (res.success) {
-                                    setViewingUserProfile(res.user);
-                                    setViewingUserStats(res.stats || null);
-                                  }
+                                if (activeId) {
+                                  Promise.all([
+                                    getFollowing(activeId).catch(() => ({ success: false, following: [] })),
+                                    viewingUserProfile ? getUserPublicProfile(viewingUserProfile._id).catch(() => ({ success: false })) : Promise.resolve(null)
+                                  ]).then(([followingRes, profileRes]) => {
+                                    if (followingRes?.success) setTargetFollowingList(followingRes.following || []);
+                                    if (profileRes?.success && profileRes.user) {
+                                      setViewingUserProfile(profileRes.user);
+                                      setViewingUserStats(profileRes.stats || null);
+                                    }
+                                  });
                                 }
                               }}
-                              style={{
-                                padding: "4px 8px",
-                                background: isFollowingUser ? "rgba(255, 255, 255, 0.05)" : "rgba(88, 166, 255, 0.1)",
-                                border: isFollowingUser ? "1px solid var(--ce-border)" : "1px solid rgba(88, 166, 255, 0.2)",
-                                borderRadius: "4px",
-                                color: isFollowingUser ? "var(--ce-text-muted)" : "var(--ce-primary)",
-                                fontSize: "0.7rem",
-                                cursor: "pointer",
-                                fontWeight: "600"
-                              }}
+                              className={`ce-modal-follow-btn ${isFollowingUser ? "following" : "follow"}`}
                             >
                               {isFollowingUser ? "Following" : "Follow"}
                             </button>

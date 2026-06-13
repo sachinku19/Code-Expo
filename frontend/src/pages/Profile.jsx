@@ -227,28 +227,34 @@ const Profile = () => {
 
     const prevLikedRooms = [...likedRooms];
     const prevHistoryRooms = [...historyRooms];
+    const prevSavedRooms = [...savedRooms];
     const wasLiked = isRoomLiked(roomId);
 
     // Optimistically toggle like state
     if (wasLiked) {
       setLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
     } else {
-      const matchedRoom = historyRooms.find(r => r.roomId === roomId) ||
-        savedRooms.find(r => r.roomId === roomId);
+      const matchedRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+        savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+        likedRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
       if (matchedRoom) {
-        setLikedRooms(prev => [...prev, matchedRoom]);
+        setLikedRooms(prev => [...prev, { ...matchedRoom, likesCount: (matchedRoom.likesCount || 0) + 1 }]);
       }
     }
 
-    setHistoryRooms(prev => prev.map(r => {
-      if (r.roomId === roomId) {
-        return {
-          ...r,
-          likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
-        };
-      }
-      return r;
-    }));
+    const updateLikesCount = (roomsArray) =>
+      roomsArray.map(r => {
+        if (r && (r.roomId === roomId || r._id === roomId)) {
+          return {
+            ...r,
+            likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
+          };
+        }
+        return r;
+      });
+
+    setHistoryRooms(prev => updateLikesCount(prev));
+    setSavedRooms(prev => updateLikesCount(prev));
 
     try {
       const res = await toggleLikeRoom(roomId);
@@ -265,6 +271,7 @@ const Profile = () => {
       // Rollback on failure
       setLikedRooms(prevLikedRooms);
       setHistoryRooms(prevHistoryRooms);
+      setSavedRooms(prevSavedRooms);
     }
   };
 
