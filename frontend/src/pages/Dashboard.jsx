@@ -549,6 +549,7 @@ function Dashboard() {
   const [activities, setActivities] = useState([]);
   const [heatmap, setHeatmap] = useState([]);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [isMaintenance, setIsMaintenance] = useState(false);
 
@@ -1444,7 +1445,7 @@ function Dashboard() {
   const handleYearChange = async (year) => {
     setSelectedYear(year);
     try {
-      setIsLoadingDashboard(true);
+      setIsLoadingStats(true);
       const res = await getActivityStats(year);
       if (res.success) {
         setHeatmap(res.stats.heatmap || []);
@@ -1465,7 +1466,7 @@ function Dashboard() {
     } catch (err) {
       addToast("Failed to fetch statistics for selected year.", "error");
     } finally {
-      setIsLoadingDashboard(false);
+      setIsLoadingStats(false);
     }
   };
 
@@ -1473,7 +1474,7 @@ function Dashboard() {
     setSelectedYear(year);
     if (!viewingUserProfile) return;
     try {
-      setIsLoadingDashboard(true);
+      setIsLoadingStats(true);
       const res = await getUserPublicProfile(viewingUserProfile._id, year);
       if (res.success) {
         setViewingUserStats(res.stats || null);
@@ -1481,7 +1482,7 @@ function Dashboard() {
     } catch (err) {
       addToast("Failed to fetch developer statistics for selected year.", "error");
     } finally {
-      setIsLoadingDashboard(false);
+      setIsLoadingStats(false);
     }
   };
 
@@ -2295,6 +2296,22 @@ function Dashboard() {
             Please check back in a few minutes. We apologize for the inconvenience.
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (isLoadingDashboard) {
+    return (
+      <div className="dashboard-loading-screen">
+        <div className="tech-grid-overlay"></div>
+        <div className="hologram-container">
+          <div className="hologram-ring ring-outer"></div>
+          <div className="hologram-ring ring-middle"></div>
+          <div className="hologram-ring ring-inner"></div>
+          <div className="hologram-core"></div>
+        </div>
+        <h2 className="loading-status-text">Synchronizing Code-Expo...</h2>
+        <p className="loading-substatus-text">Assembling your custom workspaces, global repositories, and social graph feed...</p>
       </div>
     );
   }
@@ -3633,7 +3650,7 @@ function Dashboard() {
               </div>
 
               {/* Profile Main Content */}
-              <div className="profile-main-body" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div className="profile-main-body" style={{ display: "flex", flexDirection: "column", gap: "20px", opacity: isLoadingStats ? 0.6 : 1, transition: "opacity 0.22s ease", pointerEvents: isLoadingStats ? "none" : "auto" }}>
                 <ContributionHeatmap
                   rawHeatmap={viewingUserProfile ? (viewingUserStats?.heatmap || []) : (heatmap || [])}
                   selectedYear={selectedYear}
