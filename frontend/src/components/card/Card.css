@@ -1,0 +1,64 @@
+.stats-card {
+
+  display: flex;
+  align-items: center;
+  gap: 18px;
+
+  padding: 22px;
+
+  border-radius: 22px;
+
+  background:
+  rgba(255,255,255,.03);
+
+  border:
+  1px solid rgba(255,255,255,.08);
+
+  transition: .3s ease;
+
+  cursor: pointer;
+}
+
+.stats-card:hover {
+
+  border-color:
+  rgba(99,102,241,.4);
+
+  box-shadow:
+  0 12px 30px
+  rgba(99,102,241,.15);
+}
+
+.stats-icon {
+
+  width: 58px;
+  height: 58px;
+
+  border-radius: 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: white;
+
+  flex-shrink: 0;
+}
+
+.stats-content span {
+
+  color: #a1a1aa;
+
+  font-size: .9rem;
+}
+
+.stats-content h2 {
+
+  color: white;
+
+  margin-top: 6px;
+
+  font-size: 1.8rem;
+
+  font-weight: 700;
+}

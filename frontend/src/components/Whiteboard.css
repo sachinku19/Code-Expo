@@ -1,0 +1,769 @@
+/* Collaborative Whiteboard Premium Dark Stylesheet */
+
+:root {
+  --wb-bg-canvas: #090b10;
+  --wb-bg-panel: rgba(13, 17, 24, 0.75);
+  --wb-border-panel: rgba(255, 255, 255, 0.08);
+  --wb-color-text: #e2e8f0;
+  --wb-color-muted: #94a3b8;
+  --wb-color-accent: #2dd4bf;
+  --wb-color-accent-hover: #14b8a6;
+  --wb-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --wb-font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+.light {
+  --wb-bg-canvas: #fafafa;
+  --wb-bg-panel: rgba(255, 255, 255, 0.85);
+  --wb-border-panel: rgba(0, 0, 0, 0.08);
+  --wb-color-text: #0f172a;
+  --wb-color-muted: #475569;
+  --wb-color-accent: #0f766e;
+  --wb-color-accent-hover: #115e59;
+  --wb-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.whiteboard-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--wb-bg-canvas);
+  color: var(--wb-color-text);
+  font-family: var(--wb-font);
+  user-select: none;
+  container-type: inline-size;
+  container-name: wb-container;
+}
+
+/* Glassmorphism panel helper */
+.wb-glass-panel {
+  background: var(--wb-bg-panel);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid var(--wb-border-panel);
+  border-radius: 12px;
+  box-shadow: var(--wb-shadow);
+  z-index: 10;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
+}
+
+/* The Canvas itself */
+.whiteboard-canvas {
+  display: block;
+  cursor: crosshair;
+  width: 100%;
+  height: 100%;
+}
+
+.whiteboard-canvas.panning {
+  cursor: grab;
+}
+
+.whiteboard-canvas.panning:active {
+  cursor: grabbing;
+}
+
+/* Top Toolbar */
+.whiteboard-toolbar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+}
+
+.wb-tool-btn {
+  background: transparent;
+  border: none;
+  color: var(--wb-color-muted);
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.wb-tool-btn:hover {
+  color: var(--wb-color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.wb-tool-btn.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #10b981);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.wb-tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.wb-tool-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 4px;
+}
+
+/* Popover Panel Wrapper inside Top Toolbar */
+.wb-toolbar-item-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.wb-popup-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  min-width: 176px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--wb-bg-panel);
+  border: 1px solid var(--wb-border-panel);
+  box-shadow: var(--wb-shadow);
+  z-index: 1000;
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.18s ease;
+}
+
+/* Invisible bridge to prevent hover loss between button and popover */
+.wb-popup-panel::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: transparent;
+}
+
+/* Hover trigger state */
+.wb-toolbar-item-wrapper:hover .wb-popup-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.wb-popup-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--wb-color-muted);
+  margin: 0 0 8px 0;
+  text-align: left;
+}
+
+.wb-popup-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 8px 0;
+}
+
+.light .wb-popup-divider {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Color Popover styling */
+.wb-color-popup {
+  min-width: 176px;
+}
+
+/* Size Popover styling */
+.wb-size-popup {
+  min-width: 190px;
+}
+
+.wb-size-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wb-preset-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--wb-color-text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.wb-preset-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.light .wb-preset-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.wb-preset-btn.active {
+  background: rgba(45, 212, 191, 0.12);
+  color: var(--wb-color-accent);
+}
+
+.preset-circle {
+  background: var(--wb-color-muted);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.wb-preset-btn.active .preset-circle {
+  background: var(--wb-color-accent);
+}
+
+.wb-preset-btn:hover .preset-circle {
+  background: var(--wb-color-text);
+}
+
+/* Color preview circle inside the main button */
+.color-preview-dot {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.size-preview-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  background: var(--wb-color-muted);
+  color: #000;
+  border-radius: 4px;
+  padding: 0px 3px;
+  line-height: 1.2;
+}
+
+.wb-tool-btn.active .size-preview-badge {
+  background: #ffffff;
+  color: #000000;
+}
+
+.wb-panel-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--wb-color-muted);
+  margin-bottom: 8px;
+  margin-top: 0;
+}
+
+/* Swatches Grid */
+.wb-swatches-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.wb-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.3);
+}
+
+.wb-swatch:hover {
+  transform: scale(1.12);
+}
+
+.wb-swatch.active {
+  border-color: #ffffff;
+  transform: scale(1.08);
+  box-shadow: 0 0 10px rgba(255,255,255,0.2), inset 0 0 4px rgba(0,0,0,0.4);
+}
+
+/* Brush Size Slider */
+.wb-brush-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wb-brush-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--wb-color-muted);
+}
+
+.wb-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+}
+
+.wb-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--wb-color-accent);
+  box-shadow: 0 0 6px rgba(45, 212, 191, 0.5);
+  transition: transform 0.1s ease;
+}
+
+.wb-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+/* Bottom Left Zoom Controls */
+.whiteboard-zoom-panel {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+
+.wb-zoom-btn {
+  background: transparent;
+  border: none;
+  color: var(--wb-color-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.wb-zoom-btn:hover {
+  color: var(--wb-color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.wb-zoom-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-width: 48px;
+  text-align: center;
+  color: var(--wb-color-text);
+}
+
+.wb-zoom-fit {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 6px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--wb-color-muted);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.wb-zoom-fit:hover {
+  color: var(--wb-color-accent);
+  background: rgba(45, 212, 191, 0.06);
+}
+
+/* Top Right Room Info Panel */
+.whiteboard-room-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+  min-width: 200px;
+}
+
+.wb-room-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wb-room-label {
+  color: var(--wb-color-muted);
+  font-weight: 600;
+}
+
+.wb-room-val {
+  font-weight: 700;
+  color: var(--wb-color-text);
+}
+
+.wb-status-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wb-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 10px #22c55e;
+  animation: wbPulse 1.8s infinite ease-in-out;
+}
+
+.wb-status-dot.disconnected {
+  background-color: #ef4444;
+  box-shadow: 0 0 10px #ef4444;
+}
+
+/* Floating Participants panel */
+.whiteboard-participants-panel {
+  position: absolute;
+  top: 126px;
+  right: 16px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wb-participant-stack {
+  display: flex;
+  align-items: center;
+}
+
+.wb-participant-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: 2px solid #090b10;
+  margin-left: -6px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.16s ease, z-index 0.16s ease;
+}
+
+.wb-participant-avatar:first-child {
+  margin-left: 0;
+}
+
+.wb-participant-avatar:hover {
+  transform: translateY(-3px);
+  z-index: 20;
+}
+
+/* Floating Live Activity Feed */
+.whiteboard-activity-feed {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 240px;
+  max-height: 130px;
+  padding: 10px 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wb-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.72rem;
+  overflow-y: auto;
+  max-height: 90px;
+}
+
+.wb-feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--wb-color-muted);
+  animation: feedSlideIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.wb-feed-name {
+  color: var(--wb-color-accent);
+  font-weight: 700;
+}
+
+/* Collaborative Cursors layer */
+.whiteboard-cursors-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.wb-collaborator-cursor {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transition: left 0.12s cubic-bezier(0.1, 0.8, 0.2, 1), top 0.12s cubic-bezier(0.1, 0.8, 0.2, 1);
+  will-change: left, top;
+}
+
+.wb-cursor-pointer {
+  transform: translate(-2px, -2px);
+}
+
+.wb-cursor-label {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  margin-top: 4px;
+  transform: translateX(8px);
+}
+
+/* Text Tool Input Overlay */
+.wb-text-editor {
+  position: absolute;
+  background: var(--wb-bg-panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--wb-color-accent);
+  color: var(--wb-color-text);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  outline: none;
+  min-width: 120px;
+  z-index: 100;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  resize: both;
+}
+
+/* Animations */
+@keyframes wbPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.78);
+    opacity: 0.65;
+  }
+}
+
+@keyframes feedSlideIn {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Tooltips */
+.wb-tool-btn[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #020617;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.wb-tool-btn[data-tooltip]:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Tooltip for participants */
+.wb-participant-avatar[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #020617;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.16s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 30;
+}
+
+.wb-participant-avatar:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Shapes popup dropdown menu styles */
+.wb-shapes-popup {
+  min-width: 152px;
+}
+
+.wb-shapes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wb-shape-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--wb-color-text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.wb-shape-item-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--wb-color-accent);
+}
+
+.light .wb-shape-item-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.wb-shape-item-btn.active {
+  background: rgba(45, 212, 191, 0.12);
+  color: var(--wb-color-accent);
+}
+
+.whiteboard-canvas.text-active {
+  cursor: text !important;
+}
+
+/* Container Queries for responsive layout of Whiteboard split screen panel */
+@container wb-container (max-width: 768px) {
+  .whiteboard-toolbar {
+    top: 8px;
+    padding: 4px;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 92%;
+  }
+  .wb-tool-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+  .wb-tool-divider {
+    height: 16px;
+    margin: 0 2px;
+  }
+  .wb-popup-panel {
+    top: calc(100% + 4px);
+  }
+}
+
+@container wb-container (max-width: 520px) {
+  .whiteboard-toolbar {
+    max-width: 96%;
+    padding: 3px;
+    gap: 2px;
+  }
+  .wb-tool-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .wb-tool-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+  .wb-tool-divider {
+    display: none; /* Hide dividers to conserve horizontal space */
+  }
+  .wb-popup-panel {
+    top: calc(100% + 4px);
+    padding: 8px;
+  }
+  .whiteboard-zoom-panel {
+    bottom: 8px;
+    left: 8px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .wb-zoom-btn, .wb-zoom-fit {
+    width: 24px;
+    height: 24px;
+    font-size: 0.65rem;
+  }
+  .wb-zoom-val {
+    font-size: 0.7rem;
+    min-width: 36px;
+  }
+  .whiteboard-activity-feed {
+    display: none !important; /* Hide activity timeline in very narrow panels */
+  }
+}

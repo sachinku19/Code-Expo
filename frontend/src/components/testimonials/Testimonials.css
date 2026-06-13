@@ -1,0 +1,237 @@
+.testimonials {
+  padding: 100px max(24px, calc((100vw - 1200px) / 2));
+  background-color: var(--bg-dark);
+  position: relative;
+  text-align: center;
+}
+
+.testimonials-header {
+  max-width: 800px;
+  margin: 0 auto 50px;
+}
+
+.testimonials-header h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.8px;
+}
+
+.testimonials-header p {
+  margin-top: 14px;
+  color: var(--text-secondary);
+  font-size: 1.08rem;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 28px;
+}
+
+.testimonial-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  transition: all 0.3s ease;
+}
+
+.testimonial-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(168, 85, 247, 0.35);
+  box-shadow: 0 20px 45px rgba(168, 85, 247, 0.08);
+}
+
+.testimonial-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.avatar-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-transform: uppercase;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-info h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.user-info span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.quote-icon {
+  margin-left: auto;
+  color: rgba(168, 85, 247, 0.15);
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.star-filled {
+  color: #fbbf24;
+  fill: #fbbf24;
+}
+
+.role-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--accent-purple);
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.testimonial-text {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+}
+
+.rating-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 18px;
+  border-radius: 999px;
+  margin-top: 14px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.home-page.light-theme .rating-summary-badge {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.05);
+}
+
+.stars-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rating-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.rating-text strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.star-empty {
+  color: rgba(255, 255, 255, 0.18);
+  fill: transparent;
+}
+
+.home-page.light-theme .star-empty {
+  color: rgba(15, 23, 42, 0.18);
+}
+
+.user-avatar-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-page.light-theme .user-avatar-img {
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.testimonials-loading,
+.empty-reviews-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  margin-top: 20px;
+}
+
+.home-page.light-theme .testimonials-loading,
+.home-page.light-theme .empty-reviews-state {
+  background: rgba(15, 23, 42, 0.01);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.empty-reviews-state p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.testimonials-loading p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-top: 12px;
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(168, 85, 247, 0.2);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .testimonials {
+    padding: 70px 20px;
+  }
+  .rating-summary-badge {
+    padding: 6px 14px;
+  }
+}

@@ -1,0 +1,271 @@
+.home-page {
+  /* Scoped color palette: Professional B2B Developer Theme (Obsidian Zinc & Indigo) */
+  --bg-dark: #09090b;
+  --bg-card: rgba(24, 24, 27, 0.45);
+  --bg-card-hover: rgba(39, 39, 42, 0.7);
+  --border-glow: rgba(255, 255, 255, 0.06);
+  --border-glow-hover: rgba(59, 130, 246, 0.25);
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+
+  --accent-purple: #6366f1;
+  /* Professional Indigo */
+  --accent-cyan: #3b82f6;
+  /* Royal Blue */
+  --accent-rose: #f43f5e;
+
+  --grad-primary: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  --grad-text: linear-gradient(135deg, #ffffff 30%, #d4d4d8 100%);
+  --shadow-neon: 0 10px 30px rgba(59, 130, 246, 0.15);
+  --shadow-cyan: 0 10px 30px rgba(99, 102, 241, 0.12);
+
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  text-align: left;
+  color: var(--text-primary);
+  background-color: var(--bg-dark);
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.06), transparent 45rem),
+    radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.06), transparent 45rem);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+.home-page button,
+.home-page a {
+  font: inherit;
+}
+
+.home-page section {
+  position: relative;
+  width: 100%;
+  padding: 78px max(24px, calc((100vw - 1200px) / 2));
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .home-page section {
+    padding: 56px 18px;
+  }
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.06);
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.home-page.light-theme {
+  --bg-dark: #f8fbff;
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --bg-card-hover: rgba(255, 255, 255, 0.92);
+  --border-glow: rgba(15, 23, 42, 0.08);
+  --border-glow-hover: rgba(37, 99, 235, 0.28);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  --accent-purple: #7c3aed;
+  --accent-cyan: #0284c7;
+  --accent-rose: #e11d48;
+
+  --grad-primary: linear-gradient(135deg, #2563eb 0%, #7c3aed 48%, #0f766e 100%);
+  --grad-text: linear-gradient(135deg, #0f172a 10%, #2563eb 45%, #0f766e 100%);
+  --shadow-neon: 0 18px 46px rgba(37, 99, 235, 0.18);
+  --shadow-cyan: 0 18px 46px rgba(14, 165, 233, 0.16);
+
+  color: var(--text-primary);
+  background-color: #f8fbff;
+  background-image:
+    radial-gradient(circle at 12% 12%, rgba(56, 189, 248, 0.28), transparent 24rem),
+    radial-gradient(circle at 82% 8%, rgba(167, 139, 250, 0.26), transparent 24rem),
+    radial-gradient(circle at 72% 76%, rgba(45, 212, 191, 0.2), transparent 28rem),
+    linear-gradient(135deg, #ffffff 0%, #f8fbff 36%, #eef6ff 100%);
+}
+
+.home-page.light-theme::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.45;
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.08) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at 50% 8%, #000, transparent 72%);
+  -webkit-mask-image: radial-gradient(circle at 50% 8%, #000, transparent 72%);
+}
+
+.home-page.light-theme section,
+.home-page.light-theme>div {
+  isolation: isolate;
+}
+
+.home-page.light-theme .navbar {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 
+    0 18px 50px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.home-page.light-theme .navbar::before {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.12), rgba(124, 58, 237, 0.22), rgba(37, 99, 235, 0.12), transparent);
+  background-size: 200% auto;
+}
+
+.home-page.light-theme .navbar:hover::before {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.25), rgba(124, 58, 237, 0.45), rgba(37, 99, 235, 0.25), transparent);
+}
+
+.home-page.light-theme .nav-links {
+  background: rgba(255, 255, 255, 0.62);
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.home-page.light-theme .nav-active-pill {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.home-page.light-theme .login-btn,
+.home-page.light-theme .theme-btn {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(148, 163, 184, 0.28);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+.home-page.light-theme .mobile-nav-panel {
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom-color: rgba(148, 163, 184, 0.22);
+}
+
+.home-page.light-theme .mobile-divider {
+  background: rgba(148, 163, 184, 0.24);
+}
+
+.home-page.light-theme .hero,
+.home-page.light-theme .features,
+.home-page.light-theme .collaboration,
+.home-page.light-theme .ai-showcase,
+.home-page.light-theme .stats-section,
+.home-page.light-theme .templates,
+.home-page.light-theme .testimonials,
+.home-page.light-theme .cta {
+  background-color: transparent;
+}
+
+.home-page.light-theme .hero-grid-bg {
+  opacity: 0.38;
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.1) 1px, transparent 1px);
+}
+
+.home-page.light-theme .live-users,
+.home-page.light-theme .hero-stats div,
+.home-page.light-theme .feature-card,
+.home-page.light-theme .stat-card,
+.home-page.light-theme .template-card,
+.home-page.light-theme .prompt-pill,
+.home-page.light-theme .cta-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.58));
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow:
+    0 24px 70px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(18px);
+}
+
+.home-page.light-theme .editor-preview,
+.home-page.light-theme .workspace-preview,
+.home-page.light-theme .ai-right,
+.home-page.light-theme .ai-window {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.86)),
+    #ffffff;
+  border-color: rgba(148, 163, 184, 0.24);
+  box-shadow:
+    -20px 34px 90px rgba(37, 99, 235, 0.12),
+    0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.home-page.light-theme .editor-preview:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow:
+    -35px 45px 110px rgba(37, 99, 235, 0.24),
+    0 15px 40px rgba(15, 23, 42, 0.1);
+}
+
+.home-page.light-theme .preview-glow,
+.home-page.light-theme .cta-glow {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.28), rgba(167, 139, 250, 0.14), transparent 62%);
+}
+
+.home-page.light-theme .editor-topbar,
+.home-page.light-theme .ai-header,
+.home-page.light-theme .editor-tabs,
+.home-page.light-theme .chat-title,
+.home-page.light-theme .terminal-header {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.home-page.light-theme .editor-code-container,
+.home-page.light-theme .terminal-panel,
+.home-page.light-theme .ai-response-text,
+.home-page.light-theme .chat-text,
+.home-page.light-theme .workspace-sidebar,
+.home-page.light-theme .workspace-chat,
+.home-page.light-theme .editor-textarea-wrapper {
+  background: rgba(248, 250, 252, 0.82);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.home-page.light-theme .code-preview,
+.home-page.light-theme .editor-textarea,
+.home-page.light-theme .terminal-content,
+.home-page.light-theme .code-output-block {
+  color: #172033;
+}
+
+.home-page.light-theme .typing-indicator,
+.home-page.light-theme .run-status,
+.home-page.light-theme .sync-badge,
+.home-page.light-theme .template-tag,
+.home-page.light-theme .ai-header-status {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.home-page.light-theme .footer {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(37, 99, 235, 0.16), transparent 24rem),
+    linear-gradient(180deg, rgba(241, 245, 249, 0.72), #eaf2ff);
+  color: var(--text-primary);
+}
+
+.home-page.light-theme .footer-top {
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+
+.home-page.light-theme .footer-links a,
+.home-page.light-theme .footer-brand p,
+.home-page.light-theme .footer-bottom {
+  color: var(--text-secondary);
+}
+
+.home-page.light-theme .mobile-links a:hover,
+.home-page.light-theme .mobile-links a.active {
+  background: rgba(15, 23, 42, 0.05);
+}

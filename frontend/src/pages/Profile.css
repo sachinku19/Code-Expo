@@ -1,0 +1,122 @@
+.profile-container {
+  width: 100%;
+  max-width: 1000px;
+  padding: 10px 0;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.profile-avatar:hover {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.35);
+}
+
+.profile-info h1 {
+  font-size: 2.3rem;
+  font-weight: 700;
+  color: #100cf1;
+  margin-bottom: 6px;
+}
+
+.profile-info p {
+  color: #f128bb;
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.profile-status {
+  color: #4ade80;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 22px;
+}
+
+.profile-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.profile-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 12px 24px rgba(99, 102, 241, 0.12);
+}
+
+.profile-card h3 {
+  color: #71717a;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.profile-card span {
+  color: #8c059b;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.profile-actions {
+  margin-top: 35px;
+}
+
+.edit-btn {
+  border: none;
+  outline: none;
+  cursor: pointer;
+
+  padding: 14px 24px;
+
+  border-radius: 14px;
+
+  background: linear-gradient(135deg,
+      #3b82f6,
+      #6366f1);
+
+  color: white;
+
+  font-size: 0.95rem;
+  font-weight: 600;
+
+  transition: all 0.3s ease;
+}
+
+.edit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(99, 102, 241, 0.25);
+}
+
+@media (max-width: 768px) {
+  .profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-info h1 {
+    font-size: 1.8rem;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 1.7rem;
+  }
+}

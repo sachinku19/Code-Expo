@@ -1,0 +1,120 @@
+import React from "react";
+import "./Logo.css";
+
+function Logo({ size = 32, showText = true, className = "", ...props }) {
+  return (
+    <div className={`logo-container ${className}`} {...props}>
+      <div className="logo-icon-wrapper" style={{ width: size, height: size }}>
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 100 100"
+          className="logo-svg"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="logoHexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#00f0ff" />
+              <stop offset="35%" stopColor="#9d4edd" />
+              <stop offset="70%" stopColor="#ff007f" />
+              <stop offset="100%" stopColor="#ff9e00" />
+            </linearGradient>
+            <linearGradient id="logoCodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#00f0ff" />
+              <stop offset="100%" stopColor="#0072ff" />
+            </linearGradient>
+          </defs>
+
+          {/* Hexagon Outline */}
+          <polygon
+            points="50,6 88,28 88,72 50,94 12,72 12,28"
+            stroke="url(#logoHexGradient)"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+
+          {/* Code Window */}
+          <rect
+            x="26"
+            y="34"
+            width="48"
+            height="34"
+            rx="5"
+            fill="#0a0a0f"
+            stroke="#1e2030"
+            strokeWidth="2"
+          />
+
+          {/* Window Controls */}
+          <circle cx="33" cy="40" r="1.5" fill="#ff5f56" />
+          <circle cx="38" cy="40" r="1.5" fill="#ffbd2e" />
+          <circle cx="43" cy="40" r="1.5" fill="#27c93f" />
+
+          {/* Code brackets </> */}
+          <path
+            d="M 44 48 L 39 51 L 44 54"
+            stroke="url(#logoCodeGradient)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M 48 55 L 52 47"
+            stroke="url(#logoCodeGradient)"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 56 48 L 61 51 L 56 54"
+            stroke="url(#logoCodeGradient)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Circuit lines */}
+          {/* Line 1 - Purple */}
+          <path
+            d="M 58 34 L 58 20 L 70 14"
+            stroke="#9d4edd"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="70" cy="14" r="2.5" fill="#9d4edd" />
+
+          {/* Line 2 - Magenta */}
+          <path
+            d="M 64 34 L 64 26 L 76 20"
+            stroke="#ff007f"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="76" cy="20" r="2.5" fill="#ff007f" />
+
+          {/* Line 3 - Orange */}
+          <path
+            d="M 70 34 L 76 34 L 84 26"
+            stroke="#ff9e00"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="84" cy="26" r="2.5" fill="#ff9e00" />
+        </svg>
+      </div>
+
+      {showText && (
+        <span className="logo-text-wrapper">
+          Code<span className="logo-text-highlight">Expo</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
+export default Logo;
