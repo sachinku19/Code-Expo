@@ -898,7 +898,7 @@ const socketHandler = (io) => {
         return;
       }
 
-      const { roomId, language, activeFileId } = data;
+      const { roomId, language, activeFileId, input } = data;
 
       try {
         // Broadcast that execution is starting
@@ -918,7 +918,7 @@ const socketHandler = (io) => {
 
         // 1. Fetch code and optional stdin from workspace/room
         let sourceCode = "";
-        let stdin = "";
+        let stdin = input || "";
 
         const items = await WorkspaceItem.find({ roomId });
         const files = items.filter(item => item.type === "file");
@@ -963,10 +963,12 @@ const socketHandler = (io) => {
 
           sourceCode = entryPoint.content || "";
 
-          // Support standard input via input.txt file inside the workspace
-          const inputItem = files.find(item => item.name === "input.txt");
-          if (inputItem) {
-            stdin = inputItem.content || "";
+          // Support standard input via input.txt file inside the workspace if not already provided
+          if (!stdin) {
+            const inputItem = files.find(item => item.name === "input.txt");
+            if (inputItem) {
+              stdin = inputItem.content || "";
+            }
           }
         } else {
           // Fallback to legacy single file room code

@@ -338,6 +338,7 @@ function Editor() {
   const [consoleTab, setConsoleTab] = useState("output"); // 'input' | 'output' | 'console'
   const [terminalOutput, setTerminalOutput] = useState("");
   const [terminalInputVal, setTerminalInputVal] = useState("");
+  const [programInput, setProgramInput] = useState("");
   const [isTerminalExecuting, setIsTerminalExecuting] = useState(false);
   const terminalEndRef = useRef(null);
 
@@ -1942,7 +1943,8 @@ function Editor() {
     socket.emit("execute-code", {
       roomId,
       language: editorLanguage || room?.language || "javascript",
-      activeFileId: activeFileIdRef.current || null
+      activeFileId: activeFileIdRef.current || null,
+      input: programInput
     });
   };
 
@@ -3003,6 +3005,13 @@ function Editor() {
                     <span>Terminal Output</span>
                   </button>
                   <button
+                    className={`console-tab-btn ${consoleTab === "input" ? "active" : ""}`}
+                    onClick={() => setConsoleTab("input")}
+                  >
+                    <FileText size={14} />
+                    <span>Program Input (stdin)</span>
+                  </button>
+                  <button
                     className={`console-tab-btn ${consoleTab === "console" ? "active" : ""}`}
                     onClick={() => setConsoleTab("console")}
                   >
@@ -3057,10 +3066,21 @@ function Editor() {
                   </div>
                 )}
 
+                {consoleTab === "input" && (
+                  <div className="console-stdin-container">
+                    <textarea
+                      className="console-stdin-textarea"
+                      value={programInput}
+                      onChange={(e) => setProgramInput(e.target.value)}
+                      placeholder="Type your program inputs here (one per line, e.g. for C++ cin or Python input)..."
+                    />
+                  </div>
+                )}
+
                 {consoleTab === "console" && (
                   <div className="execution-logs-view">
                     <div className="logs-list">
-                      <div className="log-row success">
+                       <div className="log-row success">
                         <span className="log-type-tag">SUCCESS</span>
                         <span className="log-text">Socket connection established. Listening to real-time events.</span>
                       </div>

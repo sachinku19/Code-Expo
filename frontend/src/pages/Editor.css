@@ -3815,3 +3815,31 @@ body.resizing-console * {
     transform: translateY(0);
   }
 }
+
+/* Program Stdin tab styling */
+.console-stdin-container {
+  display: flex;
+  height: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.console-stdin-textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  background-color: var(--ce-bg-page, #0b0f19);
+  color: var(--ce-text, #f8f9fa);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  padding: 10px;
+  font-family: var(--ce-font-mono, monospace);
+  font-size: 0.78rem;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.console-stdin-textarea:focus {
+  border-color: var(--ce-accent, #58A6FF);
+}
