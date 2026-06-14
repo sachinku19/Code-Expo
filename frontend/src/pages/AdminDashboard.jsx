@@ -329,6 +329,12 @@ const AdminDashboard = () => {
   const [adminReplyMessage, setAdminReplyMessage] = useState("");
   const [sendingAdminReply, setSendingAdminReply] = useState(false);
 
+  // Loading states for dynamic spinner buttons
+  const [submittingAd, setSubmittingAd] = useState(false);
+  const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false);
+  const [confirmingAction, setConfirmingAction] = useState(false);
+
+
 
   const addToast = (message, type = "success") => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -517,6 +523,7 @@ const AdminDashboard = () => {
       addToast("Title and message content are required", "error");
       return;
     }
+    setSubmittingAnnouncement(true);
     try {
       const data = await createAdminAnnouncement({
         title: annTitle,
@@ -534,6 +541,8 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message || "Failed to post announcement", "error");
+    } finally {
+      setSubmittingAnnouncement(false);
     }
   };
 
@@ -660,7 +669,7 @@ const AdminDashboard = () => {
   // Execute confirmation handler
   const executeConfirmation = async () => {
     const { type, targetId, extraData } = confirmModal;
-    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+    setConfirmingAction(true);
 
     try {
       if (type === "changeRole") {
@@ -724,8 +733,11 @@ const AdminDashboard = () => {
           fetchAds();
         }
       }
+      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
     } catch (err) {
       addToast(err.response?.data?.message || err.message || "Action failed", "error");
+    } finally {
+      setConfirmingAction(false);
     }
   };
 
@@ -766,6 +778,7 @@ const AdminDashboard = () => {
     formData.append("redirectUrl", adUrl.trim());
     formData.append("image", adImageFile);
 
+    setSubmittingAd(true);
     try {
       const res = await createAdminAd(formData);
       if (res.success) {
@@ -778,6 +791,8 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message || "Failed to create ad", "error");
+    } finally {
+      setSubmittingAd(false);
     }
   };
 
@@ -1059,8 +1074,11 @@ const AdminDashboard = () => {
                 className={`btn-modal-confirm ${["deleteUser", "suspendUser", "toggleMaintenance", "deleteAnnouncement", "deleteAd"].includes(confirmModal.type) ? "critical" : ""
                   }`}
                 onClick={executeConfirmation}
+                disabled={confirmingAction}
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px", minWidth: "90px" }}
               >
-                Proceed
+                {confirmingAction && <Loader className="spinner" size={12} />}
+                <span>{confirmingAction ? "Processing..." : "Proceed"}</span>
               </button>
             </div>
           </div>
@@ -2003,8 +2021,9 @@ const AdminDashboard = () => {
                       />
                     </div>
 
-                    <button type="submit" className="btn-broadcast-submit">
-                      <span>Launch Broadcast Alert</span>
+                    <button type="submit" className="btn-broadcast-submit" disabled={submittingAnnouncement}>
+                      {submittingAnnouncement && <Loader className="spinner" size={14} style={{ marginRight: "8px" }} />}
+                      <span>{submittingAnnouncement ? "Launching Broadcast..." : "Launch Broadcast Alert"}</span>
                     </button>
                   </form>
                 </div>
@@ -2146,8 +2165,9 @@ const AdminDashboard = () => {
                       </div>
                     )}
 
-                    <button type="submit" className="btn-broadcast-submit ad-btn">
-                      <span>Deploy & Broadcast Ad Campaign</span>
+                    <button type="submit" className="btn-broadcast-submit ad-btn" disabled={submittingAd}>
+                      {submittingAd && <Loader className="spinner" size={14} style={{ marginRight: "8px" }} />}
+                      <span>{submittingAd ? "Deploying & Broadcasting..." : "Deploy & Broadcast Ad Campaign"}</span>
                     </button>
                   </form>
                 </div>

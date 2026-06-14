@@ -310,8 +310,14 @@ export default function ProfileAvatar() {
 
             <div className="crop-actions">
               <button className="crop-btn cancel" onClick={() => setCropping(false)} disabled={loading}>Cancel</button>
-              <button className="crop-btn apply" onClick={handleCropAndUpload} disabled={loading}>
-                {loading ? "Uploading..." : "Apply & Upload"}
+              <button 
+                className="crop-btn apply" 
+                onClick={handleCropAndUpload} 
+                disabled={loading}
+                style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+              >
+                {loading && <Loader className="spinner" size={14} />}
+                <span>{loading ? "Uploading..." : "Apply & Upload"}</span>
               </button>
             </div>
           </div>

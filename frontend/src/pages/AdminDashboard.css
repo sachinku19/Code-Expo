@@ -2230,4 +2230,23 @@
   color: var(--admin-text-muted);
 }
 
+/* Spinner Animation for Admin Panel Loaders */
+.spinner {
+  animation: admin-spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes admin-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.btn-broadcast-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+
 

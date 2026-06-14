@@ -283,3 +283,10 @@
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* Spinner Animation for Inline Buttons */
+.spinner {
+  animation: ce-spin 1s linear infinite;
+  display: inline-block;
+}
+
