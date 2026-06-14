@@ -997,14 +997,26 @@ function Dashboard() {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const tab = searchParams.get("tab");
+    const userId = searchParams.get("userId");
     if (tab) {
       setActiveSection(tab);
       if (tab === "profile") {
+        if (userId) {
+          if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId))) {
+            handleViewUserProfile(userId);
+          }
+        } else {
+          setViewingUserProfile(null);
+          setViewingUserStats(null);
+        }
+      } else {
         setViewingUserProfile(null);
         setViewingUserStats(null);
       }
     } else {
       setActiveSection("dashboard");
+      setViewingUserProfile(null);
+      setViewingUserStats(null);
     }
   }, [location]);
 
@@ -1434,6 +1446,10 @@ function Dashboard() {
         setViewingUserStats(res.stats || null);
         setProfileTab("rooms");
         setActiveSection("profile");
+        const searchParams = new URLSearchParams(location.search);
+        if (searchParams.get("tab") !== "profile" || searchParams.get("userId") !== String(targetUserId)) {
+          navigate(`/dashboard?tab=profile&userId=${targetUserId}`);
+        }
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
@@ -3634,7 +3650,7 @@ function Dashboard() {
                         )}
                         <button
                           className="profile-back-btn"
-                          onClick={() => setViewingUserProfile(null)}
+                          onClick={() => navigate("/dashboard?tab=profile")}
                           style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                         >
                           <ArrowLeft size={13} /> Back to My Profile
