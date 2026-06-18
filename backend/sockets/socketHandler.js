@@ -176,8 +176,10 @@ const socketHandler = (io) => {
           const requestExists = room.pendingRequests.some(r => r.user.toString() === userId);
           if (!requestExists) {
             room.pendingRequests.push({ user: userId, username });
-            await room.save();
           }
+          // Remove from rejectedRequests if previously rejected
+          room.rejectedRequests = (room.rejectedRequests || []).filter(r => r.user.toString() !== userId);
+          await room.save();
         }
 
         const owner = roomUsers[roomId]?.find(
@@ -219,6 +221,9 @@ const socketHandler = (io) => {
 
           // Clean up from pendingRequests
           room.pendingRequests = room.pendingRequests.filter(r => r.user.toString() !== userId);
+          
+          // Clean up from rejectedRequests
+          room.rejectedRequests = (room.rejectedRequests || []).filter(r => r.user.toString() !== userId);
 
           if (!room.participants.includes(userId)) {
             room.participants.push(userId);
@@ -254,6 +259,13 @@ const socketHandler = (io) => {
         const room = await Room.findOne({ roomId });
         if (room) {
           room.pendingRequests = room.pendingRequests.filter(r => r.user.toString() !== userId);
+          
+          if (!room.rejectedRequests) room.rejectedRequests = [];
+          const alreadyRejected = room.rejectedRequests.some(r => r.user.toString() === userId);
+          if (!alreadyRejected) {
+            room.rejectedRequests.push({ user: userId, username: "User" });
+          }
+          
           await room.save();
         }
 

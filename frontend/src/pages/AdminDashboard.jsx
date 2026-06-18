@@ -242,6 +242,7 @@ const renderDiagnosticSparkline = (data = [], isGreen) => {
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
+  const isSuperAdmin = user?.email === "adminsachin@gmail.com";
   const [activeTab, setActiveTab] = useState("overview");
   const [theme, setTheme] = useState(localStorage.getItem("codeExpoHomeTheme") || "dark");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -1484,7 +1485,7 @@ const AdminDashboard = () => {
                                 value={u.title || "Developer"}
                                 onChange={(e) => handleTitleChange(u.id, e.target.value, u.username)}
                                 className="admin-title-select"
-                                disabled={isSelf}
+                                disabled={isSelf || (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))}
                               >
                                 <option value="Developer">Developer</option>
                                 <option value="Senior Developer">Senior Developer</option>
@@ -1511,15 +1512,28 @@ const AdminDashboard = () => {
                               <button
                                 onClick={() => handleRoleToggle(u.id, u.role, u.username)}
                                 className={`btn-action role-toggle ${u.role === "admin" ? "demote" : "promote"}`}
-                                disabled={isSelf}
+                                disabled={isSelf || !isSuperAdmin}
+                                title={
+                                  isSelf 
+                                    ? "You cannot modify your own role" 
+                                    : !isSuperAdmin 
+                                      ? "Only the super admin can modify roles" 
+                                      : ""
+                                }
                               >
                                 {u.role === "admin" ? "Make User" : "Make Admin"}
                               </button>
                               <button
                                 onClick={() => handleUserSuspensionToggle(u.id, u.isSuspended, u.username)}
                                 className={`btn-action-suspend ${u.isSuspended ? "active" : ""}`}
-                                disabled={isSelf}
-                                title={u.isSuspended ? "Reactivate user account" : "Suspend user account"}
+                                disabled={isSelf || (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))}
+                                title={
+                                  isSelf 
+                                    ? "You cannot suspend your own account" 
+                                    : (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))
+                                      ? "Only the super admin can suspend administrators"
+                                      : u.isSuspended ? "Reactivate user account" : "Suspend user account"
+                                }
                               >
                                 <VolumeX size={12} />
                                 <span>{u.isSuspended ? "Unban" : "Ban"}</span>
@@ -1527,8 +1541,14 @@ const AdminDashboard = () => {
                               <button
                                 onClick={() => handleDeleteUserClick(u.id, u.username)}
                                 className="btn-action-delete"
-                                disabled={isSelf}
-                                title="Delete User account permanently"
+                                disabled={isSelf || (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))}
+                                title={
+                                  isSelf 
+                                    ? "You cannot delete your own account"
+                                    : (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))
+                                      ? "Only the super admin can delete administrators"
+                                      : "Delete User account permanently"
+                                }
                               >
                                 <Trash2 size={13} />
                               </button>

@@ -199,3 +199,16 @@ export const getAllPublicRooms = async () => {
     );
     return response.data;
 };
+
+export const getMySentRequests = async () => {
+    const token = localStorage.getItem("token");
+    const response = await API.get(
+        "/rooms/requests/my-requests",
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};

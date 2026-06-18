@@ -172,6 +172,25 @@ const deleteUser = async (req, res) => {
       });
     }
 
+    // Super admin protection: nobody can delete the super admin
+    if (user.email === "adminsachin@gmail.com") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: The super admin account cannot be deleted."
+      });
+    }
+
+    // Only super admin can delete other admins
+    const isSuperAdmin = req.user && req.user.email === "adminsachin@gmail.com";
+    if (user.role === "admin") {
+      if (!isSuperAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied: Only the super admin can delete other administrators."
+        });
+      }
+    }
+
     // 1. Delete user's rooms (and their workspace items, messages)
     const userRooms = await Room.find({ createdBy: userId });
     for (const room of userRooms) {
@@ -229,11 +248,28 @@ const updateUserRole = async (req, res) => {
       });
     }
 
+    // Only super admin can make admins or demote admins (change roles)
+    const isSuperAdmin = req.user && req.user.email === "adminsachin@gmail.com";
+    if (!isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: Only the super admin can update user roles."
+      });
+    }
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found"
+      });
+    }
+
+    // The super admin account role cannot be changed
+    if (user.email === "adminsachin@gmail.com") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: The super admin account role cannot be modified."
       });
     }
 
@@ -452,6 +488,15 @@ const deleteRating = async (req, res) => {
 // 9. Development Helper: Toggle Self Admin Promotion
 const promoteSelf = async (req, res) => {
   try {
+    // Only allow self promotion for the super admin
+    const isSuperAdmin = req.user && req.user.email === "adminsachin@gmail.com";
+    if (!isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: Only the super admin can promote accounts."
+      });
+    }
+
     const userId = req.user._id;
     const user = await User.findById(userId);
 
@@ -498,6 +543,25 @@ const toggleUserSuspension = async (req, res) => {
         success: false,
         message: "You cannot suspend your own admin account."
       });
+    }
+
+    // Super admin protection: nobody can suspend the super admin
+    if (user.email === "adminsachin@gmail.com") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: The super admin account cannot be suspended."
+      });
+    }
+
+    // Only super admin can suspend other admins
+    const isSuperAdmin = req.user && req.user.email === "adminsachin@gmail.com";
+    if (user.role === "admin") {
+      if (!isSuperAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied: Only the super admin can suspend other administrators."
+        });
+      }
     }
 
     user.isSuspended = !user.isSuspended;

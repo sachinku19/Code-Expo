@@ -11,6 +11,7 @@ const {
     getRecentRooms,
     getPendingRequests,
     respondToJoinRequest,
+    getMySentRequests,
     removeUser,
     getAllPublicRooms
 } = require("../controllers/roomControllers");
@@ -23,6 +24,7 @@ router.post("/join", auth_protect, joinRoom);
 router.get("/recent", auth_protect, getRecentRooms);
 router.get("/all/public", auth_protect, getAllPublicRooms);
 router.get("/requests/pending", auth_protect, getPendingRequests);
+router.get("/requests/my-requests", auth_protect, getMySentRequests);
 router.post("/requests/respond", auth_protect, respondToJoinRequest);
 router.post("/remove-user", auth_protect, removeUser);
 router.get("/user/history", auth_protect, getUserRoomsHistory);

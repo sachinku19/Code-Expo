@@ -58,6 +58,13 @@ const roomSchema=new mongoose.Schema({
             username: String,
             timestamp: { type: Date, default: Date.now }
         }
+    ],
+    rejectedRequests: [
+        {
+            user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            username: String,
+            timestamp: { type: Date, default: Date.now }
+        }
     ]
 },{timestamps:true});
 

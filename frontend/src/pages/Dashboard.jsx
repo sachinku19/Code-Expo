@@ -13,7 +13,8 @@ import {
   removeUser,
   leaveRoom,
   deleteRoom,
-  getAllPublicRooms
+  getAllPublicRooms,
+  getMySentRequests
 } from "../services/roomService";
 import socket from "../socket/socket";
 import { useAuth } from "../context/AuthContext";
@@ -546,6 +547,7 @@ function Dashboard() {
   const [recentRooms, setRecentRooms] = useState([]);
   const [liveRooms, setLiveRooms] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
+  const [mySentRequests, setMySentRequests] = useState([]);
   const [activities, setActivities] = useState([]);
   const [heatmap, setHeatmap] = useState([]);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
@@ -1029,14 +1031,15 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [historyData, recentData, liveData, requestsData, activityData, statsData, publicData] = await Promise.all([
+      const [historyData, recentData, liveData, requestsData, activityData, statsData, publicData, sentRequestsData] = await Promise.all([
         getUserRoomsHistory(),
         getRecentRooms(),
         getLiveRooms(),
         getPendingRequests(),
         getActivityFeed(),
         getActivityStats(),
-        getAllPublicRooms()
+        getAllPublicRooms(),
+        getMySentRequests().catch(() => ({ success: false, requests: [] }))
       ]);
 
       const history = historyData.rooms || [];
@@ -1046,11 +1049,13 @@ function Dashboard() {
       const activityList = activityData.activities || [];
       const dbStats = statsData.stats || { codingHours: 0, executions: 0, heatmap: [] };
       const publicR = publicData.rooms || [];
+      const sentRequests = sentRequestsData?.requests || [];
 
       setHistoryRooms(history);
       setRecentRooms(recent);
       setLiveRooms(live);
       setJoinRequests(requests);
+      setMySentRequests(sentRequests);
       setActivities(activityList);
       setHeatmap(dbStats.heatmap || []);
       setOwnYears(dbStats.years || [new Date().getFullYear()]);
@@ -2992,6 +2997,12 @@ function Dashboard() {
                   >
                     My Rooms ({historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length})
                   </button>
+                  <button
+                    className={`profile-tab-btn ${roomsTab === "requests" ? "active" : ""}`}
+                    onClick={() => setRoomsTab("requests")}
+                  >
+                    My Requests ({mySentRequests.length})
+                  </button>
                 </div>
 
                 {roomsTab === "recent" && (
@@ -3289,6 +3300,98 @@ function Dashboard() {
                         </div>
                       );
                     })()}
+                  </div>
+                )}
+
+                {roomsTab === "requests" && (
+                  <div style={{ marginTop: "8px" }}>
+                    <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: "16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <Clock size={16} className="brand-logo" />
+                        <h3 className="section-title">My Sent Requests</h3>
+                      </div>
+                    </div>
+
+                    {mySentRequests.length === 0 ? (
+                      <div className="empty-state-card">
+                        <Terminal size={18} className="empty-state-icon" />
+                        <p>You haven't requested to join any private rooms yet.</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {mySentRequests.map((req) => (
+                          <div
+                            key={req.roomId}
+                            className="social-activity-card"
+                            style={{
+                              padding: "16px",
+                              background: "rgba(255, 255, 255, 0.02)",
+                              border: "1px solid var(--ce-border)",
+                              borderRadius: "8px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: "16px"
+                            }}
+                          >
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span className="room-title-text" style={{ fontSize: "0.95rem", fontWeight: "700", color: "var(--ce-text)" }}>
+                                  {req.title}
+                                </span>
+                                <span className="lang-badge" style={{ fontSize: "0.65rem", padding: "2px 6px", background: "rgba(255, 255, 255, 0.05)", borderRadius: "4px", textTransform: "uppercase", color: "var(--ce-text-muted)" }}>
+                                  {req.language}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)" }}>
+                                Created by <strong>{req.createdBy?.username || "Owner"}</strong> ({req.createdBy?.email})
+                              </span>
+                              <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
+                                Requested on {new Date(req.updatedAt || req.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+                              {req.status === "pending" && (
+                                <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(245, 158, 11, 0.1)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "12px" }}>
+                                  Pending Approval
+                                </span>
+                              )}
+                              {req.status === "rejected" && (
+                                <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "12px" }}>
+                                  Request Rejected
+                                </span>
+                              )}
+                              {req.status === "accepted" && (
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(16, 185, 129, 0.1)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "12px" }}>
+                                    Request Accepted
+                                  </span>
+                                  <button
+                                    onClick={() => proceedJoinRoom(req.roomId)}
+                                    className="ce-btn-primary"
+                                    style={{
+                                      padding: "6px 16px",
+                                      fontSize: "0.78rem",
+                                      fontWeight: "600",
+                                      background: "var(--ce-primary)",
+                                      color: "#fff",
+                                      border: "none",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)"
+                                    }}
+                                  >
+                                    Join Workspace
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -421,9 +421,20 @@ const respondToJoinRequest = async (req, res) => {
             r => r.user.toString() !== requesterId
         );
 
+        // Remove from rejected just in case
+        room.rejectedRequests = (room.rejectedRequests || []).filter(
+            r => r.user.toString() !== requesterId
+        );
+
         if (action === "accept") {
             if (!room.participants.includes(requesterId)) {
                 room.participants.push(requesterId);
+            }
+        } else if (action === "reject") {
+            if (!room.rejectedRequests) room.rejectedRequests = [];
+            const alreadyRejected = room.rejectedRequests.some(r => r.user.toString() === requesterId);
+            if (!alreadyRejected) {
+                room.rejectedRequests.push({ user: requesterId, username: "User" });
             }
         }
 
@@ -432,6 +443,72 @@ const respondToJoinRequest = async (req, res) => {
         res.status(200).json({
             success: true,
             message: `Request ${action}ed successfully`
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+const getMySentRequests = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        // 1. Rooms where current user has a pending request
+        const pendingRooms = await Room.find({
+            "pendingRequests.user": userId
+        }).populate("createdBy", "username email avatar");
+
+        // 2. Rooms where current user has a rejected request
+        const rejectedRooms = await Room.find({
+            "rejectedRequests.user": userId
+        }).populate("createdBy", "username email avatar");
+
+        // 3. Private rooms where current user is a participant but not the creator (accepted request)
+        const acceptedRooms = await Room.find({
+            isPrivate: true,
+            createdBy: { $ne: userId },
+            participants: userId
+        }).populate("createdBy", "username email avatar");
+
+        const requests = [
+            ...pendingRooms.map(r => ({
+                roomId: r.roomId,
+                title: r.title,
+                language: r.language,
+                isPrivate: r.isPrivate,
+                createdBy: r.createdBy,
+                status: "pending",
+                updatedAt: r.updatedAt
+            })),
+            ...rejectedRooms.map(r => ({
+                roomId: r.roomId,
+                title: r.title,
+                language: r.language,
+                isPrivate: r.isPrivate,
+                createdBy: r.createdBy,
+                status: "rejected",
+                updatedAt: r.updatedAt
+            })),
+            ...acceptedRooms.map(r => ({
+                roomId: r.roomId,
+                title: r.title,
+                language: r.language,
+                isPrivate: r.isPrivate,
+                createdBy: r.createdBy,
+                status: "accepted",
+                updatedAt: r.updatedAt
+            }))
+        ];
+
+        // Sort by updatedAt descending
+        requests.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+        res.status(200).json({
+            success: true,
+            requests
         });
     } catch (error) {
         res.status(500).json({
@@ -525,6 +602,7 @@ module.exports = {
     getRecentRooms,
     getPendingRequests,
     respondToJoinRequest,
+    getMySentRequests,
     removeUser,
     getAllPublicRooms
 }
