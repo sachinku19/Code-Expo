@@ -1,8 +1,7 @@
 import {BrowserRouter,Routes,Route,Navigate} from "react-router-dom";
 
 import Home from "../pages/Home";
-import Login from "../pages/Login";
-import Register from "../pages/Register";
+import Auth from "../pages/Auth";
 import Dashboard from "../pages/Dashboard";
 import Editor from "../pages/Editor";
 
@@ -19,8 +18,8 @@ const AppRoutes=()=>{
         <BrowserRouter>
            <Routes>
               <Route path="/"  element={<Home/>}/>
-              <Route path="/login"  element={<Login/>}/>
-              <Route path="/register"  element={<Register/>}/>
+              <Route path="/login"  element={<Auth mode="login"/>}/>
+              <Route path="/register"  element={<Auth mode="register"/>}/>
               <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
               <Route path="/dashboard"  element={<ProtectedRoute><Dashboard/></ProtectedRoute>}/>
               <Route path="/editor/:roomId"  element={<ProtectedRoute><Editor/></ProtectedRoute>}/>

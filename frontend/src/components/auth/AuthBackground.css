@@ -1,0 +1,162 @@
+/* AuthBackground.css */
+
+.auth-bg-viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #030303;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.auth-3d-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 2;
+}
+
+/* Cyber Grid Lines */
+.cyber-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center;
+  mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.7), transparent 90%);
+  z-index: 3;
+}
+
+/* Ambient Neon Lights */
+.neon-beam {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.16;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: screen;
+  animation: pulse-ambient 12s infinite alternate ease-in-out;
+}
+
+.beam-blue {
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, transparent 70%);
+  animation-delay: 0s;
+}
+
+.beam-indigo {
+  bottom: -15%;
+  right: -10%;
+  width: 130%;
+  height: 130%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+  animation-delay: 3s;
+}
+
+.beam-cyan {
+  top: 40%;
+  right: -15%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.18) 0%, transparent 70%);
+  animation-delay: 6s;
+}
+
+.beam-purple {
+  bottom: 30%;
+  left: -15%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.18) 0%, transparent 70%);
+  animation-delay: 9s;
+}
+
+@keyframes pulse-ambient {
+  0% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.12;
+  }
+
+  50% {
+    transform: scale(1.05) translate(15px, -10px);
+    opacity: 0.2;
+  }
+
+  100% {
+    transform: scale(0.95) translate(-10px, 10px);
+    opacity: 0.12;
+  }
+}
+
+/* Floating Symbols Wrapper */
+.floating-symbols-wrapper {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+
+/* Translucent Code Brackets with High Glow */
+.developer-symbol {
+  position: absolute;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 7rem;
+  user-select: none;
+  pointer-events: none;
+  animation: float-symbols 14s infinite ease-in-out;
+}
+
+.symbol-left {
+  left: 8%;
+  top: 25%;
+  color: rgba(99, 102, 241, 0.08);
+  text-shadow:
+    0 0 25px rgba(99, 102, 241, 0.25),
+    0 0 50px rgba(99, 102, 241, 0.1);
+  animation-delay: 0s;
+}
+
+.symbol-right {
+  right: 8%;
+  top: 25%;
+  color: rgba(6, 182, 212, 0.08);
+  text-shadow:
+    0 0 25px rgba(6, 182, 212, 0.25),
+    0 0 50px rgba(6, 182, 212, 0.1);
+  animation-delay: 4s;
+}
+
+@keyframes float-symbols {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(5deg) scale(1.02);
+  }
+}
+
+/* Responsive Hide Rules */
+@media (max-width: 1150px) {
+  .developer-symbol {
+    font-size: 4.5rem;
+  }
+}
+
+@media (max-width: 960px) {
+  .developer-symbol {
+    display: none;
+  }
+}
