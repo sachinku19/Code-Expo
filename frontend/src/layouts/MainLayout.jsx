@@ -473,8 +473,8 @@ export default function MainLayout({
     localStorage.setItem("ceSidebarPinned", String(nextPinned));
   };
 
-  const handleLogout = async () => {
-    await logoutUser();
+  const handleLogout = () => {
+    logoutUser().catch(err => console.error("Logout error:", err));
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);

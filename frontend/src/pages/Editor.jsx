@@ -1005,8 +1005,8 @@ function Editor() {
     setEditorTheme(nextTheme);
   };
 
-  const handleLogout = async () => {
-    await logoutUser();
+  const handleLogout = () => {
+    logoutUser().catch(err => console.error("Logout error:", err));
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("ceLastActiveRoomId");
