@@ -431,11 +431,6 @@ export default function FileExplorer({
                   ) : (
                     <span className="node-name">
                       {item.name}
-                      {item.isEntryPoint && (
-                        <span className="entry-point-indicator-tag" title="Execution Entry Point">
-                          [run]
-                        </span>
-                      )}
                     </span>
                   )}
 

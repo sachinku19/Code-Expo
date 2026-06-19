@@ -3346,6 +3346,37 @@
   border: 1px solid var(--ce-border);
 }
 
+.drawer-member-role-tag {
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  margin-left: 4px;
+  display: inline-block;
+  letter-spacing: 0.03em;
+}
+.drawer-member-role-tag.owner {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.drawer-member-role-tag.moderator {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+.drawer-member-role-tag.member {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.25);
+}
+.drawer-member-role-tag.viewer {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
 .pill-dot {
   width: 5px;
   height: 5px;
@@ -5483,6 +5514,30 @@
   border: 1px solid rgba(255, 161, 22, 0.25);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.member-role-badge.owner {
+  color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.member-role-badge.moderator {
+  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.member-role-badge.member {
+  color: #9ca3af;
+  background-color: rgba(107, 114, 128, 0.08);
+  border: 1px solid rgba(107, 114, 128, 0.25);
+}
+
+.member-role-badge.viewer {
+  color: #8b5cf6;
+  background-color: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
 }
 
 .presence-text-badge-mini {

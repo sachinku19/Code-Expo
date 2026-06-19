@@ -1909,6 +1909,7 @@ function Dashboard() {
         _id: String(ownerId),
         username: room.createdBy.username || "Owner",
         avatar: room.createdBy.avatar,
+        role: "OWNER",
         isOwner: true
       });
       memberIds.add(String(ownerId));
@@ -1916,13 +1917,18 @@ function Dashboard() {
 
     if (room.participants) {
       room.participants.forEach(p => {
-        const pId = p._id || p;
-        if (!memberIds.has(String(pId))) {
+        const userObj = p.user && typeof p.user === 'object' ? p.user : null;
+        const pId = userObj ? userObj._id : (p.user || p._id || p);
+        if (pId && !memberIds.has(String(pId))) {
+          const username = userObj ? userObj.username : (p.username || "Collaborator");
+          const avatar = userObj ? userObj.avatar : p.avatar;
+          const role = p.role || "MEMBER";
           allMembers.push({
             _id: String(pId),
-            username: p.username || "Collaborator",
-            avatar: p.avatar,
-            isOwner: false
+            username: username,
+            avatar: avatar,
+            role: role,
+            isOwner: role === "OWNER" || String(pId) === String(room.createdBy?._id || room.createdBy)
           });
           memberIds.add(String(pId));
         }
@@ -2102,6 +2108,11 @@ function Dashboard() {
                     <div key={idx} className="drawer-member-pill online">
                       <span className="pill-dot online" />
                       <span className="pill-name">{m.username}</span>
+                      {m.role && (
+                        <span className={`drawer-member-role-tag ${String(m.role).toLowerCase()}`}>
+                          {m.role}
+                        </span>
+                      )}
                     </div>
                   ))}
                   {membersWithStatus.filter(m => m.isOnline).length === 0 && (
@@ -2117,6 +2128,11 @@ function Dashboard() {
                     <div key={idx} className="drawer-member-pill offline">
                       <span className="pill-dot offline" />
                       <span className="pill-name">{m.username}</span>
+                      {m.role && (
+                        <span className={`drawer-member-role-tag ${String(m.role).toLowerCase()}`}>
+                          {m.role}
+                        </span>
+                      )}
                     </div>
                   ))}
                   {membersWithStatus.filter(m => !m.isOnline && !m.isOwner).length === 0 && (
@@ -2132,6 +2148,7 @@ function Dashboard() {
                     <div key={idx} className="drawer-member-pill owner">
                       <span className="pill-crown">👑</span>
                       <span className="pill-name">{m.username}</span>
+                      <span className="drawer-member-role-tag owner">OWNER</span>
                     </div>
                   ))}
                 </div>
@@ -4713,32 +4730,40 @@ function Dashboard() {
                     const onlineUserIds = new Set((selectedRoomDetails.activeUsers || []).map(u => String(u.userId)));
                     const isCurrentUserOwner = String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id);
                     return (selectedRoomDetails.participants || []).map((m, i) => {
-                      const isOnline = onlineUserIds.has(m._id || m) || (selectedRoomDetails.activeUsers || []).some(au => au.username === m.username);
-                      const isOwner = String(m._id || m) === String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy);
-                      const isSelf = String(m._id || m) === String(user?.id);
+                      const userObj = m.user && typeof m.user === 'object' ? m.user : null;
+                      const uId = userObj ? userObj._id : (m.user || m._id || m);
+                      const username = userObj ? userObj.username : (m.username || "Collaborator");
+                      const avatar = userObj ? userObj.avatar : m.avatar;
+                      const role = m.role || "MEMBER";
+
+                      const isOnline = onlineUserIds.has(String(uId)) || (selectedRoomDetails.activeUsers || []).some(au => au.username === username);
+                      const isOwner = String(uId) === String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy);
+                      const isSelf = String(uId) === String(user?.id);
 
                       return (
                         <div key={i} className="modal-member-card">
                           <div className="member-avatar-wrapper-mini">
-                            {m.avatar ? (
-                              <img src={m.avatar} alt={m.username} className="member-avatar-img-mini" />
+                            {avatar ? (
+                              <img src={avatar} alt={username} className="member-avatar-img-mini" />
                             ) : (
-                              <div className="member-avatar-initials-mini" style={{ backgroundColor: getAvatarColor(m.username || "Collaborator") }}>
-                                {(m.username || "C").charAt(0).toUpperCase()}
+                              <div className="member-avatar-initials-mini" style={{ backgroundColor: getAvatarColor(username) }}>
+                                {(username || "C").charAt(0).toUpperCase()}
                               </div>
                             )}
                             <span className={`presence-indicator-dot-mini ${isOnline ? "online" : "offline"}`} />
                           </div>
                           <div className="modal-member-info">
-                            <span className="modal-member-name">{m.username || "Collaborator"}</span>
-                            {isOwner && <span className="member-role-badge">Owner</span>}
+                            <span className="modal-member-name">{username}</span>
+                            <span className={`member-role-badge ${String(role).toLowerCase()}`}>
+                              {role}
+                            </span>
                           </div>
                           <span className={`presence-text-badge-mini ${isOnline ? "online" : "offline"}`}>
                             {isOnline ? "Online" : "Offline"}
                           </span>
                           {isCurrentUserOwner && !isOwner && !isSelf && (
                             <button
-                              onClick={() => handleRemoveUser(selectedRoomDetails.roomId, m._id || m, m.username || "Collaborator")}
+                              onClick={() => handleRemoveUser(selectedRoomDetails.roomId, uId, username)}
                               className="modal-kick-member-btn"
                               title="Kick user from room"
                             >

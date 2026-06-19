@@ -3167,7 +3167,6 @@ function Editor() {
                       <FileCode size={13} className="editor-tab-icon" />
                       <span className="tab-name-text" style={{ whiteSpace: "nowrap" }}>
                         {tab.name}
-                        {tab.isEntryPoint && <span style={{ fontSize: "9px", color: "var(--ce-accent)", marginLeft: "4px" }}>[run]</span>}
                       </span>
                       <button
                         onClick={(e) => handleCloseTab(e, tab._id)}
