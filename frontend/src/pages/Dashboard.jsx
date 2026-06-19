@@ -2979,6 +2979,7 @@ function Dashboard() {
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         required
+                        disabled={isCreatingRoom}
                       />
                     </div>
 
@@ -2987,6 +2988,7 @@ function Dashboard() {
                       <select
                         value={formData.language}
                         onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                        disabled={isCreatingRoom}
                       >
                         <option value="javascript">JavaScript</option>
                         <option value="python">Python</option>
@@ -3000,14 +3002,16 @@ function Dashboard() {
                       <select
                         value={formData.isPrivate}
                         onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
+                        disabled={isCreatingRoom}
                       >
                         <option value="false">Public</option>
                         <option value="true">Private (Requires Approval)</option>
                       </select>
                     </div>
 
-                    <button type="submit" className="form-submit-btn" style={{ marginTop: "6px" }}>
-                      Create Room Workspace
+                    <button type="submit" className="form-submit-btn" style={{ marginTop: "6px" }} disabled={isCreatingRoom}>
+                      {isCreatingRoom && <span className="btn-spinner"></span>}
+                      {isCreatingRoom ? "Creating Workspace..." : "Create Room Workspace"}
                     </button>
                   </form>
                 </div>
@@ -4804,72 +4808,67 @@ function Dashboard() {
         {showQuickCreateModal && createPortal(
           <div className="ce-modal-overlay" onClick={() => !isCreatingRoom && setShowQuickCreateModal(false)}>
             <div className="ce-modal-card" onClick={(e) => e.stopPropagation()}>
-              {!isCreatingRoom ? (
-                <>
-                  <button className="modal-close-btn" onClick={() => setShowQuickCreateModal(false)}>
-                    <X size={18} />
-                  </button>
-                  <div className="modal-header-new">
-                    <span className="modal-label-tag">Quick Action</span>
-                    <h3 className="modal-title-new">Create Workspace Room</h3>
-                  </div>
+              <button
+                className="modal-close-btn"
+                onClick={() => !isCreatingRoom && setShowQuickCreateModal(false)}
+                disabled={isCreatingRoom}
+              >
+                <X size={18} />
+              </button>
+              <div className="modal-header-new">
+                <span className="modal-label-tag">Quick Action</span>
+                <h3 className="modal-title-new">Create Workspace Room</h3>
+              </div>
 
-                  <form onSubmit={handleCreateRoom} className="compact-form modal-form-new">
-                    <div className="form-field">
-                      <label>Workspace Title</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. DSA Practice Prep"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        required
-                        className="modal-input-new"
-                      />
-                    </div>
-
-                    <div className="form-field-row">
-                      <div className="form-field flex-1">
-                        <label>Language</label>
-                        <select
-                          value={formData.language}
-                          onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                          className="modal-input-new select"
-                        >
-                          <option value="javascript">JavaScript</option>
-                          <option value="python">Python</option>
-                          <option value="cpp">C++</option>
-                          <option value="java">Java</option>
-                        </select>
-                      </div>
-
-                      <div className="form-field flex-1">
-                        <label>Privacy Type</label>
-                        <select
-                          value={formData.isPrivate}
-                          onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
-                          className="modal-input-new select"
-                        >
-                          <option value="false">Public</option>
-                          <option value="true">Private (Requires Approval)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <button type="submit" className="modal-join-btn-new ce-mt-16">
-                      Create Room Workspace
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <div className="modal-loader-container">
-                  <div className="modal-roller-spinner">
-                    <div></div><div></div><div></div><div></div>
-                    <div></div><div></div><div></div><div></div>
-                  </div>
-                  <h4 className="modal-loader-text">Creating Workspace Room...</h4>
-                  <p className="modal-loader-subtext">Configuring runtime compiler and sandboxed environments</p>
+              <form onSubmit={handleCreateRoom} className="compact-form modal-form-new">
+                <div className="form-field">
+                  <label>Workspace Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. DSA Practice Prep"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    className="modal-input-new"
+                    disabled={isCreatingRoom}
+                  />
                 </div>
-              )}
+
+                <div className="form-field-row">
+                  <div className="form-field flex-1">
+                    <label>Language</label>
+                    <select
+                      value={formData.language}
+                      onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                      className="modal-input-new select"
+                      disabled={isCreatingRoom}
+                    >
+                      <option value="javascript">JavaScript</option>
+                      <option value="python">Python</option>
+                      <option value="cpp">C++</option>
+                      <option value="java">Java</option>
+                    </select>
+                  </div>
+
+                  <div className="form-field flex-1">
+                    <label>Privacy Type</label>
+                    <select
+                      value={formData.isPrivate}
+                      onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
+                      className="modal-input-new select"
+                      disabled={isCreatingRoom}
+                    >
+                      <option value="false">Public</option>
+                      <option value="true">Private (Requires Approval)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="submit" className="modal-join-btn-new ce-mt-16" disabled={isCreatingRoom}>
+                  {isCreatingRoom && <span className="btn-spinner"></span>}
+                  {isCreatingRoom ? "Creating Workspace..." : "Create Room Workspace"}
+                </button>
+              </form>
             </div>
           </div>,
           document.body
