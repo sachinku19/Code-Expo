@@ -30,7 +30,8 @@ import {
   Shapes,
   Diamond,
   Hexagon,
-  Star
+  Star,
+  Eye
 } from "lucide-react";
 import "./Whiteboard.css";
 
@@ -61,6 +62,11 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   const containerRef = useRef(null);
   const textInputRef = useRef(null);
   const justBlurredRef = useRef(false);
+
+  const myParticipant = room?.participants?.find(
+    (p) => p.user && String(p.user._id || p.user) === String(currentUser.id || currentUser._id)
+  );
+  const currentUserRole = myParticipant ? myParticipant.role : "MEMBER";
 
   const [tool, setTool] = useState("pen"); // 'select' | 'pen' | 'highlighter' | 'eraser' | 'rectangle' | 'circle' | 'arrow' | 'text'
   const [color, setColor] = useState("#38bdf8");
@@ -249,6 +255,9 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   // Add Undo/Redo & Tool selector keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (currentUserRole === "VIEWER") {
+        return;
+      }
       if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") {
         return;
       }
@@ -295,7 +304,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [historyIndex, history, elements, tool, color, brushSize, roomId, currentUser]);
+  }, [historyIndex, history, elements, tool, color, brushSize, roomId, currentUser, currentUserRole]);
 
   // Auto-focus text overlay editor
   useEffect(() => {
@@ -616,6 +625,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     }
 
     if (textEditor) {
+      if (currentUserRole === "VIEWER") return;
       finishTextDrawing();
       return;
     }
@@ -626,6 +636,10 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     if (e.button === 1 || tool === "select" && !getElementAtPosition(x, y)) {
       setIsPanning(true);
       setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      return;
+    }
+
+    if (currentUserRole === "VIEWER") {
       return;
     }
 
@@ -913,6 +927,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
 
   // Undo/Redo logic
   const handleUndo = () => {
+    if (currentUserRole === "VIEWER") return;
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
       const newElements = history[newIndex] || [];
@@ -924,6 +939,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   };
 
   const handleRedo = () => {
+    if (currentUserRole === "VIEWER") return;
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
       const newElements = history[newIndex] || [];
@@ -936,6 +952,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
 
   // Clear Board action
   const handleClearBoard = () => {
+    if (currentUserRole === "VIEWER") return;
     const confirmClear = window.confirm("Are you sure you want to clear the whiteboard?");
     if (!confirmClear) return;
 
@@ -1213,260 +1230,267 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
       )}
 
       {/* 4. Top Floating Toolbar */}
-      <div className="whiteboard-toolbar wb-glass-panel">
-        <button
-          className={`wb-tool-btn ${tool === "select" ? "active" : ""}`}
-          onClick={() => setTool("select")}
-          data-tooltip="Select & Move (V)"
-          type="button"
-        >
-          <MousePointer size={18} />
-        </button>
-        <div className="wb-tool-divider" />
-        <button
-          className={`wb-tool-btn ${tool === "pen" ? "active" : ""}`}
-          onClick={() => setTool("pen")}
-          data-tooltip="Pencil (P)"
-          type="button"
-        >
-          <PenTool size={18} />
-        </button>
-        <button
-          className={`wb-tool-btn ${tool === "highlighter" ? "active" : ""}`}
-          onClick={() => setTool("highlighter")}
-          data-tooltip="Highlighter (H)"
-          type="button"
-        >
-          <Highlighter size={18} />
-        </button>
-        <button
-          className={`wb-tool-btn ${tool === "eraser" ? "active" : ""}`}
-          onClick={() => setTool("eraser")}
-          data-tooltip="Eraser (E)"
-          type="button"
-        >
-          <Eraser size={18} />
-        </button>
-        <div className="wb-tool-divider" />
-        
-        {/* Shapes Popover Group */}
-        <div className="wb-toolbar-item-wrapper">
-          <button
-            className={`wb-tool-btn ${["rectangle", "circle", "triangle", "diamond", "hexagon", "star", "line", "arrow"].includes(tool) ? "active" : ""}`}
-            data-tooltip="Shapes"
-            type="button"
-          >
-            {tool === "circle" && <Circle size={18} />}
-            {tool === "rectangle" && <Square size={18} />}
-            {tool === "triangle" && <Triangle size={18} />}
-            {tool === "diamond" && <Diamond size={18} />}
-            {tool === "hexagon" && <Hexagon size={18} />}
-            {tool === "star" && <Star size={18} />}
-            {tool === "line" && <Minus size={18} />}
-            {tool === "arrow" && <MoveRight size={18} />}
-            {!["rectangle", "circle", "triangle", "diamond", "hexagon", "star", "line", "arrow"].includes(tool) && <Shapes size={18} />}
-          </button>
-          
-          <div className="wb-popup-panel wb-shapes-popup wb-glass-panel">
-            <p className="wb-popup-title">Draw Shapes</p>
-            <div className="wb-shapes-grid">
-              <button
-                className={`wb-shape-item-btn ${tool === "rectangle" ? "active" : ""}`}
-                onClick={() => setTool("rectangle")}
-                type="button"
-                data-tooltip="Rectangle (R)"
-              >
-                <Square size={16} />
-                <span>Rectangle</span>
-              </button>
-              <button
-                className={`wb-shape-item-btn ${tool === "circle" ? "active" : ""}`}
-                onClick={() => setTool("circle")}
-                type="button"
-                data-tooltip="Circle (O)"
-              >
-                <Circle size={16} />
-                <span>Circle</span>
-              </button>
-              <button
-                className={`wb-shape-item-btn ${tool === "triangle" ? "active" : ""}`}
-                onClick={() => setTool("triangle")}
-                type="button"
-                data-tooltip="Triangle"
-              >
-                <Triangle size={16} />
-                <span>Triangle</span>
-              </button>
-              <button
-                className={`wb-shape-item-btn ${tool === "diamond" ? "active" : ""}`}
-                onClick={() => setTool("diamond")}
-                type="button"
-                data-tooltip="Diamond"
-              >
-                <Diamond size={16} />
-                <span>Diamond</span>
-              </button>
-              <button
-                className={`wb-shape-item-btn ${tool === "hexagon" ? "active" : ""}`}
-                onClick={() => setTool("hexagon")}
-                type="button"
-                data-tooltip="Hexagon"
-              >
-                <Hexagon size={16} />
-                <span>Hexagon</span>
-              </button>
-              <button
-                className={`wb-shape-item-btn ${tool === "star" ? "active" : ""}`}
-                onClick={() => setTool("star")}
-                type="button"
-                data-tooltip="Star"
-              >
-                <Star size={16} />
-                <span>Star</span>
-              </button>
-              <button
-                className={`wb-shape-item-btn ${tool === "line" ? "active" : ""}`}
-                onClick={() => setTool("line")}
-                type="button"
-                data-tooltip="Line"
-              >
-                <Minus size={16} />
-                <span>Line</span>
-              </button>
-              <button
-                className={`wb-shape-item-btn ${tool === "arrow" ? "active" : ""}`}
-                onClick={() => setTool("arrow")}
-                type="button"
-                data-tooltip="Arrow (A)"
-              >
-                <MoveRight size={16} />
-                <span>Arrow</span>
-              </button>
-            </div>
-          </div>
+      {currentUserRole === "VIEWER" ? (
+        <div className="whiteboard-toolbar wb-glass-panel" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 16px", gap: "8px", color: "var(--ce-text)" }}>
+          <Eye size={16} style={{ color: "var(--ce-accent)" }} />
+          <span style={{ fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.02em" }}>Read-only Viewboard</span>
         </div>
-
-        <button
-          className={`wb-tool-btn ${tool === "text" ? "active" : ""}`}
-          onClick={() => setTool("text")}
-          data-tooltip="Text (T)"
-          type="button"
-        >
-          <Type size={18} />
-        </button>
-        
-        <div className="wb-tool-divider" />
-        
-        {/* Color Popover Select */}
-        <div className="wb-toolbar-item-wrapper">
+      ) : (
+        <div className="whiteboard-toolbar wb-glass-panel">
           <button
-            className="wb-tool-btn color-preview-btn"
-            data-tooltip="Stroke Color"
+            className={`wb-tool-btn ${tool === "select" ? "active" : ""}`}
+            onClick={() => setTool("select")}
+            data-tooltip="Select & Move (V)"
             type="button"
           >
-            <Palette size={18} />
-            <span className="color-preview-dot" style={{ backgroundColor: color }} />
+            <MousePointer size={18} />
           </button>
+          <div className="wb-tool-divider" />
+          <button
+            className={`wb-tool-btn ${tool === "pen" ? "active" : ""}`}
+            onClick={() => setTool("pen")}
+            data-tooltip="Pencil (P)"
+            type="button"
+          >
+            <PenTool size={18} />
+          </button>
+          <button
+            className={`wb-tool-btn ${tool === "highlighter" ? "active" : ""}`}
+            onClick={() => setTool("highlighter")}
+            data-tooltip="Highlighter (H)"
+            type="button"
+          >
+            <Highlighter size={18} />
+          </button>
+          <button
+            className={`wb-tool-btn ${tool === "eraser" ? "active" : ""}`}
+            onClick={() => setTool("eraser")}
+            data-tooltip="Eraser (E)"
+            type="button"
+          >
+            <Eraser size={18} />
+          </button>
+          <div className="wb-tool-divider" />
           
-          <div className="wb-popup-panel wb-color-popup wb-glass-panel">
-            <p className="wb-popup-title">Stroke Color</p>
-            <div className="wb-swatches-grid">
-              {swatches.map((sw) => (
+          {/* Shapes Popover Group */}
+          <div className="wb-toolbar-item-wrapper">
+            <button
+              className={`wb-tool-btn ${["rectangle", "circle", "triangle", "diamond", "hexagon", "star", "line", "arrow"].includes(tool) ? "active" : ""}`}
+              data-tooltip="Shapes"
+              type="button"
+            >
+              {tool === "circle" && <Circle size={18} />}
+              {tool === "rectangle" && <Square size={18} />}
+              {tool === "triangle" && <Triangle size={18} />}
+              {tool === "diamond" && <Diamond size={18} />}
+              {tool === "hexagon" && <Hexagon size={18} />}
+              {tool === "star" && <Star size={18} />}
+              {tool === "line" && <Minus size={18} />}
+              {tool === "arrow" && <MoveRight size={18} />}
+              {!["rectangle", "circle", "triangle", "diamond", "hexagon", "star", "line", "arrow"].includes(tool) && <Shapes size={18} />}
+            </button>
+            
+            <div className="wb-popup-panel wb-shapes-popup wb-glass-panel">
+              <p className="wb-popup-title">Draw Shapes</p>
+              <div className="wb-shapes-grid">
                 <button
-                  key={sw}
-                  className={`wb-swatch ${color === sw ? "active" : ""}`}
-                  style={{ backgroundColor: sw }}
-                  onClick={() => {
-                    setColor(sw);
-                    if (tool === "eraser") setTool("pen");
-                  }}
+                  className={`wb-shape-item-btn ${tool === "rectangle" ? "active" : ""}`}
+                  onClick={() => setTool("rectangle")}
                   type="button"
-                />
-              ))}
+                  data-tooltip="Rectangle (R)"
+                >
+                  <Square size={16} />
+                  <span>Rectangle</span>
+                </button>
+                <button
+                  className={`wb-shape-item-btn ${tool === "circle" ? "active" : ""}`}
+                  onClick={() => setTool("circle")}
+                  type="button"
+                  data-tooltip="Circle (O)"
+                >
+                  <Circle size={16} />
+                  <span>Circle</span>
+                </button>
+                <button
+                  className={`wb-shape-item-btn ${tool === "triangle" ? "active" : ""}`}
+                  onClick={() => setTool("triangle")}
+                  type="button"
+                  data-tooltip="Triangle"
+                >
+                  <Triangle size={16} />
+                  <span>Triangle</span>
+                </button>
+                <button
+                  className={`wb-shape-item-btn ${tool === "diamond" ? "active" : ""}`}
+                  onClick={() => setTool("diamond")}
+                  type="button"
+                  data-tooltip="Diamond"
+                >
+                  <Diamond size={16} />
+                  <span>Diamond</span>
+                </button>
+                <button
+                  className={`wb-shape-item-btn ${tool === "hexagon" ? "active" : ""}`}
+                  onClick={() => setTool("hexagon")}
+                  type="button"
+                  data-tooltip="Hexagon"
+                >
+                  <Hexagon size={16} />
+                  <span>Hexagon</span>
+                </button>
+                <button
+                  className={`wb-shape-item-btn ${tool === "star" ? "active" : ""}`}
+                  onClick={() => setTool("star")}
+                  type="button"
+                  data-tooltip="Star"
+                >
+                  <Star size={16} />
+                  <span>Star</span>
+                </button>
+                <button
+                  className={`wb-shape-item-btn ${tool === "line" ? "active" : ""}`}
+                  onClick={() => setTool("line")}
+                  type="button"
+                  data-tooltip="Line"
+                >
+                  <Minus size={16} />
+                  <span>Line</span>
+                </button>
+                <button
+                  className={`wb-shape-item-btn ${tool === "arrow" ? "active" : ""}`}
+                  onClick={() => setTool("arrow")}
+                  type="button"
+                  data-tooltip="Arrow (A)"
+                >
+                  <MoveRight size={16} />
+                  <span>Arrow</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Brush Weight Popover Select */}
-        <div className="wb-toolbar-item-wrapper">
+  
+          <button
+            className={`wb-tool-btn ${tool === "text" ? "active" : ""}`}
+            onClick={() => setTool("text")}
+            data-tooltip="Text (T)"
+            type="button"
+          >
+            <Type size={18} />
+          </button>
+          
+          <div className="wb-tool-divider" />
+          
+          {/* Color Popover Select */}
+          <div className="wb-toolbar-item-wrapper">
+            <button
+              className="wb-tool-btn color-preview-btn"
+              data-tooltip="Stroke Color"
+              type="button"
+            >
+              <Palette size={18} />
+              <span className="color-preview-dot" style={{ backgroundColor: color }} />
+            </button>
+            
+            <div className="wb-popup-panel wb-color-popup wb-glass-panel">
+              <p className="wb-popup-title">Stroke Color</p>
+              <div className="wb-swatches-grid">
+                {swatches.map((sw) => (
+                  <button
+                    key={sw}
+                    className={`wb-swatch ${color === sw ? "active" : ""}`}
+                    style={{ backgroundColor: sw }}
+                    onClick={() => {
+                      setColor(sw);
+                      if (tool === "eraser") setTool("pen");
+                    }}
+                    type="button"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+  
+          {/* Brush Weight Popover Select */}
+          <div className="wb-toolbar-item-wrapper">
+            <button
+              className="wb-tool-btn"
+              data-tooltip="Brush Size"
+              type="button"
+            >
+              <Sliders size={18} />
+              <span className="size-preview-badge">{brushSize}</span>
+            </button>
+            
+            <div className="wb-popup-panel wb-size-popup wb-glass-panel">
+              <p className="wb-popup-title">Brush Weight</p>
+              <div className="wb-size-presets">
+                {[2, 4, 8, 14, 20].map((sz) => (
+                  <button
+                    key={sz}
+                    className={`wb-preset-btn ${brushSize === sz ? "active" : ""}`}
+                    onClick={() => setBrushSize(sz)}
+                    type="button"
+                  >
+                    <span className="preset-circle" style={{ width: sz, height: sz }} />
+                    <span className="preset-label">{sz}px</span>
+                  </button>
+                ))}
+              </div>
+              <div className="wb-popup-divider" />
+              <div className="wb-slider-control">
+                <input
+                  type="range"
+                  min="1"
+                  max="30"
+                  className="wb-slider"
+                  value={brushSize}
+                  onChange={(e) => setBrushSize(Number(e.target.value))}
+                />
+              </div>
+            </div>
+          </div>
+  
+          <div className="wb-tool-divider" />
           <button
             className="wb-tool-btn"
-            data-tooltip="Brush Size"
+            disabled={historyIndex <= 0}
+            onClick={handleUndo}
+            data-tooltip="Undo (Ctrl+Z)"
             type="button"
           >
-            <Sliders size={18} />
-            <span className="size-preview-badge">{brushSize}</span>
+            <Undo2 size={18} />
+          </button>
+          <button
+            className="wb-tool-btn"
+            disabled={historyIndex >= history.length - 1}
+            onClick={handleRedo}
+            data-tooltip="Redo (Ctrl+Y)"
+            type="button"
+          >
+            <Redo2 size={18} />
           </button>
           
-          <div className="wb-popup-panel wb-size-popup wb-glass-panel">
-            <p className="wb-popup-title">Brush Weight</p>
-            <div className="wb-size-presets">
-              {[2, 4, 8, 14, 20].map((sz) => (
-                <button
-                  key={sz}
-                  className={`wb-preset-btn ${brushSize === sz ? "active" : ""}`}
-                  onClick={() => setBrushSize(sz)}
-                  type="button"
-                >
-                  <span className="preset-circle" style={{ width: sz, height: sz }} />
-                  <span className="preset-label">{sz}px</span>
-                </button>
-              ))}
-            </div>
-            <div className="wb-popup-divider" />
-            <div className="wb-slider-control">
-              <input
-                type="range"
-                min="1"
-                max="30"
-                className="wb-slider"
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-              />
-            </div>
-          </div>
+          <div className="wb-tool-divider" />
+          <button
+            className="wb-tool-btn"
+            onClick={handleExportImage}
+            data-tooltip="Export Image (PNG)"
+            type="button"
+            style={{ color: "var(--wb-color-accent)" }}
+          >
+            <Download size={18} />
+          </button>
+          <button
+            className="wb-tool-btn"
+            onClick={handleClearBoard}
+            data-tooltip="Clear Board"
+            style={{ color: "#ef4444" }}
+            type="button"
+          >
+            <Trash2 size={18} />
+          </button>
         </div>
-
-        <div className="wb-tool-divider" />
-        <button
-          className="wb-tool-btn"
-          disabled={historyIndex <= 0}
-          onClick={handleUndo}
-          data-tooltip="Undo (Ctrl+Z)"
-          type="button"
-        >
-          <Undo2 size={18} />
-        </button>
-        <button
-          className="wb-tool-btn"
-          disabled={historyIndex >= history.length - 1}
-          onClick={handleRedo}
-          data-tooltip="Redo (Ctrl+Y)"
-          type="button"
-        >
-          <Redo2 size={18} />
-        </button>
-        
-        <div className="wb-tool-divider" />
-        <button
-          className="wb-tool-btn"
-          onClick={handleExportImage}
-          data-tooltip="Export Image (PNG)"
-          type="button"
-          style={{ color: "var(--wb-color-accent)" }}
-        >
-          <Download size={18} />
-        </button>
-        <button
-          className="wb-tool-btn"
-          onClick={handleClearBoard}
-          data-tooltip="Clear Board"
-          style={{ color: "#ef4444" }}
-          type="button"
-        >
-          <Trash2 size={18} />
-        </button>
-      </div>
+      )}
 
       {/* 8. Bottom Left Zoom Controls */}
       <div className="whiteboard-zoom-panel wb-glass-panel">

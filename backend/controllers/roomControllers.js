@@ -23,7 +23,7 @@ const createRoom = async (req, res) => {
             language: language || "javascript",
             isPrivate,
             createdBy: req.user._id,
-            participants: [req.user._id]
+            participants: [{ user: req.user._id, role: "OWNER" }]
         });
 
         // Create a default file for the room workspace
@@ -96,7 +96,7 @@ const joinRoom = async (req, res) => {
         // Owner can always join, and previously approved participants can join directly
         const isOwner = room.createdBy.toString() === req.user._id.toString();
         const alreadyjoined = room.participants.some(participant =>
-            participant.toString() === req.user._id.toString()
+            participant.user && participant.user.toString() === req.user._id.toString()
         );
 
         if (isOwner || alreadyjoined) {
@@ -115,7 +115,7 @@ const joinRoom = async (req, res) => {
         }
 
         if (!alreadyjoined) {
-            room.participants.push(req.user._id);
+            room.participants.push({ user: req.user._id, role: "MEMBER" });
             await room.save();
         }
 
@@ -148,7 +148,7 @@ const getRoom = async (req, res) => {
         //find room
         const room = await Room.findOne({ roomId })
             .populate("createdBy", "username email avatar")
-            .populate("participants", "username email avatar");
+            .populate("participants.user", "username email avatar");
 
         if (!room) {
             return res.status(404).json({
@@ -187,7 +187,15 @@ const leaveRoom = async (req, res) => {
             });
         }
 
-        room.participants = room.participants.filter((participants) => participants.toString() !== req.user._id.toString());
+        const isOwner = room.createdBy.toString() === req.user._id.toString();
+        if (isOwner) {
+            return res.status(400).json({
+                success: false,
+                message: "Owner cannot leave the room. Please delete the room instead."
+            });
+        }
+
+        room.participants = room.participants.filter((p) => p.user && p.user.toString() !== req.user._id.toString());
         await room.save();
 
         res.status(200).json({
@@ -245,11 +253,11 @@ const getUserRoomsHistory = async (req, res) => {
         const rooms = await Room.find({
             $or: [
                 { createdBy: userId },
-                { participants: userId }
+                { "participants.user": userId }
             ]
         })
             .populate("createdBy", "username email avatar")
-            .populate("participants", "username email avatar")
+            .populate("participants.user", "username email avatar")
             .sort({ updatedAt: -1 });
 
         const socketHandler = require("../sockets/socketHandler");
@@ -295,12 +303,12 @@ const getLiveRooms = async (req, res) => {
             roomId: { $in: liveRoomIds }
         })
             .populate("createdBy", "username email avatar")
-            .populate("participants", "username email avatar");
+            .populate("participants.user", "username email avatar");
 
         const filteredRooms = rooms.filter(room => {
             if (!room.isPrivate) return true;
             const isOwner = room.createdBy?._id.toString() === req.user._id.toString();
-            const isParticipant = room.participants?.some(p => p._id.toString() === req.user._id.toString());
+            const isParticipant = room.participants?.some(p => p.user && p.user._id.toString() === req.user._id.toString());
             return isOwner || isParticipant;
         });
 
@@ -334,11 +342,11 @@ const getRecentRooms = async (req, res) => {
         const rooms = await Room.find({
             $or: [
                 { createdBy: userId },
-                { participants: userId }
+                { "participants.user": userId }
             ]
         })
             .populate("createdBy", "username email avatar")
-            .populate("participants", "username email avatar")
+            .populate("participants.user", "username email avatar")
             .sort({ lastActivity: -1 })
             .limit(10);
 
@@ -412,8 +420,11 @@ const respondToJoinRequest = async (req, res) => {
             return res.status(404).json({ success: false, message: "Room not found" });
         }
 
-        if (room.createdBy.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ success: false, message: "Only the owner can manage requests" });
+        const userRoleObj = room.participants.find(p => p.user && p.user.toString() === req.user._id.toString());
+        const userRole = userRoleObj ? userRoleObj.role : null;
+        
+        if (userRole !== "OWNER" && userRole !== "MODERATOR") {
+            return res.status(403).json({ success: false, message: "Only owners or moderators can manage requests" });
         }
 
         // Remove from pending
@@ -427,8 +438,9 @@ const respondToJoinRequest = async (req, res) => {
         );
 
         if (action === "accept") {
-            if (!room.participants.includes(requesterId)) {
-                room.participants.push(requesterId);
+            const alreadyParticipant = room.participants.some(p => p.user && p.user.toString() === requesterId.toString());
+            if (!alreadyParticipant) {
+                room.participants.push({ user: requesterId, role: "MEMBER" });
             }
         } else if (action === "reject") {
             if (!room.rejectedRequests) room.rejectedRequests = [];
@@ -470,7 +482,7 @@ const getMySentRequests = async (req, res) => {
         const acceptedRooms = await Room.find({
             isPrivate: true,
             createdBy: { $ne: userId },
-            participants: userId
+            "participants.user": userId
         }).populate("createdBy", "username email avatar");
 
         const requests = [
@@ -527,18 +539,33 @@ const removeUser = async (req, res) => {
             return res.status(404).json({ success: false, message: "Room not found" });
         }
 
-        // Only owner can remove
-        if (room.createdBy.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ success: false, message: "Only the owner can remove participants" });
+        const actor = room.participants.find(p => p.user && p.user.toString() === req.user._id.toString());
+        if (!actor) {
+            return res.status(403).json({ success: false, message: "You are not a participant in this room" });
         }
 
-        // Owner cannot remove themselves
-        if (room.createdBy.toString() === userId.toString()) {
-            return res.status(400).json({ success: false, message: "Owner cannot be removed from the room" });
+        const target = room.participants.find(p => p.user && p.user.toString() === userId.toString());
+        if (!target) {
+            return res.status(404).json({ success: false, message: "User is not a participant in this room" });
+        }
+
+        if (actor.role === "OWNER") {
+            if (userId.toString() === room.createdBy.toString()) {
+                return res.status(400).json({ success: false, message: "Owner cannot be removed from the room" });
+            }
+        } else if (actor.role === "MODERATOR") {
+            if (target.role === "OWNER") {
+                return res.status(403).json({ success: false, message: "Moderator cannot remove the owner" });
+            }
+            if (target.role === "MODERATOR") {
+                return res.status(403).json({ success: false, message: "Moderator cannot remove another moderator" });
+            }
+        } else {
+            return res.status(403).json({ success: false, message: "Access denied. Only owners and moderators can remove participants" });
         }
 
         // Remove user from participants list
-        room.participants = room.participants.filter(p => p.toString() !== userId.toString());
+        room.participants = room.participants.filter(p => p.user && p.user.toString() !== userId.toString());
 
         // Also remove from pending requests just in case
         room.pendingRequests = room.pendingRequests.filter(r => r.user.toString() !== userId.toString());
@@ -565,7 +592,7 @@ const getAllPublicRooms = async (req, res) => {
 
         const rooms = await Room.find({ isPrivate: false })
             .populate("createdBy", "username email avatar")
-            .populate("participants", "username email avatar")
+            .populate("participants.user", "username email avatar")
             .sort({ createdAt: -1 });
 
         const roomsWithCount = await Promise.all(rooms.map(async (room) => {
@@ -591,6 +618,332 @@ const getAllPublicRooms = async (req, res) => {
     }
 };
 
+const promoteUser = async (req, res) => {
+    try {
+        const { roomId, userId } = req.body;
+        const room = await Room.findOne({ roomId }).populate("participants.user", "username email avatar");
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        if (room.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: "Only the owner can promote users" });
+        }
+
+        const participant = room.participants.find(p => p.user && p.user._id.toString() === userId.toString());
+        if (!participant) {
+            return res.status(404).json({ success: false, message: "User is not a participant in this room" });
+        }
+
+        if (participant.role === "OWNER") {
+            return res.status(400).json({ success: false, message: "Owner role cannot be changed" });
+        }
+
+        participant.role = "MODERATOR";
+        await room.save();
+
+        // Sync with socket
+        const socketHandler = require("../sockets/socketHandler");
+        const roomUsers = socketHandler.roomUsers || {};
+        if (roomUsers[roomId]) {
+            roomUsers[roomId].forEach(u => {
+                if (String(u.userId) === String(userId)) {
+                    u.role = "MODERATOR";
+                }
+            });
+            const io = req.app.get("io");
+            if (io) {
+                io.to(roomId).emit("role-changed", { userId, role: "MODERATOR" });
+                io.to(roomId).emit("member-promoted", { userId, username: participant.user?.username });
+                io.to(roomId).emit("room-users", roomUsers[roomId]);
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "User promoted to Moderator successfully",
+            participants: room.participants
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const demoteUser = async (req, res) => {
+    try {
+        const { roomId, userId } = req.body;
+        const room = await Room.findOne({ roomId }).populate("participants.user", "username email avatar");
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        if (room.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: "Only the owner can demote users" });
+        }
+
+        const participant = room.participants.find(p => p.user && p.user._id.toString() === userId.toString());
+        if (!participant) {
+            return res.status(404).json({ success: false, message: "User is not a participant in this room" });
+        }
+
+        if (participant.role === "OWNER") {
+            return res.status(400).json({ success: false, message: "Owner role cannot be changed" });
+        }
+
+        participant.role = "MEMBER";
+        await room.save();
+
+        // Sync with socket
+        const socketHandler = require("../sockets/socketHandler");
+        const roomUsers = socketHandler.roomUsers || {};
+        if (roomUsers[roomId]) {
+            roomUsers[roomId].forEach(u => {
+                if (String(u.userId) === String(userId)) {
+                    u.role = "MEMBER";
+                }
+            });
+            const io = req.app.get("io");
+            if (io) {
+                io.to(roomId).emit("role-changed", { userId, role: "MEMBER" });
+                io.to(roomId).emit("member-demoted", { userId, username: participant.user?.username });
+                io.to(roomId).emit("room-users", roomUsers[roomId]);
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "User demoted to Member successfully",
+            participants: room.participants
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const changeRole = async (req, res) => {
+    try {
+        const { roomId, userId, role } = req.body;
+
+        if (!["MODERATOR", "MEMBER", "VIEWER"].includes(role)) {
+            return res.status(400).json({ success: false, message: "Invalid role specified" });
+        }
+
+        const room = await Room.findOne({ roomId }).populate("participants.user", "username email avatar");
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        if (room.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: "Only the owner can change roles" });
+        }
+
+        const participant = room.participants.find(p => p.user && p.user._id.toString() === userId.toString());
+        if (!participant) {
+            return res.status(404).json({ success: false, message: "User is not a participant in this room" });
+        }
+
+        if (participant.role === "OWNER") {
+            return res.status(400).json({ success: false, message: "Owner role cannot be changed" });
+        }
+
+        const oldRole = participant.role;
+        participant.role = role;
+        await room.save();
+
+        // Sync with socket
+        const socketHandler = require("../sockets/socketHandler");
+        const roomUsers = socketHandler.roomUsers || {};
+        if (roomUsers[roomId]) {
+            roomUsers[roomId].forEach(u => {
+                if (String(u.userId) === String(userId)) {
+                    u.role = role;
+                }
+            });
+            const io = req.app.get("io");
+            if (io) {
+                io.to(roomId).emit("role-changed", { userId, role });
+                io.to(roomId).emit("room-users", roomUsers[roomId]);
+
+                if (oldRole !== "MODERATOR" && role === "MODERATOR") {
+                    io.to(roomId).emit("member-promoted", { userId, username: participant.user?.username });
+                } else if (oldRole === "MODERATOR" && role !== "MODERATOR") {
+                    io.to(roomId).emit("member-demoted", { userId, username: participant.user?.username });
+                }
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `User role changed to ${role} successfully`,
+            participants: room.participants
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const kickUser = async (req, res) => {
+    try {
+        const { roomId, userId } = req.body;
+        const room = await Room.findOne({ roomId });
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        const actorId = req.user._id.toString();
+        const actor = room.participants.find(p => p.user && p.user.toString() === actorId);
+        if (!actor) {
+            return res.status(403).json({ success: false, message: "You are not a participant in this room" });
+        }
+
+        const target = room.participants.find(p => p.user && p.user.toString() === userId.toString());
+        if (!target) {
+            return res.status(404).json({ success: false, message: "User is not a participant in this room" });
+        }
+
+        if (actor.role === "OWNER") {
+            if (userId.toString() === room.createdBy.toString()) {
+                return res.status(400).json({ success: false, message: "Owner cannot be kicked from the room" });
+            }
+        } else if (actor.role === "MODERATOR") {
+            if (target.role === "OWNER") {
+                return res.status(403).json({ success: false, message: "Moderator cannot kick the owner" });
+            }
+            if (target.role === "MODERATOR") {
+                return res.status(403).json({ success: false, message: "Moderator cannot kick another moderator" });
+            }
+        } else {
+            return res.status(403).json({ success: false, message: "Access denied. Only owners and moderators can kick users" });
+        }
+
+        room.participants = room.participants.filter(p => p.user && p.user.toString() !== userId.toString());
+        room.pendingRequests = room.pendingRequests.filter(r => r.user.toString() !== userId.toString());
+
+        await room.save();
+
+        // Sync with socket
+        const socketHandler = require("../sockets/socketHandler");
+        const roomUsers = socketHandler.roomUsers || {};
+        if (roomUsers[roomId]) {
+            const usersToKick = roomUsers[roomId].filter(u => String(u.userId) === String(userId));
+            const io = req.app.get("io");
+            if (io && usersToKick.length > 0) {
+                usersToKick.forEach(userToKick => {
+                    const kickedSocket = io.sockets.sockets.get(userToKick.socketId);
+                    if (kickedSocket) {
+                        kickedSocket.emit("kicked", {
+                            message: "You have been removed from this room by the owner or moderator."
+                        });
+                        kickedSocket.leave(roomId);
+                    }
+                });
+
+                const firstUser = usersToKick[0];
+                roomUsers[roomId] = roomUsers[roomId].filter(u => String(u.userId) !== String(userId));
+
+                io.to(roomId).emit("room-users", roomUsers[roomId]);
+                io.to(roomId).emit("user-left", {
+                    socketId: firstUser.socketId,
+                    username: firstUser.username,
+                    message: `${firstUser.username} was removed from the room.`
+                });
+                io.to(roomId).emit("user-kicked", { userId });
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "User kicked successfully from the room"
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const muteUser = async (req, res) => {
+    try {
+        const { roomId, userId, mute } = req.body;
+        const room = await Room.findOne({ roomId });
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        const actorId = req.user._id.toString();
+        const actor = room.participants.find(p => p.user && p.user.toString() === actorId);
+        if (!actor) {
+            return res.status(403).json({ success: false, message: "You are not a participant in this room" });
+        }
+
+        const target = room.participants.find(p => p.user && p.user.toString() === userId.toString());
+        if (!target) {
+            return res.status(404).json({ success: false, message: "User is not a participant in this room" });
+        }
+
+        if (actor.role === "OWNER") {
+            if (userId.toString() === room.createdBy.toString()) {
+                return res.status(400).json({ success: false, message: "Owner cannot be muted" });
+            }
+        } else if (actor.role === "MODERATOR") {
+            if (target.role === "OWNER") {
+                return res.status(403).json({ success: false, message: "Moderator cannot mute the owner" });
+            }
+            if (target.role === "MODERATOR") {
+                return res.status(403).json({ success: false, message: "Moderator cannot mute another moderator" });
+            }
+        } else {
+            return res.status(403).json({ success: false, message: "Access denied. Only owners and moderators can mute users" });
+        }
+
+        const shouldMute = mute === true || mute === "true";
+        console.log(`[MUTE_USER] Room: ${roomId}, User: ${userId}, Received mute param: ${mute} (type: ${typeof mute}), Resolved shouldMute: ${shouldMute}`);
+
+        target.isMuted = shouldMute;
+        await room.save();
+
+        // Sync with socket
+        const socketHandler = require("../sockets/socketHandler");
+        const roomUsers = socketHandler.roomUsers || {};
+        if (roomUsers[roomId]) {
+            roomUsers[roomId].forEach(u => {
+                if (String(u.userId) === String(userId)) {
+                    u.isMuted = shouldMute;
+                }
+            });
+            const io = req.app.get("io");
+            if (io) {
+                io.to(roomId).emit("mute-status-changed", { userId, isMuted: shouldMute });
+                io.to(roomId).emit("room-users", roomUsers[roomId]);
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `User chat successfully ${mute ? "muted" : "unmuted"}`
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const getRoomMembers = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const room = await Room.findOne({ roomId })
+            .populate("participants.user", "username email avatar");
+
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        res.status(200).json({
+            success: true,
+            members: room.participants
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     createRoom,
     joinRoom,
@@ -604,5 +957,11 @@ module.exports = {
     respondToJoinRequest,
     getMySentRequests,
     removeUser,
-    getAllPublicRooms
+    getAllPublicRooms,
+    promoteUser,
+    demoteUser,
+    changeRole,
+    kickUser,
+    muteUser,
+    getRoomMembers
 }

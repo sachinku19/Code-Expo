@@ -57,7 +57,20 @@ const getOrInitializeOwnership = async (roomId, fileId) => {
   return activeOwnerships[roomId][fileKey];
 };
 
+const getUserRole = (roomId, socketId) => {
+  if (!roomId || !roomUsers[roomId]) return null;
+  const user = roomUsers[roomId].find(u => u.socketId === socketId);
+  return user ? user.role : null;
+};
+
+const isUserMuted = (roomId, socketId) => {
+  if (!roomId || !roomUsers[roomId]) return false;
+  const user = roomUsers[roomId].find(u => u.socketId === socketId);
+  return user ? !!user.isMuted : false;
+};
+
 const socketHandler = (io) => {
+  socketHandler.io = io;
   io.on("connection", (socket) => {
     console.log(`⚡ User connected: ${socket.id}`);
 
@@ -71,7 +84,7 @@ const socketHandler = (io) => {
     // ======================
     // JOIN ROOM
     // ======================
-    socket.on("join-room", ({
+    socket.on("join-room", async ({
       roomId,
       username,
       userId,
@@ -83,79 +96,102 @@ const socketHandler = (io) => {
       socket.username = username;
       socket.userId = userId;
 
-      // Create room if not exists
-      if (!roomUsers[roomId]) {
-        roomUsers[roomId] = [];
-      }
+      try {
+        const room = await Room.findOne({ roomId });
 
-      // Check if this specific socket is already registered
-      const socketAlreadyInRoom = roomUsers[roomId].some(
-        (user) => user.socketId === socket.id
-      );
-
-      if (socketAlreadyInRoom) {
-        // Same socket connection re-emitting join-room. Do not block.
-        return;
-      }
-
-      // Check if there is an existing socket session for this user ID
-      const existingUserIndex = roomUsers[roomId].findIndex(
-        (user) => String(user.userId) === String(userId)
-      );
-
-      if (existingUserIndex !== -1) {
-        const existingUser = roomUsers[roomId][existingUserIndex];
-
-        // Forcefully disconnect/kick the previous socket session
-        const oldSocket = io.sockets.sockets.get(existingUser.socketId);
-        if (oldSocket) {
-          oldSocket.emit("kicked", {
-            message: "You have been disconnected because your account joined this room from another tab or window."
-          });
-          oldSocket.leave(roomId);
-
-          // Broadcast user-left for the old socket so other clients clean it up!
-          socket.to(roomId).emit("user-left", {
-            socketId: existingUser.socketId,
-            username: existingUser.username,
-            message: `${existingUser.username} switched sessions.`
-          });
+        // Create room if not exists
+        if (!roomUsers[roomId]) {
+          roomUsers[roomId] = [];
         }
 
-        // Remove the old socket user from roomUsers list
-        roomUsers[roomId].splice(existingUserIndex, 1);
-      }
+        // Check if this specific socket is already registered
+        const socketAlreadyInRoom = roomUsers[roomId].some(
+          (user) => user.socketId === socket.id
+        );
 
-      socket.join(roomId);
+        if (socketAlreadyInRoom) {
+          // Same socket connection re-emitting join-room. Do not block.
+          return;
+        }
 
-      roomUsers[roomId].push({
-        socketId: socket.id,
-        username,
-        userId,
-        isOwner,
-        avatar: avatar || ""
-      });
+        // Check if there is an existing socket session for this user ID
+        const existingUserIndex = roomUsers[roomId].findIndex(
+          (user) => String(user.userId) === String(userId)
+        );
 
-      console.log(
-        `📌 ${username} joined room ${roomId}`
-      );
+        if (existingUserIndex !== -1) {
+          const existingUser = roomUsers[roomId][existingUserIndex];
 
-      // Update participants
-      io.to(roomId).emit(
-        "room-users",
-        roomUsers[roomId]
-      );
+          // Forcefully disconnect/kick the previous socket session
+          const oldSocket = io.sockets.sockets.get(existingUser.socketId);
+          if (oldSocket) {
+            oldSocket.emit("kicked", {
+              message: "You have been disconnected because your account joined this room from another tab or window."
+            });
+            oldSocket.leave(roomId);
 
-      // Notify others
-      socket.to(roomId).emit(
-        "user-joined",
-        {
+            // Broadcast user-left for the old socket so other clients clean it up!
+            socket.to(roomId).emit("user-left", {
+              socketId: existingUser.socketId,
+              username: existingUser.username,
+              message: `${existingUser.username} switched sessions.`
+            });
+          }
+
+          // Remove the old socket user from roomUsers list
+          roomUsers[roomId].splice(existingUserIndex, 1);
+        }
+
+        let role = "VIEWER";
+        let isMuted = false;
+
+        if (room) {
+          const participant = room.participants.find(
+            (p) => p.user && p.user.toString() === String(userId)
+          );
+          if (participant) {
+            role = participant.role;
+            isMuted = participant.isMuted;
+          } else if (room.createdBy.toString() === String(userId)) {
+            role = "OWNER";
+          }
+        }
+
+        socket.join(roomId);
+
+        roomUsers[roomId].push({
           socketId: socket.id,
           username,
-          type: "join",
-          message: `${username} joined the room`
-        }
-      );
+          userId,
+          isOwner: role === "OWNER",
+          role,
+          isMuted,
+          avatar: avatar || ""
+        });
+
+        console.log(
+          `📌 ${username} (${role}) joined room ${roomId}`
+        );
+
+        // Update participants
+        io.to(roomId).emit(
+          "room-users",
+          roomUsers[roomId]
+        );
+
+        // Notify others
+        socket.to(roomId).emit(
+          "user-joined",
+          {
+            socketId: socket.id,
+            username,
+            type: "join",
+            message: `${username} joined the room`
+          }
+        );
+      } catch (err) {
+        console.error("Socket join-room error:", err);
+      }
     });
 
     socket.on("join-request", async ({ roomId, userId, username, title }) => {
@@ -182,25 +218,24 @@ const socketHandler = (io) => {
           await room.save();
         }
 
-        const owner = roomUsers[roomId]?.find(
-          user => user.isOwner
-        );
+        const admins = roomUsers[roomId]?.filter(
+          user => user.role === "OWNER" || user.role === "MODERATOR"
+        ) || [];
 
-        if (owner) {
-          io.to(owner.socketId).emit("join-request", {
+        admins.forEach(admin => {
+          io.to(admin.socketId).emit("join-request", {
             roomId,
             userId,
             username,
             requesterSocketId: socket.id
           });
-        }
+        });
 
         console.log(`${username} requested to join roomid ${roomId} `);
       } catch (err) {
         console.error("Socket join-request error:", err.message);
       }
-    })
-
+    });
 
     //========
     //approve request
@@ -225,8 +260,9 @@ const socketHandler = (io) => {
           // Clean up from rejectedRequests
           room.rejectedRequests = (room.rejectedRequests || []).filter(r => r.user.toString() !== userId);
 
-          if (!room.participants.includes(userId)) {
-            room.participants.push(userId);
+          const alreadyJoined = room.participants.some(p => p.user && p.user.toString() === userId.toString());
+          if (!alreadyJoined) {
+            room.participants.push({ user: userId, role: "MEMBER" });
           }
 
           room.lastActivity = Date.now();
@@ -279,12 +315,32 @@ const socketHandler = (io) => {
       } catch (err) {
         console.error(err);
       }
-    })
+    });
 
-    // KICK USER FROM ROOM BY OWNER
-    socket.on("kick-user", ({ roomId, userId }) => {
+    // KICK USER FROM ROOM BY OWNER OR MODERATOR
+    socket.on("kick-user", async ({ roomId, userId }) => {
       try {
-        console.log(`Owner requested to kick user ${userId} from room ${roomId}`);
+        const actorRole = getUserRole(roomId, socket.id);
+        if (actorRole !== "OWNER" && actorRole !== "MODERATOR") {
+          return;
+        }
+
+        const room = await Room.findOne({ roomId });
+        if (!room) return;
+
+        const targetParticipant = room.participants.find(p => p.user && p.user.toString() === String(userId));
+        if (!targetParticipant) return;
+
+        if (actorRole === "MODERATOR") {
+          if (targetParticipant.role === "OWNER" || targetParticipant.role === "MODERATOR") {
+            return;
+          }
+        }
+
+        room.participants = room.participants.filter(p => p.user && p.user.toString() !== String(userId));
+        await room.save();
+
+        console.log(`Owner/Moderator requested to kick user ${userId} from room ${roomId}`);
         if (roomUsers[roomId]) {
           const usersToKick = roomUsers[roomId].filter(u => String(u.userId) === String(userId));
           if (usersToKick.length > 0) {
@@ -292,7 +348,7 @@ const socketHandler = (io) => {
               const kickedSocket = io.sockets.sockets.get(userToKick.socketId);
               if (kickedSocket) {
                 kickedSocket.emit("kicked", {
-                  message: "You have been removed from this room by the owner."
+                  message: `You have been removed from this room by a ${actorRole.toLowerCase()}.`
                 });
                 kickedSocket.leave(roomId);
               }
@@ -310,12 +366,143 @@ const socketHandler = (io) => {
             socket.to(roomId).emit("user-left", {
               socketId: firstUser.socketId,
               username: firstUser.username,
-              message: `${firstUser.username} was removed from the room by the owner.`
+              message: `${firstUser.username} was removed from the room.`
             });
+            io.to(roomId).emit("user-kicked", { userId });
           }
         }
       } catch (err) {
         console.error("Socket kick-user error:", err.message);
+      }
+    });
+
+    // CHANGE MEMBER ROLE SOCKET EVENT
+    socket.on("change-member-role", async ({ roomId, userId, role }) => {
+      try {
+        const actorRole = getUserRole(roomId, socket.id);
+        if (actorRole !== "OWNER") {
+          return;
+        }
+
+        const room = await Room.findOne({ roomId }).populate("participants.user", "username email avatar");
+        if (!room) return;
+
+        const targetParticipant = room.participants.find(p => p.user && p.user._id.toString() === String(userId));
+        if (!targetParticipant) return;
+
+        if (targetParticipant.role === "OWNER") return;
+
+        const oldRole = targetParticipant.role;
+        targetParticipant.role = role;
+        await room.save();
+
+        if (roomUsers[roomId]) {
+          roomUsers[roomId].forEach(u => {
+            if (String(u.userId) === String(userId)) {
+              u.role = role;
+              u.isOwner = role === "OWNER";
+            }
+          });
+          io.to(roomId).emit("role-changed", { userId, role });
+          io.to(roomId).emit("room-users", roomUsers[roomId]);
+
+          if (oldRole !== "MODERATOR" && role === "MODERATOR") {
+            io.to(roomId).emit("member-promoted", { userId, username: targetParticipant.user?.username });
+          } else if (oldRole === "MODERATOR" && role !== "MODERATOR") {
+            io.to(roomId).emit("member-demoted", { userId, username: targetParticipant.user?.username });
+          }
+        }
+      } catch (err) {
+        console.error("Socket change-member-role error:", err.message);
+      }
+    });
+
+    // KICK MEMBER SOCKET EVENT (PARALLEL TO KICK-USER)
+    socket.on("kick-member", async ({ roomId, userId }) => {
+      try {
+        const actorRole = getUserRole(roomId, socket.id);
+        if (actorRole !== "OWNER" && actorRole !== "MODERATOR") {
+          return;
+        }
+
+        const room = await Room.findOne({ roomId });
+        if (!room) return;
+
+        const targetParticipant = room.participants.find(p => p.user && p.user.toString() === String(userId));
+        if (!targetParticipant) return;
+
+        if (actorRole === "MODERATOR") {
+          if (targetParticipant.role === "OWNER" || targetParticipant.role === "MODERATOR") {
+            return;
+          }
+        }
+
+        room.participants = room.participants.filter(p => p.user && p.user.toString() !== String(userId));
+        await room.save();
+
+        if (roomUsers[roomId]) {
+          const usersToKick = roomUsers[roomId].filter(u => String(u.userId) === String(userId));
+          if (usersToKick.length > 0) {
+            usersToKick.forEach(userToKick => {
+              const kickedSocket = io.sockets.sockets.get(userToKick.socketId);
+              if (kickedSocket) {
+                kickedSocket.emit("kicked", {
+                  message: `You have been removed from this room by a ${actorRole.toLowerCase()}.`
+                });
+                kickedSocket.leave(roomId);
+              }
+            });
+
+            const firstUser = usersToKick[0];
+            roomUsers[roomId] = roomUsers[roomId].filter(u => String(u.userId) !== String(userId));
+            io.to(roomId).emit("room-users", roomUsers[roomId]);
+            io.to(roomId).emit("user-left", {
+              socketId: firstUser.socketId,
+              username: firstUser.username,
+              message: `${firstUser.username} was removed from the room.`
+            });
+            io.to(roomId).emit("user-kicked", { userId });
+          }
+        }
+      } catch (err) {
+        console.error("Socket kick-member error:", err.message);
+      }
+    });
+
+    // MUTE MEMBER SOCKET EVENT
+    socket.on("mute-member", async ({ roomId, userId, mute }) => {
+      try {
+        const actorRole = getUserRole(roomId, socket.id);
+        if (actorRole !== "OWNER" && actorRole !== "MODERATOR") {
+          return;
+        }
+
+        const room = await Room.findOne({ roomId });
+        if (!room) return;
+
+        const targetParticipant = room.participants.find(p => p.user && p.user.toString() === String(userId));
+        if (!targetParticipant) return;
+
+        if (actorRole === "MODERATOR") {
+          if (targetParticipant.role === "OWNER" || targetParticipant.role === "MODERATOR") {
+            return;
+          }
+        }
+
+        targetParticipant.isMuted = !!mute;
+        await room.save();
+
+        if (roomUsers[roomId]) {
+          roomUsers[roomId].forEach(u => {
+            if (String(u.userId) === String(userId)) {
+              u.isMuted = !!mute;
+            }
+          });
+          io.to(roomId).emit("mute-status-changed", { userId, isMuted: !!mute });
+          io.to(roomId).emit("room-users", roomUsers[roomId]);
+        }
+      } catch (err) {
+        console.error("Socket mute-member error:", err.message);
       }
     });
 
@@ -369,11 +556,6 @@ const socketHandler = (io) => {
     // ROOM DELETED
     // ======================
     socket.on("room-deleted", ({ roomId }) => {
-      const room = io.sockets.adapter.rooms.get(roomId);
-
-      console.log("ROOM MEMBERS:", room);
-      console.log("ROOM DELETED:", roomId);
-
       io.to(roomId).emit("room-deleted");
     });
 
@@ -381,6 +563,7 @@ const socketHandler = (io) => {
     // REALTIME CODE SYNC (LEGACY SINGLE FILE)
     // ======================
     socket.on("code-change", async ({ roomId, code }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit(
         "receive-code",
         code
@@ -420,6 +603,7 @@ const socketHandler = (io) => {
       const { roomId, code, userId, username } = data;
 
       if (!roomId) return;
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
 
       try {
         const room = await Room.findOne({ roomId });
@@ -452,6 +636,7 @@ const socketHandler = (io) => {
 
     // 1. Real-time multi-file keystroke sync
     socket.on("file-content-changed", async ({ roomId, fileId, content }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("receive-file-content", { fileId, content });
 
       const now = Date.now();
@@ -477,6 +662,7 @@ const socketHandler = (io) => {
 
     // 2. Real-time file content save (debounced/throttled on client)
     socket.on("save-file-content", async ({ roomId, fileId, content, userId, username }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       try {
         const file = await WorkspaceItem.findById(fileId);
         if (!file) return;
@@ -500,38 +686,46 @@ const socketHandler = (io) => {
 
     // 3. Structure creation sync
     socket.on("file-created", ({ roomId, item }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       io.to(roomId).emit("file-created", item);
     });
 
     socket.on("folder-created", ({ roomId, item }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       io.to(roomId).emit("folder-created", item);
     });
 
     // 4. Structure deletion sync
     socket.on("file-deleted", ({ roomId, itemId }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("file-deleted", itemId);
     });
 
     socket.on("folder-deleted", ({ roomId, itemId }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("folder-deleted", itemId);
     });
 
     // 5. Structure rename sync
     socket.on("file-renamed", ({ roomId, itemId, name }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("file-renamed", { itemId, name });
     });
 
     socket.on("folder-renamed", ({ roomId, itemId, name }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("folder-renamed", { itemId, name });
     });
 
     // 6. Structure move sync
     socket.on("file-moved", ({ roomId, itemId, parentId }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("file-moved", { itemId, parentId });
     });
 
     // 7. Compilation entry point sync
     socket.on("entry-point-changed", ({ roomId, fileId }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("entry-point-changed", { fileId });
     });
 
@@ -569,9 +763,10 @@ const socketHandler = (io) => {
 
     // Line Ownership Tracking & Delta Coordinates Shift Math
     socket.on("line:ownership:update", async (data) => {
-      const { fileId, startLineNumber, endLineNumber, linesAdded, linesDeleted } = data;
       const roomId = socket.roomId;
       if (!roomId) return;
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
+      const { fileId, startLineNumber, endLineNumber, linesAdded, linesDeleted } = data;
 
       const fileKey = fileId || "null";
       const currentLines = await getOrInitializeOwnership(roomId, fileId);
@@ -674,6 +869,7 @@ const socketHandler = (io) => {
     socket.on("version:create", async (data) => {
       const roomId = socket.roomId;
       if (!roomId) return;
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
 
       try {
         const count = await Version.countDocuments({ roomId, fileId: data.fileId || null });
@@ -740,6 +936,15 @@ const socketHandler = (io) => {
         createdAt
       }) => {
         try {
+          const role = getUserRole(roomId, socket.id);
+          const muted = isUserMuted(roomId, socket.id);
+          if (muted) {
+            socket.emit("chat-muted-alert", {
+              message: "You have been muted in this chat."
+            });
+            return;
+          }
+
           const mongoose = require("mongoose");
           const populatedMessage = {
             _id: new mongoose.Types.ObjectId(),
@@ -796,6 +1001,9 @@ const socketHandler = (io) => {
       "delete-message",
       async ({ roomId, messageId, userId }) => {
         try {
+          const role = getUserRole(roomId, socket.id);
+          if (role === "VIEWER") return;
+
           const message = await Message.findById(messageId);
           if (!message) return;
 
@@ -804,8 +1012,10 @@ const socketHandler = (io) => {
 
           const isMessageSender = message.sender.toString() === userId.toString();
           const isRoomOwner = room.createdBy.toString() === userId.toString();
+          const actor = room.participants.find(p => p.user && p.user.toString() === userId.toString());
+          const isModerator = actor && actor.role === "MODERATOR";
 
-          if (isMessageSender || isRoomOwner) {
+          if (isMessageSender || isRoomOwner || isModerator) {
             await Message.findByIdAndDelete(messageId);
             io.to(roomId).emit("message-deleted", { messageId });
             console.log(`🗑️ Message deleted: ${messageId} in room ${roomId}`);
@@ -820,11 +1030,13 @@ const socketHandler = (io) => {
     //=============================
     // whiteboard draw
     socket.on("draw", ({ roomId, x0, y0, x1, y1 }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("draw", { x0, y0, x1, y1 });
     })
 
     // CLEAR WHITEBOARD
     socket.on("clear-board", ({ roomId }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       io.to(roomId).emit(
         "clear-board"
       );
@@ -836,6 +1048,7 @@ const socketHandler = (io) => {
 
     // Cursor movement tracking
     socket.on("cursor-move", ({ roomId, x, y, username, color }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("cursor-move", {
         socketId: socket.id,
         x,
@@ -847,6 +1060,7 @@ const socketHandler = (io) => {
 
     // In-progress transient element update
     socket.on("draw-element-update", ({ roomId, element, isDrawing, userId }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("draw-element-update", {
         element,
         isDrawing,
@@ -857,6 +1071,7 @@ const socketHandler = (io) => {
 
     // Sync finished shapes/elements list
     socket.on("sync-whiteboard", ({ roomId, elements }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       socket.to(roomId).emit("sync-whiteboard", {
         elements
       });
@@ -866,6 +1081,7 @@ const socketHandler = (io) => {
     socket.on("save-whiteboard", async (data) => {
       if (!data || !data.roomId) return;
       const { roomId, whiteboardData, userId, username } = data;
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       try {
         const room = await Room.findOne({ roomId });
         if (room) {
@@ -886,6 +1102,7 @@ const socketHandler = (io) => {
 
     // Whiteboard activity logs
     socket.on("whiteboard-activity", ({ roomId, username, avatar, action }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
       io.to(roomId).emit("whiteboard-activity", {
         username,
         avatar: avatar || "",
@@ -921,7 +1138,10 @@ const socketHandler = (io) => {
 
     // Layout sync
     socket.on("layout-change", ({ roomId, layoutMode }) => {
-      socket.to(roomId).emit("layout-change", { layoutMode });
+      const role = getUserRole(roomId, socket.id);
+      if (role === "OWNER" || role === "MODERATOR") {
+        socket.to(roomId).emit("layout-change", { layoutMode });
+      }
     });
 
 
@@ -930,6 +1150,13 @@ const socketHandler = (io) => {
     // ======================
     // Realtime Code Execution via JDoodle (Render deployment friendly)
     socket.on("execute-code", async (data) => {
+      if (data && data.roomId && getUserRole(data.roomId, socket.id) === "VIEWER") {
+        socket.emit("terminal-output", {
+          text: "\r\n\x1b[31m[System Error] Viewers are not allowed to execute code.\x1b[0m\r\n"
+        });
+        return;
+      }
+
       if (!data || !data.roomId || !data.language) {
         socket.emit("terminal-output", {
           text: "\r\n\x1b[31m[System Error] Invalid run parameters.\x1b[0m\r\n"

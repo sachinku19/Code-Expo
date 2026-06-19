@@ -203,8 +203,8 @@ const deleteUser = async (req, res) => {
 
     // 2. Remove user from participants list in other rooms
     await Room.updateMany(
-      { participants: userId },
-      { $pull: { participants: userId } }
+      { "participants.user": userId },
+      { $pull: { participants: { user: userId } } }
     );
 
     // 3. Delete messages, ratings, activities, bookmarks, likes, follows, notifications

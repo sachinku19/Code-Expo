@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import MonacoEditor, { DiffEditor } from "@monaco-editor/react";
 import socket from "../socket/socket";
-import { getRoom, leaveRoom, deleteRoom, getRecentRooms, createRoom, removeUser } from "../services/roomService";
+import { getRoom, leaveRoom, deleteRoom, getRecentRooms, createRoom, removeUser, promoteUser, demoteUser, changeRole, kickUser, muteUser } from "../services/roomService";
 import { runCode } from "../services/compilerService";
 import { getMessage } from "../services/messageService";
 import Whiteboard from "../components/Whiteboard";
@@ -64,7 +64,10 @@ import {
   Video,
   Mic,
   MicOff,
-  VideoOff
+  VideoOff,
+  MoreVertical,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import "./Editor.css";
 
@@ -574,6 +577,17 @@ function Editor() {
 
   const handleJoinCall = async (type) => {
     try {
+      const myParticipant = room?.participants?.find(
+        (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
+      );
+      const myRole = myParticipant ? myParticipant.role : "MEMBER";
+      const isMutedInRoom = myParticipant ? myParticipant.isMuted : false;
+
+      if (myRole === "VIEWER" && isMutedInRoom) {
+        triggerNotification("Muted viewers are not allowed to join audio/video calls.");
+        return;
+      }
+
       const stream = await startLocalStream(type);
       setInCall(true);
       setCallType(type);
@@ -742,13 +756,214 @@ function Editor() {
   const [kickMessage, setKickMessage] = useState("");
   const [kickModalOpen, setKickModalOpen] = useState(false);
   const [kickTarget, setKickTarget] = useState({ userId: "", username: "" });
+  const [contextMenu, setContextMenu] = useState(null);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+    // Initial check
+    handleFullscreenChange();
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+    };
+  }, []);
+
+  const enterFullscreen = () => {
+    const element = document.documentElement;
+    if (element.requestFullscreen) {
+      element.requestFullscreen().catch((err) => console.log(err));
+    } else if (element.webkitRequestFullscreen) {
+      element.webkitRequestFullscreen().catch((err) => console.log(err));
+    } else if (element.mozRequestFullScreen) {
+      element.mozRequestFullScreen().catch((err) => console.log(err));
+    } else if (element.msRequestFullscreen) {
+      element.msRequestFullscreen().catch((err) => console.log(err));
+    }
+  };
+
+  const toggleFullscreen = () => {
+    const isCurrentlyFullscreen = !!(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    );
+
+    if (!isCurrentlyFullscreen) {
+      enterFullscreen();
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch((err) => console.log(err));
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen().catch((err) => console.log(err));
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen().catch((err) => console.log(err));
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen().catch((err) => console.log(err));
+      }
+    }
+  };
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("contextmenu", closeMenu);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("contextmenu", closeMenu);
+    };
+  }, []);
+
+  const handleContextMenu = (e, participant) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const myParticipant = room?.participants?.find(
+      (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
+    );
+    const myRole = myParticipant ? myParticipant.role : "MEMBER";
+
+    // Only OWNER can modify MODERATORS. MODERATORS can only modify MEMBERS and VIEWERS.
+    const isTargetPrivileged = participant.role === "OWNER" || participant.role === "MODERATOR";
+    const canIControlTarget = myRole === "OWNER" || (myRole === "MODERATOR" && !isTargetPrivileged);
+
+    if (canIControlTarget && String(participant.user?._id || participant.user) !== String(user.id || user._id)) {
+      const menuWidth = 200;
+      const menuHeight = 240; // Approximate menu height with padding
+      
+      let x = e.clientX;
+      let y = e.clientY;
+      
+      if (x + menuWidth > window.innerWidth) {
+        x = window.innerWidth - menuWidth - 10;
+      }
+      if (y + menuHeight > window.innerHeight) {
+        y = window.innerHeight - menuHeight - 10;
+      }
+
+      setContextMenu({
+        x: Math.max(10, x),
+        y: Math.max(10, y),
+        participant
+      });
+    }
+  };
+
+  const handleUserRowClick = (e, participant) => {
+    const myParticipant = room?.participants?.find(
+      (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
+    );
+    const myRole = myParticipant ? myParticipant.role : "MEMBER";
+
+    const isTargetPrivileged = participant.role === "OWNER" || participant.role === "MODERATOR";
+    const canIControlTarget = myRole === "OWNER" || (myRole === "MODERATOR" && !isTargetPrivileged);
+
+    if (canIControlTarget && String(participant.user?._id || participant.user) !== String(user.id || user._id)) {
+      e.stopPropagation();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const menuWidth = 200;
+      const menuHeight = 240; // Approximate menu height with padding
+
+      // Align menu's right edge with clicked element's right edge
+      let x = rect.right - menuWidth;
+      let y = rect.bottom + 4;
+
+      if (x < 10) {
+        x = 10;
+      }
+      if (x + menuWidth > window.innerWidth) {
+        x = window.innerWidth - menuWidth - 10;
+      }
+
+      // Flip menu upwards if it overflows viewport bottom
+      if (y + menuHeight > window.innerHeight) {
+        y = rect.top - menuHeight - 4;
+      }
+      if (y < 10) {
+        y = 10;
+      }
+
+      setContextMenu({
+        x,
+        y,
+        participant
+      });
+    }
+  };
+
+  const handleActionPromote = async (targetUserId) => {
+    try {
+      await promoteUser(roomId, targetUserId);
+      triggerNotification("User promoted to Moderator successfully.");
+      fetchRoom();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to promote user");
+    }
+  };
+
+  const handleActionDemote = async (targetUserId) => {
+    try {
+      await demoteUser(roomId, targetUserId);
+      triggerNotification("User demoted to Member successfully.");
+      fetchRoom();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to demote user");
+    }
+  };
+
+  const handleActionChangeRole = async (targetUserId, role) => {
+    try {
+      await changeRole(roomId, targetUserId, role);
+      triggerNotification(`User role changed to ${role} successfully.`);
+      fetchRoom();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to change user role");
+    }
+  };
+
+  const handleActionMute = async (targetUserId, mute) => {
+    try {
+      await muteUser(roomId, targetUserId, mute);
+      triggerNotification(`User ${mute ? "muted" : "unmuted"} successfully.`);
+      fetchRoom();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to toggle user mute");
+    }
+  };
+
+  const handleActionKick = async (targetUserId) => {
+    try {
+      await kickUser(roomId, targetUserId);
+      triggerNotification("User kicked successfully.");
+      fetchRoom();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to kick user");
+    }
+  };
 
   const confirmKickUser = async () => {
     const { userId } = kickTarget;
     setKickModalOpen(false);
     try {
-      await removeUser(roomId, userId);
-      socket.emit("kick-user", { roomId, userId });
+      await kickUser(roomId, userId);
       fetchRoom();
     } catch (error) {
       alert(error.response?.data?.message || error.message);
@@ -1498,6 +1713,61 @@ function Editor() {
       setIsTerminalExecuting(false);
     };
 
+    const handleRoleChanged = ({ userId, role }) => {
+      fetchRoom();
+      if (String(userId) === String(user.id)) {
+        triggerNotification(`Your role has been changed to ${role}`);
+      }
+    };
+
+    const handleMemberPromoted = ({ userId, username }) => {
+      fetchRoom();
+      triggerNotification(`${username || "User"} was promoted to Moderator`);
+    };
+
+    const handleMemberDemoted = ({ userId, username }) => {
+      fetchRoom();
+      triggerNotification(`${username || "User"} was demoted to Member`);
+    };
+
+    const handleUserKicked = ({ userId }) => {
+      fetchRoom();
+      if (String(userId) === String(user.id)) {
+        setKickMessage("You have been kicked from the room.");
+        setDuplicateSessionModalOpen(true);
+      }
+    };
+
+    const handleMuteStatusChanged = async ({ userId, isMuted: targetIsMuted }) => {
+      try {
+        const data = await getRoom(roomId);
+        if (data && data.room) {
+          setRoom(data.room);
+          
+          if (String(userId) === String(user.id)) {
+            triggerNotification(`You have been ${targetIsMuted ? "muted" : "unmuted"} in chat.`);
+            
+            const myParticipant = data.room.participants?.find(
+              (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
+            );
+            const myRole = myParticipant ? myParticipant.role : "MEMBER";
+
+            if (targetIsMuted && myRole === "VIEWER" && inCallRef.current) {
+              handleLeaveCall();
+              triggerNotification("You have been removed from the WebRTC call because you were muted.");
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error handling mute status change in call:", err);
+        fetchRoom();
+      }
+    };
+
+    const handleChatMutedAlert = ({ message }) => {
+      triggerNotification(message);
+    };
+
     // --- WebRTC signaling callbacks ---
     const handleUserJoinedCall = async ({ socketId, username, mediaType }) => {
       console.log("WebRTC: handleUserJoinedCall", { socketId, username });
@@ -1596,6 +1866,12 @@ function Editor() {
     socket.on("message-deleted", handleMessageDeleted);
     socket.on("terminal-output", handleTerminalOutput);
     socket.on("terminal-exit", handleTerminalExit);
+    socket.on("role-changed", handleRoleChanged);
+    socket.on("member-promoted", handleMemberPromoted);
+    socket.on("member-demoted", handleMemberDemoted);
+    socket.on("user-kicked", handleUserKicked);
+    socket.on("mute-status-changed", handleMuteStatusChanged);
+    socket.on("chat-muted-alert", handleChatMutedAlert);
 
     // Collaboration Socket Bindings
     socket.on("cursor:update", handleCursorUpdate);
@@ -1632,6 +1908,12 @@ function Editor() {
       socket.off("message-deleted", handleMessageDeleted);
       socket.off("terminal-output", handleTerminalOutput);
       socket.off("terminal-exit", handleTerminalExit);
+      socket.off("role-changed", handleRoleChanged);
+      socket.off("member-promoted", handleMemberPromoted);
+      socket.off("member-demoted", handleMemberDemoted);
+      socket.off("user-kicked", handleUserKicked);
+      socket.off("mute-status-changed", handleMuteStatusChanged);
+      socket.off("chat-muted-alert", handleChatMutedAlert);
 
       // Collaboration Socket Unbindings
       socket.off("cursor:update", handleCursorUpdate);
@@ -2351,6 +2633,10 @@ function Editor() {
   }
 
   const isCurrentUserOwner = room && String(room.createdBy?._id || room.createdBy) === String(user.id);
+  const currentUserParticipant = room?.participants?.find(
+    (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
+  );
+  const currentUserRole = currentUserParticipant ? currentUserParticipant.role : (isCurrentUserOwner ? "OWNER" : "MEMBER");
   const showCallButtons = !room?.isPrivate || isCurrentUserOwner;
 
   return (
@@ -2644,10 +2930,12 @@ function Editor() {
                   <div className="version-timeline-pane">
                     <div className="version-timeline-header">
                       <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>Workspace Snapshots</span>
-                      <button className="version-save-btn" onClick={handleSaveVersion}>
-                        <Plus size={12} />
-                        <span>Snapshot</span>
-                      </button>
+                      {currentUserRole !== "VIEWER" && (
+                        <button className="version-save-btn" onClick={handleSaveVersion}>
+                          <Plus size={12} />
+                          <span>Snapshot</span>
+                        </button>
+                      )}
                     </div>
 
                     {versions.length > 0 ? (
@@ -2954,9 +3242,26 @@ function Editor() {
                   <span>Blame</span>
                 </button>
 
-                <button className="btn-save-code ce-btn-icon" onClick={handleSaveCode} title="Save file state">
-                  <span>Save</span>
+                <button
+                  className={`btn-save-code ce-btn-icon ${isFullscreen ? "active" : ""}`}
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                  style={{
+                    backgroundColor: isFullscreen ? "rgba(255, 161, 22, 0.15)" : "transparent",
+                    borderColor: isFullscreen ? "#ffa116" : "var(--ce-border)",
+                    color: isFullscreen ? "#ffa116" : "#e6edf3",
+                    marginRight: "8px"
+                  }}
+                >
+                  {isFullscreen ? <Minimize2 size={12} style={{ marginRight: "4px" }} /> : <Maximize2 size={12} style={{ marginRight: "4px" }} />}
+                  <span>{isFullscreen ? "Window" : "Full Screen"}</span>
                 </button>
+
+                {currentUserRole !== "VIEWER" && (
+                  <button className="btn-save-code ce-btn-icon" onClick={handleSaveCode} title="Save file state" style={{ marginRight: "8px" }}>
+                    <span>Save</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2978,7 +3283,7 @@ function Editor() {
                     onChange={handleEditorChange}
                     onMount={handleEditorMount}
                     options={{
-                      readOnly: isPlaybackActive,
+                      readOnly: isPlaybackActive || currentUserRole === "VIEWER",
                       fontSize: editorFontSize,
                       fontFamily: "Fira Code, Menlo, Monaco, Consolas, monospace",
                       minimap: { enabled: editorShowMinimap },
@@ -3113,12 +3418,14 @@ function Editor() {
                   </button>
                 </div>
 
-                <div className="console-actions">
-                  <button className="ce-btn-run" onClick={handleRunCode}>
-                    <Play size={13} />
-                    <span>Run Program</span>
-                  </button>
-                </div>
+                {currentUserRole !== "VIEWER" && (
+                  <div className="console-actions">
+                    <button className="ce-btn-run" onClick={handleRunCode}>
+                      <Play size={13} />
+                      <span>Run Program</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="console-tab-body">
@@ -3223,39 +3530,69 @@ function Editor() {
 
                   <div className="users-list-pane">
                     {(room?.participants || []).map((p) => {
-                      const online = users.some(u => String(u.userId) === String(p._id || p));
-                      const isCurrentUserOwner = String(room?.createdBy?._id || room?.createdBy) === String(user?.id);
-                      const isSelf = String(p._id || p) === String(user?.id);
+                      if (!p || !p.user) return null;
+                      const targetUserId = p.user._id || p.user;
+                      const online = users.some(u => String(u.userId) === String(targetUserId));
+                      const isSelf = String(targetUserId) === String(user?.id);
+
+                      const isTargetPrivileged = p.role === "OWNER" || p.role === "MODERATOR";
+                      const canIControlTarget = (currentUserRole === "OWNER" || currentUserRole === "MODERATOR") && !isTargetPrivileged && !isSelf;
+
                       return (
-                        <div key={p._id} className="user-pane-item">
+                        <div
+                          key={p._id}
+                          className={`user-pane-item ${canIControlTarget ? "manageable" : ""}`}
+                          onContextMenu={(e) => handleContextMenu(e, p)}
+                          onClick={(e) => handleUserRowClick(e, p)}
+                          style={{ cursor: canIControlTarget ? "pointer" : "default" }}
+                        >
+                          {/* Left Column: Avatar & Presence Dot */}
                           <div className="user-avatar-wrapper">
-                            {p.avatar ? (
-                              <img src={p.avatar} alt={p.username} className="user-pane-avatar" style={{ objectFit: "cover" }} />
+                            {p.user.avatar ? (
+                              <img src={p.user.avatar} alt={p.user.username} className="user-pane-avatar" style={{ objectFit: "cover" }} />
                             ) : (
-                              <div className="user-pane-avatar" style={{ backgroundColor: getCursorColor(p.username) }}>
-                                {p.username?.charAt(0)?.toUpperCase() || "U"}
+                              <div className="user-pane-avatar" style={{ backgroundColor: getCursorColor(p.user.username) }}>
+                                {p.user.username?.charAt(0)?.toUpperCase() || "U"}
                               </div>
                             )}
                             <span className={`presence-badge ${online ? "online" : "offline"}`} title={online ? "Online" : "Offline"} />
                           </div>
-                          <span className="user-pane-name">
-                            <span className="username-text">{p.username}</span>
-                            {String(p._id || p) === String(user.id) && <span className="label-you">you</span>}
-                            {String(p._id || p) === String(room.createdBy?._id || room.createdBy) && <span className="owner-badge">Owner</span>}
-                          </span>
-                          <span className={`presence-text-badge ${online ? "online" : "offline"}`}>
-                            {online ? "Online" : "Offline"}
-                          </span>
-                          {isCurrentUserOwner && !isSelf && (
-                            <button
-                              onClick={() => handleRemoveUser(p._id, p.username)}
-                              className="user-pane-remove-btn"
-                              title="Remove User"
-                            >
-                              <UserMinus size={11} />
-                              <span>Remove</span>
-                            </button>
-                          )}
+
+                          {/* Center Column: Name and Role stacked */}
+                          <div className="user-pane-info">
+                            <div className="user-pane-row">
+                              <span className="username-text" title={p.user.username}>{p.user.username}</span>
+                              {isSelf && <span className="label-you">you</span>}
+                            </div>
+                            <div className="user-pane-row">
+                              {p.role === "OWNER" && <span className="role-badge owner-badge">👑 Owner</span>}
+                              {p.role === "MODERATOR" && <span className="role-badge moderator-badge">🛡️ Mod</span>}
+                              {p.role === "MEMBER" && <span className="role-badge member-badge">👤 Member</span>}
+                              {p.role === "VIEWER" && <span className="role-badge viewer-badge">👀 Viewer</span>}
+                            </div>
+                          </div>
+
+                          {/* Right Column: Actions and Mute Status */}
+                          <div className="user-pane-actions">
+                            {p.isMuted && (
+                              <span className="user-mute-status" title="Muted">
+                                <MicOff size={11} className="mute-icon-red" />
+                              </span>
+                            )}
+                            {canIControlTarget && (
+                              <button
+                                type="button"
+                                className="user-pane-more-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUserRowClick(e, p);
+                                }}
+                                title="Manage User"
+                              >
+                                <MoreVertical size={14} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -3394,7 +3731,7 @@ function Editor() {
                         .map((msg, idx) => {
                           const isSelf = String(msg.userId) === String(user.id);
                           const isPrivateMsg = msg.username && msg.username.includes("➔");
-                          const senderObject = room?.participants?.find((p) => String(p._id) === String(msg.userId));
+                          const senderObject = room?.participants?.find((p) => String(p.user?._id || p.user) === String(msg.userId));
                           const canDelete = msg._id && (
                             String(msg.userId) === String(user.id) ||
                             msg.username === user.username ||
@@ -3404,8 +3741,8 @@ function Editor() {
                             <div key={idx} className={`chat-bubble-row ${isSelf ? "self" : ""}`}>
                               {!isSelf && (
                                 <div className="chat-avatar-wrapper-circle">
-                                  {senderObject?.avatar ? (
-                                    <img src={senderObject.avatar} alt={msg.username} className="chat-bubble-avatar-img" />
+                                  {senderObject?.user?.avatar ? (
+                                    <img src={senderObject.user.avatar} alt={msg.username} className="chat-bubble-avatar-img" />
                                   ) : (
                                     <div className="chat-bubble-avatar-initial" style={{ backgroundColor: getCursorColor(msg.username) }}>
                                       {msg.username?.charAt(0).toUpperCase()}
@@ -3846,6 +4183,130 @@ function Editor() {
               </div>
             </div>
           </div>
+        )}
+        {contextMenu && createPortal(
+          <div
+            className="ce-context-menu"
+            style={{
+              top: `${contextMenu.y}px`,
+              left: `${contextMenu.x}px`,
+              position: "fixed",
+              zIndex: 10000
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="context-menu-header">
+              <span className="context-menu-title">{contextMenu.participant.user.username}</span>
+              <span className="context-menu-subtitle">Current Role: {contextMenu.participant.role}</span>
+            </div>
+            <div className="context-menu-options">
+              {currentUserRole === "OWNER" && (
+                <>
+                  {contextMenu.participant.role === "MODERATOR" ? (
+                    <button
+                      className="context-menu-item"
+                      onClick={() => {
+                        handleActionDemote(contextMenu.participant.user._id || contextMenu.participant.user);
+                        setContextMenu(null);
+                      }}
+                    >
+                      <UserMinus size={14} />
+                      <span>Demote to Member</span>
+                    </button>
+                  ) : (
+                    <button
+                      className="context-menu-item"
+                      onClick={() => {
+                        handleActionPromote(contextMenu.participant.user._id || contextMenu.participant.user);
+                        setContextMenu(null);
+                      }}
+                    >
+                      <UserPlus size={14} />
+                      <span>Promote to Moderator</span>
+                    </button>
+                  )}
+
+                  {contextMenu.participant.role !== "MEMBER" && (
+                    <button
+                      className="context-menu-item"
+                      onClick={() => {
+                        handleActionChangeRole(contextMenu.participant.user._id || contextMenu.participant.user, "MEMBER");
+                        setContextMenu(null);
+                      }}
+                    >
+                      <User size={14} />
+                      <span>Set as Member</span>
+                    </button>
+                  )}
+
+                  {contextMenu.participant.role !== "VIEWER" && (
+                    <button
+                      className="context-menu-item"
+                      onClick={() => {
+                        handleActionChangeRole(contextMenu.participant.user._id || contextMenu.participant.user, "VIEWER");
+                        setContextMenu(null);
+                      }}
+                    >
+                      <Eye size={14} />
+                      <span>Set as Viewer</span>
+                    </button>
+                  )}
+                </>
+              )}
+
+              {currentUserRole === "MODERATOR" && (
+                <>
+                  {contextMenu.participant.role === "MEMBER" && (
+                    <button
+                      className="context-menu-item"
+                      onClick={() => {
+                        handleActionChangeRole(contextMenu.participant.user._id || contextMenu.participant.user, "VIEWER");
+                        setContextMenu(null);
+                      }}
+                    >
+                      <Eye size={14} />
+                      <span>Set as Viewer</span>
+                    </button>
+                  )}
+                  {contextMenu.participant.role === "VIEWER" && (
+                    <button
+                      className="context-menu-item"
+                      onClick={() => {
+                        handleActionChangeRole(contextMenu.participant.user._id || contextMenu.participant.user, "MEMBER");
+                        setContextMenu(null);
+                      }}
+                    >
+                      <User size={14} />
+                      <span>Set as Member</span>
+                    </button>
+                  )}
+                </>
+              )}
+
+              <button
+                className={`context-menu-item ${contextMenu.participant.isMuted ? "unmute" : "mute"}`}
+                onClick={() => {
+                  handleActionMute(contextMenu.participant.user._id || contextMenu.participant.user, !contextMenu.participant.isMuted);
+                  setContextMenu(null);
+                }}
+              >
+                <MicOff size={14} />
+                <span>{contextMenu.participant.isMuted ? "Unmute Chat" : "Mute Chat"}</span>
+              </button>
+
+              <button
+                className="context-menu-item danger"
+                onClick={() => {
+                  handleRemoveUser(contextMenu.participant.user._id || contextMenu.participant.user, contextMenu.participant.user.username);
+                  setContextMenu(null);
+                }}
+              >
+                <Trash2 size={14} />
+                <span>Kick from Room</span>
+              </button>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     </MainLayout>

@@ -212,3 +212,73 @@ export const getMySentRequests = async () => {
     );
     return response.data;
 };
+
+export const promoteUser = async (roomId, userId) => {
+    const token = localStorage.getItem("token");
+    const response = await API.post(
+        "/rooms/promote",
+        { roomId, userId },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};
+
+export const demoteUser = async (roomId, userId) => {
+    const token = localStorage.getItem("token");
+    const response = await API.post(
+        "/rooms/demote",
+        { roomId, userId },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};
+
+export const changeRole = async (roomId, userId, role) => {
+    const token = localStorage.getItem("token");
+    const response = await API.post(
+        "/rooms/role",
+        { roomId, userId, role },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};
+
+export const kickUser = async (roomId, userId) => {
+    const token = localStorage.getItem("token");
+    const response = await API.post(
+        "/rooms/kick",
+        { roomId, userId },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};
+
+export const muteUser = async (roomId, userId, mute) => {
+    const token = localStorage.getItem("token");
+    const response = await API.post(
+        "/rooms/mute",
+        { roomId, userId, mute },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};

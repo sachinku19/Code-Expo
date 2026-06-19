@@ -37,29 +37,29 @@
 }
 
 .light {
-  --ce-bg: #f0f4f9;
+  --ce-bg: #f6f8fa;
   --ce-surface: #ffffff;
-  --ce-surface-card: #e9eef6;
-  --ce-border: #dadce0;
-  --ce-border-active: #0b57d0;
-  --ce-text: #3c4043;
-  --ce-text-muted: #5f6368;
-  --ce-primary: #0b57d0;
-  --ce-primary-hover: #0842a0;
-  --ce-success: #146c2e;
-  --ce-warning: #f9ab00;
-  --ce-danger: #d93025;
-  --ce-shadow: 0 1px 3px rgba(60,64,67,0.1), 0 8px 24px rgba(60,64,67,0.08);
-  --ce-scrollbar: #dadce0;
-  --ce-hover: rgba(60, 64, 67, 0.04);
-  --ce-bg-drawer: #ffffff;
-  --ce-fog: rgba(240, 244, 249, 0.85);
-  /* Heatmap Colors (Google Light Mode) */
-  --heatmap-bg-0: #dadce0;
-  --heatmap-bg-1: #cce0ff;
-  --heatmap-bg-2: #99c2ff;
-  --heatmap-bg-3: #66a3ff;
-  --heatmap-bg-4: #0b57d0;
+  --ce-surface-card: #ffffff;
+  --ce-border: #d0d7de;
+  --ce-border-active: #0969da;
+  --ce-text: #24292f;
+  --ce-text-muted: #57606a;
+  --ce-primary: #0969da;
+  --ce-primary-hover: #0550ae;
+  --ce-success: #1a7f37;
+  --ce-warning: #9a6700;
+  --ce-danger: #cf222e;
+  --ce-shadow: 0 3px 12px rgba(140,149,159,0.12);
+  --ce-scrollbar: #d0d7de;
+  --ce-hover: rgba(208, 215, 222, 0.24);
+  --ce-bg-drawer: #f6f8fa;
+  --ce-fog: rgba(246, 248, 250, 0.85);
+  /* Heatmap Colors (GitHub Coding Light Mode) */
+  --heatmap-bg-0: #ebedf0;
+  --heatmap-bg-1: #9be9a8;
+  --heatmap-bg-2: #40c463;
+  --heatmap-bg-3: #30a14e;
+  --heatmap-bg-4: #216e39;
 }
 
 * {

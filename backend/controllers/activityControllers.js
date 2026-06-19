@@ -204,7 +204,7 @@ const getStats = async (req, res) => {
 
     // 5. Joined Rooms from start (safe lookup in participants array + historic activity distinct)
     const currentJoinedRooms = await Room.find({
-      participants: userId
+      "participants.user": userId
     });
     const currentJoinedIds = currentJoinedRooms
       .filter(room => room.createdBy.toString() !== userId.toString())

@@ -28,8 +28,24 @@ const roomSchema=new mongoose.Schema({
     
     participants:[
         {
-            type:mongoose.Schema.Types.ObjectId,
-            ref:"User"
+            user: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+                required: true
+            },
+            role: {
+                type: String,
+                enum: ["OWNER", "MODERATOR", "MEMBER", "VIEWER"],
+                default: "MEMBER"
+            },
+            isMuted: {
+                type: Boolean,
+                default: false
+            },
+            joinedAt: {
+                type: Date,
+                default: Date.now
+            }
         }
     ],
 
