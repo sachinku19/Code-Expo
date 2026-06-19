@@ -71,7 +71,8 @@ body {
 
 #root:has(.home-page),
 #root:has(.register-page),
-#root:has(.login-page) {
+#root:has(.login-page),
+#root:has(.ce-layout-wrapper) {
   width: 100%;
   max-width: 100%;
   border-inline: none;

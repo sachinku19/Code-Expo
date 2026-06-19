@@ -11,41 +11,55 @@
 
 /* Theme Tokens */
 .dark {
-  --ce-bg: #0D1117;
-  --ce-surface: #161B22;
-  --ce-surface-card: #0D1117;
-  --ce-border: #30363D;
-  --ce-border-active: #58A6FF;
-  --ce-text: #c9d1d9;
-  --ce-text-muted: #8b949e;
-  --ce-primary: #58A6FF;
-  --ce-primary-hover: #79c0ff;
-  --ce-success: #3fb950;
-  --ce-warning: #f7b500;
-  --ce-danger: #f85149;
-  --ce-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --ce-scrollbar: #30363D;
-  --ce-hover: rgba(255, 255, 255, 0.04);
-  --ce-bg-drawer: #161B22;
+  --ce-bg: #1a1a1a;
+  --ce-surface: #262626;
+  --ce-surface-card: #333333;
+  --ce-border: #3c3c3c;
+  --ce-border-active: #ffa116;
+  --ce-text: #eff2f6;
+  --ce-text-muted: #8a8a8a;
+  --ce-primary: #ffa116;
+  --ce-primary-hover: #ffb84d;
+  --ce-success: #2cbb37;
+  --ce-warning: #ffa116;
+  --ce-danger: #ef4444;
+  --ce-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --ce-scrollbar: #3c3c3c;
+  --ce-hover: rgba(255, 255, 255, 0.05);
+  --ce-bg-drawer: #262626;
+  --ce-fog: rgba(26, 26, 26, 0.85);
+  /* Heatmap Colors (LeetCode Orange/Gold Mode) */
+  --heatmap-bg-0: #222222;
+  --heatmap-bg-1: rgba(255, 161, 22, 0.15);
+  --heatmap-bg-2: rgba(255, 161, 22, 0.4);
+  --heatmap-bg-3: rgba(255, 161, 22, 0.7);
+  --heatmap-bg-4: #ffa116;
 }
 
 .light {
-  --ce-bg: #FFFFFF;
-  --ce-surface: #F6F8FA;
-  --ce-surface-card: #FFFFFF;
-  --ce-border: #D0D7DE;
-  --ce-border-active: #0969DA;
-  --ce-text: #24292F;
-  --ce-text-muted: #57606A;
-  --ce-primary: #0969DA;
-  --ce-primary-hover: #0a73ec;
-  --ce-success: #1a7f37;
-  --ce-warning: #9a6700;
-  --ce-danger: #d1242f;
-  --ce-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --ce-scrollbar: #D0D7DE;
-  --ce-hover: rgba(0, 0, 0, 0.04);
-  --ce-bg-drawer: #FFFFFF;
+  --ce-bg: #f0f4f9;
+  --ce-surface: #ffffff;
+  --ce-surface-card: #e9eef6;
+  --ce-border: #dadce0;
+  --ce-border-active: #0b57d0;
+  --ce-text: #3c4043;
+  --ce-text-muted: #5f6368;
+  --ce-primary: #0b57d0;
+  --ce-primary-hover: #0842a0;
+  --ce-success: #146c2e;
+  --ce-warning: #f9ab00;
+  --ce-danger: #d93025;
+  --ce-shadow: 0 1px 3px rgba(60,64,67,0.1), 0 8px 24px rgba(60,64,67,0.08);
+  --ce-scrollbar: #dadce0;
+  --ce-hover: rgba(60, 64, 67, 0.04);
+  --ce-bg-drawer: #ffffff;
+  --ce-fog: rgba(240, 244, 249, 0.85);
+  /* Heatmap Colors (Google Light Mode) */
+  --heatmap-bg-0: #dadce0;
+  --heatmap-bg-1: #cce0ff;
+  --heatmap-bg-2: #99c2ff;
+  --heatmap-bg-3: #66a3ff;
+  --heatmap-bg-4: #0b57d0;
 }
 
 * {
@@ -668,11 +682,12 @@ body {
   border-top: 1px solid var(--ce-border);
 }
 
-/* MAIN CONTENT CONTAINER */
 .ce-main-content {
   flex: 1;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
   scrollbar-gutter: stable;
   background-color: var(--ce-bg);
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1211,4 +1226,125 @@ body {
   color: var(--ce-text-muted);
   margin-left: auto;
   pointer-events: none;
+}
+
+/* ==========================================================================
+   Creative & Expressive Icon Animations
+   ========================================================================== */
+
+/* Base transitions for all Lucide SVG icons */
+svg.lucide {
+  transition: transform var(--transition-smooth, 0.35s cubic-bezier(0.2, 0, 0, 1)), 
+              color var(--transition-fast, 0.2s cubic-bezier(0.2, 0, 0, 1)), 
+              fill var(--transition-fast, 0.2s cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* 1. Settings / Cog Rotation */
+.sidebar-nav-btn:hover svg.lucide-settings,
+.settings-tab-btn:hover svg.lucide-settings,
+button:hover svg.lucide-settings,
+a:hover svg.lucide-settings {
+  transform: rotate(90deg);
+}
+
+/* 2. Heart / Like Pulse Beat */
+.ce-like-btn-animated:hover svg.lucide-heart,
+button:hover svg.lucide-heart {
+  animation: heartPulse 1.2s infinite ease-in-out;
+}
+@keyframes heartPulse {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.3); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.3); }
+  70% { transform: scale(1); }
+}
+
+/* 3. Notification Bell Wiggle */
+.sidebar-nav-btn:hover svg.lucide-bell,
+button:hover svg.lucide-bell,
+a:hover svg.lucide-bell {
+  animation: bellWiggle 0.8s ease-in-out;
+  transform-origin: top center;
+}
+@keyframes bellWiggle {
+  0% { transform: rotate(0); }
+  15% { transform: rotate(15deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-8deg); }
+  75% { transform: rotate(4deg); }
+  100% { transform: rotate(0); }
+}
+
+/* 4. Chevron / Arrow Right Slide */
+.resume-btn-new:hover svg.lucide-chevron-right,
+button:hover svg.lucide-chevron-right,
+.btn:hover svg.lucide-chevron-right {
+  transform: translateX(4px);
+}
+.room-enter-btn-action:hover svg.lucide-chevron-right {
+  transform: translateX(4px);
+}
+
+/* 5. Sparkles / Stars Scaling Glow */
+.achievement-badge-card:hover svg.lucide-sparkles,
+.achievement-badge-card:hover svg.lucide-terminal,
+.achievement-badge-card:hover svg.lucide-users,
+.sidebar-nav-btn:hover svg.lucide-star,
+button:hover svg.lucide-star {
+  transform: scale(1.3) rotate(10deg);
+  filter: drop-shadow(0 0 6px var(--ce-primary));
+}
+
+/* 6. Plus / PlusCircle Rotate and Scale */
+button:hover svg.lucide-plus,
+.form-card-header:hover svg.lucide-plus,
+button:hover svg.lucide-plus-circle {
+  transform: rotate(90deg) scale(1.2);
+}
+
+/* 7. LogIn / LogOut Slide Directional */
+button:hover svg.lucide-log-in {
+  transform: translateX(4px);
+}
+button:hover svg.lucide-log-out {
+  transform: translateX(-4px);
+}
+
+/* 8. User / Users Stack Shuffle */
+.members-interactive-wrapper:hover svg.lucide-users,
+.sidebar-nav-btn:hover svg.lucide-user,
+.sidebar-nav-btn:hover svg.lucide-users {
+  transform: scale(1.15) translateY(-1px);
+}
+
+/* 9. General default hover interaction for other icons */
+.sidebar-nav-btn:hover svg.lucide:not(.lucide-settings):not(.lucide-bell):not(.lucide-star):not(.lucide-log-out):not(.lucide-user):not(.lucide-users),
+button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bell):not(.lucide-chevron-right):not(.lucide-plus):not(.lucide-log-in):not(.lucide-log-out):not(.lucide-users) {
+  transform: scale(1.2) rotate(4deg);
+}
+
+/* Smooth Page & Dashboard Tab Transitions */
+.dashboard-home-section,
+.rooms-section-container,
+.history-section-container,
+.whiteboards-section-container,
+.notifications-section-container,
+.profile-section-container,
+.settings-section-container,
+.helpdesk-section-container,
+.ce-main-content > * {
+  animation: fadeInPage var(--transition-smooth, 0.35s cubic-bezier(0.2, 0, 0, 1)) forwards;
+}
+
+@keyframes fadeInPage {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getUserProfile } from "../services/authService";
-import { getUserRoomsHistory, getActivityFeed } from "../services/roomService";
+import { getUserRoomsHistory, getActivityFeed, joinRoom } from "../services/roomService";
 import {
   getFollowers,
   getFollowing,
@@ -16,7 +17,7 @@ import {
 import { updateUserProfile } from "../services/userService";
 import {
   X, Heart, Bookmark, Users, Sparkles, Terminal,
-  Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft
+  Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn
 } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
 import "./Profile.css";
@@ -24,7 +25,9 @@ import "./Profile.css";
 const Profile = () => {
   const navigate = useNavigate();
   const { user: authUser, setUser: setAuthUser } = useAuth();
+  const pendingLikesRef = useRef(new Set());
 
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
   const [historyRooms, setHistoryRooms] = useState([]);
   const [likedRooms, setLikedRooms] = useState([]);
@@ -46,6 +49,9 @@ const Profile = () => {
   const [profileTab, setProfileTab] = useState("rooms");
   const [copiedId, setCopiedId] = useState(null);
   const [toasts, setToasts] = useState([]);
+  const [showJoinConfirmModal, setShowJoinConfirmModal] = useState(false);
+  const [joinTargetRoom, setJoinTargetRoom] = useState(null);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
   const addToast = (message, type = "success") => {
     const id = Date.now() + Math.random().toString(36).substr(2, 9);
@@ -101,6 +107,7 @@ const Profile = () => {
   };
 
   const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
     try {
       const res = await updateUserProfile({
         bio: bioInput,
@@ -116,6 +123,8 @@ const Profile = () => {
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -220,6 +229,9 @@ const Profile = () => {
   };
 
   const handleLikeRoom = async (roomId) => {
+    if (pendingLikesRef.current.has(roomId)) return;
+    pendingLikesRef.current.add(roomId);
+
     setAnimatingLikes(prev => ({ ...prev, [roomId]: true }));
     setTimeout(() => {
       setAnimatingLikes(prev => ({ ...prev, [roomId]: false }));
@@ -272,6 +284,8 @@ const Profile = () => {
       setLikedRooms(prevLikedRooms);
       setHistoryRooms(prevHistoryRooms);
       setSavedRooms(prevSavedRooms);
+    } finally {
+      pendingLikesRef.current.delete(roomId);
     }
   };
 
@@ -305,6 +319,28 @@ const Profile = () => {
       // Rollback on failure
       setSavedRooms(prevSavedRooms);
     }
+  };
+
+  const proceedJoinRoom = async (targetRoomId) => {
+    try {
+      const data = await joinRoom(targetRoomId);
+      if (data.requiresApproval) {
+        alert("Join request sent to room owner for approval");
+        return;
+      }
+      navigate(`/editor/${targetRoomId}`);
+    } catch (error) {
+      alert(error.response?.data?.message || error.message);
+    }
+  };
+
+  const handleJoinRoomDirect = (targetRoomId) => {
+    const room = historyRooms.find(r => r.roomId === targetRoomId) ||
+      likedRooms.find(r => r.roomId === targetRoomId) ||
+      savedRooms.find(r => r.roomId === targetRoomId) ||
+      { roomId: targetRoomId, title: "Workspace Room" };
+    setJoinTargetRoom(room);
+    setShowJoinConfirmModal(true);
   };
 
   const getAvatarColor = (name) => {
@@ -375,7 +411,7 @@ const Profile = () => {
   };
 
   if (!profileUser) {
-    return <div className="profile-loading" style={{ color: "var(--ce-text)", textAlign: "center", padding: "100px" }}>Loading Portfolio profile...</div>;
+    return <div className="profile-loading">Loading Portfolio profile...</div>;
   }
 
   const myCreatedRooms = historyRooms.filter(
@@ -383,90 +419,82 @@ const Profile = () => {
   );
 
   return (
-    <div className="profile-page-main-wrapper" style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto", minHeight: "100vh" }}>
-      <div className="profile-page-header-nav" style={{ marginBottom: "20px" }}>
-        <button onClick={() => navigate("/dashboard")} className="profile-back-btn" style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", color: "var(--ce-primary)", cursor: "pointer", fontWeight: "600", fontSize: "0.9rem" }}>
+    <div className="profile-page-main-wrapper">
+      <div className="profile-page-header-nav">
+        <button onClick={() => navigate("/dashboard")} className="profile-back-btn">
           <ArrowLeft size={16} /> Back to Dashboard
         </button>
       </div>
 
       <div className="profile-container">
-        <div className="github-profile-layout" style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "24px", width: "100%" }}>
+        <div className="github-profile-layout">
 
           {/* Profile Sidebar */}
-          <div className="profile-sidebar-card" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div className="profile-sidebar-card">
             <ProfileAvatar />
-            <h2 style={{ fontSize: "1.3rem", fontWeight: "700", color: "var(--ce-text)", marginTop: "12px", marginBottom: "2px" }}>{profileUser.username}</h2>
-            <span className="profile-email" style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", marginBottom: "12px" }}>{profileUser.email}</span>
+            <h2>{profileUser.username}</h2>
+            <span className="profile-email">{profileUser.email}</span>
             <span
               className="profile-badge"
-              style={{
-                fontSize: "0.7rem",
-                padding: "2px 8px",
-                borderRadius: "12px",
-                fontWeight: "700",
-                ...getBadgeStyle(profileUser.title)
-              }}
+              style={getBadgeStyle(profileUser.title)}
             >
               {profileUser.title || "Developer"}
             </span>
 
-            <div className="profile-social-stats" style={{ display: "flex", gap: "16px", marginTop: "20px", borderTop: "1px solid var(--ce-border)", borderBottom: "1px solid var(--ce-border)", width: "100%", padding: "12px 0", justifyContent: "space-around" }}>
-              <div className="profile-stat-click" onClick={() => setShowFollowersModal(true)} style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer" }}>
-                <strong style={{ fontSize: "1.05rem", color: "var(--ce-text)" }}>{profileUser.followersCount || 0}</strong>
-                <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>Followers</span>
+            <div className="profile-social-stats">
+              <div className="profile-stat-click" onClick={() => setShowFollowersModal(true)}>
+                <strong>{profileUser.followersCount || 0}</strong>
+                <span>Followers</span>
               </div>
-              <div className="profile-stat-click" onClick={() => setShowFollowingModal(true)} style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer" }}>
-                <strong style={{ fontSize: "1.05rem", color: "var(--ce-text)" }}>{profileUser.followingCount || 0}</strong>
-                <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>Following</span>
+              <div className="profile-stat-click" onClick={() => setShowFollowingModal(true)}>
+                <strong>{profileUser.followingCount || 0}</strong>
+                <span>Following</span>
               </div>
             </div>
 
             {isEditingProfile ? (
-              <div className="profile-edit-form-card" style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", marginTop: "16px" }}>
-                <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Bio</label>
+              <div className="profile-edit-form-card">
+                <div className="form-field">
+                  <label>Bio</label>
                   <textarea
                     value={bioInput}
                     onChange={(e) => setBioInput(e.target.value)}
                     placeholder="Write a bio..."
-                    style={{ width: "100%", minHeight: "60px", background: "rgba(128, 128, 128, 0.08)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem", resize: "none" }}
                   />
                 </div>
-                <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Languages</label>
+                <div className="form-field">
+                  <label>Languages</label>
                   <input
                     type="text"
                     value={langsInput}
                     onChange={(e) => setLangsInput(e.target.value)}
                     placeholder="e.g. JavaScript, Python"
-                    style={{ width: "100%", background: "rgba(128, 128, 128, 0.08)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
                   />
                 </div>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <button className="profile-edit-save-btn" onClick={handleSaveProfile} style={{ flex: 1, padding: "6px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "600" }}>
-                    Save
+                  <button className="profile-edit-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile}>
+                    {isSavingProfile ? "Saving..." : "Save"}
                   </button>
-                  <button className="profile-edit-cancel-btn" onClick={() => setIsEditingProfile(false)} style={{ flex: 1, padding: "6px", background: "rgba(128, 128, 128, 0.12)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" }}>
+                  <button className="profile-edit-cancel-btn" onClick={() => setIsEditingProfile(false)}>
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
               <div style={{ width: "100%" }}>
-                <p className="profile-bio-text" style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", marginTop: "16px", textAlign: "center", fontStyle: "italic", lineHeight: "1.4" }}>
+                <p className="profile-bio-text">
                   {profileUser.bio || "No bio set yet. Write something about your developer experience!"}
                 </p>
                 {profileUser.programmingLanguages?.length > 0 && (
-                  <div className="profile-languages-chips" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "12px", justifyContent: "center" }}>
+                  <div className="profile-languages-chips">
                     {profileUser.programmingLanguages.map(lang => (
-                      <span key={lang} className="lang-chip-badge" style={{ fontSize: "0.62rem", padding: "2px 6px", background: "rgba(88, 166, 255, 0.08)", color: "var(--ce-primary)", borderRadius: "4px", border: "1px solid rgba(88, 166, 255, 0.15)", fontWeight: "600" }}>
+                      <span key={lang} className="lang-chip-badge">
                         {lang}
                       </span>
                     ))}
                   </div>
                 )}
-                <button className="profile-edit-trigger-btn" onClick={startEditingProfile} style={{ width: "100%", marginTop: "20px", padding: "8px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}>
+                <button className="profile-edit-trigger-btn" onClick={startEditingProfile}>
                   Edit Profile
                 </button>
               </div>
@@ -474,29 +502,41 @@ const Profile = () => {
           </div>
 
           {/* Main profile content */}
-          <div className="profile-main-body" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div className="profile-main-body">
 
             {/* Heatmap Widget */}
-            <div className="profile-sec-card" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "16px" }}>
-              <h3 style={{ display: "flex", justifyContent: "space-between", margin: "0 0 12px 0", fontSize: "0.92rem", fontWeight: "600" }}>
+            <div className="profile-sec-card">
+              <h3>
                 <span>Contribution Heatmap Stats</span>
-                <span style={{ fontSize: "0.72rem", fontWeight: "normal", color: "var(--ce-text-muted)" }}>Last 52 Days</span>
+                <span className="heatmap-subtext">Last 52 Days</span>
               </h3>
               <div className="mock-heatmap-grid">
-                {Array.from({ length: 52 }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="heatmap-box level-0"
-                    title="0 activities logged"
-                  />
-                ))}
+                {Array.from({ length: 52 }).map((_, idx) => {
+                  const levelVal = idx % 7 === 0 ? 3 : idx % 5 === 0 ? 2 : idx % 11 === 0 ? 4 : idx % 3 === 0 ? 1 : 0;
+                  const pts = levelVal * 15;
+                  const d = new Date();
+                  d.setDate(d.getDate() - (51 - idx));
+                  const dateString = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+                  return (
+                    <div
+                      key={idx}
+                      className={`heatmap-box level-${levelVal}`}
+                    >
+                      <div className="heatmap-tooltip">
+                        <span className="tooltip-pts">{pts} contributions</span>
+                        <span className="tooltip-date">on {dateString}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="heatmap-legend" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px", fontSize: "0.68rem", color: "var(--ce-text-muted)", marginTop: "8px" }}>
+              <div className="heatmap-legend">
                 <span>Less</span>
                 <div className="heatmap-box level-0" />
                 <div className="heatmap-box level-1" />
                 <div className="heatmap-box level-2" />
                 <div className="heatmap-box level-3" />
+                <div className="heatmap-box level-4" />
                 <span>More</span>
               </div>
             </div>
@@ -521,60 +561,122 @@ const Profile = () => {
             </div>
 
             {/* Tabs details */}
-            <div className="profile-tabs-container" style={{ marginTop: "12px" }}>
-              <div className="profile-tabs-header" style={{ display: "flex", gap: "16px", borderBottom: "1px solid var(--ce-border)", paddingBottom: "8px", marginBottom: "16px" }}>
-                <button className={`profile-tab-btn ${profileTab === "rooms" ? "active" : ""}`} onClick={() => setProfileTab("rooms")} style={{ background: "none", border: "none", color: profileTab === "rooms" ? "var(--ce-primary)" : "var(--ce-text-muted)", fontWeight: "600", fontSize: "0.85rem", paddingBottom: "6px", borderBottom: profileTab === "rooms" ? "2px solid var(--ce-primary)" : "none", cursor: "pointer", outline: "none" }}>
-                  My Rooms ({myCreatedRooms.length})
-                </button>
-                <button className={`profile-tab-btn ${profileTab === "liked" ? "active" : ""}`} onClick={() => setProfileTab("liked")} style={{ background: "none", border: "none", color: profileTab === "liked" ? "var(--ce-primary)" : "var(--ce-text-muted)", fontWeight: "600", fontSize: "0.85rem", paddingBottom: "6px", borderBottom: profileTab === "liked" ? "2px solid var(--ce-primary)" : "none", cursor: "pointer", outline: "none" }}>
-                  Liked ({likedRooms.length})
-                </button>
-                <button className={`profile-tab-btn ${profileTab === "saved" ? "active" : ""}`} onClick={() => setProfileTab("saved")} style={{ background: "none", border: "none", color: profileTab === "saved" ? "var(--ce-primary)" : "var(--ce-text-muted)", fontWeight: "600", fontSize: "0.85rem", paddingBottom: "6px", borderBottom: profileTab === "saved" ? "2px solid var(--ce-primary)" : "none", cursor: "pointer", outline: "none" }}>
-                  Saved ({savedRooms.length})
-                </button>
-                <button className={`profile-tab-btn ${profileTab === "activity" ? "active" : ""}`} onClick={() => setProfileTab("activity")} style={{ background: "none", border: "none", color: profileTab === "activity" ? "var(--ce-primary)" : "var(--ce-text-muted)", fontWeight: "600", fontSize: "0.85rem", paddingBottom: "6px", borderBottom: profileTab === "activity" ? "2px solid var(--ce-primary)" : "none", cursor: "pointer", outline: "none" }}>
-                  Recent Logs
-                </button>
+            <div className="profile-tabs-container">
+              {/* Segmented Pill Switcher with Round Sliding Background */}
+              <div className="ce-pill-switcher-container">
+                <div className="ce-pill-switcher" style={{ maxWidth: "680px" }}>
+                  <div
+                    className="ce-pill-bg-slide"
+                    style={{
+                      width: "calc(25% - 2px)",
+                      transform: `translateX(${(profileTab === "rooms" ? 0 : profileTab === "liked" ? 1 : profileTab === "saved" ? 2 : 3) * 100}%)`
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className={`ce-pill-btn ${profileTab === "rooms" ? "active" : ""}`}
+                    onClick={() => setProfileTab("rooms")}
+                  >
+                    My Rooms ({myCreatedRooms.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`ce-pill-btn ${profileTab === "liked" ? "active" : ""}`}
+                    onClick={() => setProfileTab("liked")}
+                  >
+                    Liked ({likedRooms.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`ce-pill-btn ${profileTab === "saved" ? "active" : ""}`}
+                    onClick={() => setProfileTab("saved")}
+                  >
+                    Saved ({savedRooms.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`ce-pill-btn ${profileTab === "activity" ? "active" : ""}`}
+                    onClick={() => setProfileTab("activity")}
+                  >
+                    Recent Logs
+                  </button>
+                </div>
               </div>
 
               <div className="profile-tab-content">
                 {profileTab === "rooms" && (
-                  <div className="profile-rooms-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px", alignItems: "start" }}>
+                  <div className="profile-rooms-grid">
                     {myCreatedRooms.length === 0 ? (
-                      <p style={{ color: "var(--ce-text-muted)", fontSize: "0.78rem" }}>No rooms created yet.</p>
+                      <p className="profile-rooms-empty-msg">No rooms created yet.</p>
                     ) : (
                       myCreatedRooms.map(room => (
-                        <div key={room.roomId} className="profile-room-card" onClick={() => navigate(`/editor/${room.roomId}`)} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "12px", cursor: "pointer", position: "relative" }}>
-                          <span className="room-lang-badge" style={{ float: "right", fontSize: "0.62rem", padding: "1px 5px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
-                          <h4 style={{ margin: "0 0 6px 0", color: "var(--ce-text)", fontSize: "0.82rem" }}>🚀 {room.title}</h4>
-                          <p style={{ margin: "0", fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>ID: {room.roomId}</p>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
-                            <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>{new Date(room.createdAt).toLocaleDateString()}</span>
-                            <div style={{ display: "flex", gap: "6px" }} onClick={e => e.stopPropagation()}>
+                        <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                          <div className="profile-room-card-header">
+                            <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                            <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                          </div>
+                          <p className="profile-room-card-id">ID: {room.roomId}</p>
+                          <div className="profile-room-card-footer">
+                            <div className="profile-room-card-footer-left">
+                              <span className="profile-room-card-date">{new Date(room.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
+                              {room.likedBy && room.likedBy.length > 0 && (
+                                <div className="card-likes-avatars-stack">
+                                  {room.likedBy.slice(0, 3).map((u, i) => (
+                                    <div
+                                      key={i}
+                                      className="avatar-stack-item"
+                                      style={{
+                                        marginLeft: i > 0 ? "-6px" : "0",
+                                        zIndex: 10 - i
+                                      }}
+                                    >
+                                      {u.avatar ? (
+                                        <img src={u.avatar} alt={u.username} />
+                                      ) : (
+                                        <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                          {(u.username || "D").charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {room.likedBy.length > 3 && (
+                                    <span className="avatar-stack-more">
+                                      +{room.likedBy.length - 3}
+                                    </span>
+                                  )}
+                                  <div className="likes-tooltip">
+                                    <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                    <div className="likes-tooltip-list">
+                                      {room.likedBy.map((u, idx) => (
+                                        <div key={idx} className="likes-tooltip-user">
+                                          {u.avatar ? (
+                                            <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                          ) : (
+                                            <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                              {(u.username || "D").charAt(0).toUpperCase()}
+                                            </div>
+                                          )}
+                                          <span className="likes-tooltip-username">{u.username}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                               <button
-                                className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""}`}
+                                type="button"
+                                className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
                                 onClick={() => handleLikeRoom(room.roomId)}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  color: isRoomLiked(room.roomId) ? "var(--ce-danger, #f85149)" : "var(--ce-text)",
-                                  padding: "2px",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "4px",
-                                  transition: "color 0.35s ease, transform 0.2s ease"
-                                }}
                               >
                                 <Heart
                                   size={12}
                                   fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                  style={{
-                                    transition: "fill 0.35s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s ease"
-                                  }}
                                 />
+                                <span className="like-count-text">{room.likesCount || 0}</span>
                               </button>
-                              <button onClick={() => handleBookmarkRoom(room.roomId)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ce-text-muted)", padding: "2px" }}><Bookmark size={12} /></button>
+                              <button className="profile-room-bookmark-btn" onClick={() => handleBookmarkRoom(room.roomId)}><Bookmark size={12} /></button>
                             </div>
                           </div>
                         </div>
@@ -584,40 +686,78 @@ const Profile = () => {
                 )}
 
                 {profileTab === "liked" && (
-                  <div className="profile-rooms-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px", alignItems: "start" }}>
+                  <div className="profile-rooms-grid">
                     {likedRooms.length === 0 ? (
-                      <p style={{ color: "var(--ce-text-muted)", fontSize: "0.78rem" }}>No liked rooms.</p>
+                      <p className="profile-rooms-empty-msg">No liked rooms.</p>
                     ) : (
                       likedRooms.map(room => (
-                        <div key={room.roomId} className="profile-room-card" onClick={() => navigate(`/editor/${room.roomId}`)} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "12px", cursor: "pointer" }}>
-                          <span className="room-lang-badge" style={{ float: "right", fontSize: "0.62rem", padding: "1px 5px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
-                          <h4 style={{ margin: "0 0 6px 0", color: "var(--ce-text)", fontSize: "0.82rem" }}>🚀 {room.title}</h4>
-                          <p style={{ margin: "0", fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>By {room.createdBy?.username || "Developer"}</p>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
-                            <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>Liked</span>
-                            <button
-                              className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""}`}
-                              onClick={(e) => { e.stopPropagation(); handleLikeRoom(room.roomId); }}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                cursor: "pointer",
-                                color: "var(--ce-danger, #f85149)",
-                                padding: "2px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                transition: "color 0.35s ease, transform 0.2s ease"
-                              }}
-                            >
-                              <Heart
-                                size={12}
-                                fill="currentColor"
-                                style={{
-                                  transition: "fill 0.35s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s ease"
-                                }}
-                              />
-                            </button>
+                        <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                          <div className="profile-room-card-header">
+                            <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                            <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                          </div>
+                          <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
+                          <div className="profile-room-card-footer">
+                            <div className="profile-room-card-footer-left">
+                              <span className="profile-room-card-status-text">Liked</span>
+                            </div>
+                            <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
+                              {room.likedBy && room.likedBy.length > 0 && (
+                                <div className="card-likes-avatars-stack">
+                                  {room.likedBy.slice(0, 3).map((u, i) => (
+                                    <div
+                                      key={i}
+                                      className="avatar-stack-item"
+                                      style={{
+                                        marginLeft: i > 0 ? "-6px" : "0",
+                                        zIndex: 10 - i
+                                      }}
+                                    >
+                                      {u.avatar ? (
+                                        <img src={u.avatar} alt={u.username} />
+                                      ) : (
+                                        <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                          {(u.username || "D").charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {room.likedBy.length > 3 && (
+                                    <span className="avatar-stack-more">
+                                      +{room.likedBy.length - 3}
+                                    </span>
+                                  )}
+                                  <div className="likes-tooltip">
+                                    <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                    <div className="likes-tooltip-list">
+                                      {room.likedBy.map((u, idx) => (
+                                        <div key={idx} className="likes-tooltip-user">
+                                          {u.avatar ? (
+                                            <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                          ) : (
+                                            <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                              {(u.username || "D").charAt(0).toUpperCase()}
+                                            </div>
+                                          )}
+                                          <span className="likes-tooltip-username">{u.username}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                onClick={() => handleLikeRoom(room.roomId)}
+                              >
+                                <Heart
+                                  size={12}
+                                  fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                />
+                                <span className="like-count-text">{room.likesCount || 0}</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))
@@ -626,18 +766,79 @@ const Profile = () => {
                 )}
 
                 {profileTab === "saved" && (
-                  <div className="profile-rooms-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px", alignItems: "start" }}>
+                  <div className="profile-rooms-grid">
                     {savedRooms.length === 0 ? (
-                      <p style={{ color: "var(--ce-text-muted)", fontSize: "0.78rem" }}>No bookmarked rooms.</p>
+                      <p className="profile-rooms-empty-msg">No bookmarked rooms.</p>
                     ) : (
                       savedRooms.map(room => (
-                        <div key={room.roomId} className="profile-room-card" onClick={() => navigate(`/editor/${room.roomId}`)} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "12px", cursor: "pointer" }}>
-                          <span className="room-lang-badge" style={{ float: "right", fontSize: "0.62rem", padding: "1px 5px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
-                          <h4 style={{ margin: "0 0 6px 0", color: "var(--ce-text)", fontSize: "0.82rem" }}>🚀 {room.title}</h4>
-                          <p style={{ margin: "0", fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>By {room.createdBy?.username || "Developer"}</p>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
-                            <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>Saved</span>
-                            <button onClick={(e) => { e.stopPropagation(); handleBookmarkRoom(room.roomId); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ce-primary, #58a6ff)", padding: "2px" }}><Bookmark size={12} fill="currentColor" /></button>
+                        <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                          <div className="profile-room-card-header">
+                            <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                            <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                          </div>
+                          <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
+                          <div className="profile-room-card-footer">
+                            <div className="profile-room-card-footer-left">
+                              <span className="profile-room-card-status-text">Saved</span>
+                            </div>
+                            <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
+                              {room.likedBy && room.likedBy.length > 0 && (
+                                <div className="card-likes-avatars-stack">
+                                  {room.likedBy.slice(0, 3).map((u, i) => (
+                                    <div
+                                      key={i}
+                                      className="avatar-stack-item"
+                                      style={{
+                                        marginLeft: i > 0 ? "-6px" : "0",
+                                        zIndex: 10 - i
+                                      }}
+                                    >
+                                      {u.avatar ? (
+                                        <img src={u.avatar} alt={u.username} />
+                                      ) : (
+                                        <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                          {(u.username || "D").charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {room.likedBy.length > 3 && (
+                                    <span className="avatar-stack-more">
+                                      +{room.likedBy.length - 3}
+                                    </span>
+                                  )}
+                                  <div className="likes-tooltip">
+                                    <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                    <div className="likes-tooltip-list">
+                                      {room.likedBy.map((u, idx) => (
+                                        <div key={idx} className="likes-tooltip-user">
+                                          {u.avatar ? (
+                                            <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                          ) : (
+                                            <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                              {(u.username || "D").charAt(0).toUpperCase()}
+                                            </div>
+                                          )}
+                                          <span className="likes-tooltip-username">{u.username}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                onClick={() => handleLikeRoom(room.roomId)}
+                              >
+                                <Heart
+                                  size={12}
+                                  fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                />
+                                <span className="like-count-text">{room.likesCount || 0}</span>
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); handleBookmarkRoom(room.roomId); }} className="profile-room-bookmark-btn active"><Bookmark size={12} fill="currentColor" /></button>
+                            </div>
                           </div>
                         </div>
                       ))
@@ -646,14 +847,14 @@ const Profile = () => {
                 )}
 
                 {profileTab === "activity" && (
-                  <div className="profile-activity-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div className="profile-activity-list">
                     {activities.filter(a => String(a.username) === String(profileUser.username)).length === 0 ? (
-                      <p style={{ color: "var(--ce-text-muted)", fontSize: "0.78rem" }}>No recent activity logged.</p>
+                      <p className="profile-rooms-empty-msg">No recent activity logged.</p>
                     ) : (
                       activities.filter(a => String(a.username) === String(profileUser.username)).slice(0, 10).map(act => (
-                        <div key={act._id} className="profile-activity-item" style={{ padding: "10px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "6px", fontSize: "0.75rem", color: "var(--ce-text-muted)", display: "flex", justifyContent: "space-between" }}>
+                        <div key={act._id} className="profile-activity-item">
                           <span>You {act.action} room <strong>{act.roomTitle}</strong></span>
-                          <span style={{ fontSize: "0.68rem" }}>{formatLastActive(act.timestamp)}</span>
+                          <span className="activity-time-text">{formatLastActive(act.timestamp)}</span>
                         </div>
                       ))
                     )}
@@ -668,9 +869,9 @@ const Profile = () => {
       </div>
 
       {/* Followers list modal */}
-      {showFollowersModal && (
-        <div className="ce-modal-overlay" onClick={() => setShowFollowersModal(false)} style={{ zIndex: 10000 }}>
-          <div className="ce-modal-card" onClick={(e) => e.stopPropagation()} style={{ width: "400px", maxWidth: "90%" }}>
+      {showFollowersModal && createPortal(
+        <div className="ce-modal-overlay" onClick={() => setShowFollowersModal(false)}>
+          <div className="ce-modal-card" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close-btn" onClick={() => setShowFollowersModal(false)}>
               <X size={18} />
             </button>
@@ -678,47 +879,38 @@ const Profile = () => {
               <span className="modal-label-tag">Social Graph</span>
               <h3 className="modal-title-new">Followers ({followersList.length})</h3>
             </div>
-            <div className="modal-members-section" style={{ marginTop: "16px" }}>
-              <div className="members-list-scrollable" style={{ maxHeight: "300px" }}>
+            <div className="modal-members-section">
+              <div className="members-list-scrollable">
                 {followersList.length === 0 ? (
-                  <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", textAlign: "center", padding: "16px" }}>No followers yet.</p>
+                  <p className="modal-empty-msg">No followers yet.</p>
                 ) : (
                   followersList.map(item => {
                     const isFollowingUser = followingList.some(f => String(f._id || f) === String(item._id));
                     return (
-                      <div key={item._id} className="modal-member-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "6px", marginBottom: "6px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1 }}>
+                      <div key={item._id} className="modal-member-card">
+                        <div className="modal-member-info">
                           {item.avatar ? (
-                            <img src={item.avatar} alt={item.username} style={{ width: "24px", height: "24px", borderRadius: "50%", objectFit: "cover" }} />
+                            <img src={item.avatar} alt={item.username} className="modal-member-avatar-img" />
                           ) : (
-                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(item.username), fontSize: "0.7rem", fontWeight: "600", color: "#fff" }}>
+                            <div className="modal-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username) }}>
                               {item.username.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                            <span style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.username}</span>
-                            <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.bio || "No bio"}</span>
+                          <div className="modal-member-meta">
+                            <span className="modal-member-name">{item.username}</span>
+                            <span className="modal-member-bio">{item.bio || "No bio"}</span>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: "6px" }}>
+                        <div className="modal-member-actions">
                           <button
                             onClick={() => handleFollowToggle(item._id)}
-                            style={{
-                              padding: "4px 8px",
-                              background: isFollowingUser ? "rgba(255, 255, 255, 0.05)" : "rgba(88, 166, 255, 0.1)",
-                              border: isFollowingUser ? "1px solid var(--ce-border)" : "1px solid rgba(88, 166, 255, 0.2)",
-                              borderRadius: "4px",
-                              color: isFollowingUser ? "var(--ce-text-muted)" : "var(--ce-primary)",
-                              fontSize: "0.7rem",
-                              cursor: "pointer",
-                              fontWeight: "600"
-                            }}
+                            className={`modal-follow-btn ${isFollowingUser ? "following" : "follow-back"}`}
                           >
                             {isFollowingUser ? "Following" : "Follow Back"}
                           </button>
                           <button
                             onClick={() => handleRemoveFollower(item._id)}
-                            style={{ padding: "4px 8px", background: "rgba(248, 81, 73, 0.1)", border: "1px solid rgba(248, 81, 73, 0.2)", borderRadius: "4px", color: "var(--ce-danger, #f85149)", fontSize: "0.7rem", cursor: "pointer", fontWeight: "600" }}
+                            className="modal-remove-btn"
                           >
                             Remove
                           </button>
@@ -730,13 +922,14 @@ const Profile = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Following list modal */}
-      {showFollowingModal && (
-        <div className="ce-modal-overlay" onClick={() => setShowFollowingModal(false)} style={{ zIndex: 10000 }}>
-          <div className="ce-modal-card" onClick={(e) => e.stopPropagation()} style={{ width: "400px", maxWidth: "90%" }}>
+      {showFollowingModal && createPortal(
+        <div className="ce-modal-overlay" onClick={() => setShowFollowingModal(false)}>
+          <div className="ce-modal-card" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close-btn" onClick={() => setShowFollowingModal(false)}>
               <X size={18} />
             </button>
@@ -744,40 +937,31 @@ const Profile = () => {
               <span className="modal-label-tag">Social Graph</span>
               <h3 className="modal-title-new">Following ({followingList.length})</h3>
             </div>
-            <div className="modal-members-section" style={{ marginTop: "16px" }}>
-              <div className="members-list-scrollable" style={{ maxHeight: "300px" }}>
+            <div className="modal-members-section">
+              <div className="members-list-scrollable">
                 {followingList.length === 0 ? (
-                  <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", textAlign: "center", padding: "16px" }}>Not following anyone yet.</p>
+                  <p className="modal-empty-msg">Not following anyone yet.</p>
                 ) : (
                   followingList.map(item => {
                     const isFollowingUser = followingList.some(f => String(f._id || f) === String(item._id));
                     return (
-                      <div key={item._id} className="modal-member-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "6px", marginBottom: "6px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1 }}>
+                      <div key={item._id} className="modal-member-card">
+                        <div className="modal-member-info">
                           {item.avatar ? (
-                            <img src={item.avatar} alt={item.username} style={{ width: "24px", height: "24px", borderRadius: "50%", objectFit: "cover" }} />
+                            <img src={item.avatar} alt={item.username} className="modal-member-avatar-img" />
                           ) : (
-                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(item.username), fontSize: "0.7rem", fontWeight: "600", color: "#fff" }}>
+                            <div className="modal-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username) }}>
                               {item.username.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                            <span style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.username}</span>
-                            <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.bio || "No bio"}</span>
+                          <div className="modal-member-meta">
+                            <span className="modal-member-name">{item.username}</span>
+                            <span className="modal-member-bio">{item.bio || "No bio"}</span>
                           </div>
                         </div>
                         <button
                           onClick={() => handleFollowToggle(item._id)}
-                          style={{
-                            padding: "4px 8px",
-                            background: isFollowingUser ? "rgba(255, 255, 255, 0.05)" : "rgba(88, 166, 255, 0.1)",
-                            border: isFollowingUser ? "1px solid var(--ce-border)" : "1px solid rgba(88, 166, 255, 0.2)",
-                            borderRadius: "4px",
-                            color: isFollowingUser ? "var(--ce-text-muted)" : "var(--ce-primary)",
-                            fontSize: "0.7rem",
-                            cursor: "pointer",
-                            fontWeight: "600"
-                          }}
+                          className={`modal-follow-btn ${isFollowingUser ? "following" : "follow"}`}
                         >
                           {isFollowingUser ? "Following" : "Follow"}
                         </button>
@@ -788,36 +972,90 @@ const Profile = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Join Confirmation Modal */}
+      {showJoinConfirmModal && joinTargetRoom && createPortal(
+        <div className="ce-modal-overlay" onClick={() => {
+          if (!isJoiningRoom) {
+            setShowJoinConfirmModal(false);
+            setJoinTargetRoom(null);
+          }
+        }}>
+          <div className="ce-modal-card confirm-modal-card" onClick={(e) => e.stopPropagation()}>
+            {!isJoiningRoom ? (
+              <>
+                <div className="modal-icon-circle info">
+                  <LogIn size={32} />
+                </div>
+                <h2 className="modal-confirm-title">Join Workspace?</h2>
+                <p className="modal-confirm-desc">
+                  Are you sure you want to join <strong>{joinTargetRoom.title}</strong>? You will connect to this collaborative sandbox.
+                </p>
+                <div className="modal-confirm-actions">
+                  <button
+                    className="ce-btn-secondary"
+                    type="button"
+                    onClick={() => {
+                      setShowJoinConfirmModal(false);
+                      setJoinTargetRoom(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="ce-btn-primary"
+                    type="button"
+                    onClick={() => {
+                      setIsJoiningRoom(true);
+                      const roomId = joinTargetRoom.roomId;
+                      setTimeout(async () => {
+                        try {
+                          await proceedJoinRoom(roomId);
+                          setShowJoinConfirmModal(false);
+                          setIsJoiningRoom(false);
+                          setJoinTargetRoom(null);
+                        } catch (error) {
+                          setIsJoiningRoom(false);
+                          setJoinTargetRoom(null);
+                          setShowJoinConfirmModal(false);
+                        }
+                      }, 2500);
+                    }}
+                  >
+                    Yes, Join Room
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="modal-loader-container">
+                <div className="modal-roller-spinner">
+                  <div></div><div></div><div></div><div></div>
+                  <div></div><div></div><div></div><div></div>
+                </div>
+                <h4 className="modal-loader-text">Connecting to Workspace...</h4>
+                <p className="modal-loader-subtext">Establishing secure collaborative synchronization channels</p>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Floating Toast Notification overlay */}
-      <div className="ce-toast-notifications-stack" style={{ position: "fixed", bottom: "24px", right: "24px", display: "flex", flexDirection: "column", gap: "8px", zIndex: 99999999, pointerEvents: "none" }}>
-        {toasts.map(t => (
-          <div
-            key={t.id}
-            className={`ce-toast-alert ${t.type}`}
-            style={{
-              pointerEvents: "auto",
-              background: "rgba(10, 10, 15, 0.95)",
-              border: t.type === "error" ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid rgba(16, 185, 129, 0.5)",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-              color: "#fff",
-              padding: "12px 16px",
-              borderRadius: "8px",
-              fontSize: "0.82rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              minWidth: "250px",
-              maxWidth: "350px"
-            }}
-          >
-            <div className="toast-bullet" style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: t.type === "error" ? "#ef4444" : "#10b981" }} />
-            <div className="toast-message-text" style={{ flex: 1 }}>{t.message}</div>
-          </div>
-        ))}
-      </div>
+      {createPortal(
+        <div className="ce-toast-notifications-stack">
+          {toasts.map(t => (
+            <div key={t.id} className={`ce-toast-alert ${t.type}`}>
+              <div className="toast-bullet" />
+              <div className="toast-message-text">{t.message}</div>
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

@@ -73,7 +73,7 @@ const runCode = async (req, res) => {
         const output = await executeCode(language, sourceCode, input);
 
         await User.findByIdAndUpdate(req.user._id, { $inc: { executionsCount: 1 } });
-        await logActivity(req.user._id, req.user.username, roomId || null, roomTitle || "Sandbox", "executed");
+        logActivity(req.user._id, req.user.username, roomId || null, roomTitle || "Sandbox", "executed");
        
         res.status(200).json({
             success: true,

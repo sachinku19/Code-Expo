@@ -41,10 +41,10 @@ const toggleFollowUser = async (req, res) => {
 
       // Create notification
       const io = req.app.get("io");
-      await createAndSendNotification(targetUserId, currentUserId, "FOLLOW", "SOCIAL", null, io);
+      createAndSendNotification(targetUserId, currentUserId, "FOLLOW", "SOCIAL", null, io);
 
       // Log activity
-      await logActivity(currentUserId, req.user.username, null, null, `followed ${targetUser.username}`);
+      logActivity(currentUserId, req.user.username, null, null, `followed ${targetUser.username}`);
 
       return res.status(200).json({
         success: true,
@@ -146,16 +146,27 @@ const toggleLikeRoom = async (req, res) => {
         message: "Room unliked"
       });
     } else {
-      await RoomLike.create({ user: userId, room: room._id });
+      try {
+        await RoomLike.create({ user: userId, room: room._id });
+      } catch (error) {
+        if (error.code === 11000) {
+          return res.status(200).json({
+            success: true,
+            isLiked: true,
+            message: "Room liked"
+          });
+        }
+        throw error;
+      }
 
       // Notify owner
       if (String(room.createdBy) !== String(userId)) {
         const io = req.app.get("io");
-        await createAndSendNotification(room.createdBy, userId, "LIKE", "ROOMS", room._id, io);
+        createAndSendNotification(room.createdBy, userId, "LIKE", "ROOMS", room._id, io);
       }
 
       // Log activity
-      await logActivity(userId, req.user.username, room._id, room.title, "liked room");
+      logActivity(userId, req.user.username, room._id, room.title, "liked room");
 
       return res.status(200).json({
         success: true,
@@ -194,11 +205,11 @@ const toggleBookmarkRoom = async (req, res) => {
       // Notify owner
       if (String(room.createdBy) !== String(userId)) {
         const io = req.app.get("io");
-        await createAndSendNotification(room.createdBy, userId, "BOOKMARK", "ROOMS", room._id, io);
+        createAndSendNotification(room.createdBy, userId, "BOOKMARK", "ROOMS", room._id, io);
       }
 
       // Log activity
-      await logActivity(userId, req.user.username, room._id, room.title, "bookmarked room");
+      logActivity(userId, req.user.username, room._id, room.title, "bookmarked room");
 
       return res.status(200).json({
         success: true,
@@ -434,9 +445,12 @@ const getLikedRooms = async (req, res) => {
     const roomsWithLikesCount = await Promise.all(
       rooms.map(async (room) => {
         const likesCount = await RoomLike.countDocuments({ room: room._id });
+        const roomLikes = await RoomLike.find({ room: room._id }).populate("user", "username avatar email").select("user");
+        const likedBy = roomLikes.map(l => l.user).filter(Boolean);
         return {
           ...room.toObject(),
-          likesCount
+          likesCount,
+          likedBy
         };
       })
     );
@@ -463,9 +477,12 @@ const getBookmarkedRooms = async (req, res) => {
     const roomsWithLikesCount = await Promise.all(
       rooms.map(async (room) => {
         const likesCount = await RoomLike.countDocuments({ room: room._id });
+        const roomLikes = await RoomLike.find({ room: room._id }).populate("user", "username avatar email").select("user");
+        const likedBy = roomLikes.map(l => l.user).filter(Boolean);
         return {
           ...room.toObject(),
-          likesCount
+          likesCount,
+          likedBy
         };
       })
     );
@@ -543,9 +560,12 @@ const getUserPublicProfile = async (req, res) => {
     const likedRooms = await Promise.all(
       rawLikedRooms.map(async (room) => {
         const likesCount = await RoomLike.countDocuments({ room: room._id });
+        const roomLikes = await RoomLike.find({ room: room._id }).populate("user", "username avatar email").select("user");
+        const likedBy = roomLikes.map(l => l.user).filter(Boolean);
         return {
           ...room.toObject(),
-          likesCount
+          likesCount,
+          likedBy
         };
       })
     );

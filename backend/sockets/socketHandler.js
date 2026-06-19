@@ -733,30 +733,57 @@ const socketHandler = (io) => {
         message,
         userId,
         username,
+        senderAvatar,
+        senderEmail,
+        isPrivate,
+        recipientSocketId,
+        createdAt
       }) => {
         try {
-          const newMessage = await Message.create({
+          const mongoose = require("mongoose");
+          const populatedMessage = {
+            _id: new mongoose.Types.ObjectId(),
+            roomId,
+            sender: {
+              _id: userId,
+              username,
+              avatar: senderAvatar || "",
+              email: senderEmail || ""
+            },
+            username,
+            message,
+            isPrivate: !!isPrivate,
+            recipientSocketId,
+            senderSocketId: socket.id,
+            createdAt: createdAt || new Date().toISOString()
+          };
+
+          // Broadcast immediately to ensure sub-millisecond chat latency
+          if (isPrivate && recipientSocketId) {
+            io.to(recipientSocketId).emit("Receive-Message", populatedMessage);
+            socket.emit("Receive-Message", populatedMessage);
+          } else {
+            io.to(roomId).emit("Receive-Message", populatedMessage);
+          }
+
+          // Asynchronously write to the database and update room/activity stats in background
+          Message.create({
             roomId,
             sender: userId,
             username,
             message,
-          });
+            createdAt: populatedMessage.createdAt
+          }).then(() => {
+            Room.findOne({ roomId }).then(room => {
+              if (room) {
+                room.lastActivity = Date.now();
+                room.save().catch(err => console.error("Room save lastActivity error:", err));
+                const { logActivity } = require("../controllers/activityControllers");
+                logActivity(userId, username, room._id, room.title, "chat");
+              }
+            }).catch(err => console.error("Room find error during chat activity logging:", err));
+          }).catch(err => console.error("Message save error:", err));
 
-          const populatedMessage = await newMessage.populate("sender", "username email avatar");
-
-          io.to(roomId).emit(
-            "Receive-Message",
-            populatedMessage
-          );
-
-          // Update lastActivity and log activity
-          const room = await Room.findOne({ roomId });
-          if (room) {
-            room.lastActivity = Date.now();
-            await room.save();
-            const { logActivity } = require("../controllers/activityControllers");
-            await logActivity(userId, username, room._id, room.title, "chat");
-          }
         } catch (error) {
           console.log(
             `🤬 Message Error: ${error.message}`

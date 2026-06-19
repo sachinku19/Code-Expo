@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import MonacoEditor, { DiffEditor } from "@monaco-editor/react";
 import socket from "../socket/socket";
@@ -268,6 +269,95 @@ function Editor() {
   const [chatTab, setChatTab] = useState("room"); // 'room' | 'private'
   const [privateRecipient, setPrivateRecipient] = useState("");
   const [privateMessages, setPrivateMessages] = useState([]);
+
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [roomTabUnread, setRoomTabUnread] = useState(false);
+  const [privateTabUnread, setPrivateTabUnread] = useState(false);
+
+  const chatMessagesContainerRef = useRef(null);
+  const chatTabRef = useRef("room");
+  const prevMessagesCountRef = useRef(0);
+  const prevPrivateMessagesCountRef = useRef(0);
+
+  // Keep chatTabRef in sync
+  useEffect(() => {
+    chatTabRef.current = chatTab;
+  }, [chatTab]);
+
+  const scrollToBottom = (behavior = "smooth") => {
+    const container = chatMessagesContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior
+      });
+      setUnreadMessagesCount(0);
+    }
+  };
+
+  const handleChatScroll = () => {
+    const container = chatMessagesContainerRef.current;
+    if (!container) return;
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 120;
+    if (isAtBottom) {
+      setUnreadMessagesCount(0);
+    }
+  };
+
+  // Scroll to bottom and clear state on tab switch
+  useEffect(() => {
+    setTimeout(() => scrollToBottom("auto"), 50);
+    setUnreadMessagesCount(0);
+    if (chatTab === "room") {
+      setRoomTabUnread(false);
+    } else {
+      setPrivateTabUnread(false);
+    }
+  }, [chatTab]);
+
+  // Handle incoming public room messages scrolling/unread logic
+  useEffect(() => {
+    const prevRoomCount = prevMessagesCountRef.current;
+    prevMessagesCountRef.current = messages.length;
+
+    if (messages.length > prevRoomCount) {
+      if (chatTabRef.current !== "room") {
+        setRoomTabUnread(true);
+      } else {
+        const lastMsg = messages[messages.length - 1];
+        const isMyMsg = lastMsg && (String(lastMsg.userId || lastMsg.sender?._id) === String(user.id || user._id) || lastMsg.username === user.username);
+        const container = chatMessagesContainerRef.current;
+        const isAtBottom = container ? (container.scrollHeight - container.scrollTop - container.clientHeight <= 120) : true;
+        if (isMyMsg || isAtBottom) {
+          setTimeout(() => scrollToBottom("smooth"), 50);
+        } else {
+          setUnreadMessagesCount((prev) => prev + 1);
+        }
+      }
+    }
+  }, [messages]);
+
+  // Handle incoming private messages scrolling/unread logic
+  useEffect(() => {
+    const prevPrivateCount = prevPrivateMessagesCountRef.current;
+    prevPrivateMessagesCountRef.current = privateMessages.length;
+
+    if (privateMessages.length > prevPrivateCount) {
+      if (chatTabRef.current !== "private") {
+        setPrivateTabUnread(true);
+      } else {
+        const lastMsg = privateMessages[privateMessages.length - 1];
+        const isMyMsg = lastMsg && (String(lastMsg.userId || lastMsg.sender?._id) === String(user.id || user._id) || lastMsg.username === user.username);
+        const container = chatMessagesContainerRef.current;
+        const isAtBottom = container ? (container.scrollHeight - container.scrollTop - container.clientHeight <= 120) : true;
+        if (isMyMsg || isAtBottom) {
+          setTimeout(() => scrollToBottom("smooth"), 50);
+        } else {
+          setUnreadMessagesCount((prev) => prev + 1);
+        }
+      }
+    }
+  }, [privateMessages]);
 
   // Monaco Editor Ref & Collab Cursors
   const editorRef = useRef(null);
@@ -1995,7 +2085,6 @@ function Editor() {
     setKickModalOpen(true);
   };
 
-  // Send message
   const sendMessage = () => {
     if (!message.trim()) return;
 
@@ -2004,8 +2093,10 @@ function Editor() {
       socket.emit("send-message", {
         roomId,
         message,
-        userId: user.id,
+        userId: user.id || user._id,
         username: `${user.username} ➔ ${recipientUser?.username || "Direct Message"}`,
+        senderAvatar: user.avatar,
+        senderEmail: user.email,
         isPrivate: true,
         recipientSocketId: privateRecipient,
         createdAt: new Date().toISOString()
@@ -2014,8 +2105,10 @@ function Editor() {
       socket.emit("send-message", {
         roomId,
         message,
-        userId: user.id,
+        userId: user.id || user._id,
         username: user.username,
+        senderAvatar: user.avatar,
+        senderEmail: user.email,
         createdAt: new Date().toISOString()
       });
     }
@@ -3201,12 +3294,14 @@ function Editor() {
                       onClick={() => setChatTab("room")}
                     >
                       Room
+                      {roomTabUnread && <span className="chat-tab-unread-dot" />}
                     </button>
                     <button
                       className={`chat-tab-btn ${chatTab === "private" ? "active" : ""}`}
                       onClick={() => setChatTab("private")}
                     >
                       Direct Message
+                      {privateTabUnread && <span className="chat-tab-unread-dot" />}
                     </button>
                   </div>
 
@@ -3232,7 +3327,7 @@ function Editor() {
                     </div>
                   )}
 
-                  <div className="chat-messages-container">
+                  <div className="chat-messages-container" ref={chatMessagesContainerRef} onScroll={handleChatScroll}>
                     {chatTab === "room" ? (
                       messages.map((msg, idx) => {
                         const isSelf = String(msg.userId) === String(user.id) || msg.username === user.username;
@@ -3354,6 +3449,17 @@ function Editor() {
                     )}
                   </div>
 
+                  {unreadMessagesCount > 0 && (
+                    <button
+                      type="button"
+                      className="chat-unread-messages-badge"
+                      onClick={() => scrollToBottom("smooth")}
+                    >
+                      <ChevronDown size={14} />
+                      <span>{unreadMessagesCount} new messages</span>
+                    </button>
+                  )}
+
                   <div className="chat-sticky-footer">
                     <input
                       type="text"
@@ -3440,7 +3546,7 @@ function Editor() {
         )}
 
         {/* Room Deleted Modal */}
-        {roomDeletedModalOpen && (
+        {roomDeletedModalOpen && createPortal(
           <div className="ce-modal-overlay">
             <div className="ce-modal-card warning-glow">
               <div className="modal-icon warning" style={{ width: "60px", height: "60px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(245, 158, 11, 0.1)", color: "#fb923c", marginBottom: "8px" }}>
@@ -3455,11 +3561,12 @@ function Editor() {
                 Return to Dashboard
               </button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Duplicate Session Modal */}
-        {duplicateSessionModalOpen && (
+        {duplicateSessionModalOpen && createPortal(
           <div className="ce-modal-overlay">
             <div className="ce-modal-card warning-glow">
               <div className="modal-icon error" style={{ width: "60px", height: "60px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", marginBottom: "8px" }}>
@@ -3474,11 +3581,12 @@ function Editor() {
                 Return to Dashboard
               </button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Kick Confirmation Modal */}
-        {kickModalOpen && (
+        {kickModalOpen && createPortal(
           <div className="ce-modal-overlay">
             <div className="ce-modal-card warning-glow">
               <div className="modal-icon error" style={{ width: "60px", height: "60px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", marginBottom: "16px" }}>
@@ -3505,7 +3613,8 @@ function Editor() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Incoming Call Invite Banner */}

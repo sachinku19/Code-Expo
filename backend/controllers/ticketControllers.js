@@ -31,7 +31,7 @@ const createTicket = async (req, res) => {
     await ticket.save();
 
     // Log the user activity
-    await logActivity(userId, req.user.username, null, null, `created a support ticket: "${subject.trim()}"`);
+    logActivity(userId, req.user.username, null, null, `created a support ticket: "${subject.trim()}"`);
 
     res.status(201).json({
       success: true,

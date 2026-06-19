@@ -56,16 +56,13 @@ const logActivity = async (userId, username, roomId, roomTitle, action) => {
       createdAt: new Date()
     });
 
-    // Storage optimization: Keep only the 15 most recent activities globally
-    const count = await Activity.countDocuments();
-    if (count > 15) {
-      const activitiesToKeep = await Activity.find()
-        .sort({ timestamp: -1 })
-        .limit(15)
-        .select("_id");
-      const keepIds = activitiesToKeep.map(act => act._id);
-      await Activity.deleteMany({ _id: { $nin: keepIds } });
-    }
+    // Storage optimization: Keep only activities from the last 365 days (non-blocking)
+    const oneYearAgo = new Date();
+    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+    Activity.deleteMany({ timestamp: { $lt: oneYearAgo } })
+      .catch(err => {
+        console.error("Error during activity pruning optimization:", err.message);
+      });
   } catch (error) {
     console.error("Error logging activity:", error.message);
   }

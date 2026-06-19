@@ -290,3 +290,17 @@
   display: inline-block;
 }
 
+@media (max-width: 400px) {
+  .crop-card {
+    padding: 16px;
+  }
+  .crop-workspace {
+    width: 250px;
+    height: 250px;
+  }
+  .crop-circular-mask {
+    width: 200px;
+    height: 200px;
+  }
+}
+

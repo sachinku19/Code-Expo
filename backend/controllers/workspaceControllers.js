@@ -162,7 +162,7 @@ exports.createWorkspaceItem = async (req, res) => {
       createdBy: req.user._id
     });
 
-    await logActivity(
+    logActivity(
       req.user._id,
       req.user.username,
       room._id,
@@ -222,7 +222,7 @@ exports.renameWorkspaceItem = async (req, res) => {
     item.name = name;
     await item.save();
 
-    await logActivity(
+    logActivity(
       req.user._id,
       req.user.username,
       room._id,
@@ -315,7 +315,7 @@ exports.moveWorkspaceItem = async (req, res) => {
     item.parentId = parentId || null;
     await item.save();
 
-    await logActivity(
+    logActivity(
       req.user._id,
       req.user.username,
       room._id,
@@ -361,7 +361,7 @@ exports.deleteWorkspaceItem = async (req, res) => {
 
     await deleteItemRecursively(itemId);
 
-    await logActivity(
+    logActivity(
       req.user._id,
       req.user.username,
       room._id,
@@ -449,7 +449,7 @@ exports.setFileEntryPoint = async (req, res) => {
     file.isEntryPoint = true;
     await file.save();
 
-    await logActivity(
+    logActivity(
       req.user._id,
       req.user.username,
       room._id,

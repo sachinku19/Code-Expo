@@ -3,19 +3,27 @@ const Notification = require("../models/Notification");
 const getNotifications = async (req, res) => {
   try {
     const userId = req.user._id;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
 
     const notifications = await Notification.find({ recipient: userId })
       .populate("sender", "username avatar")
       .populate("targetRoom", "title roomId")
       .sort({ createdAt: -1 })
-      .limit(30);
+      .skip(skip)
+      .limit(limit);
 
+    const totalNotifications = await Notification.countDocuments({ recipient: userId });
     const unreadCount = await Notification.countDocuments({ recipient: userId, isRead: false });
 
     res.status(200).json({
       success: true,
       notifications,
-      unreadCount
+      unreadCount,
+      totalPages: Math.ceil(totalNotifications / limit),
+      currentPage: page,
+      totalNotifications
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -63,8 +63,8 @@ export const getDeveloperSuggestions = async () => {
   return response.data;
 };
 
-export const getNotifications = async () => {
-  const response = await API.get("/notifications", getHeaders());
+export const getNotifications = async (page = 1, limit = 10) => {
+  const response = await API.get(`/notifications?page=${page}&limit=${limit}`, getHeaders());
   return response.data;
 };
 

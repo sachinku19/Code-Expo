@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   createRoom,
@@ -330,16 +331,6 @@ const ContributionHeatmap = ({ rawHeatmap, selectedYear, onYearChange, available
         {/* Top: Full-Width Calendar Grid */}
         <div className="heatmap-calendar-scroll-wrapper">
           <div className="heatmap-grid-inner-wrapper">
-            {/* Weekdays */}
-            <div className="weekday-labels-grid">
-              <span></span>
-              <span>Mon</span>
-              <span></span>
-              <span>Wed</span>
-              <span></span>
-              <span>Fri</span>
-              <span></span>
-            </div>
 
             {/* Month Blocks Container */}
             <div className="heatmap-month-blocks-container">
@@ -462,7 +453,7 @@ const ContributionHeatmap = ({ rawHeatmap, selectedYear, onYearChange, available
               {hoveredDay.score} point{hoveredDay.score === 1 ? '' : 's'}
             </span>
           </div>
-          <div style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)", margin: "2px 0" }}>
+          <div className="tooltip-activity">
             {hoveredDay.count} activit{hoveredDay.count === 1 ? 'y' : 'ies'}
           </div>
           <div className="tooltip-date">
@@ -470,7 +461,7 @@ const ContributionHeatmap = ({ rawHeatmap, selectedYear, onYearChange, available
               if (!hoveredDay.date) return "";
               const [yr, mo, dy] = hoveredDay.date.split("-").map(Number);
               const d = new Date(yr, mo - 1, dy);
-              return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+              return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
             })()}
           </div>
           <span className="tooltip-level-badge">Level {hoveredDay.level}</span>
@@ -527,6 +518,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useAuth();
+  const pendingLikesRef = useRef(new Set());
 
   const [stats, setStats] = useState({
     totalCreated: 0,
@@ -554,6 +546,7 @@ function Dashboard() {
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [isMaintenance, setIsMaintenance] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // System announcements states
   const [activeAnnouncements, setActiveAnnouncements] = useState([]);
@@ -589,6 +582,9 @@ function Dashboard() {
   const [savedRooms, setSavedRooms] = useState([]);
   const [notificationsList, setNotificationsList] = useState([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [notifPage, setNotifPage] = useState(1);
+  const [notifTotalPages, setNotifTotalPages] = useState(1);
+  const [notifLoading, setNotifLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   // Viewed user states
@@ -952,7 +948,7 @@ function Dashboard() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [publicRoomsSearch, setPublicRoomsSearch] = useState("");
   const [showAllPublicRooms, setShowAllPublicRooms] = useState(false);
-  const [roomsTab, setRoomsTab] = useState("recent");
+  const [roomsTab, setRoomsTab] = useState("public");
   const [activeRoomsTab, setActiveRoomsTab] = useState("my-active");
   const [myRoomsTabSearch, setMyRoomsTabSearch] = useState("");
   const [showAllActiveMyRoomsTab, setShowAllActiveMyRoomsTab] = useState(false);
@@ -960,6 +956,9 @@ function Dashboard() {
 
   // Gate Opening Portal Animation State
   const [gateAnimationRoomId, setGateAnimationRoomId] = useState(null);
+  const [resumingHistoryRoomId, setResumingHistoryRoomId] = useState(null);
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [kickModalOpen, setKickModalOpen] = useState(false);
   const [kickTarget, setKickTarget] = useState({ roomId: "", userId: "", username: "" });
   const [showJoinConfirmModal, setShowJoinConfirmModal] = useState(false);
@@ -991,6 +990,16 @@ function Dashboard() {
       // Clear gate animation room ID after navigation
       setTimeout(() => {
         setGateAnimationRoomId(null);
+      }, 500);
+    }, 1100);
+  };
+
+  const triggerResumeHistory = (targetRoomId) => {
+    setResumingHistoryRoomId(targetRoomId);
+    setTimeout(() => {
+      navigate(`/editor/${targetRoomId}`);
+      setTimeout(() => {
+        setResumingHistoryRoomId(null);
       }, 500);
     }, 1100);
   };
@@ -1098,7 +1107,7 @@ function Dashboard() {
         getSocialFeed(1, 10).catch(() => ({ success: false, activities: [], totalPages: 1 })),
         getLikedRooms().catch(() => ({ success: false, rooms: [] })),
         getBookmarkedRooms().catch(() => ({ success: false, rooms: [] })),
-        getNotifications().catch(() => ({ success: false, notifications: [], unreadCount: 0 })),
+        getNotifications(1, 10).catch(() => ({ success: false, notifications: [], unreadCount: 0 })),
         getUserProfile().catch(() => ({ success: false }))
       ]);
 
@@ -1133,6 +1142,8 @@ function Dashboard() {
       if (notifRes.success) {
         setNotificationsList(notifRes.notifications || []);
         setUnreadNotificationsCount(notifRes.unreadCount || 0);
+        setNotifPage(1);
+        setNotifTotalPages(notifRes.totalPages || 1);
       }
       if (profileRes.success) {
         setUser(profileRes.user);
@@ -1169,6 +1180,24 @@ function Dashboard() {
     }
   };
 
+  const handleLoadMoreNotifications = async () => {
+    if (notifLoading || notifPage >= notifTotalPages) return;
+    setNotifLoading(true);
+    try {
+      const nextPage = notifPage + 1;
+      const notifRes = await getNotifications(nextPage, 10);
+      if (notifRes.success) {
+        setNotificationsList(prev => [...prev, ...(notifRes.notifications || [])]);
+        setNotifPage(nextPage);
+        setNotifTotalPages(notifRes.totalPages || 1);
+      }
+    } catch (err) {
+      console.error("Error loading more notifications:", err);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
   const handleFollowToggle = async (candidateId) => {
     // Keep copies of original states for potential rollback
     const prevFollowingList = [...followingList];
@@ -1180,9 +1209,9 @@ function Dashboard() {
 
     const isFollowing = followingList.some(f => String(f._id || f) === String(candidateId));
     let targetUser = suggestions.find(s => String(s._id || s) === String(candidateId)) ||
-                     followersList.find(f => String(f._id || f) === String(candidateId)) ||
-                     (viewingUserProfile && String(viewingUserProfile._id) === String(candidateId) ? viewingUserProfile : null) ||
-                     { _id: candidateId, username: "Developer", isOnline: false };
+      followersList.find(f => String(f._id || f) === String(candidateId)) ||
+      (viewingUserProfile && String(viewingUserProfile._id) === String(candidateId) ? viewingUserProfile : null) ||
+      { _id: candidateId, username: "Developer", isOnline: false };
 
     // Optimistic UI updates
     if (isFollowing) {
@@ -1283,6 +1312,9 @@ function Dashboard() {
   };
 
   const handleLikeRoom = async (roomId) => {
+    if (pendingLikesRef.current.has(roomId)) return;
+    pendingLikesRef.current.add(roomId);
+
     setAnimatingLikes(prev => ({ ...prev, [roomId]: true }));
     setTimeout(() => {
       setAnimatingLikes(prev => ({ ...prev, [roomId]: false }));
@@ -1359,10 +1391,12 @@ function Dashboard() {
       if (res.success) {
         addToast(res.message, "success");
         // Refetch notifications silently in the background
-        const notifRes = await getNotifications().catch(() => ({ success: false, notifications: [], unreadCount: 0 }));
+        const notifRes = await getNotifications(1, 10).catch(() => ({ success: false, notifications: [], unreadCount: 0 }));
         if (notifRes.success) {
           setNotificationsList(notifRes.notifications || []);
           setUnreadNotificationsCount(notifRes.unreadCount || 0);
+          setNotifPage(1);
+          setNotifTotalPages(notifRes.totalPages || 1);
         }
       } else {
         throw new Error(res.message || "Failed to update like status");
@@ -1379,6 +1413,8 @@ function Dashboard() {
       setRecentRooms(prevRecentRooms);
       setViewingUserRooms(prevViewingUserRooms);
       setSavedRooms(prevSavedRooms);
+    } finally {
+      pendingLikesRef.current.delete(roomId);
     }
   };
 
@@ -1422,6 +1458,7 @@ function Dashboard() {
   };
 
   const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
     try {
       const res = await updateUserProfile({
         bio: bioInput,
@@ -1436,6 +1473,8 @@ function Dashboard() {
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -1712,12 +1751,18 @@ function Dashboard() {
 
   const handleCreateRoom = async (e) => {
     e.preventDefault();
-    try {
-      const data = await createRoom(formData.title, formData.language, formData.isPrivate);
-      triggerGateAndNavigate(data.room.roomId);
-    } catch (error) {
-      alert(error.response?.data?.message || error.message);
-    }
+    setIsCreatingRoom(true);
+    setTimeout(async () => {
+      try {
+        const data = await createRoom(formData.title, formData.language, formData.isPrivate);
+        setShowQuickCreateModal(false);
+        setIsCreatingRoom(false);
+        triggerGateAndNavigate(data.room.roomId);
+      } catch (error) {
+        setIsCreatingRoom(false);
+        alert(error.response?.data?.message || error.message);
+      }
+    }, 2500);
   };
   const handleJoinRoom = (e) => {
     e.preventDefault();
@@ -2096,59 +2141,101 @@ function Dashboard() {
 
           <hr className="room-card-divider" />
 
-          {/* Bottom Row */}
-          <div className="room-card-bottom-row">
-            {/* Owner profile */}
-            <div className="room-card-owner-profile">
-              <div className="owner-avatar-wrapper-new">
-                <div className="owner-avatar-circle" style={{ backgroundColor: room.createdBy?.avatar ? "transparent" : getAvatarColor(room.createdBy?.username || "Owner") }}>
-                  {room.createdBy?.avatar ? (
-                    <img src={room.createdBy.avatar} alt={room.createdBy.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                  ) : (
-                    (room.createdBy?.username || "O").charAt(0).toUpperCase()
+          {/* Bottom Layout */}
+          <div className="room-card-footer-layout">
+            <div className="room-card-footer-top-line">
+              {/* Owner profile */}
+              <div className="room-card-owner-profile">
+                <div className="owner-avatar-wrapper-new">
+                  <div className="owner-avatar-circle" style={{ backgroundColor: room.createdBy?.avatar ? "transparent" : getAvatarColor(room.createdBy?.username || "Owner") }}>
+                    {room.createdBy?.avatar ? (
+                      <img src={room.createdBy.avatar} alt={room.createdBy.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                    ) : (
+                      (room.createdBy?.username || "O").charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <span className={`owner-presence-badge ${isOwnerOnline ? "online" : "offline"}`} />
+                </div>
+                <div className="owner-profile-details">
+                  <span className="owner-label-text">Owner</span>
+                  <span className="owner-name-text">{room.createdBy?.username || "Collaborator"}</span>
+                </div>
+              </div>
+
+              {/* Secondary Actions */}
+              <div className="room-card-footer-actions-secondary">
+                <button
+                  type="button"
+                  className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLikeRoom(room.roomId);
+                  }}
+                  title={isRoomLiked(room.roomId) ? "Unlike Room" : "Like Room"}
+                >
+                  <Heart
+                    size={13}
+                    fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                  />
+                  <span className="like-count-text">{room.likesCount || 0}</span>
+                </button>
+
+                {/* Three dots menu container */}
+                <div className="card-menu-dropdown-container" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveDropdownCardId(activeDropdownCardId === room.roomId ? null : room.roomId);
+                    }}
+                    className="card-menu-trigger-btn"
+                    title="More Actions"
+                  >
+                    <span className="dots-icon">•••</span>
+                  </button>
+
+                  {activeDropdownCardId === room.roomId && (
+                    <div className="card-menu-dropdown-list">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyId(e, room.roomId);
+                          setActiveDropdownCardId(null);
+                        }}
+                        className="dropdown-item"
+                      >
+                        Copy Room ID
+                      </button>
+                      {isOwner ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRoom(room.roomId);
+                            setActiveDropdownCardId(null);
+                          }}
+                          className="dropdown-item delete"
+                        >
+                          Delete Room
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLeaveRoom(room.roomId);
+                            setActiveDropdownCardId(null);
+                          }}
+                          className="dropdown-item leave"
+                        >
+                          Leave Room
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
-                <span className={`owner-presence-badge ${isOwnerOnline ? "online" : "offline"}`} />
-              </div>
-              <div className="owner-profile-details">
-                <span className="owner-label-text">Owner</span>
-                <span className="owner-name-text">{room.createdBy?.username || "Collaborator"}</span>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="room-card-actions-wrapper">
-              <button
-                type="button"
-                className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLikeRoom(room.roomId);
-                }}
-                style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid var(--ce-border)",
-                  cursor: "pointer",
-                  color: isRoomLiked(room.roomId) ? "var(--ce-danger, #f85149)" : "var(--ce-text)",
-                  padding: "8px 12px",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  transition: "all 0.35s ease"
-                }}
-                title={isRoomLiked(room.roomId) ? "Unlike Room" : "Like Room"}
-              >
-                <Heart
-                  size={13}
-                  fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                  style={{
-                    transition: "fill 0.35s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s ease"
-                  }}
-                />
-                <span style={{ fontSize: "0.72rem", fontWeight: "600" }}>{room.likesCount || 0}</span>
-              </button>
+            {/* Primary Actions */}
+            <div className="room-card-footer-buttons-primary">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -2162,58 +2249,6 @@ function Dashboard() {
                 <span>Open Workspace</span>
                 <ChevronRight size={14} />
               </button>
-
-              {/* Three dots menu container */}
-              <div className="card-menu-dropdown-container" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveDropdownCardId(activeDropdownCardId === room.roomId ? null : room.roomId);
-                  }}
-                  className="card-menu-trigger-btn"
-                  title="More Actions"
-                >
-                  <span className="dots-icon">•••</span>
-                </button>
-
-                {activeDropdownCardId === room.roomId && (
-                  <div className="card-menu-dropdown-list">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyId(e, room.roomId);
-                        setActiveDropdownCardId(null);
-                      }}
-                      className="dropdown-item"
-                    >
-                      Copy Room ID
-                    </button>
-                    {isOwner ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRoom(room.roomId);
-                          setActiveDropdownCardId(null);
-                        }}
-                        className="dropdown-item delete"
-                      >
-                        Delete Room
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLeaveRoom(room.roomId);
-                          setActiveDropdownCardId(null);
-                        }}
-                        className="dropdown-item leave"
-                      >
-                        Leave Room
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -2271,22 +2306,22 @@ function Dashboard() {
         left: 0,
         width: "100vw",
         height: "100vh",
-        background: "rgba(10, 10, 14, 0.97)",
+        background: "var(--ce-fog)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 100000,
         fontFamily: "var(--sans)",
-        color: "var(--text-h)"
+        color: "var(--ce-text-h)"
       }}>
         <div className="maintenance-lockout-card glass-panel" style={{
           maxWidth: "450px",
           padding: "40px 30px",
-          background: "rgba(255, 255, 255, 0.015)",
-          border: "1px solid var(--border)",
+          background: "var(--ce-surface)",
+          border: "1px solid var(--ce-border)",
           borderRadius: "12px",
           backdropFilter: "blur(20px)",
-          boxShadow: "var(--shadow)",
+          boxShadow: "var(--ce-card-shadow)",
           textAlign: "center"
         }}>
           <div className="lockout-pulse-icon" style={{
@@ -2295,7 +2330,7 @@ function Dashboard() {
             borderRadius: "50%",
             background: "rgba(239, 68, 68, 0.1)",
             border: "1px solid rgba(239, 68, 68, 0.3)",
-            color: "#ef4444",
+            color: "var(--ce-danger)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2303,15 +2338,15 @@ function Dashboard() {
           }}>
             <Lock size={28} />
           </div>
-          <h2 style={{ fontSize: "1.4rem", fontWeight: "750", color: "#f3f4f6", margin: "0 0 10px 0" }}>System Under Maintenance</h2>
-          <p style={{ fontSize: "0.85rem", color: "#9ca3af", margin: "0 0 24px 0", lineHeight: "1.45" }}>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: "750", color: "var(--ce-text-h)", margin: "0 0 10px 0" }}>System Under Maintenance</h2>
+          <p style={{ fontSize: "0.85rem", color: "var(--ce-text)", margin: "0 0 24px 0", lineHeight: "1.45" }}>
             CodeExpo is currently undergoing scheduled platform diagnostics and service optimization.
           </p>
           <div style={{
-            borderTop: "1px solid var(--border)",
+            borderTop: "1px solid var(--ce-border)",
             paddingTop: "20px",
             fontSize: "0.78rem",
-            color: "#ef4444",
+            color: "var(--ce-danger)",
             fontWeight: "600"
           }}>
             Please check back in a few minutes. We apologize for the inconvenience.
@@ -2345,7 +2380,7 @@ function Dashboard() {
     >
       <div className="ce-dashboard-container">
         {activeSection === "dashboard" && (
-          <>
+          <div className="dashboard-home-section">
             {/* SYSTEM ANNOUNCEMENTS BROADCAST FEED */}
             {activeAnnouncements.filter(ann => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
               <div className="ce-announcements-banner-wrapper">
@@ -2383,518 +2418,545 @@ function Dashboard() {
 
             <div className="dashboard-grid-layout">
 
-            {/* STATS SUMMARY GRID */}
-            <div className="ce-stats-grid">
+              {/* STATS SUMMARY GRID */}
+              <div className="ce-stats-grid">
 
-              {/* Card 1: Developer Rank Gamification */}
-              <div className="compact-stat-card gamification-card">
-                <div className={`stat-card-icon-wrapper rank-icon-wrapper ${rank.badgeClass}`}>
-                  <Trophy size={18} />
-                </div>
-                <div className="stat-card-info gamification-info">
-                  <span className="stat-card-label">Developer Tier</span>
-                  <span className="stat-card-val rank-title-text" style={{ color: rank.color }}>
-                    {rank.title}
-                  </span>
+                {/* Card 1: Developer Rank Gamification */}
+                <div className="compact-stat-card gamification-card">
+                  <div className={`stat-card-icon-wrapper rank-icon-wrapper ${rank.badgeClass}`}>
+                    <Trophy size={18} />
+                  </div>
+                  <div className="stat-card-info gamification-info">
+                    <span className="stat-card-label">Developer Tier</span>
+                    <span className="stat-card-val rank-title-text" style={{ color: rank.color }}>
+                      {rank.title}
+                    </span>
 
-                  <div className="tier-progress-container">
-                    <div className="tier-progress-track">
-                      <div className="tier-progress-bar" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
+                    <div className="tier-progress-container">
+                      <div className="tier-progress-track">
+                        <div className="tier-progress-bar" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
+                      </div>
+                      <span className="tier-progress-label">
+                        {stats.totalPoints || 0} XP • {rank.nextLimit === Infinity ? "Max Level" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next`}
+                      </span>
                     </div>
-                    <span className="tier-progress-label">
-                      {stats.totalPoints || 0} XP • {rank.nextLimit === Infinity ? "Max Level" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next`}
-                    </span>
                   </div>
                 </div>
-              </div>
 
-              {/* Card 2: Rooms Created Breakdown */}
-              <div className="compact-stat-card created-rooms-card">
-                <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                  <FolderGit size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Rooms Created</span>
-                  <span className="stat-card-val">{stats.totalCreated}</span>
-                  <div className="sub-breakdown-row">
-                    <span className="sub-badge public-badge">
-                      <Globe size={10} /> {stats.publicCreatedCount} Public
-                    </span>
-                    <span className="sub-badge private-badge">
-                      <Lock size={10} /> {stats.privateCreatedCount} Private
-                    </span>
+                {/* Card 2: Rooms Created Breakdown */}
+                <div className="compact-stat-card created-rooms-card">
+                  <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                    <FolderGit size={18} />
                   </div>
-                </div>
-              </div>
-
-              {/* Card 3: Joined Workspaces */}
-              <div className="compact-stat-card joined-rooms-card">
-                <div className="stat-card-icon-wrapper green-theme-wrapper">
-                  <Users size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Rooms Joined</span>
-                  <span className="stat-card-val">{stats.totalJoined}</span>
-                  <span className="stat-card-subtitle">From starting</span>
-                </div>
-              </div>
-
-              {/* Card 4: Compiler Executions */}
-              <div className="compact-stat-card executions-card">
-                <div className="stat-card-icon-wrapper purple-theme-wrapper">
-                  <Activity size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Code Runs</span>
-                  <span className="stat-card-val">{stats.executions.toLocaleString()}</span>
-                  <span className="stat-card-subtitle">{formatCodingTime(stats.codingHours, stats.codingMinutes)}</span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* TWO COLUMN GRID */}
-            <div className="ce-dashboard-columns">
-
-              {/* LEFT COLUMN */}
-              <div className="ce-column-left">
-
-                {/* ACTIVE ROOMS */}
-                <section className="ce-dashboard-section">
-                  <div className="section-header">
-                    <span className="live-indicator-dot"></span>
-                    <h3 className="section-title">Active Rooms</h3>
-                  </div>
-
-                  {liveRooms.length === 0 ? (
-                    <div className="empty-state-card">
-                      <Terminal size={18} className="empty-state-icon" />
-                      <p>No active rooms currently online.</p>
+                  <div className="stat-card-info">
+                    <span className="stat-card-label">Rooms Created</span>
+                    <span className="stat-card-val">{stats.totalCreated}</span>
+                    <div className="sub-breakdown-row">
+                      <span className="sub-badge public-badge">
+                        <Globe size={10} /> {stats.publicCreatedCount} Public
+                      </span>
+                      <span className="sub-badge private-badge">
+                        <Lock size={10} /> {stats.privateCreatedCount} Private
+                      </span>
                     </div>
-                  ) : (
-                    (() => {
-                      const myActive = liveRooms.filter(room => {
-                        const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                        const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
-                        return isOwner || isParticipant;
-                      });
+                  </div>
+                </div>
 
-                      const otherActive = liveRooms.filter(room => {
-                        const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                        const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
-                        return !(isOwner || isParticipant);
-                      });
+                {/* Card 3: Joined Workspaces */}
+                <div className="compact-stat-card joined-rooms-card">
+                  <div className="stat-card-icon-wrapper green-theme-wrapper">
+                    <Users size={18} />
+                  </div>
+                  <div className="stat-card-info">
+                    <span className="stat-card-label">Rooms Joined</span>
+                    <span className="stat-card-val">{stats.totalJoined}</span>
+                    <span className="stat-card-subtitle">From starting</span>
+                  </div>
+                </div>
 
-                      return (
-                        <div style={{ marginTop: "12px" }}>
-                          {/* Tabs Switcher */}
-                          <div className="profile-tabs-header" style={{ display: "flex", gap: "16px", borderBottom: "1px solid var(--ce-border)", paddingBottom: "8px", marginBottom: "16px" }}>
-                            <button
-                              className={`profile-tab-btn ${activeRoomsTab === "my-active" ? "active" : ""}`}
-                              onClick={() => setActiveRoomsTab("my-active")}
-                              style={{ background: "none", border: "none", color: activeRoomsTab === "my-active" ? "var(--ce-primary)" : "var(--ce-text-muted)", fontWeight: "600", fontSize: "0.85rem", paddingBottom: "6px", borderBottom: activeRoomsTab === "my-active" ? "2px solid var(--ce-primary)" : "2px solid transparent", cursor: "pointer", outline: "none" }}
-                            >
-                              My Active Workspaces ({myActive.length})
-                            </button>
-                            <button
-                              className={`profile-tab-btn ${activeRoomsTab === "other-active" ? "active" : ""}`}
-                              onClick={() => setActiveRoomsTab("other-active")}
-                              style={{ background: "none", border: "none", color: activeRoomsTab === "other-active" ? "var(--ce-primary)" : "var(--ce-text-muted)", fontWeight: "600", fontSize: "0.85rem", paddingBottom: "6px", borderBottom: activeRoomsTab === "other-active" ? "2px solid var(--ce-primary)" : "2px solid transparent", cursor: "pointer", outline: "none" }}
-                            >
-                              Other Active Workspaces ({otherActive.length})
-                            </button>
-                          </div>
+                {/* Card 4: Compiler Executions */}
+                <div className="compact-stat-card executions-card">
+                  <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                    <Activity size={18} />
+                  </div>
+                  <div className="stat-card-info">
+                    <span className="stat-card-label">Code Runs</span>
+                    <span className="stat-card-val">{stats.executions.toLocaleString()}</span>
+                    <span className="stat-card-subtitle">{formatCodingTime(stats.codingHours, stats.codingMinutes)}</span>
+                  </div>
+                </div>
 
-                          {/* Tab Contents */}
-                          {activeRoomsTab === "my-active" && (
-                            <div style={{ marginTop: "8px" }}>
-                              {myActive.length === 0 ? (
-                                <div className="empty-state-card compact">
-                                  <p>No active workspaces of yours.</p>
-                                </div>
-                              ) : (
-                                <div className="rooms-grid-explore" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", alignItems: "start" }}>
-                                  {myActive.map(room => renderRoomCard(room))}
-                                </div>
-                              )}
+              </div>
+
+              {/* TWO COLUMN GRID */}
+              <div className="ce-dashboard-columns">
+
+                {/* LEFT COLUMN */}
+                <div className="ce-column-left">
+
+                  {/* ACTIVE ROOMS */}
+                  <section className="ce-dashboard-section">
+                    <div className="section-header">
+                      <span className="live-indicator-dot"></span>
+                      <h3 className="section-title">Active Rooms</h3>
+                    </div>
+
+                    {liveRooms.length === 0 ? (
+                      <div className="empty-state-card">
+                        <Terminal size={18} className="empty-state-icon" />
+                        <p>No active rooms currently online.</p>
+                      </div>
+                    ) : (
+                      (() => {
+                        const myActive = liveRooms.filter(room => {
+                          const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+                          const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
+                          return isOwner || isParticipant;
+                        });
+
+                        const otherActive = liveRooms.filter(room => {
+                          const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+                          const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
+                          return !(isOwner || isParticipant);
+                        });
+
+                        return (
+                          <div className="active-rooms-wrapper">
+                            {/* Segmented Pill Switcher with Round Sliding Background */}
+                            <div className="ce-pill-switcher-container">
+                              <div className="ce-pill-switcher">
+                                <div
+                                  className="ce-pill-bg-slide"
+                                  style={{
+                                    transform: activeRoomsTab === "my-active" ? "translateX(0)" : "translateX(100%)"
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  className={`ce-pill-btn ${activeRoomsTab === "my-active" ? "active" : ""}`}
+                                  onClick={() => setActiveRoomsTab("my-active")}
+                                >
+                                  My Active ({myActive.length})
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`ce-pill-btn ${activeRoomsTab === "other-active" ? "active" : ""}`}
+                                  onClick={() => setActiveRoomsTab("other-active")}
+                                >
+                                  Other Active ({otherActive.length})
+                                </button>
+                              </div>
                             </div>
-                          )}
 
-                          {activeRoomsTab === "other-active" && (
-                            <div style={{ marginTop: "8px" }}>
-                              {otherActive.length === 0 ? (
-                                <div className="empty-state-card compact">
-                                  <p>No other active workspaces online.</p>
-                                </div>
-                              ) : (
-                                <div className="rooms-grid-explore" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", alignItems: "start" }}>
-                                  {otherActive.map(room => renderRoomCard(room))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()
-                  )}
-                </section>
-
-                {/* UNIFIED SOCIAL FEED */}
-                <section className="ce-dashboard-section social-feed-section">
-                  <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <Activity size={16} className="brand-logo" />
-                      <h3 className="section-title">Developer Activity Feed</h3>
-                    </div>
-                  </div>
-
-                  {feedActivities.length === 0 ? (
-                    <div className="empty-state-card">
-                      <p>No activity logs recorded. Follow other developers to see their updates here!</p>
-                    </div>
-                  ) : (
-                    <div className="social-activities-list">
-                      {feedActivities.map(act => (
-                        <div key={act._id} className="social-activity-card" style={{ padding: "12px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--ce-border)", borderRadius: "8px", marginBottom: "8px" }}>
-                          <div className="social-activity-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                              <div className="actor-avatar" style={{ width: "32px", height: "32px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
-                                {act.user?.avatar ? (
-                                  <img src={act.user.avatar} alt={act.user?.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            {/* Tab Contents */}
+                            {activeRoomsTab === "my-active" && (
+                              <div className="active-rooms-tab-pane">
+                                {myActive.length === 0 ? (
+                                  <div className="empty-state-card compact">
+                                    <p>No active workspaces of yours.</p>
+                                  </div>
                                 ) : (
-                                  <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "#fff" }}>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
+                                  <div className="rooms-grid-explore">
+                                    {myActive.map(room => renderRoomCard(room))}
+                                  </div>
                                 )}
                               </div>
-                              <div className="actor-meta" style={{ display: "flex", flexDirection: "column" }}>
-                                <span className="actor-username" style={{ fontSize: "0.85rem", color: "var(--ce-text)" }}>
-                                  <strong>{act.user?.username || "Someone"}</strong>
-                                </span>
-                                <span className="activity-action-text" style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)" }}>
-                                  {act.action} {act.roomTitle ? (
-                                    <strong className="clickable-room" onClick={() => act.room?.roomId && handleJoinRoomDirect(act.room.roomId)} style={{ color: "var(--ce-primary)", cursor: "pointer" }}>
-                                      {act.roomTitle}
-                                    </strong>
-                                  ) : act.targetUser ? (
-                                    <strong style={{ color: "var(--ce-accent)" }}>{act.targetUser.username}</strong>
-                                  ) : ""}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="activity-timestamp" style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>
-                              {formatLastActive(act.timestamp)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                            )}
 
-                      {feedPage < feedTotalPages && (
-                        <button
-                          onClick={handleLoadMoreFeed}
-                          className="feed-load-more-btn"
-                          disabled={feedLoading}
-                          style={{ width: "100%", padding: "10px", marginTop: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontWeight: "600" }}
-                        >
-                          {feedLoading ? "Loading..." : "Load More Activity"}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </section>
-              </div>
-
-              {/* RIGHT COLUMN */}
-              <div className="ce-column-right">
-
-                {/* QUICK ACTIONS */}
-                <section className="ce-dashboard-section">
-                  <h3 className="section-title" style={{ marginBottom: "12px" }}>Quick Actions</h3>
-                  <div className="quick-actions-grid-sidebar">
-                    <div className="quick-action-card-item create" onClick={() => {
-                      setFormData({
-                        title: "",
-                        language: localStorage.getItem("default_language") || "javascript",
-                        isPrivate: false
-                      });
-                      setShowQuickCreateModal(true);
-                    }}>
-                      <div className="quick-action-icon-wrapper">
-                        <Plus size={18} />
-                      </div>
-                      <div className="quick-action-details">
-                        <h4>Create Room</h4>
-                        <p>Launch a collaborative sandbox</p>
-                      </div>
-                    </div>
-
-                    <div className="quick-action-card-item join" onClick={() => setShowQuickJoinModal(true)}>
-                      <div className="quick-action-icon-wrapper">
-                        <LogIn size={18} />
-                      </div>
-                      <div className="quick-action-details">
-                        <h4>Join Room</h4>
-                        <p>Enter workspace via code ID</p>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                {/* PENDING JOIN REQUESTS */}
-                {joinRequests.length > 0 && (
-                  <section className="ce-dashboard-section" style={{ borderColor: "var(--ce-warning)" }}>
-                    <div className="section-header">
-                      <ShieldAlert size={14} className="warning-theme-color" />
-                      <h3 className="section-title">Pending Access Requests</h3>
-                    </div>
-                    <div className="join-requests-grid">
-                      {joinRequests.map(req => (
-                        <div key={req.requestId} className="join-request-card">
-                          <div className="request-user-info">
-                            <div className="req-user-avatar" style={{ backgroundColor: req.user?.avatar ? "transparent" : getAvatarColor(req.username) }}>
-                              {req.user?.avatar ? (
-                                <img src={req.user.avatar} alt={req.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                              ) : (
-                                req.username.charAt(0).toUpperCase()
-                              )}
-                            </div>
-                            <div className="req-details">
-                              <strong>{req.username}</strong>
-                              <span>wants to join <b>{req.roomTitle}</b></span>
-                            </div>
-                          </div>
-                          <div className="request-actions">
-                            <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "accept")} className="accept-btn">
-                              Accept
-                            </button>
-                            <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "reject")} className="reject-btn">
-                              Reject
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* ONLINE FOLLOWS */}
-                <section className="ce-dashboard-section">
-                  <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span className="live-indicator-dot" style={{ position: "relative", top: 0 }} /> Online Follows ({onlineFollows.length})
-                  </h3>
-                  {onlineFollows.length === 0 ? (
-                    <div className="empty-state-card compact">
-                      <p>No followed developers online.</p>
-                    </div>
-                  ) : (
-                    <div className="online-follows-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {onlineFollows.map(f => (
-                        <div key={f._id} className="online-follow-item" onClick={() => handleViewUserProfile(f._id)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "6px", cursor: "pointer" }}>
-                          <div className="follow-avatar-wrapper" style={{ position: "relative", width: "28px", height: "28px" }}>
-                            {f.avatar ? (
-                              <img src={f.avatar} alt={f.username} className="follow-avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                            ) : (
-                              <div className="follow-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(f.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                {f.username.charAt(0).toUpperCase()}
+                            {activeRoomsTab === "other-active" && (
+                              <div className="active-rooms-tab-pane">
+                                {otherActive.length === 0 ? (
+                                  <div className="empty-state-card compact">
+                                    <p>No other active workspaces online.</p>
+                                  </div>
+                                ) : (
+                                  <div className="rooms-grid-explore">
+                                    {otherActive.map(room => renderRoomCard(room))}
+                                  </div>
+                                )}
                               </div>
                             )}
-                            <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
                           </div>
-                          <div className="follow-info" style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-                            <span className="follow-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.username}</span>
-                            <span className="follow-bio" style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.bio || "No bio yet"}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                        );
+                      })()
+                    )}
+                  </section>
 
-                {/* PEOPLE YOU MAY KNOW */}
-                <section className="ce-dashboard-section">
-                  <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Sparkles size={14} style={{ color: "var(--ce-accent)" }} /> People You May Know
-                  </h3>
-                  {suggestions.length === 0 ? (
-                    <div className="empty-state-card compact">
-                      <p>No suggestions available.</p>
+                  {/* UNIFIED SOCIAL FEED */}
+                  <section className="ce-dashboard-section social-feed-section">
+                    <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <Activity size={16} className="brand-logo" />
+                        <h3 className="section-title">Developer Activity Feed</h3>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="suggestions-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {suggestions.map(s => (
-                        <div key={s._id} className="suggestion-item" style={{ display: "flex", alignItems: "center", justifyItems: "space-between", gap: "10px", padding: "8px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "6px" }}>
-                          <div onClick={() => handleViewUserProfile(s._id)} style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, cursor: "pointer", minWidth: 0 }}>
-                            <div className="suggestion-avatar" style={{ width: "28px", height: "28px", flexShrink: 0, position: "relative" }}>
-                              {s.avatar ? (
-                                <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+
+                    {feedActivities.length === 0 ? (
+                      <div className="empty-state-card">
+                        <p>No activity logs recorded. Follow other developers to see their updates here!</p>
+                      </div>
+                    ) : (
+                      <div className="social-activities-list">
+                        {feedActivities.map(act => (
+                          <div key={act._id} className="social-activity-card">
+                            <div className="social-activity-header">
+                              <div className="social-activity-actor-info">
+                                <div className="actor-avatar" style={{ background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
+                                  {act.user?.avatar ? (
+                                    <img src={act.user.avatar} alt={act.user?.username} />
+                                  ) : (
+                                    <span>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
+                                  )}
+                                </div>
+                                <div className="actor-meta">
+                                  <span className="actor-username">
+                                    <strong>{act.user?.username || "Someone"}</strong>
+                                  </span>
+                                  <span className="activity-action-text">
+                                    {act.action} {act.roomTitle ? (
+                                      <strong className="clickable-room" onClick={() => act.room?.roomId && handleJoinRoomDirect(act.room.roomId)}>
+                                        {act.roomTitle}
+                                      </strong>
+                                    ) : act.targetUser ? (
+                                      <strong className="activity-target-user">{act.targetUser.username}</strong>
+                                    ) : ""}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="activity-timestamp">
+                                {formatLastActive(act.timestamp)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+
+                        {feedPage < feedTotalPages && (
+                          <button
+                            onClick={handleLoadMoreFeed}
+                            className="feed-load-more-btn"
+                            disabled={feedLoading}
+                          >
+                            {feedLoading ? "Loading..." : "Load More Activity"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                </div>
+
+                {/* RIGHT COLUMN */}
+                <div className="ce-column-right">
+
+                  {/* QUICK ACTIONS */}
+                  <section className="ce-dashboard-section">
+                    <h3 className="section-title" style={{ marginBottom: "12px" }}>Quick Actions</h3>
+                    <div className="quick-actions-grid-sidebar">
+                      <div className="quick-action-card-item create" onClick={() => {
+                        setFormData({
+                          title: "",
+                          language: localStorage.getItem("default_language") || "javascript",
+                          isPrivate: false
+                        });
+                        setShowQuickCreateModal(true);
+                      }}>
+                        <div className="quick-action-icon-wrapper">
+                          <Plus size={18} />
+                        </div>
+                        <div className="quick-action-details">
+                          <h4>Create Room</h4>
+                          <p>Launch a collaborative sandbox</p>
+                        </div>
+                      </div>
+
+                      <div className="quick-action-card-item join" onClick={() => setShowQuickJoinModal(true)}>
+                        <div className="quick-action-icon-wrapper">
+                          <LogIn size={18} />
+                        </div>
+                        <div className="quick-action-details">
+                          <h4>Join Room</h4>
+                          <p>Enter workspace via code ID</p>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* PENDING JOIN REQUESTS */}
+                  {joinRequests.length > 0 && (
+                    <section className="ce-dashboard-section" style={{ borderColor: "var(--ce-warning)" }}>
+                      <div className="section-header">
+                        <ShieldAlert size={14} className="warning-theme-color" />
+                        <h3 className="section-title">Pending Access Requests</h3>
+                      </div>
+                      <div className="join-requests-grid">
+                        {joinRequests.map(req => (
+                          <div key={req.requestId} className="join-request-card">
+                            <div className="request-user-info">
+                              <div className="req-user-avatar" style={{ backgroundColor: req.user?.avatar ? "transparent" : getAvatarColor(req.username) }}>
+                                {req.user?.avatar ? (
+                                  <img src={req.user.avatar} alt={req.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                ) : (
+                                  req.username.charAt(0).toUpperCase()
+                                )}
+                              </div>
+                              <div className="req-details">
+                                <strong>{req.username}</strong>
+                                <span>wants to join <b>{req.roomTitle}</b></span>
+                              </div>
+                            </div>
+                            <div className="request-actions">
+                              <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "accept")} className="accept-btn">
+                                Accept
+                              </button>
+                              <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "reject")} className="reject-btn">
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* ONLINE FOLLOWS */}
+                  <section className="ce-dashboard-section">
+                    <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span className="live-indicator-dot" style={{ position: "relative", top: 0 }} /> Online Follows ({onlineFollows.length})
+                    </h3>
+                    {onlineFollows.length === 0 ? (
+                      <div className="empty-state-card compact">
+                        <p>No followed developers online.</p>
+                      </div>
+                    ) : (
+                      <div className="online-follows-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {onlineFollows.map(f => (
+                          <div key={f._id} className="online-follow-item" onClick={() => handleViewUserProfile(f._id)}>
+                            <div className="follow-avatar-wrapper" style={{ position: "relative", width: "28px", height: "28px" }}>
+                              {f.avatar ? (
+                                <img src={f.avatar} alt={f.username} className="follow-avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
                               ) : (
-                                <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                  {s.username.charAt(0).toUpperCase()}
+                                <div className="follow-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(f.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
+                                  {f.username.charAt(0).toUpperCase()}
                                 </div>
                               )}
-                              {s.isOnline && (
-                                <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
+                              <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
+                            </div>
+                            <div className="follow-info" style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+                              <span className="follow-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.username}</span>
+                              <span className="follow-bio" style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.bio || "No bio yet"}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  {/* PEOPLE YOU MAY KNOW */}
+                  <section className="ce-dashboard-section">
+                    <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Sparkles size={14} style={{ color: "var(--ce-accent)" }} /> People You May Know
+                    </h3>
+                    {suggestions.length === 0 ? (
+                      <div className="empty-state-card compact">
+                        <p>No suggestions available.</p>
+                      </div>
+                    ) : (
+                      <div className="suggestions-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {suggestions.map(s => (
+                          <div key={s._id} className="suggestion-item">
+                            <div onClick={() => handleViewUserProfile(s._id)} style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, cursor: "pointer", minWidth: 0 }}>
+                              <div className="suggestion-avatar" style={{ width: "28px", height: "28px", flexShrink: 0, position: "relative" }}>
+                                {s.avatar ? (
+                                  <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                ) : (
+                                  <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
+                                    {s.username.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                {s.isOnline && (
+                                  <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
+                                )}
+                              </div>
+                              <div className="suggestion-details" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                                <span className="suggestion-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.username}</span>
+                                <span className="suggestion-reason" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {s.mutualCount > 0 ? `${s.mutualCount} mutual connection${s.mutualCount > 1 ? "s" : ""}` : s.programmingLanguages?.length > 0 ? `Tags: ${s.programmingLanguages.slice(0, 2).join(", ")}` : "Recommended"}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              className={`suggestion-follow-btn ${followingList.some(f => String(f._id || f) === String(s._id)) ? "following" : ""}`}
+                              onClick={() => handleFollowToggle(s._id)}
+                            >
+                              {followingList.some(f => String(f._id || f) === String(s._id)) ? (
+                                <>
+                                  <Check size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Following
+                                </>
+                              ) : (
+                                <>
+                                  <Plus size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Follow
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  {/* TRENDING ROOMS */}
+                  <section className="ce-dashboard-section">
+                    <h3 className="section-title">
+                      <Activity size={14} /> Trending Rooms
+                    </h3>
+                    {trendingRooms.length === 0 ? (
+                      <div className="empty-state-card compact">
+                        <p>No trending rooms.</p>
+                      </div>
+                    ) : (
+                      <div className="trending-rooms-list">
+                        {trendingRooms.map((room, index) => {
+                          const rank = index + 1;
+                          const creatorName = room.createdBy?.username || "Developer";
+                          const creatorAvatar = room.createdBy?.avatar;
+                          const lang = (room.language || "javascript").toLowerCase();
+
+                          let rankIcon = <Flame size={12} />;
+                          if (rank === 1) rankIcon = <Trophy size={12} className="text-gold" />;
+                          else if (rank === 2) rankIcon = <Flame size={12} className="text-orange" />;
+
+                          return (
+                            <div
+                              key={room._id}
+                              className={`trending-room-card rank-${rank}`}
+                              onClick={() => handleJoinRoomDirect(room.roomId)}
+                            >
+                              <div className="trending-card-top">
+                                <div className="trending-creator-info">
+                                  <div
+                                    className="trending-creator-avatar"
+                                    style={{
+                                      backgroundColor: creatorAvatar ? "transparent" : getAvatarColor(creatorName)
+                                    }}
+                                  >
+                                    {creatorAvatar ? (
+                                      <img src={creatorAvatar} alt={creatorName} />
+                                    ) : (
+                                      creatorName.charAt(0).toUpperCase()
+                                    )}
+                                  </div>
+                                  <span className="trending-creator-name">@{creatorName}</span>
+                                </div>
+                                <span className={`trending-rank-badge rank-${rank}`}>
+                                  {rankIcon}
+                                  <span>#{rank}</span>
+                                </span>
+                              </div>
+
+                              <h4 className="trending-card-title">
+                                {room.title}
+                              </h4>
+
+                              <div className="trending-card-bottom">
+                                <div className="trending-meta-left">
+                                  <span className={`trending-lang-tag lang-${lang}`}>
+                                    <Code size={11} />
+                                    <span>{room.language || "JavaScript"}</span>
+                                  </span>
+                                  {room.lastActivity && (
+                                    <span className="trending-time-ago" title="Last Active">
+                                      <Clock size={11} />
+                                      <span>{formatLastActive(room.lastActivity)}</span>
+                                    </span>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  className={`room-trending-like-btn ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleLikeRoom(room.roomId);
+                                  }}
+                                  title={isRoomLiked(room.roomId) ? "Unlike Room" : "Like Room"}
+                                >
+                                  <Heart
+                                    size={12}
+                                    fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                  />
+                                  <span className="like-count-text">{room.likesCount || 0}</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+
+                  {/* SPONSORED PROMOTIONS */}
+                  {activeAds.length > 0 && (
+                    <section className="ce-dashboard-section sponsored-ads-section">
+                      <h3 className="section-title text-warning" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <Sparkles size={14} style={{ color: "var(--ce-warning)" }} /> Sponsored Promotions
+                      </h3>
+                      <div className="sponsored-ads-container" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {activeAds.map(ad => (
+                          <a
+                            key={ad._id}
+                            href={ad.redirectUrl || undefined}
+                            target={ad.redirectUrl ? "_blank" : undefined}
+                            rel="noopener noreferrer"
+                            className="sponsored-ad-card"
+                            style={{ color: "inherit" }}
+                          >
+                            <div className="sponsored-ad-image-wrapper">
+                              <img
+                                src={ad.imageUrl}
+                                alt={ad.title}
+                                className="sponsored-ad-image"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  transition: "transform 0.5s ease"
+                                }}
+                              />
+                              <span className="sponsored-tag" style={{
+                                position: "absolute",
+                                top: "8px",
+                                right: "8px",
+                                background: "rgba(0, 0, 0, 0.75)",
+                                color: "var(--ce-warning)",
+                                fontSize: "0.58rem",
+                                fontWeight: "800",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                border: "1px solid rgba(255, 215, 0, 0.3)",
+                                letterSpacing: "1px"
+                              }}>
+                                SPONSORED
+                              </span>
+                            </div>
+                            <div className="sponsored-ad-details" style={{ padding: "10px 12px" }}>
+                              <h4 className="sponsored-ad-title" style={{ fontSize: "0.82rem", fontWeight: "600", color: "var(--ce-text)", margin: "0 0 4px 0", lineHeight: "1.3" }}>
+                                {ad.title}
+                              </h4>
+                              {ad.redirectUrl && (
+                                <span className="sponsored-ad-link" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                                  {ad.redirectUrl.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]} ↗
+                                </span>
                               )}
                             </div>
-                            <div className="suggestion-details" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                              <span className="suggestion-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.username}</span>
-                              <span className="suggestion-reason" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {s.mutualCount > 0 ? `${s.mutualCount} mutual connection${s.mutualCount > 1 ? "s" : ""}` : s.programmingLanguages?.length > 0 ? `Tags: ${s.programmingLanguages.slice(0, 2).join(", ")}` : "Recommended"}
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            className={`suggestion-follow-btn ${followingList.some(f => String(f._id || f) === String(s._id)) ? "following" : ""}`}
-                            onClick={() => handleFollowToggle(s._id)}
-                          >
-                            {followingList.some(f => String(f._id || f) === String(s._id)) ? (
-                              <>
-                                <Check size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Following
-                              </>
-                            ) : (
-                              <>
-                                <Plus size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Follow
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                          </a>
+                        ))}
+                      </div>
+                    </section>
                   )}
-                </section>
-
-                {/* TRENDING ROOMS */}
-                <section className="ce-dashboard-section">
-                  <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Activity size={14} style={{ color: "var(--ce-primary)" }} /> Trending Rooms
-                  </h3>
-                  {trendingRooms.length === 0 ? (
-                    <div className="empty-state-card compact">
-                      <p>No trending rooms.</p>
-                    </div>
-                  ) : (
-                    <div className="trending-rooms-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {trendingRooms.map(room => (
-                        <div
-                          key={room._id}
-                          className="trending-room-item"
-                          onClick={() => handleJoinRoomDirect(room.roomId)}
-                          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--ce-border)", borderRadius: "8px", cursor: "pointer", transition: "transform 0.2s" }}
-                        >
-                          <div className="room-trending-details" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                            <span className="room-trending-title" style={{ fontSize: "0.82rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🔥 {room.title}</span>
-                            <span className="room-trending-meta" style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>
-                              {room.language?.toUpperCase()}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className={`room-trending-like-btn ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleLikeRoom(room.roomId);
-                            }}
-                            style={{
-                              background: isRoomLiked(room.roomId) ? "rgba(248, 81, 73, 0.1)" : "rgba(255, 255, 255, 0.03)",
-                              border: isRoomLiked(room.roomId) ? "1px solid rgba(248, 81, 73, 0.2)" : "1px solid var(--ce-border)",
-                              color: isRoomLiked(room.roomId) ? "var(--ce-danger, #f85149)" : "var(--ce-text)",
-                              cursor: "pointer",
-                              padding: "4px 8px",
-                              borderRadius: "6px",
-                              transition: "all 0.35s ease",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: "4px"
-                            }}
-                            title={isRoomLiked(room.roomId) ? "Unlike Room" : "Like Room"}
-                          >
-                            <Heart
-                              size={12}
-                              fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                              style={{
-                                transition: "fill 0.35s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s ease"
-                              }}
-                            />
-                            <span style={{ fontSize: "0.68rem", fontWeight: "600" }}>{room.likesCount || 0}</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-
-                {/* SPONSORED PROMOTIONS */}
-                {activeAds.length > 0 && (
-                  <section className="ce-dashboard-section sponsored-ads-section">
-                    <h3 className="section-title text-warning" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Sparkles size={14} style={{ color: "var(--ce-warning)" }} /> Sponsored Promotions
-                    </h3>
-                    <div className="sponsored-ads-container" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      {activeAds.map(ad => (
-                        <a
-                          key={ad._id}
-                          href={ad.redirectUrl || undefined}
-                          target={ad.redirectUrl ? "_blank" : undefined}
-                          rel="noopener noreferrer"
-                          className="sponsored-ad-card"
-                          style={{
-                            display: "block",
-                            background: "rgba(255, 255, 255, 0.02)",
-                            border: "1px solid var(--ce-border)",
-                            borderRadius: "10px",
-                            overflow: "hidden",
-                            textDecoration: "none",
-                            color: "inherit",
-                            transition: "all 0.3s ease"
-                          }}
-                        >
-                          <div className="sponsored-ad-image-wrapper" style={{ position: "relative", width: "100%", height: "140px", overflow: "hidden", background: "rgba(0,0,0,0.2)" }}>
-                            <img
-                              src={ad.imageUrl}
-                              alt={ad.title}
-                              className="sponsored-ad-image"
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                transition: "transform 0.5s ease"
-                              }}
-                            />
-                            <span className="sponsored-tag" style={{
-                              position: "absolute",
-                              top: "8px",
-                              right: "8px",
-                              background: "rgba(0, 0, 0, 0.75)",
-                              color: "var(--ce-warning)",
-                              fontSize: "0.58rem",
-                              fontWeight: "800",
-                              padding: "2px 6px",
-                              borderRadius: "4px",
-                              border: "1px solid rgba(255, 215, 0, 0.3)",
-                              letterSpacing: "1px"
-                            }}>
-                              SPONSORED
-                            </span>
-                          </div>
-                          <div className="sponsored-ad-details" style={{ padding: "10px 12px" }}>
-                            <h4 className="sponsored-ad-title" style={{ fontSize: "0.82rem", fontWeight: "600", color: "var(--ce-text)", margin: "0 0 4px 0", lineHeight: "1.3" }}>
-                              {ad.title}
-                            </h4>
-                            {ad.redirectUrl && (
-                              <span className="sponsored-ad-link" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                                {ad.redirectUrl.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]} ↗
-                              </span>
-                            )}
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  </section>
-                )}
+                </div>
               </div>
             </div>
           </div>
-        </>
-      )}
+        )}
 
         {/* ROOMS & ACTIONS SECTION */}
         {activeSection === "rooms" && (
@@ -2977,32 +3039,45 @@ function Dashboard() {
 
               {/* Right Side: Explorer tabs */}
               <div className="rooms-explorer-content">
-                {/* Tabs switcher */}
-                <div className="profile-tabs-header">
-                  <button
-                    className={`profile-tab-btn ${roomsTab === "recent" ? "active" : ""}`}
-                    onClick={() => setRoomsTab("recent")}
-                  >
-                    Continue Coding ({recentRooms.length})
-                  </button>
-                  <button
-                    className={`profile-tab-btn ${roomsTab === "public" ? "active" : ""}`}
-                    onClick={() => setRoomsTab("public")}
-                  >
-                    Explore Public ({publicRooms.length})
-                  </button>
-                  <button
-                    className={`profile-tab-btn ${roomsTab === "myrooms" ? "active" : ""}`}
-                    onClick={() => setRoomsTab("myrooms")}
-                  >
-                    My Rooms ({historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length})
-                  </button>
-                  <button
-                    className={`profile-tab-btn ${roomsTab === "requests" ? "active" : ""}`}
-                    onClick={() => setRoomsTab("requests")}
-                  >
-                    My Requests ({mySentRequests.length})
-                  </button>
+                {/* Segmented Pill Switcher with Round Sliding Background */}
+                <div className="ce-pill-switcher-container">
+                  <div className="ce-pill-switcher" style={{ maxWidth: "720px" }}>
+                    <div
+                      className="ce-pill-bg-slide"
+                      style={{
+                        width: "calc(25% - 2px)",
+                        transform: `translateX(${(roomsTab === "public" ? 0 : roomsTab === "recent" ? 1 : roomsTab === "myrooms" ? 2 : 3) * 100}%)`
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className={`ce-pill-btn ${roomsTab === "public" ? "active" : ""}`}
+                      onClick={() => setRoomsTab("public")}
+                    >
+                      Explore Public ({publicRooms.length})
+                    </button>
+                    <button
+                      type="button"
+                      className={`ce-pill-btn ${roomsTab === "recent" ? "active" : ""}`}
+                      onClick={() => setRoomsTab("recent")}
+                    >
+                      Continue Coding ({recentRooms.length})
+                    </button>
+                    <button
+                      type="button"
+                      className={`ce-pill-btn ${roomsTab === "myrooms" ? "active" : ""}`}
+                      onClick={() => setRoomsTab("myrooms")}
+                    >
+                      My Rooms ({historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length})
+                    </button>
+                    <button
+                      type="button"
+                      className={`ce-pill-btn ${roomsTab === "requests" ? "active" : ""}`}
+                      onClick={() => setRoomsTab("requests")}
+                    >
+                      My Requests ({mySentRequests.length})
+                    </button>
+                  </div>
                 </div>
 
                 {roomsTab === "recent" && (
@@ -3470,8 +3545,16 @@ function Dashboard() {
                             {new Date(room.updatedAt).toLocaleDateString()}
                           </td>
                           <td className="text-right">
-                            <button onClick={() => triggerGateAndNavigate(room.roomId)} className="history-resume-btn">
-                              Resume
+                            <button
+                              onClick={() => triggerResumeHistory(room.roomId)}
+                              className={`history-resume-btn ${resumingHistoryRoomId === room.roomId ? 'loading' : ''}`}
+                              disabled={resumingHistoryRoomId !== null}
+                            >
+                              {resumingHistoryRoomId === room.roomId ? (
+                                <>
+                                  <span className="btn-spinner"></span> Loading...
+                                </>
+                              ) : "Resume"}
                             </button>
                           </td>
                         </tr>
@@ -3539,17 +3622,25 @@ function Dashboard() {
 
             <div className="notifications-list">
               {joinRequests.length > 0 && joinRequests.map(req => (
-                <div key={req.requestId} className="notification-item" style={{ borderColor: "var(--ce-warning)", padding: "12px", borderLeft: "2px solid var(--ce-warning)", background: "rgba(255,255,255,0.01)", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px", marginBottom: "8px" }}>
-                  <div className="notification-item-left" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <ShieldAlert size={16} style={{ color: "var(--ce-warning)" }} />
-                    <div>
-                      <div className="notif-title" style={{ fontWeight: "600", fontSize: "0.85rem", color: "var(--ce-text)" }}>Join Request Approval Pending</div>
-                      <div className="notif-desc" style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)" }}><b>{req.username}</b> requested to access private room <b>{req.roomTitle}</b>.</div>
+                <div key={req.requestId} className="notification-item join-request-pending" style={{ borderColor: "var(--ce-warning)", borderLeft: "3px solid var(--ce-warning)" }}>
+                  <div className="notif-left-content">
+                    <div className="notif-category-icon-container">
+                      <ShieldAlert size={16} style={{ color: "var(--ce-warning)" }} />
+                    </div>
+                    <div className="notif-main-info">
+                      <div className="notif-text-message">
+                        <strong>Join Request Approval Pending</strong>
+                      </div>
+                      <div className="notif-desc">
+                        <strong>{req.username}</strong> requested to access private room <strong>{req.roomTitle}</strong>.
+                      </div>
                     </div>
                   </div>
-                  <button onClick={() => navigate("/dashboard")} className="history-resume-btn" style={{ fontSize: "0.75rem", padding: "4px 10px" }}>
-                    Review
-                  </button>
+                  <div className="notif-right-content">
+                    <button onClick={() => navigate("/dashboard")} className="history-resume-btn notif-view-btn">
+                      Review
+                    </button>
+                  </div>
                 </div>
               ))}
 
@@ -3559,79 +3650,89 @@ function Dashboard() {
                   <p style={{ color: "var(--ce-text-muted)", fontSize: "0.85rem" }}>You have no notifications yet.</p>
                 </div>
               ) : (
-                notificationsList.map(notif => {
-                  const isRead = notif.isRead;
-                  const senderName = notif.sender?.username || "Someone";
-                  const senderAvatar = notif.sender?.avatar;
-                  const roomTitle = notif.targetRoom?.title || "workspace";
-                  const roomLink = notif.targetRoom?.roomId;
+                <>
+                  {notificationsList.map(notif => {
+                    const isRead = notif.isRead;
+                    const senderName = notif.sender?.username || "Someone";
+                    const senderAvatar = notif.sender?.avatar;
+                    const roomTitle = notif.targetRoom?.title || "workspace";
+                    const roomLink = notif.targetRoom?.roomId;
 
-                  let notifIcon = <Bell size={14} />;
-                  let actionText = "";
+                    let notifIcon = <Bell size={14} />;
+                    let actionText = "";
 
-                  if (notif.type === "FOLLOW") {
-                    notifIcon = <Users size={14} style={{ color: "var(--ce-primary)" }} />;
-                    actionText = "followed you";
-                  } else if (notif.type === "LIKE") {
-                    notifIcon = <Heart size={14} style={{ color: "#ef4444" }} />;
-                    actionText = `liked your room "${roomTitle}"`;
-                  } else if (notif.type === "BOOKMARK") {
-                    notifIcon = <Bookmark size={14} style={{ color: "var(--ce-accent)" }} />;
-                    actionText = `bookmarked your room "${roomTitle}"`;
-                  } else if (notif.type === "JOIN") {
-                    notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-warning)" }} />;
-                    actionText = `wants to join "${roomTitle}"`;
-                  }
+                    if (notif.type === "FOLLOW") {
+                      notifIcon = <Users size={14} style={{ color: "var(--ce-primary)" }} />;
+                      actionText = "followed you";
+                    } else if (notif.type === "LIKE") {
+                      notifIcon = <Heart size={14} style={{ color: "#ef4444" }} />;
+                      actionText = `liked your room "${roomTitle}"`;
+                    } else if (notif.type === "BOOKMARK") {
+                      notifIcon = <Bookmark size={14} style={{ color: "var(--ce-accent)" }} />;
+                      actionText = `bookmarked your room "${roomTitle}"`;
+                    } else if (notif.type === "JOIN") {
+                      notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-warning)" }} />;
+                      actionText = `wants to join "${roomTitle}"`;
+                    }
 
-                  return (
-                    <div
-                      key={notif._id}
-                      className={`notification-item ${isRead ? "read" : "unread"}`}
-                      style={{
-                        borderLeft: isRead ? "2px solid transparent" : "2px solid var(--ce-primary)",
-                        padding: "12px",
-                        background: isRead ? "rgba(255,255,255,0.01)" : "rgba(88, 166, 255, 0.03)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        borderRadius: "6px",
-                        marginBottom: "8px",
-                        cursor: "pointer"
-                      }}
-                      onClick={() => !isRead && handleMarkOneNotificationRead(notif._id)}
-                    >
-                      <div className="notification-item-left" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <div className="notif-category-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.05)" }}>
-                          {notifIcon}
+                    return (
+                      <div
+                        key={notif._id}
+                        className={`notification-item ${isRead ? "read" : "unread"}`}
+                        onClick={() => !isRead && handleMarkOneNotificationRead(notif._id)}
+                      >
+                        <div className="notif-left-content">
+                          <div className="notif-category-icon-container">
+                            {notifIcon}
+                          </div>
+                          <div className="notif-sender-avatar-container" style={{ backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName) }}>
+                            {senderAvatar ? (
+                              <img src={senderAvatar} alt={senderName} className="notif-sender-img" />
+                            ) : (
+                              <span className="notif-sender-initial">{senderName.charAt(0).toUpperCase()}</span>
+                            )}
+                          </div>
+                          <div className="notif-main-info">
+                            <div className="notif-text-message">
+                              <strong>{senderName}</strong> {actionText}
+                            </div>
+                            <div className="notif-meta-tags">
+                              <span className="notif-tag-badge">{notif.category}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="notif-sender-avatar" style={{ width: "28px", height: "28px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName) }}>
-                          {senderAvatar ? (
-                            <img src={senderAvatar} alt={senderName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          ) : (
-                            <span style={{ fontSize: "0.8rem", color: "#fff", fontWeight: "600" }}>{senderName.charAt(0).toUpperCase()}</span>
+
+                        <div className="notif-right-content">
+                          <span className="notif-time-badge">{formatLastActive(notif.createdAt)}</span>
+                          {roomLink && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                triggerGateAndNavigate(roomLink);
+                              }}
+                              className="history-resume-btn notif-view-btn"
+                            >
+                              View Room
+                            </button>
                           )}
-                        </div>
-                        <div>
-                          <div className="notif-desc" style={{ fontSize: "0.8rem", color: "var(--ce-text)" }}>
-                            <strong>{senderName}</strong> {actionText}
-                          </div>
-                          <div className="notif-category-badge" style={{ fontSize: "0.6rem", padding: "1px 5px", borderRadius: "3px", display: "inline-block", marginTop: "4px", background: "rgba(255,255,255,0.05)", textTransform: "uppercase", color: "var(--ce-text-muted)" }}>
-                            {notif.category}
-                          </div>
+                          {!isRead && <span className="notif-unread-dot" />}
                         </div>
                       </div>
+                    );
+                  })}
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <span className="notif-time" style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{formatLastActive(notif.createdAt)}</span>
-                        {roomLink && (
-                          <button onClick={(e) => { e.stopPropagation(); triggerGateAndNavigate(roomLink); }} className="history-resume-btn" style={{ fontSize: "0.7rem", padding: "2px 8px" }}>
-                            View Room
-                          </button>
-                        )}
-                      </div>
+                  {notifPage < notifTotalPages && (
+                    <div className="notif-load-more-container" style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+                      <button
+                        onClick={handleLoadMoreNotifications}
+                        disabled={notifLoading}
+                        className="notif-load-more-btn"
+                      >
+                        {notifLoading ? "Loading..." : "Load More Notifications"}
+                      </button>
                     </div>
-                  );
-                })
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -3640,10 +3741,10 @@ function Dashboard() {
         {/* PROFILE SECTION */}
         {activeSection === "profile" && (
           <div className="profile-section-container">
-            <div className="github-profile-layout" style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "24px" }}>
+            <div className="github-profile-layout">
 
               {/* Profile Card Header / Sidebar */}
-              <div className="profile-sidebar-card" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div className="profile-sidebar-card">
                 {viewingUserProfile ? (
                   <div style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: viewingUserProfile.avatar ? "transparent" : getAvatarColor(viewingUserProfile.username), fontSize: "1.8rem", color: "#fff", fontWeight: "600", border: "2px solid var(--ce-border)" }}>
                     {viewingUserProfile.avatar ? (
@@ -3655,31 +3756,24 @@ function Dashboard() {
                 ) : (
                   <ProfileAvatar />
                 )}
-                <h2 style={{ fontSize: "1.2rem", fontWeight: "700", color: "var(--ce-text)", marginTop: "12px", marginBottom: "2px" }}>{viewingUserProfile ? viewingUserProfile.username : user?.username}</h2>
-                <span className="profile-email" style={{ fontSize: "0.75rem", color: "var(--ce-text-muted)", marginBottom: "8px" }}>{viewingUserProfile ? viewingUserProfile.email : user?.email}</span>
+                <h2>{viewingUserProfile ? viewingUserProfile.username : user?.username}</h2>
+                <span className="profile-email">{viewingUserProfile ? viewingUserProfile.email : user?.email}</span>
                 <span
                   className="profile-badge"
-                  style={{
-                    fontSize: "0.68rem",
-                    padding: "2px 8px",
-                    borderRadius: "12px",
-                    fontWeight: "700",
-                    display: "inline-block",
-                    ...getBadgeStyle(viewingUserProfile ? viewingUserProfile.title : user?.title)
-                  }}
+                  style={getBadgeStyle(viewingUserProfile ? viewingUserProfile.title : user?.title)}
                 >
                   {viewingUserProfile ? viewingUserProfile.title : user?.title || "Developer"}
                 </span>
 
                 {/* Followers & Following Statistics Count */}
-                <div className="profile-social-stats" style={{ display: "flex", gap: "16px", marginTop: "16px", borderTop: "1px solid var(--ce-border)", borderBottom: "1px solid var(--ce-border)", width: "100%", padding: "12px 0", justifyContent: "space-around" }}>
-                  <div className="profile-stat-click" onClick={() => { setLoadingModalData(true); setShowFollowersModal(true); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer" }}>
-                    <strong style={{ fontSize: "1rem", color: "var(--ce-text)" }}>{viewingUserProfile ? viewingUserProfile.followersCount : user?.followersCount || 0}</strong>
-                    <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>Followers</span>
+                <div className="profile-stats-bar">
+                  <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowersModal(true); }}>
+                    <strong>{viewingUserProfile ? viewingUserProfile.followersCount : user?.followersCount || 0}</strong>
+                    <span>Followers</span>
                   </div>
-                  <div className="profile-stat-click" onClick={() => { setLoadingModalData(true); setShowFollowingModal(true); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer" }}>
-                    <strong style={{ fontSize: "1rem", color: "var(--ce-text)" }}>{viewingUserProfile ? viewingUserProfile.followingCount : user?.followingCount || 0}</strong>
-                    <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>Following</span>
+                  <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowingModal(true); }}>
+                    <strong>{viewingUserProfile ? viewingUserProfile.followingCount : user?.followingCount || 0}</strong>
+                    <span>Following</span>
                   </div>
                 </div>
 
@@ -3693,7 +3787,7 @@ function Dashboard() {
                         onChange={(e) => setBioInput(e.target.value)}
                         placeholder="Write a bio..."
                         className="profile-edit-textarea"
-                        style={{ width: "100%", minHeight: "60px", background: "rgba(128, 128, 128, 0.08)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem", resize: "none" }}
+                        style={{ width: "100%", minHeight: "60px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem", resize: "none" }}
                       />
                     </div>
                     <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -3704,14 +3798,14 @@ function Dashboard() {
                         onChange={(e) => setLangsInput(e.target.value)}
                         placeholder="e.g. JavaScript, Python"
                         className="profile-edit-input"
-                        style={{ width: "100%", background: "rgba(128, 128, 128, 0.08)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
+                        style={{ width: "100%", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
                       />
                     </div>
                     <div style={{ display: "flex", gap: "8px" }}>
-                      <button className="profile-edit-save-btn" onClick={handleSaveProfile} style={{ flex: 1, padding: "6px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "600" }}>
-                        Save
+                      <button className="profile-edit-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile} style={{ flex: 1, padding: "6px", background: "var(--ce-primary)", color: "var(--ce-primary-text)", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "600" }}>
+                        {isSavingProfile ? "Saving..." : "Save"}
                       </button>
-                      <button className="profile-edit-cancel-btn" onClick={() => setIsEditingProfile(false)} style={{ flex: 1, padding: "6px", background: "rgba(255,255,255,0.05)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" }}>
+                      <button className="profile-edit-cancel-btn" onClick={() => setIsEditingProfile(false)} style={{ flex: 1, padding: "6px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" }}>
                         Cancel
                       </button>
                     </div>
@@ -3724,7 +3818,7 @@ function Dashboard() {
                     {((viewingUserProfile ? viewingUserProfile.programmingLanguages : user?.programmingLanguages) || []).length > 0 && (
                       <div className="profile-languages-chips" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "12px", justifyContent: "center" }}>
                         {(viewingUserProfile ? viewingUserProfile.programmingLanguages : user.programmingLanguages).map(lang => (
-                          <span key={lang} className="lang-chip-badge" style={{ fontSize: "0.62rem", padding: "2px 6px", background: "rgba(88, 166, 255, 0.08)", color: "var(--ce-primary)", borderRadius: "4px", border: "1px solid rgba(88, 166, 255, 0.15)", fontWeight: "600" }}>
+                          <span key={lang} className="lang-chip-badge" style={{ fontSize: "0.62rem", padding: "2px 6px", background: "var(--ce-primary-glow)", color: "var(--ce-primary)", borderRadius: "4px", border: "1px solid var(--ce-border)", fontWeight: "600" }}>
                             {lang}
                           </span>
                         ))}
@@ -3737,7 +3831,6 @@ function Dashboard() {
                             <button
                               className="profile-follow-btn unfollow"
                               onClick={() => handleFollowToggle(viewingUserProfile._id)}
-                              style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text-muted)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}
                             >
                               Unfollow
                             </button>
@@ -3745,7 +3838,6 @@ function Dashboard() {
                             <button
                               className="profile-follow-btn follow"
                               onClick={() => handleFollowToggle(viewingUserProfile._id)}
-                              style={{ width: "100%", padding: "8px", background: "var(--ce-primary)", border: "none", borderRadius: "6px", color: "#fff", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}
                             >
                               Follow
                             </button>
@@ -3754,13 +3846,13 @@ function Dashboard() {
                         <button
                           className="profile-back-btn"
                           onClick={() => navigate("/dashboard?tab=profile")}
-                          style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                          style={{ width: "100%", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                         >
                           <ArrowLeft size={13} /> Back to My Profile
                         </button>
                       </div>
                     ) : (
-                      <button className="profile-edit-trigger-btn" onClick={startEditingProfile} style={{ width: "100%", marginTop: "16px", padding: "8px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}>
+                      <button className="profile-edit-trigger-btn" onClick={startEditingProfile} style={{ width: "100%", marginTop: "16px", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}>
                         Edit Profile
                       </button>
                     )}
@@ -3798,104 +3890,120 @@ function Dashboard() {
 
                 {/* Dynamic Tab Panels for Liked/Saved Rooms, created Rooms & Logs */}
                 <div className="profile-tabs-container">
-                  <div className="profile-tabs-header">
-                    <button className={`profile-tab-btn ${profileTab === "rooms" ? "active" : ""}`} onClick={() => setProfileTab("rooms")}>
-                      {viewingUserProfile ? "Rooms" : "My Rooms"} ({viewingUserProfile ? viewingUserRooms.length : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length})
-                    </button>
-                    <button className={`profile-tab-btn ${profileTab === "liked" ? "active" : ""}`} onClick={() => setProfileTab("liked")}>
-                      Liked ({viewingUserProfile ? viewingUserLikedRooms.length : likedRooms.length})
-                    </button>
-                    {!viewingUserProfile && (
-                      <button className={`profile-tab-btn ${profileTab === "saved" ? "active" : ""}`} onClick={() => setProfileTab("saved")}>
-                        Saved ({savedRooms.length})
-                      </button>
-                    )}
-                    {!viewingUserProfile && (
-                      <button className={`profile-tab-btn ${profileTab === "activity" ? "active" : ""}`} onClick={() => setProfileTab("activity")}>
-                        Recent Logs
-                      </button>
-                    )}
-                  </div>
+                  {/* Segmented Pill Switcher with Round Sliding Background */}
+                  {(() => {
+                    const profileTabsList = [
+                      { id: "rooms", label: viewingUserProfile ? "Rooms" : "My Rooms", count: viewingUserProfile ? viewingUserRooms.length : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length },
+                      { id: "liked", label: "Liked", count: viewingUserProfile ? viewingUserLikedRooms.length : likedRooms.length }
+                    ];
+                    if (!viewingUserProfile) {
+                      profileTabsList.push(
+                        { id: "saved", label: "Saved", count: savedRooms.length },
+                        { id: "activity", label: "Recent Logs", count: null }
+                      );
+                    }
+                    const activeProfileTabIdx = Math.max(0, profileTabsList.findIndex(t => t.id === profileTab));
+                    const profileTabsCount = profileTabsList.length;
+
+                    return (
+                      <div className="ce-pill-switcher-container">
+                        <div className="ce-pill-switcher" style={{ maxWidth: "680px" }}>
+                          <div
+                            className="ce-pill-bg-slide"
+                            style={{
+                              width: `calc(${100 / profileTabsCount}% - ${8 / profileTabsCount}px)`,
+                              transform: `translateX(${activeProfileTabIdx * 100}%)`
+                            }}
+                          />
+                          {profileTabsList.map((tab) => (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              className={`ce-pill-btn ${profileTab === tab.id ? "active" : ""}`}
+                              onClick={() => setProfileTab(tab.id)}
+                            >
+                              {tab.label} {tab.count !== null ? `(${tab.count})` : ""}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="profile-tab-content">
                     {profileTab === "rooms" && (
-                      <div className="profile-rooms-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px", alignItems: "start" }}>
+                      <div className="profile-rooms-grid">
                         {(viewingUserProfile ? viewingUserRooms : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id)).length === 0 ? (
-                          <p style={{ color: "var(--ce-text-muted)", fontSize: "0.78rem" }}>No rooms created yet.</p>
+                          <p className="profile-rooms-empty-text">No rooms created yet.</p>
                         ) : (
                           (viewingUserProfile ? viewingUserRooms : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id)).map(room => (
-                            <div key={room.roomId} className="profile-room-card" onClick={() => triggerGateAndNavigate(room.roomId)} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "12px", cursor: "pointer", position: "relative" }}>
-                              <span className="room-lang-badge" style={{ float: "right", fontSize: "0.62rem", padding: "1px 5px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
-                              <h4 style={{ margin: "0 0 6px 0", color: "var(--ce-text)", fontSize: "0.82rem" }}>🚀 {room.title}</h4>
-                              <p style={{ margin: "0", fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>ID: {room.roomId}</p>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                  <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>{new Date(room.createdAt).toLocaleDateString()}</span>
+                            <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                              <div className="profile-room-card-header">
+                                <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                              </div>
+                              <p className="profile-room-card-id">ID: {room.roomId}</p>
+                              <div className="profile-room-card-footer">
+                                <div className="profile-room-card-footer-left">
+                                  <span className="profile-room-card-date">{new Date(room.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
                                   {room.likedBy && room.likedBy.length > 0 && (
-                                    <div className="card-likes-avatars-stack" style={{ display: "flex", alignItems: "center", marginLeft: "4px" }}>
+                                    <div className="card-likes-avatars-stack">
                                       {room.likedBy.slice(0, 3).map((u, i) => (
                                         <div
                                           key={i}
                                           className="avatar-stack-item"
                                           style={{
-                                            width: "14px",
-                                            height: "14px",
-                                            borderRadius: "50%",
-                                            overflow: "hidden",
-                                            border: "1px solid var(--ce-border)",
-                                            marginLeft: i > 0 ? "-4px" : "0",
-                                            zIndex: 10 - i,
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            background: "var(--ce-bg-sidebar)"
+                                            marginLeft: i > 0 ? "-6px" : "0",
+                                            zIndex: 10 - i
                                           }}
-                                          title={`Liked by ${u.username}`}
                                         >
                                           {u.avatar ? (
-                                            <img src={u.avatar} alt={u.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                            <img src={u.avatar} alt={u.username} />
                                           ) : (
-                                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.45rem", fontWeight: "700", color: "#fff", backgroundColor: getAvatarColor(u.username || "D") }}>
+                                            <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
                                               {(u.username || "D").charAt(0).toUpperCase()}
                                             </div>
                                           )}
                                         </div>
                                       ))}
                                       {room.likedBy.length > 3 && (
-                                        <span style={{ fontSize: "0.58rem", color: "var(--ce-text-muted)", marginLeft: "3px" }} title={room.likedBy.slice(3).map(u => u.username).join(", ")}>
+                                        <span className="avatar-stack-more">
                                           +{room.likedBy.length - 3}
                                         </span>
                                       )}
+                                      <div className="likes-tooltip">
+                                        <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                        <div className="likes-tooltip-list">
+                                          {room.likedBy.map((u, idx) => (
+                                            <div key={idx} className="likes-tooltip-user">
+                                              {u.avatar ? (
+                                                <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                              ) : (
+                                                <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                  {(u.username || "D").charAt(0).toUpperCase()}
+                                                </div>
+                                              )}
+                                              <span className="likes-tooltip-username">{u.username}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
                                     </div>
                                   )}
-                                </div>
-                                <div style={{ display: "flex", gap: "6px" }} onClick={e => e.stopPropagation()}>
                                   <button
                                     type="button"
-                                    className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""}`}
+                                    className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
                                     onClick={() => handleLikeRoom(room.roomId)}
-                                    style={{
-                                      background: "none",
-                                      border: "none",
-                                      cursor: "pointer",
-                                      color: isRoomLiked(room.roomId) ? "var(--ce-danger, #f85149)" : "var(--ce-text)",
-                                      padding: "2px",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      gap: "4px",
-                                      transition: "color 0.35s ease, transform 0.2s ease"
-                                    }}
                                   >
                                     <Heart
                                       size={12}
                                       fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                      style={{
-                                        transition: "fill 0.35s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s ease"
-                                      }}
                                     />
-                                    <span style={{ fontSize: "0.68rem" }}>{room.likesCount || 0}</span>
+                                    <span className="like-count-text">{room.likesCount || 0}</span>
                                   </button>
-                                  <button onClick={() => handleBookmarkRoom(room.roomId)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ce-text-muted)", padding: "2px" }}><Bookmark size={12} /></button>
+                                  <button onClick={() => handleBookmarkRoom(room.roomId)} className="profile-room-bookmark-btn"><Bookmark size={12} /></button>
                                 </div>
                               </div>
                             </div>
@@ -3905,42 +4013,78 @@ function Dashboard() {
                     )}
 
                     {profileTab === "liked" && (
-                      <div className="profile-rooms-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px", alignItems: "start" }}>
+                      <div className="profile-rooms-grid">
                         {(viewingUserProfile ? viewingUserLikedRooms : likedRooms).length === 0 ? (
-                          <p style={{ color: "var(--ce-text-muted)", fontSize: "0.78rem" }}>No liked rooms.</p>
+                          <p className="profile-rooms-empty-text">No liked rooms.</p>
                         ) : (
                           (viewingUserProfile ? viewingUserLikedRooms : likedRooms).map(room => (
-                            <div key={room.roomId} className="profile-room-card" onClick={() => triggerGateAndNavigate(room.roomId)} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "12px", cursor: "pointer" }}>
-                              <span className="room-lang-badge" style={{ float: "right", fontSize: "0.62rem", padding: "1px 5px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
-                              <h4 style={{ margin: "0 0 6px 0", color: "var(--ce-text)", fontSize: "0.82rem" }}>🚀 {room.title}</h4>
-                              <p style={{ margin: "0", fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>By {room.createdBy?.username || "Developer"}</p>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
-                                <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>Liked</span>
-                                <button
-                                  type="button"
-                                  className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""}`}
-                                  onClick={(e) => { e.stopPropagation(); handleLikeRoom(room.roomId); }}
-                                  style={{
-                                    background: "none",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    color: "var(--ce-danger, #f85149)",
-                                    padding: "2px",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                    transition: "color 0.35s ease, transform 0.2s ease"
-                                  }}
-                                >
-                                  <Heart
-                                    size={12}
-                                    fill="currentColor"
-                                    style={{
-                                      transition: "fill 0.35s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s ease"
-                                    }}
-                                  />
-                                  <span style={{ fontSize: "0.68rem" }}>{room.likesCount || 0}</span>
-                                </button>
+                            <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                              <div className="profile-room-card-header">
+                                <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                              </div>
+                              <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
+                              <div className="profile-room-card-footer">
+                                <div className="profile-room-card-footer-left">
+                                  <span className="profile-room-card-status-text">Liked</span>
+                                </div>
+                                <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
+                                  {room.likedBy && room.likedBy.length > 0 && (
+                                    <div className="card-likes-avatars-stack">
+                                      {room.likedBy.slice(0, 3).map((u, i) => (
+                                        <div
+                                          key={i}
+                                          className="avatar-stack-item"
+                                          style={{
+                                            marginLeft: i > 0 ? "-6px" : "0",
+                                            zIndex: 10 - i
+                                          }}
+                                        >
+                                          {u.avatar ? (
+                                            <img src={u.avatar} alt={u.username} />
+                                          ) : (
+                                            <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                              {(u.username || "D").charAt(0).toUpperCase()}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                      {room.likedBy.length > 3 && (
+                                        <span className="avatar-stack-more">
+                                          +{room.likedBy.length - 3}
+                                        </span>
+                                      )}
+                                      <div className="likes-tooltip">
+                                        <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                        <div className="likes-tooltip-list">
+                                          {room.likedBy.map((u, idx) => (
+                                            <div key={idx} className="likes-tooltip-user">
+                                              {u.avatar ? (
+                                                <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                              ) : (
+                                                <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                  {(u.username || "D").charAt(0).toUpperCase()}
+                                                </div>
+                                              )}
+                                              <span className="likes-tooltip-username">{u.username}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                    onClick={() => handleLikeRoom(room.roomId)}
+                                  >
+                                    <Heart
+                                      size={12}
+                                      fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                    />
+                                    <span className="like-count-text">{room.likesCount || 0}</span>
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ))
@@ -3949,18 +4093,79 @@ function Dashboard() {
                     )}
 
                     {!viewingUserProfile && profileTab === "saved" && (
-                      <div className="profile-rooms-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px", alignItems: "start" }}>
+                      <div className="profile-rooms-grid">
                         {savedRooms.length === 0 ? (
-                          <p style={{ color: "var(--ce-text-muted)", fontSize: "0.78rem" }}>No bookmarked rooms.</p>
+                          <p className="profile-rooms-empty-text">No bookmarked rooms.</p>
                         ) : (
                           savedRooms.map(room => (
-                            <div key={room.roomId} className="profile-room-card" onClick={() => triggerGateAndNavigate(room.roomId)} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "8px", padding: "12px", cursor: "pointer" }}>
-                              <span className="room-lang-badge" style={{ float: "right", fontSize: "0.62rem", padding: "1px 5px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
-                              <h4 style={{ margin: "0 0 6px 0", color: "var(--ce-text)", fontSize: "0.82rem" }}>🚀 {room.title}</h4>
-                              <p style={{ margin: "0", fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>By {room.createdBy?.username || "Developer"}</p>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
-                                <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>Saved</span>
-                                <button onClick={(e) => { e.stopPropagation(); handleBookmarkRoom(room.roomId); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ce-primary, #58a6ff)", padding: "2px" }}><Bookmark size={12} fill="currentColor" /></button>
+                            <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                              <div className="profile-room-card-header">
+                                <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                              </div>
+                              <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
+                              <div className="profile-room-card-footer">
+                                <div className="profile-room-card-footer-left">
+                                  <span className="profile-room-card-status-text">Saved</span>
+                                </div>
+                                <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
+                                  {room.likedBy && room.likedBy.length > 0 && (
+                                    <div className="card-likes-avatars-stack">
+                                      {room.likedBy.slice(0, 3).map((u, i) => (
+                                        <div
+                                          key={i}
+                                          className="avatar-stack-item"
+                                          style={{
+                                            marginLeft: i > 0 ? "-6px" : "0",
+                                            zIndex: 10 - i
+                                          }}
+                                        >
+                                          {u.avatar ? (
+                                            <img src={u.avatar} alt={u.username} />
+                                          ) : (
+                                            <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                              {(u.username || "D").charAt(0).toUpperCase()}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                      {room.likedBy.length > 3 && (
+                                        <span className="avatar-stack-more">
+                                          +{room.likedBy.length - 3}
+                                        </span>
+                                      )}
+                                      <div className="likes-tooltip">
+                                        <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                        <div className="likes-tooltip-list">
+                                          {room.likedBy.map((u, idx) => (
+                                            <div key={idx} className="likes-tooltip-user">
+                                              {u.avatar ? (
+                                                <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                              ) : (
+                                                <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                  {(u.username || "D").charAt(0).toUpperCase()}
+                                                </div>
+                                              )}
+                                              <span className="likes-tooltip-username">{u.username}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                    onClick={() => handleLikeRoom(room.roomId)}
+                                  >
+                                    <Heart
+                                      size={12}
+                                      fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                    />
+                                    <span className="like-count-text">{room.likesCount || 0}</span>
+                                  </button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleBookmarkRoom(room.roomId); }} className="profile-room-bookmark-btn active"><Bookmark size={12} fill="currentColor" /></button>
+                                </div>
                               </div>
                             </div>
                           ))
@@ -3969,14 +4174,14 @@ function Dashboard() {
                     )}
 
                     {!viewingUserProfile && profileTab === "activity" && (
-                      <div className="profile-activity-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div className="profile-activity-list">
                         {activities.filter(a => String(a.username) === String(user?.username)).length === 0 ? (
-                          <p style={{ color: "var(--ce-text-muted)", fontSize: "0.78rem" }}>No recent activity logged.</p>
+                          <p className="profile-rooms-empty-text">No recent activity logged.</p>
                         ) : (
                           activities.filter(a => String(a.username) === String(user?.username)).slice(0, 10).map(act => (
-                            <div key={act._id} className="profile-activity-item" style={{ padding: "10px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "6px", fontSize: "0.75rem", color: "var(--ce-text-muted)", display: "flex", justifyContent: "space-between" }}>
+                            <div key={act._id} className="profile-activity-item">
                               <span>You {act.action} room <strong>{act.roomTitle}</strong></span>
-                              <span style={{ fontSize: "0.68rem" }}>{formatLastActive(act.timestamp)}</span>
+                              <span className="profile-activity-time">{formatLastActive(act.timestamp)}</span>
                             </div>
                           ))
                         )}
@@ -4067,7 +4272,7 @@ function Dashboard() {
                         onChange={(e) => setLangsInput(e.target.value)}
                       />
                     </div>
-                    <button className="settings-save-btn" onClick={handleSaveProfile}>Update Profile</button>
+                    <button className="settings-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile}>{isSavingProfile ? "Saving..." : "Update Profile"}</button>
                   </div>
                 )}
 
@@ -4415,12 +4620,12 @@ function Dashboard() {
         )}
 
         {/* Room Details Modal */}
-        {selectedRoomDetails && (
+        {selectedRoomDetails && createPortal(
           <div className="ce-modal-overlay" onClick={() => setSelectedRoomDetails(null)}>
+            <button className="modal-close-btn-outside" onClick={(e) => { e.stopPropagation(); setSelectedRoomDetails(null); }} title="Close Details">
+              <X size={18} />
+            </button>
             <div className="ce-modal-card room-details-modal-card" onClick={(e) => e.stopPropagation()}>
-              <button className="modal-close-btn" onClick={() => setSelectedRoomDetails(null)}>
-                <X size={18} />
-              </button>
 
               <div className="modal-header-new">
                 <span className="modal-label-tag">Room Overview</span>
@@ -4429,7 +4634,9 @@ function Dashboard() {
 
               <div className="modal-details-grid">
                 <div className="modal-detail-item">
-                  <span className="modal-detail-label">Room ID</span>
+                  <span className="modal-detail-label">
+                    <Terminal size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Room ID
+                  </span>
                   <div className="modal-detail-value-wrapper">
                     <span className="modal-detail-value mono-text">{selectedRoomDetails.roomId}</span>
                     <button
@@ -4443,29 +4650,52 @@ function Dashboard() {
                 </div>
 
                 <div className="modal-detail-item">
-                  <span className="modal-detail-label">Language</span>
+                  <span className="modal-detail-label">
+                    <Code size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Language
+                  </span>
                   <span className="modal-detail-value lang-badge-new">{selectedRoomDetails.language?.toUpperCase()}</span>
                 </div>
 
                 <div className="modal-detail-item">
-                  <span className="modal-detail-label">Visibility</span>
+                  <span className="modal-detail-label">
+                    {selectedRoomDetails.isPrivate ? <Lock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> : <Globe size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} />} Visibility
+                  </span>
                   <span className="modal-detail-value privacy-badge-new">
-                    {selectedRoomDetails.isPrivate ? <Lock size={12} /> : <Globe size={12} />}
                     {selectedRoomDetails.isPrivate ? "Private Room" : "Public Room"}
                   </span>
                 </div>
 
                 <div className="modal-detail-item">
-                  <span className="modal-detail-label">Owner</span>
-                  <span className="modal-detail-value owner-name-new">
-                    👤 {selectedRoomDetails.createdBy?.username || "Collaborator"}
+                  <span className="modal-detail-label">
+                    <User size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Owner
                   </span>
+                  <div className="modal-owner-badge">
+                    {selectedRoomDetails.createdBy?.avatar ? (
+                      <img
+                        src={selectedRoomDetails.createdBy.avatar}
+                        alt="Owner"
+                        className="modal-owner-avatar-img"
+                      />
+                    ) : (
+                      <div
+                        className="modal-owner-avatar-placeholder"
+                        style={{ backgroundColor: getAvatarColor(selectedRoomDetails.createdBy?.username || "Owner") }}
+                      >
+                        {(selectedRoomDetails.createdBy?.username || "O").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="owner-name-new">
+                      {selectedRoomDetails.createdBy?.username || "Collaborator"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="modal-detail-item">
-                  <span className="modal-detail-label">Last Active</span>
-                  <span className="modal-detail-value">
-                    🕒 {formatLastActive(selectedRoomDetails.lastActivity || selectedRoomDetails.updatedAt)}
+                  <span className="modal-detail-label">
+                    <Clock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Last Active
+                  </span>
+                  <span className="modal-detail-value last-active-time">
+                    {formatLastActive(selectedRoomDetails.lastActivity || selectedRoomDetails.updatedAt)}
                   </span>
                 </div>
               </div>
@@ -4505,8 +4735,7 @@ function Dashboard() {
                           {isCurrentUserOwner && !isOwner && !isSelf && (
                             <button
                               onClick={() => handleRemoveUser(selectedRoomDetails.roomId, m._id || m, m.username || "Collaborator")}
-                              className="drawer-member-remove-btn"
-                              style={{ margin: 0, padding: "2px 8px", height: "24px", fontSize: "0.65rem", marginLeft: "10px" }}
+                              className="modal-kick-member-btn"
                               title="Kick user from room"
                             >
                               Kick
@@ -4520,53 +4749,33 @@ function Dashboard() {
               </div>
 
               {/* Liked By Section */}
-              <div className="modal-likes-section" style={{ marginTop: "16px", borderTop: "1px solid var(--ce-border)", paddingTop: "14px" }}>
-                <h4 className="members-title-new" style={{ display: "flex", alignItems: "center", gap: "6px", margin: "0 0 10px 0", fontSize: "0.78rem", fontWeight: "700", color: "var(--ce-text)" }}>
-                  <Heart size={13} fill="var(--ce-danger, #f85149)" style={{ color: "var(--ce-danger, #f85149)" }} />
+              <div className="modal-likes-section">
+                <h4 className="modal-likes-title">
+                  <Heart size={13} fill="var(--ce-danger, #f85149)" />
                   Liked By ({selectedRoomLikes.length})
                 </h4>
                 {isLoadingRoomLikes ? (
-                  <div style={{ fontSize: "0.74rem", color: "var(--ce-text-muted)", padding: "10px 0" }}>Loading likes...</div>
+                  <div className="modal-likes-loader">Loading likes...</div>
                 ) : selectedRoomLikes.length === 0 ? (
-                  <p style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", margin: "8px 0" }}>No likes yet. Be the first to like this room!</p>
+                  <p className="modal-likes-empty">No likes yet. Be the first to like this room!</p>
                 ) : (
-                  <div className="likes-list-scrollable" style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px", maxHeight: "100px", overflowY: "auto" }}>
+                  <div className="likes-list-scrollable">
                     {selectedRoomLikes.map((u, idx) => (
                       <div
                         key={idx}
                         className="modal-like-chip"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          background: "rgba(255, 255, 255, 0.03)",
-                          border: "1px solid var(--ce-border)",
-                          borderRadius: "20px",
-                          padding: "4px 10px 4px 6px",
-                          fontSize: "0.72rem",
-                          color: "var(--ce-text)"
-                        }}
                         title={u.bio || u.email || `@${u.username}`}
                       >
                         {u.avatar ? (
                           <img
                             src={u.avatar}
                             alt={u.username}
-                            style={{ width: "18px", height: "18px", borderRadius: "50%", objectFit: "cover" }}
+                            className="modal-like-avatar-img"
                           />
                         ) : (
                           <div
-                            style={{
-                              width: "18px",
-                              height: "18px",
-                              borderRadius: "50%",
-                              backgroundColor: getAvatarColor(u.username || "D"),
-                              display: "grid",
-                              placeItems: "center",
-                              fontSize: "0.55rem",
-                              fontWeight: "700",
-                              color: "#fff"
-                            }}
+                            className="modal-like-avatar-placeholder"
+                            style={{ backgroundColor: getAvatarColor(u.username || "D") }}
                           >
                             {(u.username || "D").charAt(0).toUpperCase()}
                           </div>
@@ -4587,75 +4796,87 @@ function Dashboard() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Quick Create Room Modal */}
-        {showQuickCreateModal && (
-          <div className="ce-modal-overlay" onClick={() => setShowQuickCreateModal(false)}>
+        {showQuickCreateModal && createPortal(
+          <div className="ce-modal-overlay" onClick={() => !isCreatingRoom && setShowQuickCreateModal(false)}>
             <div className="ce-modal-card" onClick={(e) => e.stopPropagation()}>
-              <button className="modal-close-btn" onClick={() => setShowQuickCreateModal(false)}>
-                <X size={18} />
-              </button>
-              <div className="modal-header-new">
-                <span className="modal-label-tag">Quick Action</span>
-                <h3 className="modal-title-new">Create Workspace Room</h3>
-              </div>
-
-              <form onSubmit={(e) => {
-                handleCreateRoom(e);
-                setShowQuickCreateModal(false);
-              }} className="compact-form modal-form-new">
-                <div className="form-field">
-                  <label>Workspace Title</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. DSA Practice Prep"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    required
-                    className="modal-input-new"
-                  />
-                </div>
-
-                <div className="form-field-row">
-                  <div className="form-field flex-1">
-                    <label>Language</label>
-                    <select
-                      value={formData.language}
-                      onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                      className="modal-input-new select"
-                    >
-                      <option value="javascript">JavaScript</option>
-                      <option value="python">Python</option>
-                      <option value="cpp">C++</option>
-                      <option value="java">Java</option>
-                    </select>
+              {!isCreatingRoom ? (
+                <>
+                  <button className="modal-close-btn" onClick={() => setShowQuickCreateModal(false)}>
+                    <X size={18} />
+                  </button>
+                  <div className="modal-header-new">
+                    <span className="modal-label-tag">Quick Action</span>
+                    <h3 className="modal-title-new">Create Workspace Room</h3>
                   </div>
 
-                  <div className="form-field flex-1">
-                    <label>Privacy Type</label>
-                    <select
-                      value={formData.isPrivate}
-                      onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
-                      className="modal-input-new select"
-                    >
-                      <option value="false">Public</option>
-                      <option value="true">Private (Requires Approval)</option>
-                    </select>
-                  </div>
-                </div>
+                  <form onSubmit={handleCreateRoom} className="compact-form modal-form-new">
+                    <div className="form-field">
+                      <label>Workspace Title</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. DSA Practice Prep"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        required
+                        className="modal-input-new"
+                      />
+                    </div>
 
-                <button type="submit" className="modal-join-btn-new" style={{ marginTop: "16px" }}>
-                  Create Room Workspace
-                </button>
-              </form>
+                    <div className="form-field-row">
+                      <div className="form-field flex-1">
+                        <label>Language</label>
+                        <select
+                          value={formData.language}
+                          onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                          className="modal-input-new select"
+                        >
+                          <option value="javascript">JavaScript</option>
+                          <option value="python">Python</option>
+                          <option value="cpp">C++</option>
+                          <option value="java">Java</option>
+                        </select>
+                      </div>
+
+                      <div className="form-field flex-1">
+                        <label>Privacy Type</label>
+                        <select
+                          value={formData.isPrivate}
+                          onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
+                          className="modal-input-new select"
+                        >
+                          <option value="false">Public</option>
+                          <option value="true">Private (Requires Approval)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <button type="submit" className="modal-join-btn-new ce-mt-16">
+                      Create Room Workspace
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <div className="modal-loader-container">
+                  <div className="modal-roller-spinner">
+                    <div></div><div></div><div></div><div></div>
+                    <div></div><div></div><div></div><div></div>
+                  </div>
+                  <h4 className="modal-loader-text">Creating Workspace Room...</h4>
+                  <p className="modal-loader-subtext">Configuring runtime compiler and sandboxed environments</p>
+                </div>
+              )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Quick Join Room Modal */}
-        {showQuickJoinModal && (
+        {showQuickJoinModal && createPortal(
           <div className="ce-modal-overlay" onClick={() => setShowQuickJoinModal(false)}>
             <div className="ce-modal-card" onClick={(e) => e.stopPropagation()}>
               <button className="modal-close-btn" onClick={() => setShowQuickJoinModal(false)}>
@@ -4682,12 +4903,13 @@ function Dashboard() {
                   />
                 </div>
 
-                <button type="submit" className="modal-join-btn-new" style={{ marginTop: "16px", background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.25)" }}>
+                <button type="submit" className="modal-join-btn-new ce-btn-success ce-mt-16">
                   Join Workspace
                 </button>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Gate Entry Animation Overlay */}
@@ -4703,22 +4925,21 @@ function Dashboard() {
         )}
 
         {/* Kick Confirmation Modal */}
-        {kickModalOpen && (
-          <div className="ce-modal-overlay" style={{ zIndex: 100000 }}>
-            <div className="ce-modal-card warning-glow">
-              <div className="modal-icon error" style={{ width: "60px", height: "60px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", marginBottom: "16px" }}>
+        {kickModalOpen && createPortal(
+          <div className="ce-modal-overlay" onClick={() => setKickModalOpen(false)}>
+            <div className="ce-modal-card confirm-modal-card warning-glow" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-icon-circle error">
                 <UserMinus size={32} />
               </div>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: "700", color: "var(--ce-text)", marginBottom: "8px" }}>Remove Participant?</h2>
-              <p style={{ fontSize: "0.85rem", color: "var(--ce-text-muted)", marginBottom: "20px", lineHeight: "1.4" }}>
+              <h2 className="modal-confirm-title">Remove Participant?</h2>
+              <p className="modal-confirm-desc">
                 Are you sure you want to remove <strong>{kickTarget.username}</strong> from this workspace? They will be immediately disconnected.
               </p>
-              <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+              <div className="modal-confirm-actions">
                 <button
                   className="ce-btn-secondary"
                   type="button"
                   onClick={() => setKickModalOpen(false)}
-                  style={{ flex: 1, padding: "10px 0", fontWeight: "600", borderRadius: "6px", cursor: "pointer", background: "rgba(255, 255, 255, 0.05)", color: "var(--ce-text)", border: "1px solid var(--ce-border)" }}
                 >
                   Cancel
                 </button>
@@ -4726,62 +4947,87 @@ function Dashboard() {
                   className="ce-btn-danger"
                   type="button"
                   onClick={confirmKickUser}
-                  style={{ flex: 1, padding: "10px 0", fontWeight: "600", borderRadius: "6px", cursor: "pointer", background: "var(--ce-danger, #f85149)", color: "#ffffff", border: "none" }}
                 >
                   Remove User
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Join Confirmation Modal */}
-        {showJoinConfirmModal && joinTargetRoom && (
-          <div className="ce-modal-overlay" style={{ zIndex: 100000 }} onClick={() => {
-            setShowJoinConfirmModal(false);
-            setJoinTargetRoom(null);
+        {showJoinConfirmModal && joinTargetRoom && createPortal(
+          <div className="ce-modal-overlay" onClick={() => {
+            if (!isJoiningRoom) {
+              setShowJoinConfirmModal(false);
+              setJoinTargetRoom(null);
+            }
           }}>
-            <div className="ce-modal-card" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-icon" style={{ width: "60px", height: "60px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(56, 189, 248, 0.1)", color: "var(--ce-primary)", marginBottom: "16px" }}>
-                <LogIn size={32} />
-              </div>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: "700", color: "var(--ce-text)", marginBottom: "8px" }}>Join Workspace?</h2>
-              <p style={{ fontSize: "0.85rem", color: "var(--ce-text-muted)", marginBottom: "20px", lineHeight: "1.4", textAlign: "center" }}>
-                Are you sure you want to join <strong>{joinTargetRoom.title}</strong>? You will connect to this collaborative sandbox.
-              </p>
-              <div style={{ display: "flex", gap: "10px", width: "100%" }}>
-                <button
-                  className="ce-btn-secondary"
-                  type="button"
-                  onClick={() => {
-                    setShowJoinConfirmModal(false);
-                    setJoinTargetRoom(null);
-                  }}
-                  style={{ flex: 1, padding: "10px 0", fontWeight: "600", borderRadius: "6px", cursor: "pointer", background: "rgba(255, 255, 255, 0.05)", color: "var(--ce-text)", border: "1px solid var(--ce-border)" }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="ce-btn-primary"
-                  type="button"
-                  onClick={() => {
-                    setShowJoinConfirmModal(false);
-                    proceedJoinRoom(joinTargetRoom.roomId);
-                    setJoinTargetRoom(null);
-                  }}
-                  style={{ flex: 1, padding: "10px 0", fontWeight: "600", borderRadius: "6px", cursor: "pointer", background: "var(--ce-primary)", color: "#ffffff", border: "none" }}
-                >
-                  Yes, Join Room
-                </button>
-              </div>
+            <div className="ce-modal-card confirm-modal-card" onClick={(e) => e.stopPropagation()}>
+              {!isJoiningRoom ? (
+                <>
+                  <div className="modal-icon-circle info">
+                    <LogIn size={32} />
+                  </div>
+                  <h2 className="modal-confirm-title">Join Workspace?</h2>
+                  <p className="modal-confirm-desc">
+                    Are you sure you want to join <strong>{joinTargetRoom.title}</strong>? You will connect to this collaborative sandbox.
+                  </p>
+                  <div className="modal-confirm-actions">
+                    <button
+                      className="ce-btn-secondary"
+                      type="button"
+                      onClick={() => {
+                        setShowJoinConfirmModal(false);
+                        setJoinTargetRoom(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="ce-btn-primary"
+                      type="button"
+                      onClick={() => {
+                        setIsJoiningRoom(true);
+                        const roomId = joinTargetRoom.roomId;
+                        setTimeout(async () => {
+                          try {
+                            await proceedJoinRoom(roomId);
+                            setShowJoinConfirmModal(false);
+                            setIsJoiningRoom(false);
+                            setJoinTargetRoom(null);
+                          } catch (error) {
+                            setIsJoiningRoom(false);
+                            setJoinTargetRoom(null);
+                            setShowJoinConfirmModal(false);
+                          }
+                        }, 2500);
+                      }}
+                    >
+                      Yes, Join Room
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="modal-loader-container">
+                  <div className="modal-roller-spinner">
+                    <div></div><div></div><div></div><div></div>
+                    <div></div><div></div><div></div><div></div>
+                  </div>
+                  <h4 className="modal-loader-text">Connecting to Workspace...</h4>
+                  <p className="modal-loader-subtext">Establishing secure collaborative synchronization channels</p>
+                </div>
+              )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Followers modal */}
-        {showFollowersModal && (
-          <div className="ce-modal-overlay" onClick={() => setShowFollowersModal(false)} style={{ zIndex: 10000 }}>
-            <div className="ce-modal-card" onClick={(e) => e.stopPropagation()} style={{ width: "400px", maxWidth: "90%" }}>
+        {showFollowersModal && createPortal(
+          <div className="ce-modal-overlay" onClick={() => setShowFollowersModal(false)}>
+            <div className="ce-modal-card social-graph-modal-card">
               <button className="modal-close-btn" onClick={() => setShowFollowersModal(false)}>
                 <X size={18} />
               </button>
@@ -4789,38 +5035,38 @@ function Dashboard() {
                 <span className="modal-label-tag">Social Graph</span>
                 <h3 className="modal-title-new">Followers ({targetFollowersList.length})</h3>
               </div>
-              <div className="modal-members-section" style={{ marginTop: "16px" }}>
-                <div className="members-list-scrollable" style={{ maxHeight: "300px" }}>
+              <div className="social-modal-members-section">
+                <div className="social-members-list-scrollable">
                   {loadingModalData ? (
-                    <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", textAlign: "center", padding: "16px" }}>Loading followers...</p>
+                    <p className="modal-empty-msg">Loading followers...</p>
                   ) : targetFollowersList.length === 0 ? (
-                    <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", textAlign: "center", padding: "16px" }}>No followers yet.</p>
+                    <p className="modal-empty-msg">No followers yet.</p>
                   ) : (
                     targetFollowersList.map(item => {
                       const isSelf = String(item._id) === String(user?.id || user?._id);
                       const isFollowingUser = followingList.some(f => String(f._id || f) === String(item._id));
                       return (
-                        <div key={item._id} className="modal-member-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "6px", marginBottom: "6px" }}>
+                        <div key={item._id} className="social-member-card">
                           <div
                             onClick={() => {
                               setShowFollowersModal(false);
                               handleViewUserProfile(item._id);
                             }}
-                            style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1, cursor: "pointer" }}
+                            className="social-member-info"
                           >
                             {item.avatar ? (
-                              <img src={item.avatar} alt={item.username} style={{ width: "24px", height: "24px", borderRadius: "50%", objectFit: "cover" }} />
+                              <img src={item.avatar} alt={item.username} className="social-member-avatar-img" />
                             ) : (
-                              <div style={{ width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(item.username), fontSize: "0.7rem", fontWeight: "600", color: "#fff" }}>
+                              <div className="social-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username) }}>
                                 {item.username.charAt(0).toUpperCase()}
                               </div>
                             )}
-                            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                              <span style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.username}</span>
-                              <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.bio || "No bio"}</span>
+                            <div className="social-member-meta">
+                              <span className="social-member-name">{item.username}</span>
+                              <span className="social-member-bio">{item.bio || "No bio"}</span>
                             </div>
                           </div>
-                          <div style={{ display: "flex", gap: "6px" }}>
+                          <div className="social-member-actions">
                             {!isSelf && (
                               <button
                                 onClick={() => {
@@ -4870,13 +5116,14 @@ function Dashboard() {
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Following modal */}
-        {showFollowingModal && (
-          <div className="ce-modal-overlay" onClick={() => setShowFollowingModal(false)} style={{ zIndex: 10000 }}>
-            <div className="ce-modal-card" onClick={(e) => e.stopPropagation()} style={{ width: "400px", maxWidth: "90%" }}>
+        {showFollowingModal && createPortal(
+          <div className="ce-modal-overlay" onClick={() => setShowFollowingModal(false)}>
+            <div className="ce-modal-card social-graph-modal-card">
               <button className="modal-close-btn" onClick={() => setShowFollowingModal(false)}>
                 <X size={18} />
               </button>
@@ -4884,35 +5131,35 @@ function Dashboard() {
                 <span className="modal-label-tag">Social Graph</span>
                 <h3 className="modal-title-new">Following ({targetFollowingList.length})</h3>
               </div>
-              <div className="modal-members-section" style={{ marginTop: "16px" }}>
-                <div className="members-list-scrollable" style={{ maxHeight: "300px" }}>
+              <div className="social-modal-members-section">
+                <div className="social-members-list-scrollable">
                   {loadingModalData ? (
-                    <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", textAlign: "center", padding: "16px" }}>Loading following...</p>
+                    <p className="modal-empty-msg">Loading following...</p>
                   ) : targetFollowingList.length === 0 ? (
-                    <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", textAlign: "center", padding: "16px" }}>Not following anyone yet.</p>
+                    <p className="modal-empty-msg">Not following anyone yet.</p>
                   ) : (
                     targetFollowingList.map(item => {
                       const isSelf = String(item._id) === String(user?.id || user?._id);
                       const isFollowingUser = followingList.some(f => String(f._id || f) === String(item._id));
                       return (
-                        <div key={item._id} className="modal-member-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "6px", marginBottom: "6px" }}>
+                        <div key={item._id} className="social-member-card">
                           <div
                             onClick={() => {
                               setShowFollowingModal(false);
                               handleViewUserProfile(item._id);
                             }}
-                            style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1, cursor: "pointer" }}
+                            className="social-member-info"
                           >
                             {item.avatar ? (
-                              <img src={item.avatar} alt={item.username} style={{ width: "24px", height: "24px", borderRadius: "50%", objectFit: "cover" }} />
+                              <img src={item.avatar} alt={item.username} className="social-member-avatar-img" />
                             ) : (
-                              <div style={{ width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(item.username), fontSize: "0.7rem", fontWeight: "600", color: "#fff" }}>
+                              <div className="social-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username) }}>
                                 {item.username.charAt(0).toUpperCase()}
                               </div>
                             )}
-                            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                              <span style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.username}</span>
-                              <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.bio || "No bio"}</span>
+                            <div className="social-member-meta">
+                              <span className="social-member-name">{item.username}</span>
+                              <span className="social-member-bio">{item.bio || "No bio"}</span>
                             </div>
                           </div>
                           {!isSelf && (
@@ -4948,36 +5195,22 @@ function Dashboard() {
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Real-time Toast Notifications stack overlay */}
-        <div className="ce-toast-notifications-stack" style={{ position: "fixed", bottom: "24px", right: "24px", display: "flex", flexDirection: "column", gap: "8px", zIndex: 99999999, pointerEvents: "none" }}>
-          {toasts.map(t => (
-            <div
-              key={t.id}
-              className={`ce-toast-alert ${t.type}`}
-              style={{
-                pointerEvents: "auto",
-                background: "rgba(10, 10, 15, 0.95)",
-                border: t.type === "error" ? "1px solid rgba(239, 68, 68, 0.5)" : t.type === "info" ? "1px solid rgba(88, 166, 255, 0.5)" : "1px solid rgba(16, 185, 129, 0.5)",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-                color: "#fff",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                fontSize: "0.82rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                minWidth: "250px",
-                maxWidth: "350px"
-              }}
-            >
-              <div className="toast-bullet" style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: t.type === "error" ? "#ef4444" : t.type === "info" ? "#38bdf8" : "#10b981" }} />
-              <div className="toast-message-text" style={{ flex: 1 }}>{t.message}</div>
-            </div>
-          ))}
-        </div>
+        {createPortal(
+          <div className="ce-toast-notifications-stack">
+            {toasts.map(t => (
+              <div key={t.id} className={`ce-toast-alert ${t.type}`}>
+                <div className="toast-bullet" />
+                <div className="toast-message-text">{t.message}</div>
+              </div>
+            ))}
+          </div>,
+          document.body
+        )}
 
       </div>
     </MainLayout>

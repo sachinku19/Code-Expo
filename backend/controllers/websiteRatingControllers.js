@@ -22,7 +22,7 @@ const submitWebsiteRating = async (req, res) => {
     );
 
     // Log the action
-    await logActivity(userId, req.user.username, null, null, `rated the platform (${rating} stars)`);
+    logActivity(userId, req.user.username, null, null, `rated the platform (${rating} stars)`);
 
     // Get new aggregated statistics
     const stats = await WebsiteRating.aggregate([

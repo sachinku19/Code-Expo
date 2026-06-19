@@ -20,14 +20,17 @@ export const AuthProvider = ({ children }) => {
   });
 
   const setNormalizedUser = (u) => {
-    if (u) {
-      setUser({
-        ...u,
-        id: u.id || u._id
-      });
-    } else {
-      setUser(null);
-    }
+    setUser((prevUser) => {
+      const resolvedUser = typeof u === "function" ? u(prevUser) : u;
+      if (resolvedUser) {
+        return {
+          ...resolvedUser,
+          id: resolvedUser.id || resolvedUser._id
+        };
+      } else {
+        return null;
+      }
+    });
   };
 
   return (
