@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Code2, DoorOpen, History, User, Settings,
   Pin, Search, Bell, Sun, Moon, LogOut, Terminal, Palette,
   Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
-  FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle
+  FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle,
+  Globe, Bookmark, UserCheck, Trophy, Award
 } from "lucide-react";
 import * as workspaceService from "../services/workspaceService";
 import * as messageService from "../services/messageService";
@@ -31,7 +32,9 @@ export default function MainLayout({
   inCall = false,
   callType = null,
   onJoinCall = null,
-  onLeaveCall = null
+  onLeaveCall = null,
+  userXP = 0,
+  userRank = "Junior Coder"
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,6 +53,21 @@ export default function MainLayout({
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Live stats ticker
+  const [tickerIndex, setTickerIndex] = useState(0);
+  const tickerStats = [
+    { label: "12,453 Developers Online", icon: "🌍" },
+    { label: "8,923 Active Rooms", icon: "🚀" },
+    { label: "1.2M Code Executions", icon: "⚡" }
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTickerIndex((prev) => (prev + 1) % tickerStats.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -364,7 +382,8 @@ export default function MainLayout({
         { label: "Go to Whiteboards", path: "/dashboard?tab=whiteboards", tab: "whiteboards", icon: Palette },
         { label: "Go to Notifications", path: "/dashboard?tab=notifications", tab: "notifications", icon: Bell },
         { label: "Go to Profile", path: "/dashboard?tab=profile", tab: "profile", icon: User },
-        { label: "Go to Settings", path: "/dashboard?tab=settings", tab: "settings", icon: Settings }
+        { label: "Go to Settings", path: "/dashboard?tab=settings", tab: "settings", icon: Settings },
+        { label: "Go to Help Desk", path: "/dashboard?tab=helpdesk", tab: "helpdesk", icon: HelpCircle }
       ];
       const matchedNavs = navs
         .filter(n => !q || n.label.toLowerCase().includes(q))
@@ -483,14 +502,17 @@ export default function MainLayout({
 
   const lastRoomId = localStorage.getItem("ceLastActiveRoomId") || "default";
 
-  // Redesigned navigation items including Whiteboards & Notifications tabs
+  // Redesigned navigation items
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { id: "rooms", label: "Rooms", icon: DoorOpen, path: "/dashboard?tab=rooms" },
-    { id: "history", label: "History", icon: History, path: "/dashboard?tab=history" },
-    { id: "whiteboards", label: "Whiteboards", icon: Palette, path: "/dashboard?tab=whiteboards" },
+    { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard?tab=rooms&subtab=explore" },
+    { id: "liverooms", label: "Live Rooms", icon: Activity, path: "/dashboard?tab=liverooms" },
+    { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard?tab=myrooms" },
+    { id: "bookmarks", label: "Bookmarks", icon: Bookmark, path: "/dashboard?tab=bookmarks" },
+    { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
-    { id: "profile", label: "Profile", icon: User, path: "/dashboard?tab=profile" },
+    { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
+    { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
     { id: "settings", label: "Settings", icon: Settings, path: "/dashboard?tab=settings" },
     { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard?tab=helpdesk" },
   ];
@@ -500,21 +522,19 @@ export default function MainLayout({
   }
 
   const handleMenuClick = (item) => {
-    if (item.id === "workspace" && location.pathname.startsWith("/editor/")) {
-      return;
-    }
-    if (item.path.startsWith("/dashboard?tab=")) {
-      const tab = item.path.split("=")[1];
-      navigate(`/dashboard?tab=${tab}`);
-    } else {
-      navigate(item.path);
-    }
+    navigate(item.path);
   };
 
   const getActiveItem = () => {
     const searchParams = new URLSearchParams(location.search);
     const tab = searchParams.get("tab");
+    const subtab = searchParams.get("subtab");
     if (location.pathname === "/dashboard") {
+      if (tab === "rooms") {
+        if (subtab === "explore") return "explore-rooms";
+        if (subtab === "live") return "liverooms";
+        return "explore-rooms";
+      }
       if (tab) return tab;
       return "dashboard";
     }
@@ -555,7 +575,12 @@ export default function MainLayout({
             <Menu size={18} />
           </button>
 
-          <Logo size={28} showText={true} onClick={() => navigate("/dashboard")} className="ce-brand" />
+          <div className="topnav-brand-container" onClick={() => navigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginRight: "16px" }}>
+            <Logo size={22} showText={false} />
+            <span className="topnav-brand-text" style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--ce-text)" }}>CodeExpo</span>
+          </div>
+
+
 
           {roomId && roomId !== "default" && (
             <>
@@ -572,7 +597,6 @@ export default function MainLayout({
           )}
         </div>
 
-        {/* Global Search and Editor search bar integration */}
         <div className="topnav-center">
           <div className="search-box">
             <Search size={14} className="search-icon" />
@@ -586,12 +610,11 @@ export default function MainLayout({
               }}
               onFocus={() => setIsSearchFocused(true)}
               onKeyDown={handleSearchKeyDown}
-              placeholder={roomId && roomId !== "default" ? "Search room functions, chat, whiteboard..." : "Global search rooms, languages..."}
+              placeholder={roomId && roomId !== "default" ? "Search functions, whiteboard..." : "Global search rooms, languages..."}
             />
 
-            {/* Shortcut hint badge inside input */}
-            {!searchQuery && !isSearchFocused && (
-              <span className="search-shortcut-hint" style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "0.65rem", padding: "2px 6px", pointerEvents: "none" }}>
+            {!searchQuery && (
+              <span className="search-shortcut-hint">
                 Ctrl + K
               </span>
             )}
@@ -759,9 +782,6 @@ export default function MainLayout({
             </>
           )}
 
-          <button className="topnav-btn" onClick={toggleTheme} title="Toggle Theme">
-            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
 
           <div
             className="topnav-bell-wrapper"
@@ -854,9 +874,9 @@ export default function MainLayout({
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className="sidebar-header-pin">
+          <div className="sidebar-header-new">
             <button className={`pin-btn ${isPinned ? "pinned" : ""}`} onClick={handlePinToggle} title="Pin Sidebar">
-              <Pin size={13} />
+              <Pin size={12} />
             </button>
           </div>
 
@@ -869,7 +889,7 @@ export default function MainLayout({
                   key={item.id}
                   onClick={() => handleMenuClick(item)}
                   className={`sidebar-nav-btn ${isActive ? "active" : ""}`}
-                  title={!sidebarExpanded ? item.label : ""}
+                  data-tooltip={item.label}
                 >
                   <Icon size={16} className="sidebar-nav-icon" />
                   <span className="btn-label">{item.label}</span>
@@ -878,20 +898,68 @@ export default function MainLayout({
             })}
           </nav>
 
-          <div className="sidebar-footer" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <button
-              className="sidebar-nav-btn"
-              onClick={() => setIsRatingModalOpen(true)}
-              title={!sidebarExpanded ? "Rate CodeExpo" : ""}
-              style={{ color: "#f59e0b" }}
-            >
-              <Star size={16} className="sidebar-nav-icon" fill={userRating > 0 ? "#f59e0b" : "transparent"} />
-              <span className="btn-label" style={{ fontWeight: 600 }}>Rate Us ★</span>
-            </button>
-            <button className="sidebar-nav-btn" onClick={handleLogout} title={!sidebarExpanded ? "Logout" : ""}>
-              <LogOut size={16} className="sidebar-nav-icon" />
-              <span className="btn-label">Logout</span>
-            </button>
+          <div className="sidebar-footer-new">
+            {sidebarExpanded ? (
+              <div className="sidebar-profile-card">
+                <div className="profile-card-top" onClick={() => navigate("/dashboard?tab=profile")}>
+                  <div className="profile-card-avatar" style={{ backgroundColor: user?.avatar ? "transparent" : getCursorColor(user?.username) }}>
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt={user.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                    ) : (
+                      user?.username?.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="profile-card-info">
+                    <span className="profile-card-name">@{user?.username || "developer"}</span>
+                    <span className="profile-card-rank">{userRank}</span>
+                  </div>
+                </div>
+                <div className="profile-card-xp-progress">
+                  <div className="profile-xp-bar-container">
+                    <div className="profile-xp-bar" style={{ width: `${(userXP % 100)}%` }} />
+                  </div>
+                  <div className="profile-xp-labels">
+                    <span>Lvl {Math.floor(userXP / 100) + 1}</span>
+                    <span>{userXP} XP</span>
+                  </div>
+                </div>
+                <div className="profile-card-actions">
+                  <button className="profile-action-btn" onClick={() => setIsRatingModalOpen(true)} title="Rate Us" style={{ color: "#f59e0b" }}>
+                    <Star size={13} fill={userRating > 0 ? "#f59e0b" : "transparent"} />
+                  </button>
+                  <button className="profile-action-btn" onClick={() => navigate("/dashboard?tab=settings")} title="Settings">
+                    <Settings size={13} />
+                  </button>
+                  <button className="profile-action-btn logout" onClick={handleLogout} title="Logout">
+                    <LogOut size={13} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="sidebar-profile-card-collapsed"
+                onClick={() => navigate("/dashboard?tab=profile")}
+                title={`@${user?.username || "developer"} (${userRank}) - ${userXP} XP`}
+              >
+                <div className="profile-card-avatar collapsed" style={{ backgroundColor: user?.avatar ? "transparent" : getCursorColor(user?.username) }}>
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                  ) : (
+                    user?.username?.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <button
+                  className="profile-collapsed-logout-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLogout();
+                  }}
+                  title="Logout"
+                >
+                  <LogOut size={12} />
+                </button>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -1162,3 +1230,4 @@ export default function MainLayout({
     </div>
   );
 }
+

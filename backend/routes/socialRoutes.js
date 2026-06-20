@@ -14,7 +14,8 @@ const {
   getLikedRooms,
   getBookmarkedRooms,
   searchUsers,
-  getUserPublicProfile
+  getUserPublicProfile,
+  getLeaderboard
 } = require("../controllers/socialControllers");
 const {
   getNotifications,
@@ -40,6 +41,7 @@ router.get("/rooms/bookmarked", auth_protect, getBookmarkedRooms);
 // Social Feed & Suggestions
 router.get("/feed", auth_protect, getSocialFeed);
 router.get("/suggestions", auth_protect, getDeveloperSuggestions);
+router.get("/leaderboard", auth_protect, getLeaderboard);
 
 // User Search & Public Profile
 router.get("/users/search", auth_protect, searchUsers);

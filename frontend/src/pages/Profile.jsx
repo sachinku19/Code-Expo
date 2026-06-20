@@ -177,8 +177,8 @@ const Profile = () => {
 
     const isFollowing = followingList.some(f => String(f._id || f) === String(candidateId));
     let targetUser = followersList.find(f => String(f._id || f) === String(candidateId)) ||
-                     followingList.find(f => String(f._id || f) === String(candidateId)) ||
-                     { _id: candidateId, username: "Developer" };
+      followingList.find(f => String(f._id || f) === String(candidateId)) ||
+      { _id: candidateId, username: "Developer" };
 
     // Optimistically toggle following state
     if (isFollowing) {

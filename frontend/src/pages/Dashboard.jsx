@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   createRoom,
   joinRoom,
@@ -27,7 +28,7 @@ import {
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronDown, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar,
-  Megaphone, Wrench
+  Megaphone, Wrench, Award, Compass
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -44,7 +45,8 @@ import {
   markNotificationsRead,
   getLikedRooms,
   getBookmarkedRooms,
-  getUserPublicProfile
+  getUserPublicProfile,
+  getLeaderboard
 } from "../services/socialService";
 import { updateUserProfile, getActiveAnnouncements, getActiveAds } from "../services/userService";
 import "./Dashboard.css";
@@ -519,6 +521,7 @@ function Dashboard() {
   const location = useLocation();
   const { user, setUser } = useAuth();
   const pendingLikesRef = useRef(new Set());
+  const followingSearchInputRef = useRef(null);
 
   const [stats, setStats] = useState({
     totalCreated: 0,
@@ -572,6 +575,7 @@ function Dashboard() {
   const [feedLoading, setFeedLoading] = useState(false);
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
+  const [visibleFollowingCount, setVisibleFollowingCount] = useState(6);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [bioInput, setBioInput] = useState("");
@@ -585,6 +589,7 @@ function Dashboard() {
   const [notifPage, setNotifPage] = useState(1);
   const [notifTotalPages, setNotifTotalPages] = useState(1);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [notifFilter, setNotifFilter] = useState("all");
   const [toasts, setToasts] = useState([]);
 
   // Viewed user states
@@ -599,6 +604,10 @@ function Dashboard() {
   const [loadingModalData, setLoadingModalData] = useState(false);
 
   const [animatingLikes, setAnimatingLikes] = useState({});
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
+  const [leaderboardSearch, setLeaderboardSearch] = useState("");
+  const [leaderboardTab, setLeaderboardTab] = useState("global");
 
   const isRoomLiked = (roomId) => {
     return likedRooms.some(lr => lr && (lr.roomId === roomId || lr._id === roomId)) ||
@@ -713,6 +722,12 @@ function Dashboard() {
   const [dashWhiteboardGrid, setDashWhiteboardGrid] = useState(
     localStorage.getItem("whiteboard_gridType") || "dots"
   );
+  const [dashEditorSuggestions, setDashEditorSuggestions] = useState(
+    localStorage.getItem("editor_suggestions") || "standard"
+  );
+  const [dashEditorAutoSave, setDashEditorAutoSave] = useState(
+    localStorage.getItem("editor_autoSave") || "off"
+  );
 
   const handleEditorFontSizeChange = (e) => {
     const val = Number(e.target.value);
@@ -776,6 +791,51 @@ function Dashboard() {
     localStorage.setItem("whiteboard_gridType", val);
     addToast(`Default whiteboard grid set to ${val.toUpperCase()}`, "success");
   };
+
+  const handleEditorSuggestionsChange = (e) => {
+    const val = e.target.value;
+    setDashEditorSuggestions(val);
+    localStorage.setItem("editor_suggestions", val);
+    addToast(`AI IntelliSense set to ${val === "ai" ? "AI-Powered" : val}`, "success");
+  };
+
+  const handleEditorAutoSaveChange = (e) => {
+    const val = e.target.value;
+    setDashEditorAutoSave(val);
+    localStorage.setItem("editor_autoSave", val);
+    addToast(`Auto-save frequency updated: ${val === "off" ? "Off" : val + "s"}`, "success");
+  };
+
+  const passwordStrength = useMemo(() => {
+    if (!newPassword) return { score: 0, label: "None", color: "transparent", percent: 0 };
+    if (newPassword.length < 6) return { score: 1, label: "Too Short (Min 6 chars)", color: "#ef4444", percent: 25 };
+    
+    let score = 0;
+    if (/[a-z]/.test(newPassword)) score++;
+    if (/[A-Z]/.test(newPassword)) score++;
+    if (/[0-9]/.test(newPassword)) score++;
+    if (/[^A-Za-z0-9]/.test(newPassword)) score++;
+
+    let label = "Weak";
+    let color = "#ef4444";
+    let percent = 25;
+
+    if (score === 2) {
+      label = "Medium";
+      color = "#f59e0b";
+      percent = 50;
+    } else if (score === 3) {
+      label = "Strong";
+      color = "#10b981";
+      percent = 75;
+    } else if (score >= 4) {
+      label = "Very Strong / Bulletproof 🚀";
+      color = "#06b6d4";
+      percent = 100;
+    }
+
+    return { score, label, color, percent };
+  }, [newPassword]);
 
   const handleVerifyGitHubToken = async (e) => {
     if (e) e.preventDefault();
@@ -951,8 +1011,18 @@ function Dashboard() {
   const [roomsTab, setRoomsTab] = useState("public");
   const [activeRoomsTab, setActiveRoomsTab] = useState("my-active");
   const [myRoomsTabSearch, setMyRoomsTabSearch] = useState("");
+  const [bookmarkSearch, setBookmarkSearch] = useState("");
+  const [followingSearch, setFollowingSearch] = useState("");
+  const filteredFollowing = useMemo(() => {
+    return followingList.filter(dev => {
+      const term = followingSearch.toLowerCase();
+      return dev.username.toLowerCase().includes(term) || (dev.bio && dev.bio.toLowerCase().includes(term));
+    });
+  }, [followingList, followingSearch]);
   const [showAllActiveMyRoomsTab, setShowAllActiveMyRoomsTab] = useState(false);
   const [showAllOfflineMyRoomsTab, setShowAllOfflineMyRoomsTab] = useState(false);
+  const [achievementFilter, setAchievementFilter] = useState("all");
+  const [expandedAchievementId, setExpandedAchievementId] = useState(null);
 
   // Gate Opening Portal Animation State
   const [gateAnimationRoomId, setGateAnimationRoomId] = useState(null);
@@ -1648,6 +1718,27 @@ function Dashboard() {
     }
   }, [user, isEditingProfile]);
 
+  const fetchLeaderboardData = async () => {
+    setIsLoadingLeaderboard(true);
+    try {
+      const res = await getLeaderboard();
+      if (res.success) {
+        setLeaderboardData(res.leaderboard || []);
+      }
+    } catch (err) {
+      console.error("Error fetching leaderboard:", err);
+      addToast("Failed to load global leaderboard", "error");
+    } finally {
+      setIsLoadingLeaderboard(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === "leaderboard") {
+      fetchLeaderboardData();
+    }
+  }, [activeSection]);
+
 
   useEffect(() => {
     if (!socket) return;
@@ -1898,6 +1989,7 @@ function Dashboard() {
     const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id;
     const ownerName = isOwner ? "You" : (room.createdBy?.username || "Developer");
     const activeCount = room.activeUsersCount || 0;
+    const isBookmarked = savedRooms.some(r => r && (r.roomId === room.roomId || r._id === room._id || r._id === room.roomId));
 
     // Get all joined members (owner + participants)
     const allMembers = [];
@@ -2221,6 +2313,16 @@ function Dashboard() {
                         className="dropdown-item"
                       >
                         Copy Room ID
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleBookmarkRoom(room.roomId);
+                          setActiveDropdownCardId(null);
+                        }}
+                        className="dropdown-item"
+                      >
+                        {isBookmarked ? "Remove Bookmark" : "Bookmark Room"}
                       </button>
                       {isOwner ? (
                         <button
@@ -2974,6 +3076,1395 @@ function Dashboard() {
             </div>
           </div>
         )}
+        {/* MY ROOMS SECTION */}
+        {activeSection === "myrooms" && (
+          <div className="myrooms-section-container">
+            {/* Stats Cards Grid for My Rooms */}
+            <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                  <FolderGit size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Total Workspaces</span>
+                  <span className="stat-card-val">
+                    {historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length}
+                  </span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper green-theme-wrapper">
+                  <Activity size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Active Now</span>
+                  <span className="stat-card-val">
+                    {historyRooms.filter(r => {
+                      const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
+                      const isLive = liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0);
+                      return isCreated && isLive;
+                    }).length}
+                  </span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                  <Globe size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Public Access</span>
+                  <span className="stat-card-val">
+                    {historyRooms.filter(r => {
+                      const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
+                      return isCreated && !r.isPrivate;
+                    }).length}
+                  </span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior">
+                  <Lock size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Private / Secure</span>
+                  <span className="stat-card-val">
+                    {historyRooms.filter(r => {
+                      const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
+                      return isCreated && r.isPrivate;
+                    }).length}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <FolderGit size={18} className="brand-logo" />
+                <h3 className="section-title">My Created Rooms & Workspaces</h3>
+              </div>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                <div className="section-search-container">
+                  <Search size={13} className="section-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search by ID or title..."
+                    value={myRoomsTabSearch}
+                    onChange={(e) => setMyRoomsTabSearch(e.target.value)}
+                    className="section-search-input"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {(() => {
+              const owned = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
+              const filteredOwned = owned.filter(room => {
+                const term = myRoomsTabSearch.toLowerCase();
+                return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+              });
+
+              if (owned.length === 0) {
+                return (
+                  <div className="empty-state-card" style={{ padding: "48px 24px" }}>
+                    <Folder size={32} className="empty-state-icon" style={{ color: "var(--ce-primary)", marginBottom: "16px" }} />
+                    <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No workspaces found</h3>
+                    <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Launch your first collaborative coding workspace right now!</p>
+                    <button
+                      className="room-enter-btn-action"
+                      style={{ margin: "0 auto" }}
+                      onClick={() => {
+                        setFormData({ title: "", language: "javascript", isPrivate: false });
+                        setShowQuickCreateModal(true);
+                      }}
+                    >
+                      <Plus size={14} /> Create Room
+                    </button>
+                  </div>
+                );
+              }
+
+              if (filteredOwned.length === 0) {
+                return (
+                  <div className="empty-state-card" style={{ padding: "32px" }}>
+                    <Search size={24} className="empty-state-icon" />
+                    <p>No owned rooms match search term "{myRoomsTabSearch}".</p>
+                  </div>
+                );
+              }
+
+              // Split into Active and Offline
+              const activeRoomsList = filteredOwned.filter(room => {
+                const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                return roomFromLive && (roomFromLive.activeUsersCount || 0) > 0;
+              });
+
+              const offlineRoomsList = filteredOwned.filter(room => {
+                const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                return !roomFromLive || (roomFromLive.activeUsersCount || 0) === 0;
+              });
+
+              return (
+                <div className="dashboard-split-layout">
+                  <div className="split-column">
+                    <h4 className="split-column-title">
+                      <span className="live-indicator-dot" />
+                      Active Rooms ({activeRoomsList.length})
+                    </h4>
+                    {activeRoomsList.length === 0 ? (
+                      <div className="empty-state-card compact">
+                        <p>No active rooms match your search.</p>
+                      </div>
+                    ) : (
+                      <div className="split-column-cards-list">
+                        {activeRoomsList.map(room => {
+                          const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
+                          return renderRoomCard(liveRoomObj || room);
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="split-column">
+                    <h4 className="split-column-title">
+                      <span className="offline-indicator-dot" />
+                      Offline Rooms ({offlineRoomsList.length})
+                    </h4>
+                    {offlineRoomsList.length === 0 ? (
+                      <div className="empty-state-card compact">
+                        <p>No offline rooms match your search.</p>
+                      </div>
+                    ) : (
+                      <div className="split-column-cards-list">
+                        {offlineRoomsList.map(room => renderRoomCard(room))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* LIVE ROOMS SECTION */}
+        {activeSection === "liverooms" && (
+          <div className="liverooms-section-container">
+            {/* Stats Header for Live Rooms */}
+            <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                  <Activity size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Active Live Rooms</span>
+                  <span className="stat-card-val">{liveRooms.length}</span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper green-theme-wrapper">
+                  <Users size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Active Developers Online</span>
+                  <span className="stat-card-val">
+                    {liveRooms.reduce((acc, r) => acc + (r.activeUsersCount || 0), 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span className="live-indicator-dot" />
+                <h3 className="section-title">Global Live Coding Workspaces</h3>
+              </div>
+              <div className="section-search-container">
+                <Search size={13} className="section-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search live rooms..."
+                  value={publicRoomsSearch}
+                  onChange={(e) => setPublicRoomsSearch(e.target.value)}
+                  className="section-search-input"
+                />
+              </div>
+            </div>
+
+            {liveRooms.length === 0 ? (
+              <div className="empty-state-card" style={{ padding: "48px 24px" }}>
+                <Activity size={32} className="empty-state-icon" style={{ color: "var(--ce-success)", marginBottom: "16px" }} />
+                <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No active workspaces</h3>
+                <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Nobody is hosting a live room. Launch yours to go live!</p>
+                <button
+                  className="room-enter-btn-action"
+                  style={{ margin: "0 auto" }}
+                  onClick={() => {
+                    setFormData({ title: "", language: "javascript", isPrivate: false });
+                    setShowQuickCreateModal(true);
+                  }}
+                >
+                  <Plus size={14} /> Create Room
+                </button>
+              </div>
+            ) : (() => {
+              const filteredLive = liveRooms.filter(room => {
+                const term = publicRoomsSearch.toLowerCase();
+                return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+              });
+
+              if (filteredLive.length === 0) {
+                return (
+                  <div className="empty-state-card" style={{ padding: "32px" }}>
+                    <Search size={24} className="empty-state-icon" />
+                    <p>No active live rooms match search term "{publicRoomsSearch}".</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="rooms-grid-explore">
+                  {filteredLive.map(room => renderRoomCard(room))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* BOOKMARKS SECTION */}
+        {activeSection === "bookmarks" && (
+          <div className="bookmarks-section-container">
+            {/* Stats Cards Grid for Bookmarks */}
+            <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                  <Bookmark size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Total Bookmarked</span>
+                  <span className="stat-card-val">{savedRooms.length}</span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper green-theme-wrapper">
+                  <Activity size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Active Now</span>
+                  <span className="stat-card-val">
+                    {savedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}
+                  </span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                  <Globe size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Public Access</span>
+                  <span className="stat-card-val">{savedRooms.filter(r => !r.isPrivate).length}</span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior">
+                  <Lock size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Private Rooms</span>
+                  <span className="stat-card-val">{savedRooms.filter(r => r.isPrivate).length}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Bookmark size={18} className="brand-logo" style={{ color: "var(--ce-accent)" }} />
+                <h3 className="section-title">My Bookmarked Rooms</h3>
+              </div>
+              <div className="section-search-container">
+                <Search size={13} className="section-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search bookmarks..."
+                  value={bookmarkSearch}
+                  onChange={(e) => setBookmarkSearch(e.target.value)}
+                  className="section-search-input"
+                />
+              </div>
+            </div>
+
+            {savedRooms.length === 0 ? (
+              <div className="empty-state-card" style={{ padding: "48px 24px" }}>
+                <Bookmark size={32} className="empty-state-icon" style={{ color: "var(--ce-accent)", marginBottom: "16px" }} />
+                <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No bookmarks found</h3>
+                <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>You haven't bookmarked any spaces yet. Explore public rooms to save them here!</p>
+                <button
+                  className="room-enter-btn-action"
+                  style={{ margin: "0 auto" }}
+                  onClick={() => navigate("/dashboard?tab=rooms&subtab=explore")}
+                >
+                  <Globe size={14} /> Explore Rooms
+                </button>
+              </div>
+            ) : (() => {
+              const filteredBookmarks = savedRooms.filter(room => {
+                const term = bookmarkSearch.toLowerCase();
+                return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+              });
+
+              if (filteredBookmarks.length === 0) {
+                return (
+                  <div className="empty-state-card" style={{ padding: "32px" }}>
+                    <Search size={24} className="empty-state-icon" />
+                    <p>No bookmarked rooms match search term "{bookmarkSearch}".</p>
+                  </div>
+                );
+              }
+
+              // Split into Active and Offline
+              const activeBookmarksList = filteredBookmarks.filter(room => {
+                const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                return roomFromLive && (roomFromLive.activeUsersCount || 0) > 0;
+              });
+
+              const offlineBookmarksList = filteredBookmarks.filter(room => {
+                const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                return !roomFromLive || (roomFromLive.activeUsersCount || 0) === 0;
+              });
+
+              return (
+                <div className="dashboard-split-layout">
+                  <div className="split-column">
+                    <h4 className="split-column-title">
+                      <span className="live-indicator-dot" />
+                      Active Rooms ({activeBookmarksList.length})
+                    </h4>
+                    {activeBookmarksList.length === 0 ? (
+                      <div className="empty-state-card compact">
+                        <p>No active bookmarked rooms.</p>
+                      </div>
+                    ) : (
+                      <div className="split-column-cards-list">
+                        {activeBookmarksList.map(room => {
+                          const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
+                          return renderRoomCard(liveRoomObj || room);
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="split-column">
+                    <h4 className="split-column-title">
+                      <span className="offline-indicator-dot" />
+                      Offline Rooms ({offlineBookmarksList.length})
+                    </h4>
+                    {offlineBookmarksList.length === 0 ? (
+                      <div className="empty-state-card compact">
+                        <p>No offline bookmarked rooms.</p>
+                      </div>
+                    ) : (
+                      <div className="split-column-cards-list">
+                        {offlineBookmarksList.map(room => renderRoomCard(room))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* FOLLOWING SECTION */}
+        {activeSection === "following" && (
+          <motion.div
+            key="following"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="following-section-container"
+          >
+            <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
+
+              {/* 70% Left Column */}
+              <div className="network-left-column" style={{ flex: "0 0 70%", minWidth: 0 }}>
+
+                {/* Stats row on top of left column */}
+                <div className="ce-stats-grid" style={{ marginBottom: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px", width: "100%" }}>
+                  <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
+                    <div className="stat-card-icon-wrapper blue-theme-wrapper" style={{ width: "32px", height: "32px" }}>
+                      <UserCheck size={14} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Following</span>
+                      <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>{followingList.length}</span>
+                    </div>
+                  </div>
+                  <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
+                    <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ width: "32px", height: "32px" }}>
+                      <Users size={14} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Followers</span>
+                      <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>{followersList.length}</span>
+                    </div>
+                  </div>
+                  <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
+                    <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ width: "32px", height: "32px" }}>
+                      <span className="live-indicator-dot" style={{ margin: 0, width: "8px", height: "8px" }} />
+                    </div>
+                    <div className="stat-card-info" style={{ marginLeft: "6px" }}>
+                      <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Online</span>
+                      <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>
+                        {followingList.filter(f => f.isOnline === true || f.isOnline === "true").length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <UserCheck size={18} className="brand-logo" style={{ color: "var(--ce-primary)" }} />
+                    <h3 className="section-title">Developer Network</h3>
+                    <AnimatePresence>
+                      {followingSearch && (
+                        <motion.span
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="network-search-count-badge"
+                        >
+                          {filteredFollowing.length} match{filteredFollowing.length !== 1 ? 'es' : ''}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <div className="network-search-group">
+                    <div className="network-search-input-wrapper">
+                      <Search size={14} className="network-search-icon" />
+                      <input
+                        ref={followingSearchInputRef}
+                        type="text"
+                        placeholder="Search developers by name or bio..."
+                        value={followingSearch}
+                        onChange={(e) => {
+                          setFollowingSearch(e.target.value);
+                          setVisibleFollowingCount(6);
+                        }}
+                        className="network-search-input"
+                      />
+                      <AnimatePresence>
+                        {followingSearch && (
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            type="button"
+                            className="network-clear-btn"
+                            onClick={() => {
+                              setFollowingSearch("");
+                              setVisibleFollowingCount(6);
+                              followingSearchInputRef.current?.focus();
+                            }}
+                            aria-label="Clear search"
+                          >
+                            <X size={14} />
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+
+                {followingList.length === 0 ? (
+                  <div className="empty-state-card" style={{ padding: "40px 24px", marginBottom: "32px" }}>
+                    <Users size={32} className="empty-state-icon" style={{ color: "var(--ce-text-muted)", marginBottom: "16px" }} />
+                    <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>Not following anyone yet</h3>
+                    <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Start building your network! Follow developers from suggestions on the sidebar or the Global Leaderboard.</p>
+                  </div>
+                ) : (() => {
+                  if (filteredFollowing.length === 0) {
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="empty-state-card search-empty-state"
+                        style={{ padding: "40px 24px", marginBottom: "32px", textAlign: "center" }}
+                      >
+                        <div className="search-empty-icon-wrapper">
+                          <Search size={28} className="empty-state-icon-glow" />
+                        </div>
+                        <h4 style={{ margin: "16px 0 8px 0", color: "var(--ce-text-h)", fontSize: "1rem" }}>No results found</h4>
+                        <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>
+                          We couldn't find any followed developers matching "<strong>{followingSearch}</strong>".
+                        </p>
+                        <button
+                          type="button"
+                          className="network-clear-search-btn"
+                          onClick={() => {
+                            setFollowingSearch("");
+                            setVisibleFollowingCount(6);
+                            followingSearchInputRef.current?.focus();
+                          }}
+                        >
+                          Clear Search
+                        </button>
+                      </motion.div>
+                    );
+                  }
+
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+                      <motion.div
+                        layout
+                        className="following-developers-grid"
+                        style={{ width: "100%", marginBottom: "24px", position: "relative" }}
+                      >
+                        <AnimatePresence mode="popLayout">
+                          {filteredFollowing.slice(0, visibleFollowingCount).map(dev => {
+                            const isOnline = dev.isOnline === true || dev.isOnline === "true";
+                            const followsYou = followersList.some(f => String(f._id || f) === String(dev._id || dev.id));
+                            return (
+                              <motion.div
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                                transition={{ type: "spring", stiffness: 220, damping: 26 }}
+                                key={String(dev._id || dev.id || dev)}
+                                className="developer-card-premium"
+                              >
+                                <div className="dev-card-avatar-wrapper">
+                                  {dev.avatar ? (
+                                    <img src={dev.avatar} alt={dev.username} className="dev-card-avatar" />
+                                  ) : (
+                                    <div className="dev-card-avatar-fallback" style={{ backgroundColor: getAvatarColor(dev.username) }}>
+                                      {dev.username.charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <span className={`dev-online-status-badge ${isOnline ? "online" : "offline"}`} />
+                                </div>
+
+                                <div className="dev-card-body">
+                                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                                    <h4 className="dev-card-username">@{dev.username}</h4>
+                                    {followsYou && (
+                                      <span className="dev-follows-you-pill">Follows You</span>
+                                    )}
+                                  </div>
+                                  <span className="dev-card-email">{dev.email}</span>
+                                  <p className="dev-card-bio">{dev.bio || "No bio description set yet."}</p>
+
+                                  {dev.programmingLanguages && dev.programmingLanguages.length > 0 && (
+                                    <div className="dev-card-langs">
+                                      {dev.programmingLanguages.slice(0, 3).map((lang, i) => (
+                                        <span key={i} className="dev-lang-tag">{lang}</span>
+                                      ))}
+                                      {dev.programmingLanguages.length > 3 && (
+                                        <span className="dev-lang-tag-more">+{dev.programmingLanguages.length - 3}</span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <div className="dev-card-stats-row">
+                                    <div className="dev-card-stat">
+                                      <strong>{dev.followersCount || 0}</strong>
+                                      <span>Followers</span>
+                                    </div>
+                                    <div className="dev-card-stat">
+                                      <strong>{dev.followingCount || 0}</strong>
+                                      <span>Following</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="dev-card-actions">
+                                  <button
+                                    onClick={() => handleViewUserProfile(dev._id || dev.id)}
+                                    className="dev-btn-view-profile"
+                                  >
+                                    Profile
+                                  </button>
+                                  <button
+                                    onClick={() => handleFollowToggle(dev._id || dev.id)}
+                                    className="dev-btn-unfollow"
+                                  >
+                                    Unfollow
+                                  </button>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </AnimatePresence>
+                      </motion.div>
+
+                      {filteredFollowing.length > visibleFollowingCount && (
+                        <button
+                          onClick={() => setVisibleFollowingCount(prev => prev + 6)}
+                          className="network-load-more-btn"
+                        >
+                          Load More Developers
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* 30% Right Column */}
+              <div className="network-right-column" style={{ flex: "0 0 30%", display: "flex", flexDirection: "column", gap: "20px", minWidth: "260px" }}>
+
+                {/* POWERFUL WIDGET 1: Profile Invite Link */}
+                <div style={{
+                  background: "linear-gradient(135deg, rgba(88, 166, 255, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)",
+                  border: "1px solid rgba(88, 166, 255, 0.15)",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Sparkles size={16} style={{ color: "var(--ce-primary)" }} />
+                    <h4 style={{ margin: 0, fontSize: "0.85rem", fontWeight: "700", color: "var(--ce-text-h)" }}>Network Overview</h4>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
+                      <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block" }}>Followers</span>
+                      <strong style={{ fontSize: "1.1rem", color: "var(--ce-text-h)" }}>{followersList.length}</strong>
+                    </div>
+                    <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
+                      <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block" }}>Following</span>
+                      <strong style={{ fontSize: "1.1rem", color: "var(--ce-text-h)" }}>{followingList.length}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: "rgba(0,0,0,0.15)",
+                    borderRadius: "8px",
+                    padding: "10px",
+                    border: "1px solid rgba(255,255,255,0.03)"
+                  }}>
+                    <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block", marginBottom: "4px" }}>Share Profile Invite Link</span>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={`http://localhost:5173/user/${user?.id || user?._id}`}
+                        style={{
+                          flex: 1,
+                          background: "rgba(0,0,0,0.2)",
+                          border: "1px solid var(--ce-border)",
+                          borderRadius: "4px",
+                          padding: "4px 8px",
+                          fontSize: "0.65rem",
+                          color: "var(--ce-text-muted)",
+                          textOverflow: "ellipsis"
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          navigator.clipboard.writeText(`http://localhost:5173/user/${user?.id || user?._id}`);
+                          addToast("Profile invite link copied!", "success");
+                        }}
+                        style={{
+                          padding: "4px 8px",
+                          background: "var(--ce-primary)",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "4px",
+                          fontSize: "0.65rem",
+                          fontWeight: "600",
+                          cursor: "pointer"
+                        }}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SUGGESTED DEVELOPERS IN FOLLOWING TAB */}
+                {suggestions.length > 0 && (
+                  <div className="suggested-developers-section" style={{
+                    background: "rgba(255,255,255,0.01)",
+                    border: "1px solid var(--ce-border)",
+                    borderRadius: "12px",
+                    padding: "16px"
+                  }}>
+                    <div className="section-header" style={{ marginBottom: "16px" }}>
+                      <Compass size={16} className="brand-logo" style={{ color: "var(--ce-warning)" }} />
+                      <h3 className="section-title" style={{ fontSize: "0.85rem" }}>Suggested Developers</h3>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      {suggestions.slice(0, 5).map(dev => (
+                        <div key={dev._id} className="suggested-dev-card-compact" style={{ padding: "8px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.02)" }}>
+                          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                            <div className="suggested-avatar-wrapper" style={{ position: "relative" }}>
+                              {dev.avatar ? (
+                                <img src={dev.avatar} alt={dev.username} className="suggested-avatar" />
+                              ) : (
+                                <div className="suggested-avatar-fallback" style={{ backgroundColor: getAvatarColor(dev.username) }}>
+                                  {dev.username.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <span className={`dev-online-status-badge mini ${dev.isOnline === true || dev.isOnline === "true" ? "online" : "offline"}`} />
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                              <span className="suggested-username" style={{ fontWeight: 700, color: "var(--ce-text-h)", fontSize: "0.8rem" }}>@{dev.username}</span>
+                              <span className="suggested-bio" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {dev.bio || "Full stack developer"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="suggested-actions" style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                            <button
+                              onClick={() => handleViewUserProfile(dev._id || dev.id)}
+                              className="suggested-btn-profile"
+                              style={{
+                                flex: 1,
+                                fontSize: "0.68rem",
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                                border: "1px solid var(--ce-border)",
+                                background: "transparent",
+                                color: "var(--ce-text-muted)",
+                                cursor: "pointer"
+                              }}
+                            >
+                              Profile
+                            </button>
+                            <button
+                              onClick={() => handleFollowToggle(dev._id || dev.id)}
+                              className="suggested-btn-follow"
+                              style={{
+                                flex: 1,
+                                fontSize: "0.68rem",
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                                border: "1px solid var(--ce-primary)",
+                                background: "var(--ce-primary-glow)",
+                                color: "var(--ce-primary)",
+                                cursor: "pointer"
+                              }}
+                            >
+                              + Follow
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* LEADERBOARD SECTION */}
+        {activeSection === "leaderboard" && (
+          <motion.div
+            key="leaderboard"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="leaderboard-section-container"
+          >
+            {/* Leaderboard Stats Cards */}
+            <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                  <Users size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Platform Developers</span>
+                  <span className="stat-card-val">{leaderboardData.length}</span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior" style={{ background: "var(--ce-primary-glow)", color: "var(--ce-primary)" }}>
+                  <Trophy size={18} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Your Global Rank</span>
+                  <span className="stat-card-val">
+                    {(() => {
+                      const myIndex = leaderboardData.findIndex(item => String(item.userId) === String(user?.id || user?._id));
+                      return myIndex !== -1 ? `#${myIndex + 1}` : "N/A";
+                    })()}
+                  </span>
+                </div>
+              </div>
+              <div className="compact-stat-card">
+                <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                  <Flame size={18} style={{ color: "#ff7b00" }} />
+                </div>
+                <div className="stat-card-info">
+                  <span className="stat-card-label">Highest Score</span>
+                  <span className="stat-card-val">
+                    {leaderboardData[0] ? `${leaderboardData[0].xp} XP` : "0 XP"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Podium for top 3 */}
+            {leaderboardData.length > 0 && !leaderboardSearch && leaderboardTab === "global" && (
+              <div className="leaderboard-podium">
+                {/* 2nd Place */}
+                {leaderboardData[1] && (
+                  <div className="podium-item rank-silver" onClick={() => handleViewUserProfile(leaderboardData[1].userId)}>
+                    <div className="podium-avatar-wrapper">
+                      {leaderboardData[1].avatar ? (
+                        <img src={leaderboardData[1].avatar} alt={leaderboardData[1].username} className="podium-avatar" />
+                      ) : (
+                        <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[1].username) }}>
+                          {leaderboardData[1].username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="podium-badge">2</div>
+                    </div>
+                    <span className="podium-username">@{leaderboardData[1].username}</span>
+                    <span className="podium-title-badge">{leaderboardData[1].title || "Senior Coder"}</span>
+                    <div className="rank-podium height-silver">
+                      <span className="podium-xp">{leaderboardData[1].xp} XP</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 1st Place */}
+                {leaderboardData[0] && (
+                  <div className="podium-item rank-gold" onClick={() => handleViewUserProfile(leaderboardData[0].userId)}>
+                    <div className="podium-avatar-wrapper">
+                      {leaderboardData[0].avatar ? (
+                        <img src={leaderboardData[0].avatar} alt={leaderboardData[0].username} className="podium-avatar" />
+                      ) : (
+                        <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[0].username) }}>
+                          {leaderboardData[0].username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="podium-badge"><Trophy size={14} fill="#ffd700" /></div>
+                    </div>
+                    <span className="podium-username">@{leaderboardData[0].username}</span>
+                    <span className="podium-title-badge primary">{leaderboardData[0].title || "Antigravity Architect"}</span>
+                    <div className="rank-podium height-gold">
+                      <span className="podium-xp">{leaderboardData[0].xp} XP</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3rd Place */}
+                {leaderboardData[2] && (
+                  <div className="podium-item rank-bronze" onClick={() => handleViewUserProfile(leaderboardData[2].userId)}>
+                    <div className="podium-avatar-wrapper">
+                      {leaderboardData[2].avatar ? (
+                        <img src={leaderboardData[2].avatar} alt={leaderboardData[2].username} className="podium-avatar" />
+                      ) : (
+                        <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[2].username) }}>
+                          {leaderboardData[2].username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="podium-badge">3</div>
+                    </div>
+                    <span className="podium-username">@{leaderboardData[2].username}</span>
+                    <span className="podium-title-badge">{leaderboardData[2].title || "Code Artisan"}</span>
+                    <div className="rank-podium height-bronze">
+                      <span className="podium-xp">{leaderboardData[2].xp} XP</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Leaderboard Controls (Tabs and Search) */}
+            <div className="leaderboard-table-controls-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
+              {/* Filter Tabs */}
+              <div className="leaderboard-filter-tabs">
+                <button
+                  onClick={() => setLeaderboardTab("global")}
+                  className={`leaderboard-filter-tab-btn ${leaderboardTab === "global" ? "active" : ""}`}
+                >
+                  Global Leaders
+                </button>
+                <button
+                  onClick={() => setLeaderboardTab("network")}
+                  className={`leaderboard-filter-tab-btn ${leaderboardTab === "network" ? "active" : ""}`}
+                >
+                  My Network
+                </button>
+                <button
+                  onClick={() => setLeaderboardTab("top10")}
+                  className={`leaderboard-filter-tab-btn ${leaderboardTab === "top10" ? "active" : ""}`}
+                >
+                  Top 10 Elite
+                </button>
+              </div>
+
+              {/* Search input */}
+              <div className="section-search-container" style={{ margin: 0 }}>
+                <Search size={13} className="section-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search developers..."
+                  value={leaderboardSearch}
+                  onChange={(e) => setLeaderboardSearch(e.target.value)}
+                  className="section-search-input"
+                />
+              </div>
+            </div>
+
+            {/* Global Rankings List */}
+            <div className="history-table-wrapper">
+              {isLoadingLeaderboard ? (
+                <div style={{ textAlign: "center", padding: "48px", color: "var(--ce-text-muted)" }}>
+                  <div className="btn-spinner" style={{ margin: "0 auto 12px auto", width: "24px", height: "24px" }}></div>
+                  Synchronizing Leaderboard Rankings...
+                </div>
+              ) : (
+                (() => {
+                  let filteredList = leaderboardData.filter(item =>
+                    item.username.toLowerCase().includes(leaderboardSearch.toLowerCase())
+                  );
+
+                  // Apply tab filters
+                  if (leaderboardTab === "network") {
+                    filteredList = filteredList.filter(item =>
+                      followingList.some(f => String(f._id || f) === String(item.userId)) ||
+                      String(item.userId) === String(user?.id || user?._id)
+                    );
+                  } else if (leaderboardTab === "top10") {
+                    filteredList = filteredList.slice(0, 10);
+                  }
+
+                  if (filteredList.length === 0) {
+                    return (
+                      <div style={{ textAlign: "center", padding: "48px", color: "var(--ce-text-muted)" }}>
+                        No developers found.
+                      </div>
+                    );
+                  }
+
+                  // If search is active or using custom tabs, show everyone in order. Otherwise (global, no search), slice out the podium top 3
+                  const displayList = (leaderboardSearch || leaderboardTab !== "global") ? filteredList : filteredList.slice(3);
+
+                  const getDeveloperTier = (xp) => {
+                    if (xp >= 1000) return { name: "Legendary Arch-Coder", className: "tier-badge legendary" };
+                    if (xp >= 500) return { name: "Elite Architect", className: "tier-badge elite" };
+                    if (xp >= 250) return { name: "Master Engineer", className: "tier-badge master" };
+                    if (xp >= 100) return { name: "Senior Developer", className: "tier-badge senior" };
+                    return { name: "Junior Coder", className: "tier-badge junior" };
+                  };
+
+                  return (
+                    <table className="history-data-table leaderboard-table">
+                      <thead>
+                        <tr>
+                          <th>Rank</th>
+                          <th>Developer</th>
+                          <th>Developer Tier</th>
+                          <th>Coding XP</th>
+                          <th className="text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayList.map((item) => {
+                          const isCurrentUser = String(item.userId) === String(user?.id || user?._id);
+                          const isFollowingUser = followingList.some(f => String(f._id || f) === String(item.userId));
+                          const tier = getDeveloperTier(item.xp);
+
+                          let rankDisplay = `#${item.rank}`;
+                          let rankClass = "";
+                          if (item.rank === 1) {
+                            rankDisplay = "🥇";
+                            rankClass = "rank-medal-1";
+                          } else if (item.rank === 2) {
+                            rankDisplay = "🥈";
+                            rankClass = "rank-medal-2";
+                          } else if (item.rank === 3) {
+                            rankDisplay = "🥉";
+                            rankClass = "rank-medal-3";
+                          }
+
+                          return (
+                            <tr key={item.userId} className={isCurrentUser ? "current-user-row-highlight" : ""}>
+                              <td>
+                                <span className={`leaderboard-rank-number ${rankClass}`}>
+                                  {rankDisplay}
+                                </span>
+                              </td>
+                              <td style={{ cursor: "pointer" }} onClick={() => handleViewUserProfile(item.userId)}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  {item.avatar ? (
+                                    <img src={item.avatar} alt={item.username} className="user-avatar-small" style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover" }} />
+                                  ) : (
+                                    <div className="user-avatar-small" style={{ width: "28px", height: "28px", borderRadius: "50%", backgroundColor: getAvatarColor(item.username), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
+                                      {item.username.charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <div style={{ display: "flex", flexDirection: "column" }}>
+                                    <span style={{ fontWeight: "700", color: "var(--ce-text-h)" }}>{item.username} {isCurrentUser ? "(you)" : ""}</span>
+                                    <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{item.email}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <span className={tier.className}>
+                                  {tier.name}
+                                </span>
+                              </td>
+                              <td>
+                                <strong style={{ color: "var(--ce-primary)" }}>{item.xp} XP</strong>
+                              </td>
+                              <td className="text-right">
+                                {isCurrentUser ? (
+                                  <span style={{ fontSize: "0.75rem", color: "var(--ce-primary)", fontWeight: "600" }}>Your Rank</span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleFollowToggle(item.userId)}
+                                    className={`history-resume-btn ${isFollowingUser ? "unfollow" : "follow"}`}
+                                    style={{
+                                      fontSize: "0.72rem",
+                                      padding: "4px 10px",
+                                      background: isFollowingUser ? "var(--ce-surface-card)" : "var(--ce-primary-glow)",
+                                      color: isFollowingUser ? "var(--ce-text-muted)" : "var(--ce-primary)",
+                                      border: "1px solid var(--ce-border)"
+                                    }}
+                                  >
+                                    {isFollowingUser ? "Following" : "+ Follow"}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  );
+                })()
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ACHIEVEMENTS SECTION */}
+        {activeSection === "achievements" && (() => {
+          const achievementsList = [
+            {
+              id: "creator_pro",
+              title: "Creator Pro",
+              description: "Create 5 or more rooms",
+              icon: FolderGit,
+              color: "#3b82f6",
+              condition: (stats.totalCreated || 0) >= 5,
+              current: stats.totalCreated || 0,
+              target: 5,
+              category: "Development",
+              xpReward: 150,
+              tip: "To complete this achievement, use the 'Create Workspace Room' form in the Rooms tab and initialize 5 separate workspaces."
+            },
+            {
+              id: "team_player",
+              title: "Team Player",
+              description: "Join and collaborate in 3 or more rooms",
+              icon: Users,
+              color: "#10b981",
+              condition: (stats.totalJoined || 0) >= 3,
+              current: stats.totalJoined || 0,
+              target: 3,
+              category: "Collaboration",
+              xpReward: 120,
+              tip: "Browse through active Live Rooms and join at least 3 distinct workspaces hosted by other developers."
+            },
+            {
+              id: "script_master",
+              title: "Script Master",
+              description: "Execute compilation script 10 or more times",
+              icon: Terminal,
+              color: "#f59e0b",
+              condition: (stats.executions || 0) >= 10,
+              current: stats.executions || 0,
+              target: 10,
+              category: "Activity",
+              xpReward: 80,
+              tip: "Open the code editor in any of your workspaces and press the compile/run button 10 times to test your scripts."
+            },
+            {
+              id: "marathoner",
+              title: "Code Marathoner",
+              description: "Log 5 hours of active development time",
+              icon: Clock,
+              color: "#8b5cf6",
+              condition: (stats.codingHours || 0) >= 5,
+              current: stats.codingHours || 0,
+              target: 5,
+              category: "Milestones",
+              xpReward: 200,
+              tip: "Spend a cumulative total of 5 hours active in the workspace code editor collaborating or compiling programs."
+            },
+            {
+              id: "social_coder",
+              title: "Social Coder",
+              description: "Like or Bookmark 5 or more workspaces",
+              icon: Heart,
+              color: "#ec4899",
+              condition: (likedRooms.length + savedRooms.length) >= 5,
+              current: likedRooms.length + savedRooms.length,
+              target: 5,
+              category: "Social",
+              xpReward: 50,
+              tip: "Go to Live Rooms or other developers' shared spaces and like/bookmark at least 5 different workspaces."
+            },
+            {
+              id: "polyglot",
+              title: "Polyglot Developer",
+              description: "Create workspaces in 3 different languages",
+              icon: Code,
+              color: "#06b6d4",
+              condition: new Set(historyRooms.filter(r => r.language).map(r => r.language.toLowerCase())).size >= 3,
+              current: new Set(historyRooms.filter(r => r.language).map(r => r.language.toLowerCase())).size,
+              target: 3,
+              category: "Development",
+              xpReward: 150,
+              tip: "Launch workspaces choosing 3 different languages (e.g. JavaScript, Python, C++) when configuring room creation settings."
+            },
+            {
+              id: "rising_star",
+              title: "Rising Star",
+              description: "Earn 100 or more developer points",
+              icon: Sparkles,
+              color: "#f43f5e",
+              condition: (stats.totalPoints || 0) >= 100,
+              current: stats.totalPoints || 0,
+              target: 100,
+              category: "Milestones",
+              xpReward: 100,
+              tip: "Collect 100 XP points. Points are earned by coding, hosting collaborative sessions, and getting followers."
+            },
+            {
+              id: "elite_architect",
+              title: "Elite Architect",
+              description: "Reach Antigravity Architect tier (400+ points)",
+              icon: Trophy,
+              color: "#e11d48",
+              condition: (stats.totalPoints || 0) >= 400,
+              current: stats.totalPoints || 0,
+              target: 400,
+              category: "Milestones",
+              xpReward: 300,
+              tip: "Gather 400 XP points to earn the most prestigious badge on CodeExpo, proving you are an elite engineering generalist."
+            }
+          ];
+
+          const unlockedCount = achievementsList.filter(a => a.condition).length;
+          const totalCount = achievementsList.length;
+          const radius = 28;
+          const circumference = 2 * Math.PI * radius;
+          const strokeDashoffset = circumference * (1 - (unlockedCount / totalCount));
+
+          const filteredAchievements = achievementsList.filter(ach => {
+            if (achievementFilter === "unlocked") return ach.condition;
+            if (achievementFilter === "locked") return !ach.condition;
+            return true;
+          });
+
+          const containerVariants = {
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.05
+              }
+            }
+          };
+
+          const itemVariants = {
+            hidden: { opacity: 0, y: 15, scale: 0.96 },
+            show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 22 } }
+          };
+
+          return (
+            <motion.div
+              key="achievements"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="achievements-section-container"
+            >
+              {/* Upgraded Level & Career Dashboard Banner */}
+              <div className="achievements-dashboard-header">
+                <div className="achievements-dashboard-left">
+                  <div className={`rank-avatar-badge ${rank.badgeClass}`} style={{ color: rank.color, border: `3px solid ${rank.color}` }}>
+                    <Award size={30} />
+                    <span className="rank-badge-glow" style={{ backgroundColor: rank.color }} />
+                  </div>
+                  <div className="rank-dashboard-details">
+                    <span className="rank-sub-title">Current Development Standing</span>
+                    <h2 className="rank-main-title" style={{ color: rank.color }}>
+                      {rank.title}
+                    </h2>
+                    <div className="rank-progress-bar-container">
+                      <div className="rank-progress-bar-track">
+                        <div className="rank-progress-bar-fill" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
+                      </div>
+                      <div className="rank-progress-labels">
+                        <span><strong>{stats.totalPoints || 0}</strong> XP Total</span>
+                        <span>{rank.nextLimit === Infinity ? "Highest Tier Unlocked" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next level`}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="achievements-dashboard-right">
+                  <div className="achievements-circle-widget">
+                    <svg className="progress-ring" width="72" height="72">
+                      <circle className="progress-ring-circle-bg" stroke="var(--ce-border)" strokeWidth="3.5" fill="transparent" r={radius} cx="36" cy="36" />
+                      <circle
+                        className="progress-ring-circle"
+                        stroke={rank.color}
+                        strokeWidth="3.5"
+                        strokeDasharray={`${circumference}`}
+                        strokeDashoffset={`${strokeDashoffset}`}
+                        fill="transparent"
+                        r={radius}
+                        cx="36"
+                        cy="36"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="circle-widget-text">
+                      <span className="unlocked-count"><strong>{unlockedCount}</strong></span>
+                      <span className="total-count">/ {totalCount}</span>
+                    </div>
+                  </div>
+                  <div className="achievements-widget-info">
+                    <h4>Badges Unlocked</h4>
+                    <p>{Math.round((unlockedCount / totalCount) * 100)}% completion of platform goals</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Achievements Filter Tabs & Category Legend */}
+              <div className="achievements-filter-row">
+                <div className="achievements-filter-tabs">
+                  <button
+                    className={`ach-filter-tab ${achievementFilter === "all" ? "active" : ""}`}
+                    onClick={() => setAchievementFilter("all")}
+                  >
+                    <span>All Badges</span>
+                    <span className="ach-filter-count">{achievementsList.length}</span>
+                  </button>
+                  <button
+                    className={`ach-filter-tab ${achievementFilter === "unlocked" ? "active" : ""}`}
+                    onClick={() => setAchievementFilter("unlocked")}
+                  >
+                    <span>Unlocked</span>
+                    <span className="ach-filter-count">{achievementsList.filter(a => a.condition).length}</span>
+                  </button>
+                  <button
+                    className={`ach-filter-tab ${achievementFilter === "locked" ? "active" : ""}`}
+                    onClick={() => setAchievementFilter("locked")}
+                  >
+                    <span>In Progress</span>
+                    <span className="ach-filter-count">{achievementsList.filter(a => !a.condition).length}</span>
+                  </button>
+                </div>
+                <div className="ach-category-legend">
+                  <span className="legend-item"><span className="legend-dot milestones" /> Milestones</span>
+                  <span className="legend-item"><span className="legend-dot development" /> Development</span>
+                  <span className="legend-item"><span className="legend-dot collaboration" /> Collaboration</span>
+                  <span className="legend-item"><span className="legend-dot social" /> Social</span>
+                  <span className="legend-item"><span className="legend-dot activity" /> Activity</span>
+                </div>
+              </div>
+
+              {/* Achievements Staggered Grid List */}
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+                className="achievements-grid"
+              >
+                {filteredAchievements.map((ach) => {
+                  const Icon = ach.icon;
+                  const progressVal = Math.min(100, Math.max(0, (ach.current / ach.target) * 100));
+                  const isExpanded = expandedAchievementId === ach.id;
+                  const categoryClass = ach.category ? ach.category.toLowerCase() : "general";
+
+                  return (
+                    <motion.div
+                      variants={itemVariants}
+                      key={ach.id}
+                      onClick={() => setExpandedAchievementId(isExpanded ? null : ach.id)}
+                      className={`achievement-card-detailed ${ach.condition ? "unlocked" : "locked"} cat-${categoryClass} ${isExpanded ? "expanded" : ""}`}
+                      style={{
+                        borderColor: ach.condition ? ach.color : "var(--ce-border)",
+                        "--ach-accent": ach.color
+                      }}
+                    >
+                      {/* Floating XP badge */}
+                      <div className="achievement-xp-badge" style={{ backgroundColor: ach.condition ? ach.color : "var(--ce-border)" }}>
+                        +{ach.xpReward} XP
+                      </div>
+
+                      <div className="achievement-card-main">
+                        <div className="achievement-icon-wrapper" style={{ backgroundColor: ach.condition ? `${ach.color}15` : "var(--ce-hover)", color: ach.condition ? ach.color : "var(--ce-text-muted)" }}>
+                          {ach.condition ? <Icon size={24} /> : <Lock size={20} />}
+                        </div>
+
+                        <div className="achievement-details-col">
+                          <div className="achievement-name-row">
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                              <span className={`achievement-category-pill ${categoryClass}`}>{ach.category}</span>
+                              <h4 className="achievement-title">{ach.title}</h4>
+                            </div>
+                            {ach.condition ? (
+                              <span className="status-pill unlocked">Unlocked</span>
+                            ) : (
+                              <span className="status-pill locked">Locked</span>
+                            )}
+                          </div>
+                          <p className="achievement-desc">{ach.description}</p>
+
+                          <div className="achievement-progress-row">
+                            <div className="achievement-progress-bar-track">
+                              <div className="achievement-progress-bar-fill" style={{ width: `${progressVal}%`, backgroundColor: ach.condition ? ach.color : "var(--ce-text-muted)" }} />
+                            </div>
+                            <span className="achievement-progress-text">
+                              {ach.current} / {ach.target}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expandable guide/tips */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.22, ease: "easeInOut" }}
+                            className="achievement-expanded-guide"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="guide-divider" />
+                            <div className="guide-content">
+                              <span className="guide-label">How to Unlock:</span>
+                              <p className="guide-text">{ach.tip}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            </motion.div>
+          );
+        })()}
 
         {/* ROOMS & ACTIONS SECTION */}
         {activeSection === "rooms" && (
@@ -3641,9 +5132,48 @@ function Dashboard() {
               )}
             </div>
 
+            {/* Premium Category Filter Tabs */}
+            <div className="notif-filter-tabs-container" style={{ marginBottom: "20px" }}>
+              <div className="achievements-filter-tabs">
+                <button
+                  className={`ach-filter-tab ${notifFilter === "all" ? "active" : ""}`}
+                  onClick={() => setNotifFilter("all")}
+                >
+                  <span>All</span>
+                  <span className="ach-filter-count">{notificationsList.length}</span>
+                </button>
+                <button
+                  className={`ach-filter-tab ${notifFilter === "unread" ? "active" : ""}`}
+                  onClick={() => setNotifFilter("unread")}
+                >
+                  <span>Unread</span>
+                  <span className="ach-filter-count">{unreadNotificationsCount}</span>
+                </button>
+                <button
+                  className={`ach-filter-tab ${notifFilter === "workspaces" ? "active" : ""}`}
+                  onClick={() => setNotifFilter("workspaces")}
+                >
+                  <span>Workspaces</span>
+                  <span className="ach-filter-count">
+                    {notificationsList.filter(n => ["LIKE", "BOOKMARK", "JOIN"].includes(n.type)).length}
+                  </span>
+                </button>
+                <button
+                  className={`ach-filter-tab ${notifFilter === "social" ? "active" : ""}`}
+                  onClick={() => setNotifFilter("social")}
+                >
+                  <span>Social</span>
+                  <span className="ach-filter-count">
+                    {notificationsList.filter(n => n.type === "FOLLOW").length}
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <div className="notifications-list">
-              {joinRequests.length > 0 && joinRequests.map(req => (
-                <div key={req.requestId} className="notification-item join-request-pending" style={{ borderColor: "var(--ce-warning)", borderLeft: "3px solid var(--ce-warning)" }}>
+              {/* Render Action Required / Pending Join Requests at the top if All or Workspaces is selected */}
+              {(notifFilter === "all" || notifFilter === "workspaces") && joinRequests.length > 0 && joinRequests.map(req => (
+                <div key={req.requestId} className="notification-item join-request-pending notif-type-join-pending" style={{ borderColor: "var(--ce-warning)", borderLeft: "3px solid var(--ce-warning)" }}>
                   <div className="notif-left-content">
                     <div className="notif-category-icon-container">
                       <ShieldAlert size={16} style={{ color: "var(--ce-warning)" }} />
@@ -3652,109 +5182,257 @@ function Dashboard() {
                       <div className="notif-text-message">
                         <strong>Join Request Approval Pending</strong>
                       </div>
-                      <div className="notif-desc">
+                      <div className="notif-desc" style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
                         <strong>{req.username}</strong> requested to access private room <strong>{req.roomTitle}</strong>.
                       </div>
                     </div>
                   </div>
-                  <div className="notif-right-content">
-                    <button onClick={() => navigate("/dashboard")} className="history-resume-btn notif-view-btn">
-                      Review
+                  <div className="notif-right-content" style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRespondRequest(req.roomId, req.user?._id || req.user, "accept");
+                      }}
+                      className="history-resume-btn notif-action-btn accept"
+                      style={{
+                        fontSize: "0.72rem",
+                        padding: "4px 10px",
+                        background: "rgba(16, 185, 129, 0.12)",
+                        color: "#10b981",
+                        border: "1px solid rgba(16, 185, 129, 0.3)",
+                        borderRadius: "8px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRespondRequest(req.roomId, req.user?._id || req.user, "reject");
+                      }}
+                      className="history-resume-btn notif-action-btn reject"
+                      style={{
+                        fontSize: "0.72rem",
+                        padding: "4px 10px",
+                        background: "rgba(239, 68, 68, 0.12)",
+                        color: "#ef4444",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        borderRadius: "8px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      Reject
                     </button>
                   </div>
                 </div>
               ))}
 
-              {notificationsList.length === 0 ? (
-                <div className="empty-state-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px" }}>
-                  <Bell size={24} style={{ color: "var(--ce-text-muted)", marginBottom: "8px" }} />
-                  <p style={{ color: "var(--ce-text-muted)", fontSize: "0.85rem" }}>You have no notifications yet.</p>
-                </div>
-              ) : (
-                <>
-                  {notificationsList.map(notif => {
-                    const isRead = notif.isRead;
-                    const senderName = notif.sender?.username || "Someone";
-                    const senderAvatar = notif.sender?.avatar;
-                    const roomTitle = notif.targetRoom?.title || "workspace";
-                    const roomLink = notif.targetRoom?.roomId;
+              {(() => {
+                const filteredNotifs = notificationsList.filter(notif => {
+                  if (notifFilter === "unread") return !notif.isRead;
+                  if (notifFilter === "social") return notif.category === "SOCIAL" || notif.type === "FOLLOW";
+                  if (notifFilter === "workspaces") return notif.category === "ROOMS" || notif.category === "COLLABORATION" || ["LIKE", "BOOKMARK", "JOIN"].includes(notif.type);
+                  return true;
+                });
 
-                    let notifIcon = <Bell size={14} />;
-                    let actionText = "";
-
-                    if (notif.type === "FOLLOW") {
-                      notifIcon = <Users size={14} style={{ color: "var(--ce-primary)" }} />;
-                      actionText = "followed you";
-                    } else if (notif.type === "LIKE") {
-                      notifIcon = <Heart size={14} style={{ color: "#ef4444" }} />;
-                      actionText = `liked your room "${roomTitle}"`;
-                    } else if (notif.type === "BOOKMARK") {
-                      notifIcon = <Bookmark size={14} style={{ color: "var(--ce-accent)" }} />;
-                      actionText = `bookmarked your room "${roomTitle}"`;
-                    } else if (notif.type === "JOIN") {
-                      notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-warning)" }} />;
-                      actionText = `wants to join "${roomTitle}"`;
-                    }
-
-                    return (
-                      <div
-                        key={notif._id}
-                        className={`notification-item ${isRead ? "read" : "unread"}`}
-                        onClick={() => !isRead && handleMarkOneNotificationRead(notif._id)}
-                      >
-                        <div className="notif-left-content">
-                          <div className="notif-category-icon-container">
-                            {notifIcon}
-                          </div>
-                          <div className="notif-sender-avatar-container" style={{ backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName) }}>
-                            {senderAvatar ? (
-                              <img src={senderAvatar} alt={senderName} className="notif-sender-img" />
-                            ) : (
-                              <span className="notif-sender-initial">{senderName.charAt(0).toUpperCase()}</span>
-                            )}
-                          </div>
-                          <div className="notif-main-info">
-                            <div className="notif-text-message">
-                              <strong>{senderName}</strong> {actionText}
-                            </div>
-                            <div className="notif-meta-tags">
-                              <span className="notif-tag-badge">{notif.category}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="notif-right-content">
-                          <span className="notif-time-badge">{formatLastActive(notif.createdAt)}</span>
-                          {roomLink && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                triggerGateAndNavigate(roomLink);
-                              }}
-                              className="history-resume-btn notif-view-btn"
-                            >
-                              View Room
-                            </button>
-                          )}
-                          {!isRead && <span className="notif-unread-dot" />}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {notifPage < notifTotalPages && (
-                    <div className="notif-load-more-container" style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
-                      <button
-                        onClick={handleLoadMoreNotifications}
-                        disabled={notifLoading}
-                        className="notif-load-more-btn"
-                      >
-                        {notifLoading ? "Loading..." : "Load More Notifications"}
-                      </button>
+                if (filteredNotifs.length === 0) {
+                  return (
+                    <div className="empty-state-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px", textAlign: "center" }}>
+                      <Bell size={28} style={{ color: "var(--ce-text-muted)", marginBottom: "12px" }} />
+                      <h4 style={{ color: "var(--ce-text-h)", margin: "0 0 4px 0", fontSize: "0.95rem" }}>No notifications found</h4>
+                      <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", margin: 0 }}>
+                        {notifFilter === "all"
+                          ? "You have no notifications yet."
+                          : `No ${notifFilter} notifications were found matching your criteria.`}
+                      </p>
                     </div>
-                  )}
-                </>
-              )}
+                  );
+                }
+
+                return (
+                  <>
+                    {filteredNotifs.map(notif => {
+                      const isRead = notif.isRead;
+                      const senderName = notif.sender?.username || "Someone";
+                      const senderAvatar = notif.sender?.avatar;
+                      const roomTitle = notif.targetRoom?.title || "workspace";
+                      const roomLink = notif.targetRoom?.roomId;
+
+                      let notifIcon = <Bell size={14} />;
+                      let actionText = "";
+                      let typeClass = "notif-type-general";
+
+                      if (notif.type === "FOLLOW") {
+                        notifIcon = <Users size={14} style={{ color: "var(--ce-primary)" }} />;
+                        actionText = "followed you";
+                        typeClass = "notif-type-follow";
+                      } else if (notif.type === "LIKE") {
+                        notifIcon = <Heart size={14} style={{ color: "#ef4444" }} />;
+                        actionText = `liked your room "${roomTitle}"`;
+                        typeClass = "notif-type-like";
+                      } else if (notif.type === "BOOKMARK") {
+                        notifIcon = <Bookmark size={14} style={{ color: "var(--ce-accent)" }} />;
+                        actionText = `bookmarked your room "${roomTitle}"`;
+                        typeClass = "notif-type-bookmark";
+                      } else if (notif.type === "JOIN") {
+                        notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-warning)" }} />;
+                        actionText = `wants to join "${roomTitle}"`;
+                        typeClass = "notif-type-join";
+                      }
+
+                      // Follow status mapping for social notifications
+                      const isFollowingSender = followingList.some(f => String(f._id || f) === String(notif.sender?._id || notif.sender));
+
+                      // Access request lookup
+                      const pendingReq = joinRequests.find(req =>
+                        String(req.roomId) === String(notif.targetRoom?.roomId || notif.targetRoom?._id) &&
+                        String(req.user?._id || req.user) === String(notif.sender?._id)
+                      );
+
+                      return (
+                        <div
+                          key={notif._id}
+                          className={`notification-item ${isRead ? "read" : "unread"} ${typeClass}`}
+                          onClick={() => !isRead && handleMarkOneNotificationRead(notif._id)}
+                        >
+                          <div className="notif-left-content">
+                            <div className="notif-category-icon-container">
+                              {notifIcon}
+                            </div>
+                            <div className="notif-sender-avatar-container" style={{ backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName) }}>
+                              {senderAvatar ? (
+                                <img src={senderAvatar} alt={senderName} className="notif-sender-img" />
+                              ) : (
+                                <span className="notif-sender-initial">{senderName.charAt(0).toUpperCase()}</span>
+                              )}
+                            </div>
+                            <div className="notif-main-info">
+                              <div className="notif-text-message">
+                                <strong>{senderName}</strong> {actionText}
+                              </div>
+
+                              {/* Context-aware inline actions inside the details block */}
+                              {notif.type === "FOLLOW" && (
+                                <div style={{ marginTop: "4px" }}>
+                                  {isFollowingSender ? (
+                                    <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-flex", alignItems: "center", gap: "3px", fontWeight: "600" }}>
+                                      <Check size={11} /> Following
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleFollowToggle(notif.sender?._id || notif.sender);
+                                      }}
+                                      className="history-resume-btn notif-action-btn follow-back"
+                                      style={{
+                                        fontSize: "0.68rem",
+                                        padding: "3px 8px",
+                                        borderRadius: "6px",
+                                        background: "rgba(59, 130, 246, 0.12)",
+                                        color: "var(--ce-primary)",
+                                        border: "1px solid rgba(59, 130, 246, 0.25)",
+                                        cursor: "pointer",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "3px"
+                                      }}
+                                    >
+                                      <UserPlus size={10} /> Follow Back
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {notif.type === "JOIN" && (
+                                <div style={{ marginTop: "4px" }}>
+                                  {pendingReq ? (
+                                    <div style={{ display: "flex", gap: "8px" }}>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRespondRequest(pendingReq.roomId, pendingReq.user?._id || pendingReq.user, "accept");
+                                        }}
+                                        className="history-resume-btn notif-action-btn accept"
+                                        style={{
+                                          fontSize: "0.68rem",
+                                          padding: "3px 8px",
+                                          borderRadius: "6px",
+                                          background: "rgba(16, 185, 129, 0.12)",
+                                          color: "#10b981",
+                                          border: "1px solid rgba(16, 185, 129, 0.25)",
+                                          cursor: "pointer"
+                                        }}
+                                      >
+                                        Accept
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRespondRequest(pendingReq.roomId, pendingReq.user?._id || pendingReq.user, "reject");
+                                        }}
+                                        className="history-resume-btn notif-action-btn reject"
+                                        style={{
+                                          fontSize: "0.68rem",
+                                          padding: "3px 8px",
+                                          borderRadius: "6px",
+                                          background: "rgba(239, 68, 68, 0.12)",
+                                          color: "#ef4444",
+                                          border: "1px solid rgba(239, 68, 68, 0.25)",
+                                          cursor: "pointer"
+                                        }}
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
+                                      Request processed
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="notif-meta-tags" style={{ marginTop: "2px" }}>
+                                <span className="notif-tag-badge">{notif.category}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="notif-right-content">
+                            <span className="notif-time-badge">{formatLastActive(notif.createdAt)}</span>
+                            {roomLink && notif.type !== "JOIN" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  triggerGateAndNavigate(roomLink);
+                                }}
+                                className="history-resume-btn notif-view-btn"
+                              >
+                                View Room
+                              </button>
+                            )}
+                            {!isRead && <span className="notif-unread-dot" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {notifPage < notifTotalPages && (
+                      <div className="notif-load-more-container" style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+                        <button
+                          onClick={handleLoadMoreNotifications}
+                          disabled={notifLoading}
+                          className="notif-load-more-btn"
+                        >
+                          {notifLoading ? "Loading..." : "Load More Notifications"}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -4306,14 +5984,32 @@ function Dashboard() {
                         className={`appearance-theme-card ${activeTheme === "dark" ? "active" : ""}`}
                         onClick={() => handleThemeChange("dark")}
                       >
-                        <div className="theme-preview dark" />
+                        <div className="theme-preview dark">
+                          <div className="preview-decor-sidebar" />
+                          <div className="preview-decor-editor">
+                            <div className="decor-line code-blue" style={{ width: "60%" }} />
+                            <div className="decor-line code-purple" style={{ width: "40%" }} />
+                            <div className="decor-line code-yellow" style={{ width: "75%" }} />
+                            <div className="decor-line code-green" style={{ width: "50%" }} />
+                          </div>
+                          <div className="preview-decor-chat" />
+                        </div>
                         <span>System Dark Mode</span>
                       </div>
                       <div
                         className={`appearance-theme-card ${activeTheme === "light" ? "active" : ""}`}
                         onClick={() => handleThemeChange("light")}
                       >
-                        <div className="theme-preview light" />
+                        <div className="theme-preview light">
+                          <div className="preview-decor-sidebar" />
+                          <div className="preview-decor-editor">
+                            <div className="decor-line code-blue" style={{ width: "60%" }} />
+                            <div className="decor-line code-purple" style={{ width: "40%" }} />
+                            <div className="decor-line code-yellow" style={{ width: "75%" }} />
+                            <div className="decor-line code-green" style={{ width: "50%" }} />
+                          </div>
+                          <div className="preview-decor-chat" />
+                        </div>
                         <span>Linear Light Mode</span>
                       </div>
                     </div>
@@ -4356,6 +6052,25 @@ function Dashboard() {
                           <option value="dots">Dots</option>
                           <option value="lines">Grid Lines</option>
                           <option value="none">None</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="settings-form-row">
+                      <div className="settings-form-field flex-1">
+                        <label>AI IntelliSense Autocomplete</label>
+                        <select value={dashEditorSuggestions} onChange={handleEditorSuggestionsChange}>
+                          <option value="ai">AI-Powered (Smart Autocomplete) ✨</option>
+                          <option value="standard">Standard Autocomplete</option>
+                          <option value="disabled">Disabled</option>
+                        </select>
+                      </div>
+                      <div className="settings-form-field flex-1">
+                        <label>Auto-Save Frequency</label>
+                        <select value={dashEditorAutoSave} onChange={handleEditorAutoSaveChange}>
+                          <option value="off">Manual Save Only</option>
+                          <option value="5">Every 5 Seconds</option>
+                          <option value="30">Every 30 Seconds</option>
                         </select>
                       </div>
                     </div>
@@ -4435,6 +6150,23 @@ function Dashboard() {
                     <div className="settings-form-field">
                       <label>New Password</label>
                       <input type="password" placeholder="At least 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                      {newPassword && (
+                        <div className="password-strength-container">
+                          <div className="strength-bar-track">
+                            <div 
+                              className="strength-bar-fill" 
+                              style={{ 
+                                width: `${passwordStrength.percent}%`, 
+                                backgroundColor: passwordStrength.color,
+                                boxShadow: `0 0 10px ${passwordStrength.color}55`
+                              }} 
+                            />
+                          </div>
+                          <span className="strength-label" style={{ color: passwordStrength.color }}>
+                            Strength: <strong>{passwordStrength.label}</strong>
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <button className="settings-save-btn" onClick={handleUpdatePassword}>Change Password</button>
                   </div>
@@ -4627,6 +6359,83 @@ function Dashboard() {
                             ))}
                           </div>
                         )}
+                      </div>
+                    </div>
+
+                    <div className="settings-divider-horizontal" />
+
+                    {/* Code-Expo CLI Connection Center */}
+                    <div className="integration-card-wrapper cli-integration-card">
+                      <div className="cli-header-row">
+                        <Terminal size={18} className="cli-icon-neon" />
+                        <div>
+                          <h4>CODE-EXPO Command Line Interface (CLI)</h4>
+                          <span className="integration-desc-small" style={{ display: "block", marginTop: "2px" }}>
+                            Synchronize local folders, run compilers, and connect your terminal environment directly to workspaces.
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="cli-guideline-steps">
+                        <div className="cli-step-item">
+                          <div className="step-num-title-row">
+                            <span className="step-badge">Step 1</span>
+                            <span className="step-title">Install the CLI global runner</span>
+                          </div>
+                          <div className="terminal-code-block">
+                            <code>npm install -g code-expo-cli</code>
+                            <button 
+                              type="button"
+                              className="cli-copy-btn" 
+                              onClick={() => {
+                                navigator.clipboard.writeText("npm install -g code-expo-cli");
+                                addToast("CLI install command copied", "success");
+                              }}
+                            >
+                              <Copy size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="cli-step-item">
+                          <div className="step-num-title-row">
+                            <span className="step-badge">Step 2</span>
+                            <span className="step-title">Authenticate using an API key generated above</span>
+                          </div>
+                          <div className="terminal-code-block">
+                            <code>code-expo login --token &lt;YOUR_API_KEY&gt;</code>
+                            <button 
+                              type="button"
+                              className="cli-copy-btn" 
+                              onClick={() => {
+                                navigator.clipboard.writeText("code-expo login --token <YOUR_API_KEY>");
+                                addToast("CLI login command copied", "success");
+                              }}
+                            >
+                              <Copy size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="cli-step-item">
+                          <div className="step-num-title-row">
+                            <span className="step-badge">Step 3</span>
+                            <span className="step-title">Sync local directory to a live coding session</span>
+                          </div>
+                          <div className="terminal-code-block">
+                            <code>code-expo sync --room &lt;ROOM_ID&gt; --path ./src</code>
+                            <button 
+                              type="button"
+                              className="cli-copy-btn" 
+                              onClick={() => {
+                                navigator.clipboard.writeText("code-expo sync --room <ROOM_ID> --path ./src");
+                                addToast("CLI sync command copied", "success");
+                              }}
+                            >
+                              <Copy size={12} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

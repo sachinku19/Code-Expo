@@ -55,7 +55,7 @@ function CollaborationDemo() {
   };
 
   return (
-    <section className="collaboration">
+    <section className="multiplayer-collaboration">
       <div className="collab-header">
         <span className="collab-badge">
           <Users size={14} className="collab-badge-icon" />

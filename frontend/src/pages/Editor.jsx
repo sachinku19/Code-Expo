@@ -748,6 +748,24 @@ function Editor() {
   const [editorLineNumbers, setEditorLineNumbers] = useState(
     localStorage.getItem("editor_lineNumbers") || "on"
   );
+  const [editorSuggestions, setEditorSuggestions] = useState(
+    localStorage.getItem("editor_suggestions") || "standard"
+  );
+  const [editorAutoSave, setEditorAutoSave] = useState(
+    localStorage.getItem("editor_autoSave") || "off"
+  );
+  const [editorFontFamily, setEditorFontFamily] = useState(
+    localStorage.getItem("editor_fontFamily") || "Fira Code, JetBrains Mono, monospace"
+  );
+  const [editorCursorBlinking, setEditorCursorBlinking] = useState(
+    localStorage.getItem("editor_cursorBlinking") || "blink"
+  );
+  const [editorCursorStyle, setEditorCursorStyle] = useState(
+    localStorage.getItem("editor_cursorStyle") || "line"
+  );
+  const [editorBracketColorization, setEditorBracketColorization] = useState(
+    localStorage.getItem("editor_bracketColorization") !== "false"
+  );
   const [participantsDropdownOpen, setParticipantsDropdownOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [whiteboardActivities, setWhiteboardActivities] = useState([]);
@@ -784,6 +802,25 @@ function Editor() {
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
       document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
       document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+
+      // Auto-exit fullscreen when leaving the editor component
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      if (isCurrentlyFullscreen) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch((err) => console.log("Exit fullscreen error:", err));
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen().catch((err) => console.log("Exit fullscreen error:", err));
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen().catch((err) => console.log("Exit fullscreen error:", err));
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen().catch((err) => console.log("Exit fullscreen error:", err));
+        }
+      }
     };
   }, []);
 
@@ -832,6 +869,30 @@ function Editor() {
       window.removeEventListener("contextmenu", closeMenu);
     };
   }, []);
+
+  useEffect(() => {
+    if (editorAutoSave === "off" || !code) return;
+    const delay = Number(editorAutoSave) * 1000;
+    if (isNaN(delay) || delay <= 0) return;
+
+    const timer = setTimeout(() => {
+      if (activeFileIdRef.current) {
+        socket.emit("save-file-content", {
+          roomId,
+          fileId: activeFileIdRef.current,
+          content: code,
+          userId: user.id,
+          username: user.username
+        });
+        triggerNotification("Workspace auto-saved!");
+      } else {
+        socket.emit("save-code", { roomId, code });
+        triggerNotification("Workspace auto-saved!");
+      }
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [code, editorAutoSave, roomId, user.id, user.username]);
 
   const handleContextMenu = (e, participant) => {
     e.preventDefault();
@@ -2167,6 +2228,47 @@ function Editor() {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
+    // Define custom premium themes matching page backgrounds exactly
+    monaco.editor.defineTheme("custom-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "comment", foreground: "6a737d", fontStyle: "italic" },
+        { token: "keyword", foreground: "ff7b72" },
+        { token: "string", foreground: "a5d6ff" },
+        { token: "number", foreground: "79c0ff" },
+      ],
+      colors: {
+        "editor.background": "#0b0f17",
+        "editor.lineHighlightBackground": "#1e293b40",
+        "editorCursor.foreground": "#ffa116",
+        "editor.inactiveSelectionBackground": "#388bfd15",
+        "editor.selectionBackground": "#388bfd30",
+        "editor.lineHighlightBorder": "#00000000"
+      }
+    });
+
+    monaco.editor.defineTheme("custom-light", {
+      base: "vs",
+      inherit: true,
+      rules: [
+        { token: "comment", foreground: "57606a", fontStyle: "italic" },
+        { token: "keyword", foreground: "cf222e" },
+        { token: "string", foreground: "0a3069" },
+      ],
+      colors: {
+        "editor.background": "#f6f8fa",
+        "editor.lineHighlightBackground": "#eaeef250",
+        "editorCursor.foreground": "#0969da",
+        "editor.inactiveSelectionBackground": "#add6ff30",
+        "editor.selectionBackground": "#add6ff",
+        "editor.lineHighlightBorder": "#00000000"
+      }
+    });
+
+    // Set active theme
+    monaco.editor.setTheme(editorTheme === "light" ? "custom-light" : "custom-dark");
+
     // Reset disposables list
     editorDisposablesRef.current.forEach(d => d.dispose());
     editorDisposablesRef.current = [];
@@ -2306,6 +2408,44 @@ function Editor() {
     });
     editorDisposablesRef.current.push(contentDisposable);
   };
+
+  useEffect(() => {
+    if (monacoRef.current) {
+      monacoRef.current.editor.setTheme(editorTheme === "light" ? "custom-light" : "custom-dark");
+    }
+  }, [editorTheme]);
+
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.updateOptions({
+        fontSize: editorFontSize,
+        fontFamily: editorFontFamily,
+        minimap: { enabled: editorShowMinimap },
+        tabSize: editorTabSize,
+        wordWrap: editorWordWrap,
+        lineNumbers: editorLineNumbers,
+        quickSuggestions: editorSuggestions === "disabled" ? false : { other: true, comments: true, strings: true },
+        suggestOnTriggerCharacters: editorSuggestions !== "disabled",
+        acceptSuggestionOnEnter: editorSuggestions === "ai" ? "on" : "smart",
+        snippetSuggestions: editorSuggestions === "disabled" ? "none" : "inline",
+        cursorBlinking: editorCursorBlinking,
+        cursorStyle: editorCursorStyle,
+        cursorWidth: editorCursorStyle === "line" ? 2 : undefined,
+        bracketPairColorization: { enabled: editorBracketColorization }
+      });
+    }
+  }, [
+    editorFontSize,
+    editorFontFamily,
+    editorShowMinimap,
+    editorTabSize,
+    editorWordWrap,
+    editorLineNumbers,
+    editorSuggestions,
+    editorCursorBlinking,
+    editorCursorStyle,
+    editorBracketColorization
+  ]);
 
   // Compile runner handler
   const handleRunCode = () => {
@@ -3038,6 +3178,27 @@ function Editor() {
                       </div>
 
                       <div className="setting-group">
+                        <label htmlFor="editor-fontfamily-select">Font Family</label>
+                        <select
+                          id="editor-fontfamily-select"
+                          className="ce-select-box"
+                          value={editorFontFamily}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditorFontFamily(val);
+                            localStorage.setItem("editor_fontFamily", val);
+                          }}
+                        >
+                          <option value="Fira Code, JetBrains Mono, monospace">Fira Code</option>
+                          <option value="JetBrains Mono, Fira Code, monospace">JetBrains Mono</option>
+                          <option value="Source Code Pro, Fira Code, monospace">Source Code Pro</option>
+                          <option value="Comic Mono, Courier New, monospace">Comic Mono</option>
+                          <option value="Courier New, monospace">Courier New</option>
+                          <option value="Consolas, Menlo, Monaco, monospace">System Default</option>
+                        </select>
+                      </div>
+
+                      <div className="setting-group">
                         <label htmlFor="editor-fontsize-input">Font Size: <span className="val-text">{editorFontSize}px</span></label>
                         <div className="slider-wrapper">
                           <input
@@ -3056,10 +3217,50 @@ function Editor() {
                           />
                         </div>
                       </div>
+
+                      <div className="setting-group">
+                        <label htmlFor="editor-cursorstyle-select">Cursor Style</label>
+                        <select
+                          id="editor-cursorstyle-select"
+                          className="ce-select-box"
+                          value={editorCursorStyle}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditorCursorStyle(val);
+                            localStorage.setItem("editor_cursorStyle", val);
+                          }}
+                        >
+                          <option value="line">Line (Default)</option>
+                          <option value="block">Block</option>
+                          <option value="underline">Underline</option>
+                          <option value="line-thin">Line Thin</option>
+                          <option value="underline-thin">Underline Thin</option>
+                        </select>
+                      </div>
+
+                      <div className="setting-group">
+                        <label htmlFor="editor-cursorblinking-select">Cursor Blinking</label>
+                        <select
+                          id="editor-cursorblinking-select"
+                          className="ce-select-box"
+                          value={editorCursorBlinking}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditorCursorBlinking(val);
+                            localStorage.setItem("editor_cursorBlinking", val);
+                          }}
+                        >
+                          <option value="blink">Blink</option>
+                          <option value="smooth">Smooth</option>
+                          <option value="phase">Phase</option>
+                          <option value="expand">Expand</option>
+                          <option value="solid">Solid</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div className="settings-section">
-                      <span className="settings-section-title">Code Formatting</span>
+                      <span className="settings-section-title">Code Formatting & IntelliSense</span>
 
                       <div className="setting-group">
                         <label htmlFor="editor-tabsize-select">Tab Size</label>
@@ -3078,10 +3279,67 @@ function Editor() {
                           <option value={8}>8 Spaces</option>
                         </select>
                       </div>
+
+                      <div className="setting-group">
+                        <label htmlFor="editor-suggestions-select">IntelliSense Autocomplete</label>
+                        <select
+                          id="editor-suggestions-select"
+                          className="ce-select-box"
+                          value={editorSuggestions}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditorSuggestions(val);
+                            localStorage.setItem("editor_suggestions", val);
+                          }}
+                        >
+                          <option value="standard">Standard Autocomplete</option>
+                          <option value="ai">AI IntelliSense (Tab-Complete)</option>
+                          <option value="disabled">Disabled</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div className="settings-section">
-                      <span className="settings-section-title">Editor Features</span>
+                      <span className="settings-section-title">Editor Features & Save</span>
+
+                      <div className="setting-group">
+                        <label htmlFor="editor-autosave-select">Auto-Save Frequency</label>
+                        <select
+                          id="editor-autosave-select"
+                          className="ce-select-box"
+                          value={editorAutoSave}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditorAutoSave(val);
+                            localStorage.setItem("editor_autoSave", val);
+                          }}
+                        >
+                          <option value="off">Disabled (Manual Save)</option>
+                          <option value="5">Every 5 Seconds</option>
+                          <option value="10">Every 10 Seconds</option>
+                          <option value="30">Every 30 Seconds</option>
+                          <option value="60">Every 1 Minute</option>
+                        </select>
+                      </div>
+
+                      <div className="setting-toggle-row">
+                        <div className="toggle-info">
+                          <span className="toggle-label">Bracket Colorization</span>
+                          <span className="toggle-desc">Colorize nested bracket pairs</span>
+                        </div>
+                        <label className="ce-switch">
+                          <input
+                            type="checkbox"
+                            checked={editorBracketColorization}
+                            onChange={(e) => {
+                              const val = e.target.checked;
+                              setEditorBracketColorization(val);
+                              localStorage.setItem("editor_bracketColorization", val);
+                            }}
+                          />
+                          <span className="ce-switch-slider" />
+                        </label>
+                      </div>
 
                       <div className="setting-toggle-row">
                         <div className="toggle-info">
@@ -3276,7 +3534,7 @@ function Editor() {
                 {activeFileId ? (
                   <MonacoEditor
                     height="100%"
-                    theme={editorTheme === "light" ? "vs" : "vs-dark"}
+                    theme={editorTheme === "light" ? "custom-light" : "custom-dark"}
                     language={editorLanguage}
                     value={code}
                     onChange={handleEditorChange}
@@ -3284,20 +3542,25 @@ function Editor() {
                     options={{
                       readOnly: isPlaybackActive || currentUserRole === "VIEWER",
                       fontSize: editorFontSize,
-                      fontFamily: "Fira Code, Menlo, Monaco, Consolas, monospace",
+                      fontFamily: editorFontFamily,
                       minimap: { enabled: editorShowMinimap },
                       tabSize: editorTabSize,
                       wordWrap: editorWordWrap,
                       lineNumbers: editorLineNumbers,
+                      quickSuggestions: editorSuggestions === "disabled" ? false : { other: true, comments: true, strings: true },
+                      suggestOnTriggerCharacters: editorSuggestions !== "disabled",
+                      acceptSuggestionOnEnter: editorSuggestions === "ai" ? "on" : "smart",
+                      snippetSuggestions: editorSuggestions === "disabled" ? "none" : "inline",
                       detectIndentation: false,
                       automaticLayout: true,
                       scrollbar: {
                         verticalScrollbarSize: 6,
                         horizontalScrollbarSize: 6
                       },
-                      cursorBlinking: "blink",
-                      cursorStyle: "line",
-                      cursorWidth: 2
+                      cursorBlinking: editorCursorBlinking,
+                      cursorStyle: editorCursorStyle,
+                      cursorWidth: editorCursorStyle === "line" ? 2 : undefined,
+                      bracketPairColorization: { enabled: editorBracketColorization }
                     }}
                   />
                 ) : (
@@ -4141,7 +4404,7 @@ function Editor() {
               <div className="diff-modal-body">
                 <DiffEditor
                   height="100%"
-                  theme={editorTheme === "light" ? "vs" : "vs-dark"}
+                  theme={editorTheme === "light" ? "custom-light" : "custom-dark"}
                   language={editorLanguage}
                   original={diffVersion.code}
                   modified={code}

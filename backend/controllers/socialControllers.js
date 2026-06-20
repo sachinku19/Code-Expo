@@ -735,6 +735,35 @@ const getUserPublicProfile = async (req, res) => {
   }
 };
 
+const getLeaderboard = async (req, res) => {
+  try {
+    const User = require("../models/User");
+    const users = await User.find({}, "username avatar email title executionsCount")
+      .sort({ executionsCount: -1 })
+      .limit(100);
+
+    const leaderboard = users.map((u, idx) => ({
+      userId: u._id,
+      username: u.username,
+      avatar: u.avatar,
+      email: u.email,
+      title: u.title,
+      xp: u.executionsCount || 0,
+      rank: idx + 1
+    }));
+
+    res.status(200).json({
+      success: true,
+      leaderboard
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   toggleFollowUser,
   removeFollower,
@@ -749,6 +778,7 @@ module.exports = {
   getLikedRooms,
   getBookmarkedRooms,
   searchUsers,
-  getUserPublicProfile
+  getUserPublicProfile,
+  getLeaderboard
 };
 

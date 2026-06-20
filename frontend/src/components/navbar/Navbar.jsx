@@ -71,14 +71,7 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
 
       {/* Action Buttons */}
       <div className="nav-buttons">
-        <button
-          className="theme-btn"
-          onClick={onThemeToggle}
-          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-          title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-        >
-          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
+
         {user ? (
           <button className="start-btn" onClick={() => navigate("/dashboard")}>
             Go to Dashboard
@@ -132,10 +125,7 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
                 </a>
               ))}
               <hr className="mobile-divider" />
-              <button className="theme-btn mobile-theme-btn" onClick={onThemeToggle}>
-                {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-                {theme === "dark" ? "Light Mode" : "Dark Mode"}
-              </button>
+
               {user ? (
                 <button
                   className="start-btn w-full"

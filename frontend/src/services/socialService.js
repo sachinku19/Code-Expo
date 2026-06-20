@@ -95,3 +95,7 @@ export const getUserPublicProfile = async (userId, year) => {
   return response.data;
 };
 
+export const getLeaderboard = async () => {
+  const response = await API.get("/leaderboard", getHeaders());
+  return response.data;
+};

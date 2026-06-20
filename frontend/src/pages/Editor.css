@@ -1,20 +1,20 @@
 /* CodeExpo SaaS Redesign - Compact Editor Stylesheet */
 
 :root {
-  --ce-bg-page: #1a1a1a;
-  --ce-bg-nav: #262626;
-  --ce-bg-sidebar: #262626;
-  --ce-bg-drawer: #1a1a1a;
-  --ce-bg-panel: rgba(38, 38, 38, 0.85);
+  --ce-bg-page: #0b0f17;
+  --ce-bg-nav: #121824;
+  --ce-bg-sidebar: #121824;
+  --ce-bg-drawer: #0b0f17;
+  --ce-bg-panel: rgba(18, 24, 36, 0.85);
   --ce-bg-active: rgba(255, 161, 22, 0.08);
 
-  --ce-border: #3c3c3c;
+  --ce-border: #1e293b;
   --ce-border-active: #ffa116;
   --ce-accent: #ffa116;
   --ce-accent-hover: #ffb84d;
 
   --ce-text: #eff2f6;
-  --ce-text-muted: #8a8a8a;
+  --ce-text-muted: #9ca3af;
 
   --ce-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   --ce-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -1975,16 +1975,26 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 8px 12px;
-  gap: 16px;
+  padding: 12px 14px;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.settings-pane::-webkit-scrollbar {
+  width: 4px;
+}
+
+.settings-pane::-webkit-scrollbar-thumb {
+  background: var(--ce-border);
+  border-radius: 2px;
 }
 
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   border-bottom: 1px solid var(--ce-border);
-  padding-bottom: 14px;
+  padding-bottom: 18px;
 }
 
 .settings-section:last-of-type {
@@ -1992,12 +2002,14 @@
 }
 
 .settings-section-title {
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 750;
   text-transform: uppercase;
   color: var(--ce-text-muted);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   margin-bottom: 4px;
+  border-left: 2px solid var(--ce-accent);
+  padding-left: 6px;
 }
 
 .setting-group {
@@ -2007,7 +2019,7 @@
 }
 
 .setting-group label {
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--ce-text);
   display: flex;
@@ -2019,30 +2031,71 @@
   font-family: var(--ce-font-mono);
 }
 
+/* Premium styling for settings pane select boxes */
+.settings-pane .ce-select-box {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--ce-border);
+  color: var(--ce-text);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  width: 100%;
+}
+
+.light .settings-pane .ce-select-box {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+.settings-pane .ce-select-box:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--ce-accent);
+}
+
+.light .settings-pane .ce-select-box:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+  border-color: var(--ce-accent);
+}
+
+.settings-pane .ce-select-box:focus {
+  border-color: var(--ce-accent);
+  box-shadow: 0 0 0 2px var(--ce-bg-active);
+}
+
+.settings-pane option {
+  background-color: var(--ce-bg-sidebar);
+  color: var(--ce-text);
+}
+
 .ce-range-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 4px;
-  border-radius: 2px;
+  height: 5px;
+  border-radius: 3px;
   background: var(--ce-border);
   outline: none;
   margin: 6px 0;
+  transition: background 0.2s ease;
 }
 
 .ce-range-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--ce-accent);
   cursor: pointer;
-  transition: transform 0.1s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .ce-range-slider::-webkit-slider-thumb:hover {
   transform: scale(1.25);
+  background-color: var(--ce-accent-hover);
 }
 
 /* Switch Toggle Row Layout */
@@ -2051,7 +2104,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 4px 0;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.01);
+}
+
+.light .setting-toggle-row {
+  border-bottom-color: rgba(0, 0, 0, 0.02);
 }
 
 .toggle-info {
@@ -2062,13 +2120,13 @@
 }
 
 .toggle-label {
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--ce-text);
 }
 
 .toggle-desc {
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   color: var(--ce-text-muted);
   line-height: 1.3;
 }
@@ -2077,9 +2135,9 @@
 .ce-switch {
   position: relative;
   display: inline-block;
-  width: 34px;
-  height: 18px;
-  min-width: 34px;
+  width: 38px;
+  height: 20px;
+  min-width: 38px;
 }
 
 .ce-switch input {
@@ -2096,29 +2154,34 @@
   right: 0;
   bottom: 0;
   background-color: var(--ce-border);
-  transition: .2s ease;
-  border-radius: 18px;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px;
 }
 
 .ce-switch-slider:before {
   position: absolute;
   content: "";
-  height: 12px;
-  width: 12px;
+  height: 14px;
+  width: 14px;
   left: 3px;
   bottom: 3px;
   background-color: var(--ce-bg-page);
-  transition: .2s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .ce-switch input:checked+.ce-switch-slider {
   background-color: var(--ce-accent);
+  box-shadow: 0 0 8px rgba(255, 161, 22, 0.25);
+}
+
+.light .ce-switch input:checked+.ce-switch-slider {
+  box-shadow: 0 0 8px rgba(9, 105, 218, 0.25);
 }
 
 .ce-switch input:checked+.ce-switch-slider:before {
-  transform: translateX(16px);
+  transform: translateX(18px);
   background-color: #fff;
 }
 
@@ -2885,14 +2948,7 @@ body.resizing-console * {
   background-color: rgba(209, 36, 47, 0.1);
 }
 
-/* Force Monaco local editor cursor to be thin */
-.monaco-editor .cursors-layer .cursor,
-.monaco-editor .cursors-layer .cursor-block,
-.monaco-editor .cursors-layer .cursor-primary {
-  width: 1px !important;
-  max-width: 1px !important;
-  min-width: 1px !important;
-}
+
 
 /* Interactive Terminal Panel styles */
 .terminal-shell-container {

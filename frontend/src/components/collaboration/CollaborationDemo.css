@@ -1,4 +1,4 @@
-.collaboration {
+.multiplayer-collaboration {
   padding: 78px max(24px, calc((100vw - 1200px) / 2));
   background-color: var(--bg-dark);
   position: relative;
