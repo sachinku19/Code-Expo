@@ -165,6 +165,19 @@ export default function MainLayout({
   const [searchedUsers, setSearchedUsers] = useState([]);
 
   const searchInputRef = useRef(null);
+  const searchBoxRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
@@ -598,7 +611,7 @@ export default function MainLayout({
         </div>
 
         <div className="topnav-center">
-          <div className="search-box">
+          <div ref={searchBoxRef} className="search-box">
             <Search size={14} className="search-icon" />
             <input
               ref={searchInputRef}
