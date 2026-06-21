@@ -95,6 +95,14 @@ function Editor() {
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsDropdownOpen, setNotificationsDropdownOpen] = useState(false);
+  const [showGateOpenAnimation, setShowGateOpenAnimation] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowGateOpenAnimation(false);
+    }, 550);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Core MERN Room State
   const [room, setRoom] = useState(null);
@@ -4569,6 +4577,17 @@ function Editor() {
             </div>
           </div>,
           document.body
+        )}
+        {/* Futuristic Exit Gate Animation Overlay */}
+        {showGateOpenAnimation && (
+          <div className="ce-gate-overlay exiting">
+            <div className="gate-door gate-door-left exiting" />
+            <div className="gate-door gate-door-right exiting" />
+            <div className="gate-core-portal exiting">
+              <div className="gate-portal-glow exiting" />
+              <h2 className="gate-portal-text exiting">Workspace Synced</h2>
+            </div>
+          </div>
         )}
       </div>
     </MainLayout>

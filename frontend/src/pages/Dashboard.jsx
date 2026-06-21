@@ -1070,6 +1070,12 @@ function Dashboard() {
     }
   };
 
+  const prefetchEditor = () => {
+    try {
+      import("./Editor").catch(() => {});
+    } catch (e) {}
+  };
+
   const triggerGateAndNavigate = (targetRoomId) => {
     setGateAnimationRoomId(targetRoomId);
     setTimeout(() => {
@@ -1078,7 +1084,7 @@ function Dashboard() {
       setTimeout(() => {
         setGateAnimationRoomId(null);
       }, 500);
-    }, 1100);
+    }, 300);
   };
 
   const triggerResumeHistory = (targetRoomId) => {
@@ -1088,7 +1094,7 @@ function Dashboard() {
       setTimeout(() => {
         setResumingHistoryRoomId(null);
       }, 500);
-    }, 1100);
+    }, 300);
   };
 
   // Sync section with query tab
@@ -1891,17 +1897,15 @@ function Dashboard() {
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     setIsCreatingRoom(true);
-    setTimeout(async () => {
-      try {
-        const data = await createRoom(formData.title, formData.language, formData.isPrivate);
-        setShowQuickCreateModal(false);
-        setIsCreatingRoom(false);
-        triggerGateAndNavigate(data.room.roomId);
-      } catch (error) {
-        setIsCreatingRoom(false);
-        alert(error.response?.data?.message || error.message);
-      }
-    }, 2500);
+    try {
+      const data = await createRoom(formData.title, formData.language, formData.isPrivate);
+      setShowQuickCreateModal(false);
+      setIsCreatingRoom(false);
+      triggerGateAndNavigate(data.room.roomId);
+    } catch (error) {
+      setIsCreatingRoom(false);
+      alert(error.response?.data?.message || error.message);
+    }
   };
   const handleJoinRoom = (e) => {
     e.preventDefault();
@@ -2412,7 +2416,11 @@ function Dashboard() {
               >
                 Details
               </button>
-              <button onClick={() => handleJoinRoomDirect(room.roomId)} className="resume-btn-new">
+              <button
+                onClick={() => handleJoinRoomDirect(room.roomId)}
+                onMouseEnter={prefetchEditor}
+                className="resume-btn-new"
+              >
                 <span>Open Workspace</span>
                 <ChevronRight size={14} />
               </button>
@@ -5161,6 +5169,7 @@ function Dashboard() {
                     </div>
                     <button
                       onClick={() => triggerGateAndNavigate(room.roomId)}
+                      onMouseEnter={prefetchEditor}
                       className="history-resume-btn"
                     >
                       Open Canvas
@@ -6791,7 +6800,7 @@ function Dashboard() {
                   />
                 </div>
 
-                <button type="submit" className="modal-join-btn-new ce-btn-success ce-mt-16">
+                <button type="submit" onMouseEnter={prefetchEditor} className="modal-join-btn-new ce-btn-success ce-mt-16">
                   Join Workspace
                 </button>
               </form>
