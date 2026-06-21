@@ -8261,4 +8261,177 @@ tier-badge.master {
   }
 }
 
-/* Gate styles moved to GateOverlay.css */
+/* Gate styles moved to GateOverlay.css */
+
+/* Dashboard Split Grid for Social Feed & Recent Joined Rooms */
+.ce-dashboard-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .ce-dashboard-split-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.recent-joined-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recent-joined-card {
+  background-color: var(--ce-surface-card);
+  border: 1px solid var(--ce-border);
+  border-radius: var(--border-radius-sm);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s ease);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recent-joined-card:hover {
+  background-color: var(--ce-hover);
+  border-color: var(--ce-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.joined-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.joined-room-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ce-text-h);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.joined-lang-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--ce-border);
+  background-color: var(--ce-surface);
+}
+
+.joined-lang-badge.lang-javascript,
+.joined-lang-badge.lang-js {
+  color: #fbbf24;
+  background-color: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
+.joined-lang-badge.lang-python {
+  color: var(--ce-success);
+  background-color: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.joined-lang-badge.lang-java {
+  color: #fb923c;
+  background-color: rgba(251, 146, 60, 0.08);
+  border-color: rgba(251, 146, 60, 0.2);
+}
+
+.joined-lang-badge.lang-cpp {
+  color: var(--ce-accent);
+  background-color: rgba(6, 182, 212, 0.08);
+  border-color: rgba(6, 182, 212, 0.2);
+}
+
+.joined-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+  color: var(--ce-text);
+}
+
+.joined-room-owner {
+  color: var(--ce-text-muted);
+}
+
+.joined-room-owner strong {
+  color: var(--ce-text);
+}
+
+.joined-room-id {
+  font-family: var(--font-mono);
+  color: var(--ce-text-muted);
+}
+
+.joined-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--ce-border);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.joined-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.joined-status.online {
+  color: var(--ce-success);
+}
+
+.joined-status.offline {
+  color: var(--ce-text-muted);
+}
+
+.joined-status .status-dot-mini {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.joined-status .status-dot-mini.active {
+  background-color: var(--ce-success);
+  box-shadow: 0 0 6px var(--ce-success);
+}
+
+.joined-status .status-dot-mini.offline {
+  background-color: var(--ce-text-muted);
+}
+
+.joined-enter-btn {
+  background: var(--ce-hover);
+  border: 1px solid var(--ce-border);
+  color: var(--ce-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.recent-joined-card:hover .joined-enter-btn {
+  background: var(--ce-primary);
+  border-color: var(--ce-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(170, 59, 255, 0.25);
+}

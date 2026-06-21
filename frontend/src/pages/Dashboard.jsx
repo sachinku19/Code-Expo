@@ -2743,68 +2743,145 @@ function Dashboard() {
                     )}
                   </section>
 
-                  {/* UNIFIED SOCIAL FEED */}
-                  <section className="ce-dashboard-section social-feed-section">
-                    <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <Activity size={16} className="brand-logo" />
-                        <h3 className="section-title">Developer Activity Feed</h3>
+                  {/* SPLIT FEED AND RECENT JOINED ROOMS GRID */}
+                  <div className="ce-dashboard-split-grid">
+                    
+                    {/* LEFT SECTION: DEVELOPER ACTIVITY FEED */}
+                    <section className="ce-dashboard-section social-feed-section" style={{ marginBottom: 0 }}>
+                      <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <Activity size={16} className="brand-logo" />
+                          <h3 className="section-title">Developer Activity Feed</h3>
+                        </div>
                       </div>
-                    </div>
 
-                    {isLoadingDashboard && feedActivities.length === 0 ? (
-                      <ActivityFeedSkeleton count={3} />
-                    ) : feedActivities.length === 0 ? (
-                      <div className="empty-state-card">
-                        <p>No activity logs recorded. Follow other developers to see their updates here!</p>
-                      </div>
-                    ) : (
-                      <div className="social-activities-list">
-                        {feedActivities.map(act => (
-                          <div key={act._id} className="social-activity-card">
-                            <div className="social-activity-header">
-                              <div className="social-activity-actor-info">
-                                <div className="actor-avatar" style={{ background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
-                                  {act.user?.avatar ? (
-                                    <img src={act.user.avatar} alt={act.user?.username} />
-                                  ) : (
-                                    <span>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
-                                  )}
+                      {isLoadingDashboard && feedActivities.length === 0 ? (
+                        <ActivityFeedSkeleton count={3} />
+                      ) : feedActivities.length === 0 ? (
+                        <div className="empty-state-card">
+                          <p>No activity logs recorded. Follow other developers to see their updates here!</p>
+                        </div>
+                      ) : (
+                        <div className="social-activities-list">
+                          {feedActivities.map(act => (
+                            <div key={act._id} className="social-activity-card">
+                              <div className="social-activity-header">
+                                <div className="social-activity-actor-info">
+                                  <div className="actor-avatar" style={{ background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
+                                    {act.user?.avatar ? (
+                                      <img src={act.user.avatar} alt={act.user?.username} />
+                                    ) : (
+                                      <span>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
+                                    )}
+                                  </div>
+                                  <div className="actor-meta">
+                                    <span className="actor-username">
+                                      <strong>{act.user?.username || "Someone"}</strong>
+                                    </span>
+                                    <span className="activity-action-text">
+                                      {act.action} {act.roomTitle ? (
+                                        <strong className="clickable-room" onClick={() => act.room?.roomId && handleJoinRoomDirect(act.room.roomId)}>
+                                          {act.roomTitle}
+                                        </strong>
+                                      ) : act.targetUser ? (
+                                        <strong className="activity-target-user">{act.targetUser.username}</strong>
+                                      ) : ""}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="actor-meta">
-                                  <span className="actor-username">
-                                    <strong>{act.user?.username || "Someone"}</strong>
-                                  </span>
-                                  <span className="activity-action-text">
-                                    {act.action} {act.roomTitle ? (
-                                      <strong className="clickable-room" onClick={() => act.room?.roomId && handleJoinRoomDirect(act.room.roomId)}>
-                                        {act.roomTitle}
-                                      </strong>
-                                    ) : act.targetUser ? (
-                                      <strong className="activity-target-user">{act.targetUser.username}</strong>
-                                    ) : ""}
-                                  </span>
-                                </div>
+                                <span className="activity-timestamp">
+                                  {formatLastActive(act.timestamp)}
+                                </span>
                               </div>
-                              <span className="activity-timestamp">
-                                {formatLastActive(act.timestamp)}
-                              </span>
                             </div>
-                          </div>
-                        ))}
+                          ))}
 
-                        {feedPage < feedTotalPages && (
-                          <button
-                            onClick={handleLoadMoreFeed}
-                            className="feed-load-more-btn"
-                            disabled={feedLoading}
-                          >
-                            {feedLoading ? "Loading..." : "Load More Activity"}
-                          </button>
-                        )}
+                          {feedPage < feedTotalPages && (
+                            <button
+                              onClick={handleLoadMoreFeed}
+                              className="feed-load-more-btn"
+                              disabled={feedLoading}
+                            >
+                              {feedLoading ? "Loading..." : "Load More Activity"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </section>
+
+                    {/* RIGHT SECTION: RECENT JOINED ROOMS */}
+                    <section className="ce-dashboard-section recent-joined-section" style={{ marginBottom: 0 }}>
+                      <div className="section-header">
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <Users size={16} className="brand-logo" style={{ color: "var(--ce-success)" }} />
+                          <h3 className="section-title">Recent Joined Rooms</h3>
+                        </div>
                       </div>
-                    )}
-                  </section>
+
+                      {isLoadingDashboard && historyRooms.length === 0 ? (
+                        <ActivityFeedSkeleton count={3} />
+                      ) : (() => {
+                        const joinedRooms = historyRooms.filter(room => {
+                          const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+                          return !isOwner;
+                        });
+
+                        if (joinedRooms.length === 0) {
+                          return (
+                            <div className="empty-state-card" style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                              <Terminal size={18} className="empty-state-icon" />
+                              <p>No recently joined rooms. Join rooms from the Explore tab or via room code!</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="recent-joined-list">
+                            {joinedRooms.slice(0, 5).map(room => {
+                              const activeCount = room.activeUsersCount || 0;
+                              const isOnline = activeCount > 0;
+                              const langClass = (room.language || "javascript").toLowerCase();
+                              return (
+                                <div
+                                  key={room._id}
+                                  className="recent-joined-card"
+                                  onClick={() => handleJoinRoomDirect(room.roomId)}
+                                  onMouseEnter={prefetchEditor}
+                                >
+                                  <div className="joined-card-header">
+                                    <h4 className="joined-room-title" title={room.title}>{room.title}</h4>
+                                    <span className={`joined-lang-badge lang-${langClass}`}>{room.language || "JS"}</span>
+                                  </div>
+                                  <div className="joined-card-body">
+                                    <span className="joined-room-owner">
+                                      Owner: <strong>@{room.createdBy?.username || "Developer"}</strong>
+                                    </span>
+                                    <span className="joined-room-id">ID: {room.roomId}</span>
+                                  </div>
+                                  <div className="joined-card-footer">
+                                    <span className={`joined-status ${isOnline ? "online" : "offline"}`}>
+                                      <span className={`status-dot-mini ${isOnline ? "active" : "offline"}`} />
+                                      {isOnline ? `${activeCount} Active` : "Offline"}
+                                    </span>
+                                    <button
+                                      className="joined-enter-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleJoinRoomDirect(room.roomId);
+                                      }}
+                                    >
+                                      Enter
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </section>
+
+                  </div>
                 </div>
 
                 {/* RIGHT COLUMN */}
