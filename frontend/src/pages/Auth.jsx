@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { loginUser, registerUser, googleLoginUser, getGoogleConfig } from "../services/authService";
+import { loginUser, registerUser, googleLoginUser, getGoogleConfig, forgotPassword } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import { User, Mail, Lock, ArrowLeft, Sparkles, Eye, EyeOff } from "lucide-react";
 import AuthBackground from "../components/auth/AuthBackground";
@@ -50,6 +50,19 @@ function Auth({ mode }) {
   const [registerError, setRegisterError] = useState(null);
   const [registerLoading, setRegisterLoading] = useState(false);
 
+  // State for Forgot Password Form
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotError, setForgotError] = useState(null);
+  const [forgotSuccess, setForgotSuccess] = useState(null);
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  // State for Registration Success (Verification Pending)
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const [agreeTerms, setAgreeTerms] = useState(false);
+
   // Shared Google Client state
   const [googleClient, setGoogleClient] = useState(null);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -58,12 +71,19 @@ function Auth({ mode }) {
   const theme = "dark";
 
   useEffect(() => {
-    // Clear errors when toggling mode
+    // Clear errors and states when toggling mode
     setLoginError(null);
     setRegisterError(null);
     setGoogleError(null);
     setShowLoginPassword(false);
     setShowRegisterPassword(false);
+    setIsForgotPassword(false);
+    setForgotEmail("");
+    setForgotError(null);
+    setForgotSuccess(null);
+    setRegistrationSuccess(false);
+    setSuccessMessage("");
+    setAgreeTerms(false);
   }, [mode]);
 
   useEffect(() => {
@@ -167,19 +187,41 @@ function Auth({ mode }) {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setRegisterError(null);
+
+    if (!agreeTerms) {
+      setRegisterError("Please accept the terms & privacy policy to continue.");
+      return;
+    }
+
     setRegisterLoading(true);
 
     try {
       const data = await registerUser(registerData);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      setUser(data.user);
-      completeAuthRedirect();
+      setSuccessMessage(data.message || "Registration successful! Please check your email to verify your account.");
+      setRegistrationSuccess(true);
     } catch (error) {
       const errMsg = error.response?.data?.message || error.message || "Registration failed. Please try again.";
       setRegisterError(errMsg);
     } finally {
       setRegisterLoading(false);
+    }
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+    setForgotLoading(true);
+
+    try {
+      const data = await forgotPassword({ email: forgotEmail });
+      setForgotSuccess(data.message || "Reset link sent. Please check your email.");
+      setForgotEmail("");
+    } catch (error) {
+      const errMsg = error.response?.data?.message || error.message || "Failed to process request.";
+      setForgotError(errMsg);
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -239,7 +281,129 @@ function Auth({ mode }) {
           {/* LEFT HALF: Form Column */}
           <div className="auth-form-column">
             <AnimatePresence mode="wait" initial={false} custom={direction}>
-              {mode === "login" ? (
+              {isForgotPassword ? (
+                <motion.div
+                  key="forgot-password"
+                  custom={direction}
+                  variants={formVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="auth-form-motion-wrapper"
+                >
+                  <div className="auth-header">
+                    <div className="brand-logo-glow" onClick={() => navigate("/")}>
+                      <div className="logo-symbol">&lt;/&gt;</div>
+                      <div className="logo-text">
+                        Code<span className="logo-highlight">Expo</span>
+                      </div>
+                    </div>
+                    <p className="auth-tagline-explore">Forgot Password?</p>
+                    <p className="auth-tagline-world">Recover your access to the <span className="text-highlight">Grid</span>.</p>
+                  </div>
+
+                  {forgotError && (
+                    <div className="error-alert-banner">
+                      <span className="error-icon">⚠️</span>
+                      <span className="error-text">{forgotError}</span>
+                    </div>
+                  )}
+
+                  {forgotSuccess && (
+                    <div className="success-alert-banner" style={{ borderLeft: "4px solid #238636", backgroundColor: "rgba(35, 134, 54, 0.15)", padding: "10px", borderRadius: "5px", marginBottom: "15px", display: "flex", gap: "8px", alignItems: "center" }}>
+                      <span className="success-icon" style={{ color: "#3fb950" }}>✓</span>
+                      <span className="success-text" style={{ color: "#c9d1d9", fontSize: "14px" }}>{forgotSuccess}</span>
+                    </div>
+                  )}
+
+                  <form className="auth-form-main" onSubmit={handleForgotSubmit}>
+                    <div className="form-group">
+                      <div className="input-container">
+                        <input
+                          id="forgotEmail"
+                          type="email"
+                          name="email"
+                          placeholder="Registered Email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          required
+                          className="form-input"
+                          autoComplete="email"
+                        />
+                        <Mail className="input-icon-left" size={16} />
+                        <div className="input-focus-line" />
+                      </div>
+                    </div>
+
+                    <button type="submit" className="btn-submit-premium" disabled={forgotLoading}>
+                      {forgotLoading ? (
+                        <span className="loader-text">Locating Identity...</span>
+                      ) : (
+                        <>
+                          <span className="btn-arrow-icon">➔</span>
+                          <span>Send Reset Link</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="auth-card-footer">
+                    <span>Remembered credentials?</span>
+                    <button 
+                      onClick={() => {
+                        setIsForgotPassword(false);
+                        setForgotError(null);
+                        setForgotSuccess(null);
+                      }} 
+                      className="btn-link-toggle-mode"
+                    >
+                      Log in
+                    </button>
+                  </div>
+                </motion.div>
+              ) : registrationSuccess ? (
+                <motion.div
+                  key="verification-pending"
+                  custom={direction}
+                  variants={formVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="auth-form-motion-wrapper"
+                >
+                  <div className="auth-header">
+                    <div className="brand-logo-glow" onClick={() => navigate("/")}>
+                      <div className="logo-symbol">&lt;/&gt;</div>
+                      <div className="logo-text">
+                        Code<span className="logo-highlight">Expo</span>
+                      </div>
+                    </div>
+                    <p className="auth-tagline-explore">Verification Required</p>
+                    <p className="auth-tagline-world">A security link was dispatched to your inbox.</p>
+                  </div>
+
+                  <div className="success-alert-banner" style={{ borderLeft: "4px solid #aa3bff", backgroundColor: "rgba(170, 59, 255, 0.15)", padding: "15px", borderRadius: "8px", marginBottom: "20px", display: "flex", flexDirection: "column", gap: "10px", alignItems: "center", textAlign: "center" }}>
+                    <Mail size={36} style={{ color: "#aa3bff", animation: "pulse 2s infinite" }} />
+                    <span className="success-text" style={{ color: "#c9d1d9", fontSize: "14px", lineHeight: "1.5" }}>{successMessage}</span>
+                  </div>
+
+                  <p className="auth-tagline-explore" style={{ textAlign: "center", fontSize: "12px", opacity: 0.8, marginBottom: "25px", padding: "0 10px" }}>
+                    Please click the verification link in the email to activate your account. Check spam if it does not arrive within a few minutes.
+                  </p>
+
+                  <button 
+                    onClick={() => {
+                      setRegistrationSuccess(false);
+                      setSuccessMessage("");
+                      setIsForgotPassword(false);
+                      navigate("/login");
+                    }} 
+                    className="btn-submit-premium"
+                  >
+                    <span>Proceed to Log in</span>
+                  </button>
+                </motion.div>
+              ) : mode === "login" ? (
                 <motion.div
                   key="login"
                   custom={direction}
@@ -312,7 +476,7 @@ function Auth({ mode }) {
                       <div className="form-link-forgot-wrapper">
                         <button
                           type="button"
-                          onClick={() => alert("Password reset functionality is under maintenance.")}
+                          onClick={() => setIsForgotPassword(true)}
                           className="btn-link-forgot"
                         >
                           Forgot Password?
@@ -459,7 +623,12 @@ function Auth({ mode }) {
 
                     <div className="form-actions-row-register">
                       <label className="remember-me-checkbox">
-                        <input type="checkbox" name="agree" required />
+                        <input 
+                          type="checkbox" 
+                          name="agree" 
+                          checked={agreeTerms}
+                          onChange={(e) => setAgreeTerms(e.target.checked)}
+                        />
                         <span className="checkbox-custom"></span>
                         <span className="checkbox-label">I agree to the terms & privacy policy</span>
                       </label>

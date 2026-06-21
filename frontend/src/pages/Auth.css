@@ -141,7 +141,7 @@
   flex-direction: row;
   width: 100%;
   max-width: 860px;
-  height: 580px; /* Fixed height to prevent size jumps during toggle */
+  height: 620px; /* Fixed height to prevent size jumps and ensure canvas loads correctly */
   background: rgba(4, 4, 8, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12); /* Brighter frosted border */
   border-radius: 18px;
@@ -171,7 +171,7 @@
 /* Left Side: Form Column */
 .auth-form-column {
   width: 48%;
-  padding: 34px 32px;
+  padding: 26px 32px; /* Reduced vertical padding for better spacing */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -211,7 +211,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 22px;
+  margin-bottom: 16px; /* Reduced bottom margin */
 }
 
 .brand-logo-glow {
@@ -593,7 +593,7 @@
   gap: 8px;
   text-align: left;
   line-height: 1.4;
-  margin-bottom: 12px;
+  margin-bottom: 10px; /* Reduced bottom margin */
 }
 
 /* Form Footer Links */
@@ -601,7 +601,7 @@
   text-align: center;
   font-size: 0.825rem;
   color: #64748b;
-  margin-top: 24px;
+  margin-top: 16px; /* Reduced top margin */
 }
 
 .btn-link-toggle-mode {

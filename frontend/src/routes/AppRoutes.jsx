@@ -8,6 +8,8 @@ const Auth = lazy(() => import("../pages/Auth"));
 const Dashboard = lazy(() => import("../pages/Dashboard"));
 const Editor = lazy(() => import("../pages/Editor"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
+const VerifyEmail = lazy(() => import("../pages/VerifyEmail"));
+const ResetPassword = lazy(() => import("../pages/ResetPassword"));
 
 // Protected routes
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -102,6 +104,8 @@ const AppRoutes = () => {
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/verify-email/:token" element={<VerifyEmail />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
           </Routes>
         </Suspense>
         <AIChatbot />

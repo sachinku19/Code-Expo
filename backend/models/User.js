@@ -77,7 +77,15 @@ const userSchema=new mongoose.Schema({
     isSuspended:{
         type:Boolean,
         default:false
-    }
+    },
+    isVerified:{
+        type:Boolean,
+        default:false
+    },
+    verificationToken:String,
+    verificationTokenExpire:Date,
+    resetPasswordToken:String,
+    resetPasswordExpire:Date
 },{timestamps:true});
 
 const User=mongoose.model("User",userSchema);

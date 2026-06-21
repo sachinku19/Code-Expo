@@ -3,6 +3,8 @@ const jwt=require("jsonwebtoken");
 const bcrypt=require("bcryptjs");
 const validator=require("validator");
 const mongoose=require("mongoose");
+const crypto = require("crypto");
+const sendEmail = require("../utils/sendEmail");
 
 
 //function of token creation
@@ -57,23 +59,55 @@ const registerUser=async(req,res)=>{
     const salt=await bcrypt.genSalt(10);
     const hashedPassword=await bcrypt.hash(password,salt);
 
+    // Generate secure random verification token
+    const unhashedToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(unhashedToken).digest("hex");
+    const verificationTokenExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
+
     const user=await User.create({
         username,
         email,
-        password:hashedPassword
+        password:hashedPassword,
+        verificationToken:hashedToken,
+        verificationTokenExpire,
+        isVerified:false
     });
+
+    const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email/${unhashedToken}`;
+    const message = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #444; border-radius: 10px; background-color: #0d1117; color: #c9d1d9; border-top: 4px solid #aa3bff;">
+        <h2 style="color: #58a6ff; text-align: center; margin-bottom: 20px;">Welcome to CodeExpo!</h2>
+        <p style="font-size: 16px; line-height: 1.6;">Thank you for registering. Please verify your email address by clicking the button below. This link will expire in 30 minutes.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verifyUrl}" style="background: linear-gradient(90deg, #aa3bff 0%, #00f0ff 100%); color: #0d1117; padding: 12px 28px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px; box-shadow: 0 4px 15px rgba(170, 59, 255, 0.4);">Verify Email Address</a>
+        </div>
+        <p style="font-size: 12px; color: #8b949e; margin-top: 30px;">If the button above does not work, copy and paste this URL into your browser:</p>
+        <p style="font-size: 12px; color: #58a6ff; word-break: break-all;">${verifyUrl}</p>
+        <hr style="border: 0; border-top: 1px solid #30363d; margin: 20px 0;" />
+        <p style="font-size: 11px; color: #8b949e; text-align: center;">CodeExpo — Explore, Code, Innovate.</p>
+      </div>
+    `;
+
+    // Log verification link to terminal for local developer testing/bypass
+    console.log("----------------------------------------");
+    console.log("VERIFICATION URL FOR TESTING:");
+    console.log(verifyUrl);
+    console.log("----------------------------------------");
+
+    try {
+        await sendEmail({
+            email: user.email,
+            subject: "CodeExpo - Email Verification",
+            html: message
+        });
+    } catch (err) {
+        console.error("SMTP Email dispatch failed:", err);
+        console.log("Developer notice: SMTP failed, but user creation is preserved for local testing. Use the VERIFICATION URL printed above.");
+    }
 
     res.status(200).json({
         success:true,
-        message:"User Registered successfully",
-        token:generateToken(user._id),
-        user:{
-            id:user._id,
-            username:user.username,
-            email:user.email,
-            role:user.role,
-            title:user.title
-        }
+        message:"Registration successful. Please check your email (or server terminal logs) to verify your account."
     });
 }
 catch(error)
@@ -122,6 +156,20 @@ const loginUser=async(req,res)=>{
                 message:"Password does not match"
             });
         }
+
+        if (!user.isVerified) {
+            return res.status(403).json({
+                success:false,
+                message:"Please verify your email before logging in."
+            });
+        }
+
+        // Clean up temporary verification token fields upon successful login
+        if (user.verificationToken) {
+            user.verificationToken = undefined;
+            user.verificationTokenExpire = undefined;
+        }
+
         user.isOnline=true;
         user.lastSeene=Date.now();
 
@@ -359,15 +407,24 @@ const googleLogin = async (req, res) => {
         username,
         email,
         googleId,
-        avatar: picture || ""
+        avatar: picture || "",
+        isVerified: true
       });
     } else {
       // User exists, link Google account if not linked
+      let updated = false;
       if (!user.googleId) {
         user.googleId = googleId;
         if (!user.avatar && picture) {
           user.avatar = picture;
         }
+        updated = true;
+      }
+      if (!user.isVerified) {
+        user.isVerified = true;
+        updated = true;
+      }
+      if (updated) {
         await user.save();
       }
     }
@@ -418,6 +475,177 @@ const getGoogleConfig = async (req, res) => {
   }
 };
 
+const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Hash the incoming token to match with stored hash
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({ verificationToken: hashedToken });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired verification link."
+      });
+    }
+
+    // Handle email scanners / double-clicks pre-verifying the token
+    if (user.isVerified) {
+      return res.status(200).json({
+        success: true,
+        message: "Email is already verified. You can now log in."
+      });
+    }
+
+    // Check token expiry for unverified account
+    if (user.verificationTokenExpire < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification link has expired. Please register again."
+      });
+    }
+
+    user.isVerified = true;
+    // We keep the token in the DB to allow double-clicks/scanners to succeed gracefully, 
+    // and clean it up upon the user's first successful login.
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Email verified successfully. You can now log in."
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide an email address."
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    // Note: Return generic success to prevent account enumeration
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: "If that email exists in our system, a reset link has been sent."
+      });
+    }
+
+    // Generate secure reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+    // Expiry: 30 minutes
+    user.resetPasswordToken = hashedResetToken;
+    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
+    await user.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password/${resetToken}`;
+    const message = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #444; border-radius: 10px; background-color: #0d1117; color: #c9d1d9; border-top: 4px solid #aa3bff;">
+        <h2 style="color: #58a6ff; text-align: center; margin-bottom: 20px;">Reset Your Password</h2>
+        <p style="font-size: 16px; line-height: 1.6;">You requested a password reset. Please click the button below to set a new password. This link will expire in 30 minutes.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background: linear-gradient(90deg, #aa3bff 0%, #00f0ff 100%); color: #0d1117; padding: 12px 28px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px; box-shadow: 0 4px 15px rgba(170, 59, 255, 0.4);">Reset Password</a>
+        </div>
+        <p style="font-size: 12px; color: #8b949e; margin-top: 30px;">If the button above does not work, copy and paste this URL into your browser:</p>
+        <p style="font-size: 12px; color: #58a6ff; word-break: break-all;">${resetUrl}</p>
+        <hr style="border: 0; border-top: 1px solid #30363d; margin: 20px 0;" />
+        <p style="font-size: 11px; color: #8b949e; text-align: center;">CodeExpo — Explore, Code, Innovate.</p>
+      </div>
+    `;
+
+    // Log reset link to terminal for local developer testing/bypass
+    console.log("----------------------------------------");
+    console.log("PASSWORD RESET URL FOR TESTING:");
+    console.log(resetUrl);
+    console.log("----------------------------------------");
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "CodeExpo - Password Reset Request",
+        html: message
+      });
+    } catch (err) {
+      console.error("SMTP Email dispatch failed:", err);
+      console.log("Developer notice: SMTP failed, but password reset token is preserved for local testing. Use the PASSWORD RESET URL printed above.");
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "If that email exists in our system, a reset link has been sent."
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters."
+      });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token."
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    user.isVerified = true; // resets also prove verification
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successful. You can now log in with your new password."
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 module.exports={
     registerUser,
     loginUser,
@@ -427,5 +655,8 @@ module.exports={
     changePassword,
     getPublicStats,
     googleLogin,
-    getGoogleConfig
+    getGoogleConfig,
+    verifyEmail,
+    forgotPassword,
+    resetPassword
 }
