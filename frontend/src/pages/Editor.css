@@ -3283,6 +3283,120 @@ body.resizing-console * {
   border-color: #dc2626;
 }
 
+/* Real-Time Call Diagnostics Panel */
+.call-diagnostics-panel {
+  padding: 12px;
+  background: rgba(8, 12, 24, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-family: var(--ce-font-mono), monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diagnostics-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ce-accent, #58A6FF);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.diagnostics-title .live-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulse-red 1s infinite;
+}
+
+.diagnostics-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.diagnostics-peer-row {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.peer-row-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.peer-row-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.metric-label {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.metric-value {
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+}
+
+.metric-value.good {
+  color: #4ade80;
+}
+
+.metric-value.warning {
+  color: #fb923c;
+}
+
+.metric-value.danger {
+  color: #ef4444;
+}
+
+.diagnostics-no-peers {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* Call panel screenshare button and diagnostic states */
+.call-action-btn.screenshare.active {
+  background: rgba(0, 240, 255, 0.15) !important;
+  border-color: rgba(0, 240, 255, 0.4) !important;
+  color: #00f0ff !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+}
+
+.call-action-btn.diagnostics-btn.active {
+  background: rgba(170, 59, 255, 0.15) !important;
+  border-color: rgba(170, 59, 255, 0.4) !important;
+  color: #aa3bff !important;
+  box-shadow: 0 0 10px rgba(170, 59, 255, 0.25);
+}
+
 /* Incoming Call Banner styling */
 .ce-incoming-call-banner {
   position: fixed;
@@ -4153,4 +4267,164 @@ body.resizing-console * {
 
 .context-menu-item.unmute:hover {
   background: rgba(86, 211, 100, 0.1);
+}
+
+/* Call video filters dropdown menu */
+.filter-dropdown-container {
+  position: relative;
+}
+
+.call-filter-menu {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 14, 25, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(170, 59, 255, 0.15);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 140px;
+  z-index: 10100;
+}
+
+.filter-menu-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 4px 6px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 4px;
+}
+
+.filter-menu-item {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 5px 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.filter-menu-item.active {
+  background: rgba(0, 240, 255, 0.1) !important;
+  color: #00f0ff !important;
+}
+
+/* Layout Modes overrides */
+.ce-floating-call-panel.mode-docked {
+  position: fixed !important;
+  top: 56px !important;
+  right: 0 !important;
+  width: 50vw !important;
+  height: calc(100vh - 56px) !important;
+  border-radius: 0 !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  z-index: 999;
+  left: auto !important;
+}
+
+.ce-floating-call-panel.mode-fullscreen {
+  position: fixed !important;
+  top: 56px !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: calc(100vh - 56px) !important;
+  border-radius: 0 !important;
+  border: none !important;
+  z-index: 1000;
+}
+
+/* Flex behavior in larger layouts */
+.ce-floating-call-panel.mode-docked .call-participants-grid,
+.ce-floating-call-panel.mode-fullscreen .call-participants-grid {
+  flex: 1;
+  max-height: none !important;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  align-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+.ce-floating-call-panel.mode-docked .ce-call-participant-card,
+.ce-floating-call-panel.mode-fullscreen .ce-call-participant-card {
+  aspect-ratio: 16/10;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.ce-floating-call-panel.mode-docked .call-panel-header,
+.ce-floating-call-panel.mode-fullscreen .call-panel-header {
+  cursor: default !important;
+  padding: 14px 20px;
+}
+
+/* Call panel header layout modes togglers styling */
+.call-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.call-header-action-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.call-header-action-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.call-header-action-btn.active {
+  color: var(--ce-accent, #58A6FF) !important;
+  background: rgba(88, 166, 255, 0.1) !important;
+}
+
+/* Video effects styling */
+.video-filter-neon {
+  filter: contrast(1.4) saturate(1.6) hue-rotate(-15deg) !important;
+}
+
+.video-filter-grayscale {
+  filter: grayscale(1) !important;
+}
+
+.video-filter-sepia {
+  filter: sepia(1) contrast(1.1) brightness(0.9) !important;
+}
+
+.video-filter-matrix {
+  filter: hue-rotate(90deg) saturate(1.2) brightness(0.9) contrast(1.2) !important;
+}
+
+.video-filter-invert {
+  filter: invert(1) !important;
 }

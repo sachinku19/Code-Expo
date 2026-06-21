@@ -84,6 +84,28 @@ const MOCK_FILES = [
   { name: "package.json", size: "450 B", type: "json" }
 ];
 
+const optimizeSDP = (sdp) => {
+  let lines = sdp.split("\r\n");
+  lines = lines.map((line) => {
+    if (line.includes("a=fmtp:") && line.includes("opus")) {
+      if (!line.includes("maxaveragebitrate=")) {
+        return line + ";maxaveragebitrate=48000;useinbandfec=1;stereo=1";
+      }
+    }
+    return line;
+  });
+  const newLines = [];
+  for (let i = 0; i < lines.length; i++) {
+    newLines.push(lines[i]);
+    if (lines[i].startsWith("m=video")) {
+      if (i + 1 < lines.length && !lines[i + 1].startsWith("b=AS:")) {
+        newLines.push("b=AS:600");
+      }
+    }
+  }
+  return newLines.join("\r\n");
+};
+
 function Editor() {
   const navigate = useNavigate();
   const { user: authUser, setUser } = useAuth();
@@ -455,6 +477,13 @@ function Editor() {
   const [remoteStreams, setRemoteStreams] = useState({}); // { [socketId]: { stream, username } }
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenStreamRef = useRef(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [callStats, setCallStats] = useState({});
+  const [callLayoutMode, setCallLayoutMode] = useState("floating"); // 'floating' | 'docked' | 'fullscreen'
+  const [activeVideoFilter, setActiveVideoFilter] = useState("none"); // 'none' | 'neon' | 'grayscale' | 'sepia' | 'matrix' | 'invert'
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
 
   const peerConnectionsRef = useRef({});
   const localStreamRef = useRef(null);
@@ -482,6 +511,7 @@ function Editor() {
   const dragStartRef = useRef({ x: 0, y: 0 });
 
   const handleDragStart = (e) => {
+    if (callLayoutMode !== "floating") return;
     setIsDraggingCallPanel(true);
     dragStartRef.current = {
       x: e.clientX - callPanelPos.x,
@@ -515,7 +545,11 @@ function Editor() {
   const startLocalStream = async (type) => {
     try {
       const constraints = {
-        audio: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
         video: type === "video" ? {
           width: { ideal: 640 },
           height: { ideal: 480 },
@@ -582,6 +616,26 @@ function Editor() {
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "disconnected" || pc.connectionState === "failed" || pc.connectionState === "closed") {
         handleUserLeftCall({ socketId: targetSocketId });
+      }
+    };
+
+    pc.oniceconnectionstatechange = async () => {
+      if (pc.iceConnectionState === "failed") {
+        console.warn(`ICE connection failed with peer ${targetSocketId}. Triggering ICE restart...`);
+        try {
+          const offer = await pc.createOffer({ iceRestart: true });
+          const optimizedOffer = new RTCSessionDescription({
+            type: offer.type,
+            sdp: optimizeSDP(offer.sdp)
+          });
+          await pc.setLocalDescription(optimizedOffer);
+          socket.emit("webrtc-offer", {
+            targetSocketId,
+            offer: optimizedOffer
+          });
+        } catch (err) {
+          console.error("ICE Restart negotiation failed:", err);
+        }
       }
     };
 
@@ -660,6 +714,12 @@ function Editor() {
   };
 
   const handleLeaveCall = () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
@@ -697,7 +757,8 @@ function Editor() {
         socket.emit("toggle-media", {
           roomId,
           isMuted: !audioTrack.enabled,
-          isCameraOff
+          isCameraOff,
+          activeFilter: activeVideoFilter
         });
       }
     }
@@ -712,15 +773,143 @@ function Editor() {
         socket.emit("toggle-media", {
           roomId,
           isMuted,
-          isCameraOff: !videoTrack.enabled
+          isCameraOff: !videoTrack.enabled,
+          activeFilter: activeVideoFilter
         });
       }
     }
   };
 
+  const startScreenShare = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true
+      });
+      screenStreamRef.current = stream;
+      setIsScreenSharing(true);
+
+      const screenVideoTrack = stream.getVideoTracks()[0];
+
+      screenVideoTrack.onended = () => {
+        stopScreenShare();
+      };
+
+      Object.keys(peerConnectionsRef.current).forEach((socketId) => {
+        const pc = peerConnectionsRef.current[socketId];
+        const senders = pc.getSenders();
+        const videoSender = senders.find((s) => s.track && s.track.kind === "video");
+        if (videoSender) {
+          videoSender.replaceTrack(screenVideoTrack);
+        }
+      });
+
+      const audioTrack = localStreamRef.current ? localStreamRef.current.getAudioTracks()[0] : null;
+      const tracks = [screenVideoTrack];
+      if (audioTrack) tracks.push(audioTrack);
+      
+      const combinedStream = new MediaStream(tracks);
+      setLocalStream(combinedStream);
+      
+      triggerNotification("Screen sharing started");
+    } catch (err) {
+      console.error("Failed to start screen share:", err);
+      triggerNotification("Failed to share screen");
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+
+    if (localStreamRef.current) {
+      const cameraVideoTrack = localStreamRef.current.getVideoTracks()[0];
+      
+      Object.keys(peerConnectionsRef.current).forEach((socketId) => {
+        const pc = peerConnectionsRef.current[socketId];
+        const senders = pc.getSenders();
+        const videoSender = senders.find((s) => s.track && s.track.kind === "video");
+        if (videoSender) {
+          videoSender.replaceTrack(cameraVideoTrack || null);
+        }
+      });
+
+      setLocalStream(localStreamRef.current);
+    }
+    triggerNotification("Screen sharing stopped");
+  };
+
+  const toggleScreenShare = () => {
+    if (isScreenSharing) {
+      stopScreenShare();
+    } else {
+      startScreenShare();
+    }
+  };
+
+  const changeVideoFilter = (filterName) => {
+    setActiveVideoFilter(filterName);
+    setFilterMenuOpen(false);
+    socket.emit("toggle-media", {
+      roomId,
+      isMuted,
+      isCameraOff,
+      activeFilter: filterName
+    });
+  };
+
+  // Poll WebRTC stats for Call diagnostics
+  useEffect(() => {
+    if (!inCall) {
+      setCallStats({});
+      return;
+    }
+    const interval = setInterval(async () => {
+      const statsObj = {};
+      const peers = Object.entries(peerConnectionsRef.current);
+      
+      for (const [socketId, pc] of peers) {
+        try {
+          const stats = await pc.getStats();
+          let rtt = 0;
+          let packetLoss = 0;
+          let resolution = "N/A";
+          let fps = 0;
+          
+          stats.forEach((report) => {
+            if (report.type === "candidate-pair" && report.state === "succeeded") {
+              rtt = Math.round((report.currentRoundTripTime || 0) * 1000);
+            }
+            if (report.type === "inbound-rtp" && report.kind === "video") {
+              const packetsLost = report.packetsLost || 0;
+              const packetsReceived = report.packetsReceived || 0;
+              const total = packetsLost + packetsReceived;
+              packetLoss = total > 0 ? Math.round((packetsLost / total) * 100) : 0;
+              resolution = `${report.frameWidth || 0}x${report.frameHeight || 0}`;
+              fps = Math.round(report.framesPerSecond || 0);
+            }
+          });
+          
+          statsObj[socketId] = { rtt, packetLoss, resolution, fps };
+        } catch (e) {
+          console.warn("Failed to get stats for peer:", socketId, e);
+        }
+      }
+      setCallStats(statsObj);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [inCall]);
+
   // Ensure media resources are cleaned up on component unmount
   useEffect(() => {
     return () => {
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
@@ -1855,10 +2044,14 @@ function Editor() {
       const pc = createPeerConnection(socketId, username, localStreamRef.current);
       try {
         const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+        const optimizedOffer = new RTCSessionDescription({
+          type: offer.type,
+          sdp: optimizeSDP(offer.sdp)
+        });
+        await pc.setLocalDescription(optimizedOffer);
         socket.emit("webrtc-offer", {
           targetSocketId: socketId,
-          offer
+          offer: optimizedOffer
         });
       } catch (err) {
         console.error("Error creating offer:", err);
@@ -1874,10 +2067,14 @@ function Editor() {
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
+        const optimizedAnswer = new RTCSessionDescription({
+          type: answer.type,
+          sdp: optimizeSDP(answer.sdp)
+        });
+        await pc.setLocalDescription(optimizedAnswer);
         socket.emit("webrtc-answer", {
           targetSocketId: senderSocketId,
-          answer
+          answer: optimizedAnswer
         });
       } catch (err) {
         console.error("Error handling offer:", err);
@@ -1909,7 +2106,7 @@ function Editor() {
       }
     };
 
-    const handleUserToggleMedia = ({ socketId, isMuted: peerMuted, isCameraOff: peerCameraOff }) => {
+    const handleUserToggleMedia = ({ socketId, isMuted: peerMuted, isCameraOff: peerCameraOff, activeFilter }) => {
       setRemoteStreams((prev) => {
         if (!prev[socketId]) return prev;
         return {
@@ -1917,7 +2114,8 @@ function Editor() {
           [socketId]: {
             ...prev[socketId],
             isMuted: peerMuted,
-            isCameraOff: peerCameraOff
+            isCameraOff: peerCameraOff,
+            activeFilter: activeFilter || "none"
           }
         };
       });
@@ -4269,24 +4467,47 @@ function Editor() {
         )}
 
         {/* Floating Draggable WebRTC Call Panel */}
-        {inCall && (
+        {inCall && createPortal(
           <div
-            className="ce-floating-call-panel"
-            style={{
+            className={`ce-floating-call-panel mode-${callLayoutMode}`}
+            style={callLayoutMode === "floating" ? {
               left: `${callPanelPos.x}px`,
               top: `${callPanelPos.y}px`,
               position: "fixed",
               zIndex: 9999
-            }}
+            } : {}}
           >
             <div className="call-panel-header" onMouseDown={handleDragStart}>
               <div className="call-panel-title">
                 <span className="live-badge">LIVE</span>
                 <span>{callType === "video" ? "Video Call" : "Audio Call"}</span>
               </div>
-              <button className="call-panel-close-btn" onClick={handleLeaveCall}>
-                <X size={16} />
-              </button>
+              <div className="call-panel-header-actions">
+                <button
+                  className={`call-header-action-btn ${callLayoutMode === "floating" ? "active" : ""}`}
+                  onClick={() => setCallLayoutMode("floating")}
+                  title="Mini Floating Panel"
+                >
+                  <Minimize2 size={13} />
+                </button>
+                <button
+                  className={`call-header-action-btn ${callLayoutMode === "docked" ? "active" : ""}`}
+                  onClick={() => setCallLayoutMode("docked")}
+                  title="Half-Screen Right Dock"
+                >
+                  <Layers size={13} />
+                </button>
+                <button
+                  className={`call-header-action-btn ${callLayoutMode === "fullscreen" ? "active" : ""}`}
+                  onClick={() => setCallLayoutMode("fullscreen")}
+                  title="Full-Screen Theater Mode"
+                >
+                  <Maximize2 size={13} />
+                </button>
+                <button className="call-panel-close-btn" onClick={handleLeaveCall} title="Leave Call">
+                  <X size={14} />
+                </button>
+              </div>
             </div>
 
             <div className={`call-participants-grid grid-count-${Object.keys(remoteStreams).length + 1}`}>
@@ -4300,6 +4521,7 @@ function Editor() {
                 isCameraOff={isCameraOff || callType === "audio"}
                 avatar={user.avatar}
                 getCursorColor={getCursorColor}
+                videoFilter={activeVideoFilter}
               />
 
               {/* Remote Stream Cards */}
@@ -4316,10 +4538,52 @@ function Editor() {
                     isCameraOff={peerObj.isCameraOff || callType === "audio"}
                     avatar={peerUser?.avatar}
                     getCursorColor={getCursorColor}
+                    videoFilter={peerObj.activeFilter || "none"}
                   />
                 );
               })}
             </div>
+
+            {/* Real-Time Call Diagnostics Sub-Panel */}
+            {showDiagnostics && (
+              <div className="call-diagnostics-panel">
+                <div className="diagnostics-title">
+                  <span>CALL HEALTH MONITOR</span>
+                  <span className="live-dot" />
+                </div>
+                <div className="diagnostics-rows">
+                  {Object.entries(callStats).map(([socketId, stats]) => {
+                    const peerObj = remoteStreams[socketId];
+                    return (
+                      <div key={socketId} className="diagnostics-peer-row">
+                        <div className="peer-row-name">{peerObj?.username || "Participant"}</div>
+                        <div className="peer-row-metrics">
+                          <div className="metric-item">
+                            <span className="metric-label">RTT:</span>
+                            <span className={`metric-value ${stats.rtt > 150 ? "warning" : "good"}`}>{stats.rtt}ms</span>
+                          </div>
+                          <div className="metric-item">
+                            <span className="metric-label">Loss:</span>
+                            <span className={`metric-value ${stats.packetLoss > 2 ? "danger" : "good"}`}>{stats.packetLoss}%</span>
+                          </div>
+                          <div className="metric-item">
+                            <span className="metric-label">Res:</span>
+                            <span className="metric-value">{stats.resolution}</span>
+                          </div>
+                          <div className="metric-item">
+                            <span className="metric-label">FPS:</span>
+                            <span className="metric-value">{stats.fps}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {Object.keys(callStats).length === 0 && (
+                    <div className="diagnostics-no-peers">Establishing secure peer tunnels...</div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="call-panel-footer">
               <button
@@ -4340,6 +4604,57 @@ function Editor() {
                 </button>
               )}
 
+              {callType === "video" && (
+                <div className="filter-dropdown-container">
+                  <button
+                    className={`call-action-btn filter-toggle-btn ${activeVideoFilter !== "none" ? "active" : ""}`}
+                    onClick={() => setFilterMenuOpen(!filterMenuOpen)}
+                    title="Camera Video Filters"
+                  >
+                    <Palette size={18} />
+                  </button>
+                  {filterMenuOpen && (
+                    <div className="call-filter-menu">
+                      <div className="filter-menu-title">Camera Filters</div>
+                      {[
+                        { name: "none", label: "Normal" },
+                        { name: "neon", label: "Cyberpunk" },
+                        { name: "grayscale", label: "Grayscale" },
+                        { name: "sepia", label: "Sepia" },
+                        { name: "matrix", label: "Matrix Green" },
+                        { name: "invert", label: "Inverted" }
+                      ].map((f) => (
+                        <button
+                          key={f.name}
+                          className={`filter-menu-item ${activeVideoFilter === f.name ? "active" : ""}`}
+                          onClick={() => changeVideoFilter(f.name)}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {callType === "video" && (
+                <button
+                  className={`call-action-btn screenshare ${isScreenSharing ? "active" : ""}`}
+                  onClick={toggleScreenShare}
+                  title={isScreenSharing ? "Stop Screen Share" : "Share Screen"}
+                >
+                  <Laptop size={18} />
+                </button>
+              )}
+
+              <button
+                className={`call-action-btn diagnostics-btn ${showDiagnostics ? "active" : ""}`}
+                onClick={() => setShowDiagnostics(!showDiagnostics)}
+                title="Connection Diagnostics"
+              >
+                <Activity size={18} />
+              </button>
+
               <button
                 className="call-action-btn hangup"
                 onClick={handleLeaveCall}
@@ -4348,7 +4663,8 @@ function Editor() {
                 <Phone size={18} style={{ transform: "rotate(135deg)" }} />
               </button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Playback Controls Overlay */}
@@ -4593,7 +4909,7 @@ function Editor() {
 }
 
 // --- CallParticipantCard Subcomponent for speaking indicator and stream binding ---
-function CallParticipantCard({ id, username, stream, isLocal, isMuted, isCameraOff, avatar, getCursorColor }) {
+function CallParticipantCard({ id, username, stream, isLocal, isMuted, isCameraOff, avatar, getCursorColor, videoFilter }) {
   const videoRef = useRef(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const audioCtxRef = useRef(null);
@@ -4669,7 +4985,7 @@ function CallParticipantCard({ id, username, stream, isLocal, isMuted, isCameraO
           autoPlay
           playsInline
           muted={isLocal}
-          className="participant-video-feed"
+          className={`participant-video-feed video-filter-${videoFilter || "none"}`}
           style={{ display: !isCameraOff ? "block" : "none" }}
         />
       )}
