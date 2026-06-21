@@ -54,7 +54,7 @@ import MainLayout from "../layouts/MainLayout";
 import ProfileAvatar from "../components/ProfileAvatar";
 const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
 import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
-import GateOverlay from "../components/GateOverlay";
+import { useGateTransition } from "../routes/AppRoutes";
 
 const playNotificationSound = () => {
   const audio = new Audio("/mixkit-software-interface-start-2574.wav");
@@ -531,6 +531,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useAuth();
+  const { triggerGateTransition } = useGateTransition();
   const pendingLikesRef = useRef(new Set());
   const followingSearchInputRef = useRef(null);
 
@@ -1043,7 +1044,6 @@ function Dashboard() {
   const [expandedAchievementId, setExpandedAchievementId] = useState(null);
 
   // Gate Opening Portal Animation State
-  const [gateAnimationRoomId, setGateAnimationRoomId] = useState(null);
   const [resumingHistoryRoomId, setResumingHistoryRoomId] = useState(null);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
@@ -1078,24 +1078,15 @@ function Dashboard() {
   };
 
   const triggerGateAndNavigate = (targetRoomId) => {
-    setGateAnimationRoomId(targetRoomId);
-    setTimeout(() => {
-      navigate(`/editor/${targetRoomId}`);
-      // Clear gate animation room ID after navigation
-      setTimeout(() => {
-        setGateAnimationRoomId(null);
-      }, 500);
-    }, 350);
+    triggerGateTransition(`/editor/${targetRoomId}`, "Syncing with Workspace Grid...");
   };
 
   const triggerResumeHistory = (targetRoomId) => {
     setResumingHistoryRoomId(targetRoomId);
+    triggerGateTransition(`/editor/${targetRoomId}`, "Resuming Session Sync...");
     setTimeout(() => {
-      navigate(`/editor/${targetRoomId}`);
-      setTimeout(() => {
-        setResumingHistoryRoomId(null);
-      }, 500);
-    }, 300);
+      setResumingHistoryRoomId(null);
+    }, 1000);
   };
 
   // Sync section with query tab
@@ -6810,10 +6801,6 @@ function Dashboard() {
           document.body
         )}
 
-        {/* Gate Entry Animation Overlay */}
-        {gateAnimationRoomId && (
-          <GateOverlay statusText="Syncing with Workspace Grid..." />
-        )}
 
         {/* Kick Confirmation Modal */}
         {kickModalOpen && createPortal(

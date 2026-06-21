@@ -89,12 +89,12 @@
 /* Exiting state - delay slide-out for unlocking sequence */
 .gate-door-left.exiting {
   transform: translateX(0);
-  animation: slide-door-left-out 0.35s 0.3s forwards cubic-bezier(0.7, 0, 0.3, 1);
+  animation: slide-door-left-out 0.35s 0.3s both cubic-bezier(0.7, 0, 0.3, 1);
 }
 
 .gate-door-right.exiting {
   transform: translateX(0);
-  animation: slide-door-right-out 0.35s 0.3s forwards cubic-bezier(0.7, 0, 0.3, 1);
+  animation: slide-door-right-out 0.35s 0.3s both cubic-bezier(0.7, 0, 0.3, 1);
 }
 
 /* ==========================================================================

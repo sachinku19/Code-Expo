@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import MonacoEditor, { DiffEditor } from "@monaco-editor/react";
 import socket from "../socket/socket";
 import { getRoom, leaveRoom, deleteRoom, getRecentRooms, createRoom, removeUser, promoteUser, demoteUser, changeRole, kickUser, muteUser } from "../services/roomService";
@@ -96,14 +96,18 @@ function Editor() {
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsDropdownOpen, setNotificationsDropdownOpen] = useState(false);
-  const [showGateOpenAnimation, setShowGateOpenAnimation] = useState(true);
+  const location = useLocation();
+  const fromTransition = location.state?.fromTransition;
+  const [showGateOpenAnimation, setShowGateOpenAnimation] = useState(!fromTransition);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowGateOpenAnimation(false);
-    }, 650);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!fromTransition) {
+      const timer = setTimeout(() => {
+        setShowGateOpenAnimation(false);
+      }, 650);
+      return () => clearTimeout(timer);
+    }
+  }, [fromTransition]);
 
   // Core MERN Room State
   const [room, setRoom] = useState(null);

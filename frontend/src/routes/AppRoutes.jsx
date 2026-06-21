@@ -1,5 +1,6 @@
-import React, { lazy, Suspense } from "react";
-import {BrowserRouter,Routes,Route,Navigate} from "react-router-dom";
+import React, { lazy, Suspense, createContext, useContext, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import GateOverlay from "../components/GateOverlay";
 
 // Lazy loaded page components
 const Home = lazy(() => import("../pages/Home"));
@@ -8,12 +9,57 @@ const Dashboard = lazy(() => import("../pages/Dashboard"));
 const Editor = lazy(() => import("../pages/Editor"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
 
-//protected route
+// Protected routes
 import ProtectedRoute from "../components/ProtectedRoute";
 import AdminRoute from "../components/AdminRoute";
 
-// components
+// Components
 import AIChatbot from "../components/chatbot/AIChatbot";
+
+// Global Transition Context
+export const GateTransitionContext = createContext({
+  triggerGateTransition: () => {}
+});
+
+export const useGateTransition = () => useContext(GateTransitionContext);
+
+export function GateTransitionProvider({ children }) {
+  const [gateState, setGateState] = useState("idle"); // 'idle' | 'closing' | 'opening'
+  const [statusText, setStatusText] = useState("");
+  const navigate = useNavigate();
+
+  const triggerGateTransition = (targetPath, customStatusText = "Connecting to Neural Grid...") => {
+    setStatusText(customStatusText);
+    setGateState("closing");
+    
+    // 1. Wait for doors to slide shut (350ms)
+    setTimeout(() => {
+      // 2. Perform navigation, passing state so target page knows it is a transition
+      navigate(targetPath, { state: { fromTransition: true } });
+      
+      // 3. Switch to opening state
+      setGateState("opening");
+      setStatusText("Decryption Complete");
+      
+      // 4. Wait for unlocking sequence + doors sliding open (650ms)
+      setTimeout(() => {
+        setGateState("idle");
+      }, 650);
+    }, 350);
+  };
+
+  return (
+    <GateTransitionContext.Provider value={{ triggerGateTransition }}>
+      {children}
+      {gateState === "closing" && (
+        <GateOverlay statusText={statusText} />
+      )}
+      {gateState === "opening" && (
+        <GateOverlay exiting statusText={statusText} />
+      )}
+    </GateTransitionContext.Provider>
+  );
+}
 
 // Premium top-progress-bar loader for route transitions
 const RouteLoader = () => (
@@ -37,23 +83,25 @@ const RouteLoader = () => (
   </div>
 );
 
-const AppRoutes=()=>{
-    return(
-        <BrowserRouter>
-           <Suspense fallback={<RouteLoader />}>
-              <Routes>
-                 <Route path="/"  element={<Home/>}/>
-                 <Route path="/login"  element={<Auth mode="login"/>}/>
-                 <Route path="/register"  element={<Auth mode="register"/>}/>
-                 <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
-                 <Route path="/dashboard"  element={<ProtectedRoute><Dashboard/></ProtectedRoute>}/>
-                 <Route path="/editor/:roomId"  element={<ProtectedRoute><Editor/></ProtectedRoute>}/>
-                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-              </Routes>
-           </Suspense>
-           <AIChatbot />
-        </BrowserRouter>
-    )
-}
+const AppRoutes = () => {
+  return (
+    <BrowserRouter>
+      <GateTransitionProvider>
+        <Suspense fallback={<RouteLoader />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Auth mode="login" />} />
+            <Route path="/register" element={<Auth mode="register" />} />
+            <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          </Routes>
+        </Suspense>
+        <AIChatbot />
+      </GateTransitionProvider>
+    </BrowserRouter>
+  );
+};
 
 export default AppRoutes;
