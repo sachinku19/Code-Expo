@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,7 +52,8 @@ import { updateUserProfile, getActiveAnnouncements, getActiveAds } from "../serv
 import "./Dashboard.css";
 import MainLayout from "../layouts/MainLayout";
 import ProfileAvatar from "../components/ProfileAvatar";
-import HelpDesk from "../components/helpdesk/HelpDesk";
+const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
+import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
 
 const playNotificationSound = () => {
   const audio = new Audio("/mixkit-software-interface-start-2574.wav");
@@ -516,6 +517,15 @@ const getBadgeStyle = (title) => {
   };
 };
 
+const loadFromCache = (key, fallback) => {
+  try {
+    const cached = localStorage.getItem(key);
+    return cached ? JSON.parse(cached) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
 function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -523,7 +533,7 @@ function Dashboard() {
   const pendingLikesRef = useRef(new Set());
   const followingSearchInputRef = useRef(null);
 
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState(() => loadFromCache("ce_cache_stats", {
     totalCreated: 0,
     totalJoined: 0,
     activeRooms: 0,
@@ -536,23 +546,30 @@ function Dashboard() {
     privateCreatedCount: 0,
     totalJoinedFromStart: 0,
     totalPoints: 0
-  });
+  }));
 
-  const [historyRooms, setHistoryRooms] = useState([]);
-  const [recentRooms, setRecentRooms] = useState([]);
-  const [liveRooms, setLiveRooms] = useState([]);
-  const [joinRequests, setJoinRequests] = useState([]);
-  const [mySentRequests, setMySentRequests] = useState([]);
-  const [activities, setActivities] = useState([]);
-  const [heatmap, setHeatmap] = useState([]);
-  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const [historyRooms, setHistoryRooms] = useState(() => loadFromCache("ce_cache_historyRooms", []));
+  const [recentRooms, setRecentRooms] = useState(() => loadFromCache("ce_cache_recentRooms", []));
+  const [liveRooms, setLiveRooms] = useState(() => loadFromCache("ce_cache_liveRooms", []));
+  const [joinRequests, setJoinRequests] = useState(() => loadFromCache("ce_cache_joinRequests", []));
+  const [mySentRequests, setMySentRequests] = useState(() => loadFromCache("ce_cache_mySentRequests", []));
+  const [activities, setActivities] = useState(() => loadFromCache("ce_cache_activities", []));
+  const [heatmap, setHeatmap] = useState(() => loadFromCache("ce_cache_heatmap", []));
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(() => {
+    try {
+      const cached = localStorage.getItem("ce_cache_stats");
+      return cached ? false : true;
+    } catch {
+      return true;
+    }
+  });
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // System announcements states
-  const [activeAnnouncements, setActiveAnnouncements] = useState([]);
+  const [activeAnnouncements, setActiveAnnouncements] = useState(() => loadFromCache("ce_cache_activeAnnouncements", []));
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState(() => {
     try {
       const stored = localStorage.getItem("dismissedAnnouncements");
@@ -563,18 +580,18 @@ function Dashboard() {
   });
 
   // Ads states
-  const [activeAds, setActiveAds] = useState([]);
+  const [activeAds, setActiveAds] = useState(() => loadFromCache("ce_cache_activeAds", []));
 
   // Social states
-  const [suggestions, setSuggestions] = useState([]);
-  const [trendingRooms, setTrendingRooms] = useState([]);
-  const [onlineFollows, setOnlineFollows] = useState([]);
-  const [feedActivities, setFeedActivities] = useState([]);
+  const [suggestions, setSuggestions] = useState(() => loadFromCache("ce_cache_suggestions", []));
+  const [trendingRooms, setTrendingRooms] = useState(() => loadFromCache("ce_cache_trendingRooms", []));
+  const [onlineFollows, setOnlineFollows] = useState(() => loadFromCache("ce_cache_onlineFollows", []));
+  const [feedActivities, setFeedActivities] = useState(() => loadFromCache("ce_cache_feedActivities", []));
   const [feedPage, setFeedPage] = useState(1);
   const [feedTotalPages, setFeedTotalPages] = useState(1);
   const [feedLoading, setFeedLoading] = useState(false);
-  const [followersList, setFollowersList] = useState([]);
-  const [followingList, setFollowingList] = useState([]);
+  const [followersList, setFollowersList] = useState(() => loadFromCache("ce_cache_followersList", []));
+  const [followingList, setFollowingList] = useState(() => loadFromCache("ce_cache_followingList", []));
   const [visibleFollowingCount, setVisibleFollowingCount] = useState(6);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
@@ -582,10 +599,10 @@ function Dashboard() {
   const [langsInput, setLangsInput] = useState("");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileTab, setProfileTab] = useState("rooms");
-  const [likedRooms, setLikedRooms] = useState([]);
-  const [savedRooms, setSavedRooms] = useState([]);
-  const [notificationsList, setNotificationsList] = useState([]);
-  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [likedRooms, setLikedRooms] = useState(() => loadFromCache("ce_cache_likedRooms", []));
+  const [savedRooms, setSavedRooms] = useState(() => loadFromCache("ce_cache_savedRooms", []));
+  const [notificationsList, setNotificationsList] = useState(() => loadFromCache("ce_cache_notificationsList", []));
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(() => loadFromCache("ce_cache_unreadNotificationsCount", 0));
   const [notifPage, setNotifPage] = useState(1);
   const [notifTotalPages, setNotifTotalPages] = useState(1);
   const [notifLoading, setNotifLoading] = useState(false);
@@ -598,7 +615,7 @@ function Dashboard() {
   const [viewingUserRooms, setViewingUserRooms] = useState([]);
   const [viewingUserLikedRooms, setViewingUserLikedRooms] = useState([]);
   const [selectedYear, setSelectedYear] = useState("last12");
-  const [ownYears, setOwnYears] = useState([new Date().getFullYear()]);
+  const [ownYears, setOwnYears] = useState(() => loadFromCache("ce_cache_ownYears", [new Date().getFullYear()]));
   const [targetFollowersList, setTargetFollowersList] = useState([]);
   const [targetFollowingList, setTargetFollowingList] = useState([]);
   const [loadingModalData, setLoadingModalData] = useState(false);
@@ -1131,19 +1148,28 @@ function Dashboard() {
       const sentRequests = sentRequestsData?.requests || [];
 
       setHistoryRooms(history);
+      localStorage.setItem("ce_cache_historyRooms", JSON.stringify(history));
       setRecentRooms(recent);
+      localStorage.setItem("ce_cache_recentRooms", JSON.stringify(recent));
       setLiveRooms(live);
+      localStorage.setItem("ce_cache_liveRooms", JSON.stringify(live));
       setJoinRequests(requests);
+      localStorage.setItem("ce_cache_joinRequests", JSON.stringify(requests));
       setMySentRequests(sentRequests);
+      localStorage.setItem("ce_cache_mySentRequests", JSON.stringify(sentRequests));
       setActivities(activityList);
+      localStorage.setItem("ce_cache_activities", JSON.stringify(activityList));
       setHeatmap(dbStats.heatmap || []);
+      localStorage.setItem("ce_cache_heatmap", JSON.stringify(dbStats.heatmap || []));
       setOwnYears(dbStats.years || [new Date().getFullYear()]);
+      localStorage.setItem("ce_cache_ownYears", JSON.stringify(dbStats.years || [new Date().getFullYear()]));
       setPublicRooms(publicR);
+      localStorage.setItem("ce_cache_publicRooms", JSON.stringify(publicR));
 
       const created = history.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id).length;
       const joined = history.length - created;
 
-      setStats({
+      const statsObj = {
         totalCreated: dbStats.totalCreatedCount !== undefined ? dbStats.totalCreatedCount : created,
         totalJoined: dbStats.totalJoinedFromStart !== undefined ? dbStats.totalJoinedFromStart : (joined >= 0 ? joined : 0),
         activeRooms: live.length,
@@ -1156,7 +1182,9 @@ function Dashboard() {
         privateCreatedCount: dbStats.privateCreatedCount || 0,
         totalJoinedFromStart: dbStats.totalJoinedFromStart || 0,
         totalPoints: dbStats.totalPoints || 0
-      });
+      };
+      setStats(statsObj);
+      localStorage.setItem("ce_cache_stats", JSON.stringify(statsObj));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       if (error.response?.status === 503 || error.response?.data?.isMaintenance) {
@@ -1181,37 +1209,54 @@ function Dashboard() {
         getUserProfile().catch(() => ({ success: false }))
       ]);
 
-      if (sugRes.success) setSuggestions(sugRes.suggestions || []);
+      if (sugRes.success) {
+        setSuggestions(sugRes.suggestions || []);
+        localStorage.setItem("ce_cache_suggestions", JSON.stringify(sugRes.suggestions || []));
+      }
       if (trendRes.success) {
         setTrendingRooms(prev => {
           const newRooms = trendRes.rooms || [];
-          if (!prev || prev.length === 0) return newRooms;
-
-          const updated = prev.map(p => {
-            const match = newRooms.find(n => n.roomId === p.roomId || n._id === p._id);
-            return match ? { ...p, ...match } : p;
-          });
-
-          const newAdditions = newRooms.filter(n => !prev.some(p => p.roomId === n.roomId || p._id === n._id));
-          return [...updated, ...newAdditions].slice(0, 5);
+          let updated = newRooms;
+          if (prev && prev.length > 0) {
+            const updatedRooms = prev.map(p => {
+              const match = newRooms.find(n => n.roomId === p.roomId || n._id === p._id);
+              return match ? { ...p, ...match } : p;
+            });
+            const newAdditions = newRooms.filter(n => !prev.some(p => p.roomId === n.roomId || p._id === n._id));
+            updated = [...updatedRooms, ...newAdditions].slice(0, 5);
+          }
+          localStorage.setItem("ce_cache_trendingRooms", JSON.stringify(updated));
+          return updated;
         });
       }
       if (followRes.success) {
         const following = followRes.following || [];
         setFollowingList(following);
+        localStorage.setItem("ce_cache_followingList", JSON.stringify(following));
         const online = following.filter(f => f.isOnline === "true" || f.isOnline === true);
         setOnlineFollows(online);
+        localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(online));
       }
       if (feedRes.success) {
         setFeedActivities(feedRes.activities || []);
+        localStorage.setItem("ce_cache_feedActivities", JSON.stringify(feedRes.activities || []));
         setFeedTotalPages(feedRes.totalPages || 1);
+        localStorage.setItem("ce_cache_feedTotalPages", JSON.stringify(feedRes.totalPages || 1));
         setFeedPage(1);
       }
-      if (likedRes.success) setLikedRooms(likedRes.rooms || []);
-      if (savedRes.success) setSavedRooms(savedRes.rooms || []);
+      if (likedRes.success) {
+        setLikedRooms(likedRes.rooms || []);
+        localStorage.setItem("ce_cache_likedRooms", JSON.stringify(likedRes.rooms || []));
+      }
+      if (savedRes.success) {
+        setSavedRooms(savedRes.rooms || []);
+        localStorage.setItem("ce_cache_savedRooms", JSON.stringify(savedRes.rooms || []));
+      }
       if (notifRes.success) {
         setNotificationsList(notifRes.notifications || []);
+        localStorage.setItem("ce_cache_notificationsList", JSON.stringify(notifRes.notifications || []));
         setUnreadNotificationsCount(notifRes.unreadCount || 0);
+        localStorage.setItem("ce_cache_unreadNotificationsCount", JSON.stringify(notifRes.unreadCount || 0));
         setNotifPage(1);
         setNotifTotalPages(notifRes.totalPages || 1);
       }
@@ -1223,6 +1268,7 @@ function Dashboard() {
       const followersRes = await getFollowers(user.id || user._id).catch(() => ({ success: false, followers: [] }));
       if (followersRes.success) {
         setFollowersList(followersRes.followers || []);
+        localStorage.setItem("ce_cache_followersList", JSON.stringify(followersRes.followers || []));
       }
     } catch (err) {
       console.error("Error fetching social dashboard data:", err);
@@ -1671,6 +1717,7 @@ function Dashboard() {
       const data = await getActiveAnnouncements();
       if (data.success) {
         setActiveAnnouncements(data.announcements || []);
+        localStorage.setItem("ce_cache_activeAnnouncements", JSON.stringify(data.announcements || []));
       }
     } catch (err) {
       console.error("Failed to load active announcements:", err);
@@ -1682,6 +1729,7 @@ function Dashboard() {
       const data = await getActiveAds();
       if (data.success) {
         setActiveAds(data.ads || []);
+        localStorage.setItem("ce_cache_activeAds", JSON.stringify(data.ads || []));
       }
     } catch (err) {
       console.error("Failed to load active ads:", err);
@@ -2475,21 +2523,7 @@ function Dashboard() {
     );
   }
 
-  if (isLoadingDashboard) {
-    return (
-      <div className="dashboard-loading-screen">
-        <div className="tech-grid-overlay"></div>
-        <div className="hologram-container">
-          <div className="hologram-ring ring-outer"></div>
-          <div className="hologram-ring ring-middle"></div>
-          <div className="hologram-ring ring-inner"></div>
-          <div className="hologram-core"></div>
-        </div>
-        <h2 className="loading-status-text">Synchronizing Code-Expo...</h2>
-        <p className="loading-substatus-text">Assembling your custom workspaces, global repositories, and social graph feed...</p>
-      </div>
-    );
-  }
+
 
   return (
     <MainLayout
@@ -2538,74 +2572,78 @@ function Dashboard() {
             <div className="dashboard-grid-layout">
 
               {/* STATS SUMMARY GRID */}
-              <div className="ce-stats-grid">
+              {isLoadingDashboard && stats.totalCreated === 0 && stats.totalJoined === 0 ? (
+                <StatsSkeleton />
+              ) : (
+                <div className="ce-stats-grid">
 
-                {/* Card 1: Developer Rank Gamification */}
-                <div className="compact-stat-card gamification-card">
-                  <div className={`stat-card-icon-wrapper rank-icon-wrapper ${rank.badgeClass}`}>
-                    <Trophy size={18} />
-                  </div>
-                  <div className="stat-card-info gamification-info">
-                    <span className="stat-card-label">Developer Tier</span>
-                    <span className="stat-card-val rank-title-text" style={{ color: rank.color }}>
-                      {rank.title}
-                    </span>
+                  {/* Card 1: Developer Rank Gamification */}
+                  <div className="compact-stat-card gamification-card">
+                    <div className={`stat-card-icon-wrapper rank-icon-wrapper ${rank.badgeClass}`}>
+                      <Trophy size={18} />
+                    </div>
+                    <div className="stat-card-info gamification-info">
+                      <span className="stat-card-label">Developer Tier</span>
+                      <span className="stat-card-val rank-title-text" style={{ color: rank.color }}>
+                        {rank.title}
+                      </span>
 
-                    <div className="tier-progress-container">
-                      <div className="tier-progress-track">
-                        <div className="tier-progress-bar" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
+                      <div className="tier-progress-container">
+                        <div className="tier-progress-track">
+                          <div className="tier-progress-bar" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
+                        </div>
+                        <span className="tier-progress-label">
+                          {stats.totalPoints || 0} XP • {rank.nextLimit === Infinity ? "Max Level" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next`}
+                        </span>
                       </div>
-                      <span className="tier-progress-label">
-                        {stats.totalPoints || 0} XP • {rank.nextLimit === Infinity ? "Max Level" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next`}
-                      </span>
                     </div>
                   </div>
-                </div>
 
-                {/* Card 2: Rooms Created Breakdown */}
-                <div className="compact-stat-card created-rooms-card">
-                  <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                    <FolderGit size={18} />
-                  </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-label">Rooms Created</span>
-                    <span className="stat-card-val">{stats.totalCreated}</span>
-                    <div className="sub-breakdown-row">
-                      <span className="sub-badge public-badge">
-                        <Globe size={10} /> {stats.publicCreatedCount} Public
-                      </span>
-                      <span className="sub-badge private-badge">
-                        <Lock size={10} /> {stats.privateCreatedCount} Private
-                      </span>
+                  {/* Card 2: Rooms Created Breakdown */}
+                  <div className="compact-stat-card created-rooms-card">
+                    <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                      <FolderGit size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Rooms Created</span>
+                      <span className="stat-card-val">{stats.totalCreated}</span>
+                      <div className="sub-breakdown-row">
+                        <span className="sub-badge public-badge">
+                          <Globe size={10} /> {stats.publicCreatedCount} Public
+                        </span>
+                        <span className="sub-badge private-badge">
+                          <Lock size={10} /> {stats.privateCreatedCount} Private
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Card 3: Joined Workspaces */}
-                <div className="compact-stat-card joined-rooms-card">
-                  <div className="stat-card-icon-wrapper green-theme-wrapper">
-                    <Users size={18} />
+                  {/* Card 3: Joined Workspaces */}
+                  <div className="compact-stat-card joined-rooms-card">
+                    <div className="stat-card-icon-wrapper green-theme-wrapper">
+                      <Users size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Rooms Joined</span>
+                      <span className="stat-card-val">{stats.totalJoined}</span>
+                      <span className="stat-card-subtitle">From starting</span>
+                    </div>
                   </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-label">Rooms Joined</span>
-                    <span className="stat-card-val">{stats.totalJoined}</span>
-                    <span className="stat-card-subtitle">From starting</span>
-                  </div>
-                </div>
 
-                {/* Card 4: Compiler Executions */}
-                <div className="compact-stat-card executions-card">
-                  <div className="stat-card-icon-wrapper purple-theme-wrapper">
-                    <Activity size={18} />
+                  {/* Card 4: Compiler Executions */}
+                  <div className="compact-stat-card executions-card">
+                    <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                      <Activity size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Code Runs</span>
+                      <span className="stat-card-val">{stats.executions.toLocaleString()}</span>
+                      <span className="stat-card-subtitle">{formatCodingTime(stats.codingHours, stats.codingMinutes)}</span>
+                    </div>
                   </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-label">Code Runs</span>
-                    <span className="stat-card-val">{stats.executions.toLocaleString()}</span>
-                    <span className="stat-card-subtitle">{formatCodingTime(stats.codingHours, stats.codingMinutes)}</span>
-                  </div>
-                </div>
 
-              </div>
+                </div>
+              )}
 
               {/* TWO COLUMN GRID */}
               <div className="ce-dashboard-columns">
@@ -2620,7 +2658,11 @@ function Dashboard() {
                       <h3 className="section-title">Active Rooms</h3>
                     </div>
 
-                    {liveRooms.length === 0 ? (
+                    {isLoadingDashboard && liveRooms.length === 0 ? (
+                      <div style={{ padding: "10px" }}>
+                        <RoomGridSkeleton count={2} />
+                      </div>
+                    ) : liveRooms.length === 0 ? (
                       <div className="empty-state-card">
                         <Terminal size={18} className="empty-state-icon" />
                         <p>No active rooms currently online.</p>
@@ -2710,7 +2752,9 @@ function Dashboard() {
                       </div>
                     </div>
 
-                    {feedActivities.length === 0 ? (
+                    {isLoadingDashboard && feedActivities.length === 0 ? (
+                      <ActivityFeedSkeleton count={3} />
+                    ) : feedActivities.length === 0 ? (
                       <div className="empty-state-card">
                         <p>No activity logs recorded. Follow other developers to see their updates here!</p>
                       </div>
@@ -2841,7 +2885,9 @@ function Dashboard() {
                     <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
                       <span className="live-indicator-dot" style={{ position: "relative", top: 0 }} /> Online Follows ({onlineFollows.length})
                     </h3>
-                    {onlineFollows.length === 0 ? (
+                    {isLoadingDashboard && onlineFollows.length === 0 ? (
+                      <UserListSkeleton count={3} />
+                    ) : onlineFollows.length === 0 ? (
                       <div className="empty-state-card compact">
                         <p>No followed developers online.</p>
                       </div>
@@ -2874,7 +2920,9 @@ function Dashboard() {
                     <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
                       <Sparkles size={14} style={{ color: "var(--ce-accent)" }} /> People You May Know
                     </h3>
-                    {suggestions.length === 0 ? (
+                    {isLoadingDashboard && suggestions.length === 0 ? (
+                      <UserListSkeleton count={3} showButton={true} />
+                    ) : suggestions.length === 0 ? (
                       <div className="empty-state-card compact">
                         <p>No suggestions available.</p>
                       </div>
@@ -2927,7 +2975,9 @@ function Dashboard() {
                     <h3 className="section-title">
                       <Activity size={14} /> Trending Rooms
                     </h3>
-                    {trendingRooms.length === 0 ? (
+                    {isLoadingDashboard && trendingRooms.length === 0 ? (
+                      <TrendingListSkeleton count={2} />
+                    ) : trendingRooms.length === 0 ? (
                       <div className="empty-state-card compact">
                         <p>No trending rooms.</p>
                       </div>
@@ -3013,61 +3063,66 @@ function Dashboard() {
                   </section>
 
                   {/* SPONSORED PROMOTIONS */}
-                  {activeAds.length > 0 && (
+                  {(activeAds.length > 0 || (isLoadingDashboard && activeAds.length === 0)) && (
                     <section className="ce-dashboard-section sponsored-ads-section">
                       <h3 className="section-title text-warning" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
                         <Sparkles size={14} style={{ color: "var(--ce-warning)" }} /> Sponsored Promotions
                       </h3>
                       <div className="sponsored-ads-container" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {activeAds.map(ad => (
-                          <a
-                            key={ad._id}
-                            href={ad.redirectUrl || undefined}
-                            target={ad.redirectUrl ? "_blank" : undefined}
-                            rel="noopener noreferrer"
-                            className="sponsored-ad-card"
-                            style={{ color: "inherit" }}
-                          >
-                            <div className="sponsored-ad-image-wrapper">
-                              <img
-                                src={ad.imageUrl}
-                                alt={ad.title}
-                                className="sponsored-ad-image"
-                                style={{
-                                  width: "100%",
-                                  height: "100%",
-                                  objectFit: "cover",
-                                  transition: "transform 0.5s ease"
-                                }}
-                              />
-                              <span className="sponsored-tag" style={{
-                                position: "absolute",
-                                top: "8px",
-                                right: "8px",
-                                background: "rgba(0, 0, 0, 0.75)",
-                                color: "var(--ce-warning)",
-                                fontSize: "0.58rem",
-                                fontWeight: "800",
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                border: "1px solid rgba(255, 215, 0, 0.3)",
-                                letterSpacing: "1px"
-                              }}>
-                                SPONSORED
-                              </span>
-                            </div>
-                            <div className="sponsored-ad-details" style={{ padding: "10px 12px" }}>
-                              <h4 className="sponsored-ad-title" style={{ fontSize: "0.82rem", fontWeight: "600", color: "var(--ce-text)", margin: "0 0 4px 0", lineHeight: "1.3" }}>
-                                {ad.title}
-                              </h4>
-                              {ad.redirectUrl && (
-                                <span className="sponsored-ad-link" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                                  {ad.redirectUrl.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]} ↗
+                        {isLoadingDashboard && activeAds.length === 0 ? (
+                          <AdSkeleton />
+                        ) : (
+                          activeAds.map(ad => (
+                            <a
+                              key={ad._id}
+                              href={ad.redirectUrl || undefined}
+                              target={ad.redirectUrl ? "_blank" : undefined}
+                              rel="noopener noreferrer"
+                              className="sponsored-ad-card"
+                              style={{ color: "inherit" }}
+                            >
+                              <div className="sponsored-ad-image-wrapper">
+                                <img
+                                  src={ad.imageUrl}
+                                  alt={ad.title}
+                                  className="sponsored-ad-image"
+                                  loading="lazy"
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    transition: "transform 0.5s ease"
+                                  }}
+                                />
+                                <span className="sponsored-tag" style={{
+                                  position: "absolute",
+                                  top: "8px",
+                                  right: "8px",
+                                  background: "rgba(0, 0, 0, 0.75)",
+                                  color: "var(--ce-warning)",
+                                  fontSize: "0.58rem",
+                                  fontWeight: "800",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  border: "1px solid rgba(255, 215, 0, 0.3)",
+                                  letterSpacing: "1px"
+                                }}>
+                                  SPONSORED
                                 </span>
-                              )}
-                            </div>
-                          </a>
-                        ))}
+                              </div>
+                              <div className="sponsored-ad-details" style={{ padding: "10px 12px" }}>
+                                <h4 className="sponsored-ad-title" style={{ fontSize: "0.82rem", fontWeight: "600", color: "var(--ce-text)", margin: "0 0 4px 0", lineHeight: "1.3" }}>
+                                  {ad.title}
+                                </h4>
+                                {ad.redirectUrl && (
+                                  <span className="sponsored-ad-link" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                                    {ad.redirectUrl.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]} ↗
+                                  </span>
+                                )}
+                              </div>
+                            </a>
+                          ))
+                        )}
                       </div>
                     </section>
                   )}
