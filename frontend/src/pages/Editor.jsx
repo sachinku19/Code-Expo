@@ -807,10 +807,10 @@ function Editor() {
       const audioTrack = localStreamRef.current ? localStreamRef.current.getAudioTracks()[0] : null;
       const tracks = [screenVideoTrack];
       if (audioTrack) tracks.push(audioTrack);
-      
+
       const combinedStream = new MediaStream(tracks);
       setLocalStream(combinedStream);
-      
+
       triggerNotification("Screen sharing started");
     } catch (err) {
       console.error("Failed to start screen share:", err);
@@ -827,7 +827,7 @@ function Editor() {
 
     if (localStreamRef.current) {
       const cameraVideoTrack = localStreamRef.current.getVideoTracks()[0];
-      
+
       Object.keys(peerConnectionsRef.current).forEach((socketId) => {
         const pc = peerConnectionsRef.current[socketId];
         const senders = pc.getSenders();
@@ -870,7 +870,7 @@ function Editor() {
     const interval = setInterval(async () => {
       const statsObj = {};
       const peers = Object.entries(peerConnectionsRef.current);
-      
+
       for (const [socketId, pc] of peers) {
         try {
           const stats = await pc.getStats();
@@ -878,7 +878,7 @@ function Editor() {
           let packetLoss = 0;
           let resolution = "N/A";
           let fps = 0;
-          
+
           stats.forEach((report) => {
             if (report.type === "candidate-pair" && report.state === "succeeded") {
               rtt = Math.round((report.currentRoundTripTime || 0) * 1000);
@@ -892,7 +892,7 @@ function Editor() {
               fps = Math.round(report.framesPerSecond || 0);
             }
           });
-          
+
           statsObj[socketId] = { rtt, packetLoss, resolution, fps };
         } catch (e) {
           console.warn("Failed to get stats for peer:", socketId, e);
@@ -1111,10 +1111,10 @@ function Editor() {
     if (canIControlTarget && String(participant.user?._id || participant.user) !== String(user.id || user._id)) {
       const menuWidth = 200;
       const menuHeight = 240; // Approximate menu height with padding
-      
+
       let x = e.clientX;
       let y = e.clientY;
-      
+
       if (x + menuWidth > window.innerWidth) {
         x = window.innerWidth - menuWidth - 10;
       }
@@ -2006,10 +2006,10 @@ function Editor() {
         const data = await getRoom(roomId);
         if (data && data.room) {
           setRoom(data.room);
-          
+
           if (String(userId) === String(user.id)) {
             triggerNotification(`You have been ${targetIsMuted ? "muted" : "unmuted"} in chat.`);
-            
+
             const myParticipant = data.room.participants?.find(
               (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
             );
@@ -2953,7 +2953,7 @@ function Editor() {
           <div className="hologram-core"></div>
         </div>
         <h2 className="loading-status-text">Workspace is ready for you...</h2>
-        
+
         <div className="loading-progress-container">
           <div className="loading-progress-bar">
             <div className="loading-progress-fill"></div>
@@ -3846,7 +3846,7 @@ function Editor() {
               )}
 
               {/* Collaborative Whiteboard Split Pane */}
-              {layoutMode !== "editor" && (
+              {(layoutMode !== "editor" || mobileTab === "whiteboard") && (
                 <div
                   className="whiteboard-pane"
                   style={{ width: layoutMode === "whiteboard" ? "100%" : `${100 - splitPercent}%` }}
@@ -3953,7 +3953,7 @@ function Editor() {
                 {consoleTab === "console" && (
                   <div className="execution-logs-view">
                     <div className="logs-list">
-                       <div className="log-row success">
+                      <div className="log-row success">
                         <span className="log-type-tag">SUCCESS</span>
                         <span className="log-text">Socket connection established. Listening to real-time events.</span>
                       </div>
@@ -4099,20 +4099,54 @@ function Editor() {
                 {/* Section 3: Chat */}
                 <section className="ce-right-section chat-section-wrapper">
                   <div className="chat-tabs-header">
-                    <button
-                      className={`chat-tab-btn ${chatTab === "room" ? "active" : ""}`}
-                      onClick={() => setChatTab("room")}
-                    >
-                      Room
-                      {roomTabUnread && <span className="chat-tab-unread-dot" />}
-                    </button>
-                    <button
-                      className={`chat-tab-btn ${chatTab === "private" ? "active" : ""}`}
-                      onClick={() => setChatTab("private")}
-                    >
-                      Direct Message
-                      {privateTabUnread && <span className="chat-tab-unread-dot" />}
-                    </button>
+                    <div className="chat-tab-triggers">
+                      <button
+                        className={`chat-tab-btn ${chatTab === "room" ? "active" : ""}`}
+                        onClick={() => setChatTab("room")}
+                      >
+                        Room
+                        {roomTabUnread && <span className="chat-tab-unread-dot" />}
+                      </button>
+                      <button
+                        className={`chat-tab-btn ${chatTab === "private" ? "active" : ""}`}
+                        onClick={() => setChatTab("private")}
+                      >
+                        Direct Message
+                        {privateTabUnread && <span className="chat-tab-unread-dot" />}
+                      </button>
+                    </div>
+
+                    <div className="chat-call-actions">
+                      {inCall ? (
+                        <button
+                          type="button"
+                          className="chat-call-btn active-call"
+                          onClick={handleLeaveCall}
+                          title="Leave Call"
+                        >
+                          <Phone size={14} />
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="chat-call-btn"
+                            onClick={() => handleJoinCall("audio")}
+                            title="Start Audio Call"
+                          >
+                            <Phone size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="chat-call-btn"
+                            onClick={() => handleJoinCall("video")}
+                            title="Start Video Call"
+                          >
+                            <Video size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {chatTab === "private" && (
