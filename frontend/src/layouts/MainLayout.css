@@ -585,9 +585,10 @@ body {
 
 /* GLOBAL COLLAPSIBLE SIDEBAR */
 .ce-sidebar {
-  background-color: rgba(10, 10, 15, 0.4) !important;
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
+  background-color: #0b0b0f !important; /* Solid fallback */
+  background-color: rgba(11, 11, 15, 0.96) !important; /* Highly solid with subtle opacity for glassmorphism if supported */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-right: 1px solid var(--ce-border);
   display: flex;
   flex-direction: column;
@@ -602,7 +603,8 @@ body {
 }
 
 .light .ce-sidebar {
-  background-color: rgba(255, 255, 255, 0.45) !important;
+  background-color: #ffffff !important; /* Solid fallback */
+  background-color: rgba(255, 255, 255, 0.96) !important; /* Highly solid with subtle opacity for light theme */
   box-shadow: 4px 0 25px rgba(15, 23, 42, 0.04);
 }
 
