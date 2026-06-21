@@ -586,8 +586,8 @@ body {
 /* GLOBAL COLLAPSIBLE SIDEBAR */
 .ce-sidebar {
   background-color: rgba(10, 10, 15, 0.4) !important;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
   border-right: 1px solid var(--ce-border);
   display: flex;
   flex-direction: column;
