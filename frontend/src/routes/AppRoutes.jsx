@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, createContext, useContext, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import GateOverlay from "../components/GateOverlay";
 
 // Lazy loaded page components
@@ -83,6 +83,11 @@ const RouteLoader = () => (
   </div>
 );
 
+const UserProfileRedirect = () => {
+  const { userId } = useParams();
+  return <Navigate to={`/dashboard?tab=profile&userId=${userId}`} replace />;
+};
+
 const AppRoutes = () => {
   return (
     <BrowserRouter>
@@ -93,6 +98,7 @@ const AppRoutes = () => {
             <Route path="/login" element={<Auth mode="login" />} />
             <Route path="/register" element={<Auth mode="register" />} />
             <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
+            <Route path="/user/:userId" element={<UserProfileRedirect />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

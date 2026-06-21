@@ -3883,7 +3883,7 @@ function Dashboard() {
                       <input
                         type="text"
                         readOnly
-                        value={`http://localhost:5173/user/${user?.id || user?._id}`}
+                        value={`${window.location.origin}/user/${user?.id || user?._id}`}
                         style={{
                           flex: 1,
                           background: "rgba(0,0,0,0.2)",
@@ -3898,7 +3898,7 @@ function Dashboard() {
                       <button
                         type="button"
                         onClick={(e) => {
-                          navigator.clipboard.writeText(`http://localhost:5173/user/${user?.id || user?._id}`);
+                          navigator.clipboard.writeText(`${window.location.origin}/user/${user?.id || user?._id}`);
                           addToast("Profile invite link copied!", "success");
                         }}
                         style={{

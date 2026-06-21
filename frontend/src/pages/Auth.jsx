@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser, registerUser, googleLoginUser, getGoogleConfig } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import { User, Mail, Lock, ArrowLeft, Sparkles, Eye, EyeOff } from "lucide-react";
@@ -11,6 +11,14 @@ import "./Auth.css";
 function Auth({ mode }) {
   const { setUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const completeAuthRedirect = () => {
+    const from = location.state?.from?.pathname
+      ? location.state.from.pathname + location.state.from.search
+      : "/dashboard";
+    navigate(from);
+  };
 
   // Animation state tracking
   const [prevMode, setPrevMode] = useState(mode);
@@ -86,7 +94,7 @@ function Auth({ mode }) {
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("user", JSON.stringify(data.user));
                 setUser(data.user);
-                navigate("/dashboard");
+                completeAuthRedirect();
               } catch (err) {
                 const errMsg = err.response?.data?.message || err.message || "Google sign-in failed.";
                 setGoogleError(errMsg);
@@ -147,7 +155,7 @@ function Auth({ mode }) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       setUser(data.user);
-      navigate("/dashboard");
+      completeAuthRedirect();
     } catch (error) {
       const errMsg = error.response?.data?.message || error.message || "Login failed. Please verify credentials.";
       setLoginError(errMsg);
@@ -166,7 +174,7 @@ function Auth({ mode }) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       setUser(data.user);
-      navigate("/dashboard");
+      completeAuthRedirect();
     } catch (error) {
       const errMsg = error.response?.data?.message || error.message || "Registration failed. Please try again.";
       setRegisterError(errMsg);
