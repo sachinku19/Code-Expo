@@ -70,6 +70,7 @@ import {
   Minimize2
 } from "lucide-react";
 import "./Editor.css";
+import GateOverlay from "../components/GateOverlay";
 
 const playNotificationSound = () => {
   const audio = new Audio("/mixkit-software-interface-start-2574.wav");
@@ -100,7 +101,7 @@ function Editor() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowGateOpenAnimation(false);
-    }, 550);
+    }, 650);
     return () => clearTimeout(timer);
   }, []);
 
@@ -4580,14 +4581,7 @@ function Editor() {
         )}
         {/* Futuristic Exit Gate Animation Overlay */}
         {showGateOpenAnimation && (
-          <div className="ce-gate-overlay exiting">
-            <div className="gate-door gate-door-left exiting" />
-            <div className="gate-door gate-door-right exiting" />
-            <div className="gate-core-portal exiting">
-              <div className="gate-portal-glow exiting" />
-              <h2 className="gate-portal-text exiting">Workspace Synced</h2>
-            </div>
-          </div>
+          <GateOverlay exiting statusText="Decryption Complete" />
         )}
       </div>
     </MainLayout>

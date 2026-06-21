@@ -526,7 +526,6 @@ export default function MainLayout({
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
     { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
-    { id: "settings", label: "Settings", icon: Settings, path: "/dashboard?tab=settings" },
     { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard?tab=helpdesk" },
   ];
 

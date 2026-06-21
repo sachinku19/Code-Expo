@@ -1,0 +1,530 @@
+/* ==========================================================================
+   Cybernetic Gate Transition Overlay Styles
+   ========================================================================== */
+
+:root {
+  --gate-bg-dark: #07040d;
+  --gate-bg-light: #0d091a;
+  --gate-purple: #aa3bff;
+  --gate-cyan: #00f0ff;
+  --gate-green: #00ff88;
+  --gate-border: rgba(170, 59, 255, 0.15);
+}
+
+.ce-gate-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: all;
+  background: transparent;
+}
+
+/* Horizontal seam laser scanner beam */
+.gate-laser-beam {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, var(--gate-cyan), var(--gate-purple), var(--gate-cyan), transparent);
+  box-shadow: 0 0 15px var(--gate-cyan), 0 0 30px var(--gate-purple);
+  transform: translateX(-50%) scaleX(0);
+  z-index: 100;
+  opacity: 0;
+}
+
+/* When gates close on dashboard */
+.ce-gate-overlay:not(.exiting) .gate-laser-beam {
+  animation: laser-strike 0.15s 0.35s forwards ease-out, laser-scan 1s 0.5s infinite alternate ease-in-out;
+}
+
+/* When gates open on editor */
+.ce-gate-overlay.exiting .gate-laser-beam {
+  opacity: 1;
+  transform: translateX(-50%) scaleX(1);
+  animation: laser-fade-out 0.3s 0.3s forwards ease-in;
+}
+
+/* ==========================================================================
+   Sliding Doors
+   ========================================================================== */
+.gate-door {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--gate-bg-dark) 0%, var(--gate-bg-light) 100%);
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.95);
+  border: 1px solid var(--gate-border);
+  z-index: 10;
+  overflow: hidden; /* Clips the circular lock halves */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gate-door-left {
+  left: 0;
+  border-right: 3px solid var(--gate-purple);
+  box-shadow: inset -15px 0 40px rgba(170, 59, 255, 0.1), inset 0 0 80px rgba(0, 0, 0, 0.95);
+  transform: translateX(-100%);
+  animation: slide-door-left-in 0.35s forwards cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gate-door-right {
+  right: 0;
+  border-left: 3px solid var(--gate-purple);
+  box-shadow: inset 15px 0 40px rgba(170, 59, 255, 0.1), inset 0 0 80px rgba(0, 0, 0, 0.95);
+  transform: translateX(100%);
+  animation: slide-door-right-in 0.35s forwards cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Exiting state - delay slide-out for unlocking sequence */
+.gate-door-left.exiting {
+  transform: translateX(0);
+  animation: slide-door-left-out 0.35s 0.3s forwards cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+.gate-door-right.exiting {
+  transform: translateX(0);
+  animation: slide-door-right-out 0.35s 0.3s forwards cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+/* ==========================================================================
+   Cybernetic Split Lock
+   ========================================================================== */
+.gate-lock-half {
+  position: absolute;
+  top: 50%;
+  width: 240px;
+  height: 240px;
+  margin-top: -120px;
+  z-index: 20;
+  transition: all 0.3s ease;
+}
+
+.left-lock {
+  right: -120px; /* Centered exactly on the right seam edge of left door */
+}
+
+.right-lock {
+  left: -120px; /* Centered exactly on the left seam edge of right door */
+}
+
+/* Concentric Rings */
+.lock-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.ring-outer {
+  width: 220px;
+  height: 220px;
+  border: 3px dashed var(--gate-purple);
+  box-shadow: 0 0 15px rgba(170, 59, 255, 0.3);
+  animation: spin-clockwise 10s linear infinite;
+}
+
+.ring-middle {
+  width: 160px;
+  height: 160px;
+  border: 2px solid var(--gate-cyan);
+  border-style: double;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  animation: spin-counter-clockwise 6s linear infinite;
+}
+
+.ring-inner {
+  width: 100px;
+  height: 100px;
+  border: 2px dotted rgba(255, 255, 255, 0.4);
+  animation: spin-clockwise 3s linear infinite;
+}
+
+.lock-glow-orb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle, var(--gate-purple) 0%, transparent 70%);
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--gate-purple);
+  animation: pulse-glow-purple 1.5s alternate infinite ease-in-out;
+}
+
+/* Lock changes in exiting/unlocking mode (Matrix Green Success Theme) */
+.gate-lock-half.exiting .ring-outer {
+  border-color: var(--gate-green);
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
+  animation: spin-clockwise 2s linear infinite; /* Spin faster */
+}
+
+.gate-lock-half.exiting .ring-middle {
+  border-color: var(--gate-cyan);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+  animation: spin-counter-clockwise 1s linear infinite; /* Spin super fast */
+}
+
+.gate-lock-half.exiting .lock-glow-orb {
+  background: radial-gradient(circle, var(--gate-green) 0%, transparent 70%);
+  box-shadow: 0 0 35px var(--gate-green);
+  animation: pulse-glow-green 0.3s alternate infinite ease-in-out;
+}
+
+/* ==========================================================================
+   Glowing Tech Circuits
+   ========================================================================== */
+.circuit-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Circuits Left Door */
+.circuit-line {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, rgba(170, 59, 255, 0.25), transparent);
+  height: 2px;
+  box-shadow: 0 0 8px rgba(170, 59, 255, 0.1);
+}
+
+.line-1 {
+  top: 25%;
+  left: 0;
+  width: 75%;
+}
+.line-1::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  border-top: 2px solid rgba(170, 59, 255, 0.25);
+  border-right: 2px solid rgba(170, 59, 255, 0.25);
+  transform: rotate(45deg);
+  transform-origin: top right;
+}
+
+.line-2 {
+  top: 50%;
+  left: 0;
+  width: 80%;
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.25), transparent);
+}
+
+.line-3 {
+  bottom: 25%;
+  left: 0;
+  width: 75%;
+}
+.line-3::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 30px;
+  height: 30px;
+  border-bottom: 2px solid rgba(170, 59, 255, 0.25);
+  border-right: 2px solid rgba(170, 59, 255, 0.25);
+  transform: rotate(-45deg);
+  transform-origin: bottom right;
+}
+
+/* Circuits Right Door */
+.circuit-line-r {
+  position: absolute;
+  background: linear-gradient(-90deg, transparent, rgba(170, 59, 255, 0.25), transparent);
+  height: 2px;
+  box-shadow: 0 0 8px rgba(170, 59, 255, 0.1);
+}
+
+.line-1-r {
+  top: 25%;
+  right: 0;
+  width: 75%;
+}
+.line-1-r::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  border-top: 2px solid rgba(170, 59, 255, 0.25);
+  border-left: 2px solid rgba(170, 59, 255, 0.25);
+  transform: rotate(-45deg);
+  transform-origin: top left;
+}
+
+.line-2-r {
+  top: 50%;
+  right: 0;
+  width: 80%;
+  background: linear-gradient(-90deg, transparent, rgba(0, 240, 255, 0.25), transparent);
+}
+
+.line-3-r {
+  bottom: 25%;
+  right: 0;
+  width: 75%;
+}
+.line-3-r::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 30px;
+  height: 30px;
+  border-bottom: 2px solid rgba(170, 59, 255, 0.25);
+  border-left: 2px solid rgba(170, 59, 255, 0.25);
+  transform: rotate(45deg);
+  transform-origin: bottom left;
+}
+
+/* Animated Flowing Charge (Circuit Pulses) */
+.circuit-line::before, .circuit-line-r::before {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #00f0ff, 0 0 20px #aa3bff;
+  top: -3px;
+}
+
+.ce-gate-overlay:not(.exiting) .circuit-line::before {
+  left: 0;
+  animation: circuit-flow-left 0.35s forwards linear;
+}
+
+.ce-gate-overlay:not(.exiting) .circuit-line-r::before {
+  right: 0;
+  animation: circuit-flow-right 0.35s forwards linear;
+}
+
+/* ==========================================================================
+   Central Status Portal Console
+   ========================================================================== */
+.gate-core-portal {
+  position: absolute;
+  z-index: 100;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ce-gate-overlay:not(.exiting) .gate-core-portal {
+  animation: portal-console-in 0.2s 0.3s forwards cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ce-gate-overlay.exiting .gate-core-portal {
+  opacity: 1;
+  animation: portal-console-out 0.2s 0.25s forwards ease-in;
+}
+
+.gate-portal-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(170, 59, 255, 0.15) 0%, transparent 70%);
+  filter: blur(25px);
+  z-index: -1;
+  animation: console-glow-pulse 2s infinite alternate ease-in-out;
+}
+
+/* Neon Glass Display Board */
+.gate-portal-display {
+  background: rgba(10, 6, 22, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 12px;
+  padding: 24px 40px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(170, 59, 255, 0.15);
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gate-portal-text {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(170, 59, 255, 0.6);
+  margin: 0 0 16px 0;
+  text-transform: uppercase;
+  animation: text-pulse-glow 1.5s infinite alternate ease-in-out;
+}
+
+/* Text scanline */
+.gate-scanner-ray {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gate-cyan), transparent);
+  box-shadow: 0 0 10px var(--gate-cyan);
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.7;
+  animation: scan-vertical 2s infinite linear;
+}
+
+/* Progress bar loader */
+.gate-status-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  margin-bottom: 12px;
+}
+
+.gate-status-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gate-purple), var(--gate-cyan));
+  box-shadow: 0 0 8px var(--gate-cyan);
+  transition: width 0.1s linear;
+}
+
+.gate-system-status {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-family: monospace;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 1px;
+}
+
+/* ==========================================================================
+   Animations & Keyframes
+   ========================================================================== */
+
+/* Left door animations */
+@keyframes slide-door-left-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-door-left-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+/* Right door animations */
+@keyframes slide-door-right-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-door-right-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+/* Seam Laser Animations */
+@keyframes laser-strike {
+  from { transform: translateX(-50%) scaleX(0); opacity: 0; }
+  to { transform: translateX(-50%) scaleX(1); opacity: 1; }
+}
+
+@keyframes laser-scan {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.8); }
+}
+
+@keyframes laser-fade-out {
+  from { transform: translateX(-50%) scaleX(1); opacity: 1; }
+  to { transform: translateX(-50%) scaleX(0); opacity: 0; }
+}
+
+/* Console Animations */
+@keyframes portal-console-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes portal-console-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.92); }
+}
+
+/* Outer Ring Spin */
+@keyframes spin-clockwise {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes spin-counter-clockwise {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(-360deg); }
+}
+
+/* Core Lock Glow */
+@keyframes pulse-glow-purple {
+  0% { box-shadow: 0 0 15px var(--gate-purple); filter: brightness(0.9); }
+  100% { box-shadow: 0 0 35px var(--gate-purple), 0 0 50px var(--gate-cyan); filter: brightness(1.3); }
+}
+
+@keyframes pulse-glow-green {
+  0% { box-shadow: 0 0 15px var(--gate-green); filter: brightness(0.9); }
+  100% { box-shadow: 0 0 45px var(--gate-green), 0 0 60px var(--gate-cyan); filter: brightness(1.4); }
+}
+
+/* Text glow */
+@keyframes text-pulse-glow {
+  0% { text-shadow: 0 0 8px rgba(0, 240, 255, 0.5), 0 0 15px rgba(170, 59, 255, 0.5); }
+  100% { text-shadow: 0 0 15px rgba(0, 240, 255, 0.9), 0 0 30px rgba(170, 59, 255, 0.9); }
+}
+
+@keyframes console-glow-pulse {
+  0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.95); }
+  100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+/* Circuit Charge Flows */
+@keyframes circuit-flow-left {
+  0% { left: 0; opacity: 1; }
+  80% { left: 80%; opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+@keyframes circuit-flow-right {
+  0% { right: 0; opacity: 1; }
+  80% { right: 80%; opacity: 1; }
+  100% { right: 100%; opacity: 0; }
+}
+
+/* Vertical Scanline */
+@keyframes scan-vertical {
+  0% { top: 0%; }
+  100% { top: 100%; }
+}

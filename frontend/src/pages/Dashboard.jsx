@@ -54,6 +54,7 @@ import MainLayout from "../layouts/MainLayout";
 import ProfileAvatar from "../components/ProfileAvatar";
 const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
 import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
+import GateOverlay from "../components/GateOverlay";
 
 const playNotificationSound = () => {
   const audio = new Audio("/mixkit-software-interface-start-2574.wav");
@@ -1084,7 +1085,7 @@ function Dashboard() {
       setTimeout(() => {
         setGateAnimationRoomId(null);
       }, 500);
-    }, 300);
+    }, 350);
   };
 
   const triggerResumeHistory = (targetRoomId) => {
@@ -6811,14 +6812,7 @@ function Dashboard() {
 
         {/* Gate Entry Animation Overlay */}
         {gateAnimationRoomId && (
-          <div className="ce-gate-overlay">
-            <div className="gate-door gate-door-left" />
-            <div className="gate-door gate-door-right" />
-            <div className="gate-core-portal">
-              <div className="gate-portal-glow" />
-              <h2 className="gate-portal-text">Entering Workspace...</h2>
-            </div>
-          </div>
+          <GateOverlay statusText="Syncing with Workspace Grid..." />
         )}
 
         {/* Kick Confirmation Modal */}
