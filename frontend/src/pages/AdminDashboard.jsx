@@ -293,6 +293,7 @@ const AdminDashboard = () => {
   const [messageSearch, setMessageSearch] = useState("");
   const [messagePage, setMessagePage] = useState(1);
   const [messagePagination, setMessagePagination] = useState({ totalPages: 1, totalMessages: 0 });
+  const [expandedRooms, setExpandedRooms] = useState({});
 
   // Confirmation Modals
   const [confirmModal, setConfirmModal] = useState({
@@ -946,50 +947,50 @@ const AdminDashboard = () => {
 
   const userSparklineData = stats
     ? [
-        Math.max(1, stats.totalUsers - 6),
-        Math.max(1, stats.totalUsers - 5),
-        Math.max(1, stats.totalUsers - 4),
-        Math.max(1, stats.totalUsers - 3),
-        Math.max(1, stats.totalUsers - 2),
-        Math.max(1, stats.totalUsers - 1),
-        stats.totalUsers
-      ]
+      Math.max(1, stats.totalUsers - 6),
+      Math.max(1, stats.totalUsers - 5),
+      Math.max(1, stats.totalUsers - 4),
+      Math.max(1, stats.totalUsers - 3),
+      Math.max(1, stats.totalUsers - 2),
+      Math.max(1, stats.totalUsers - 1),
+      stats.totalUsers
+    ]
     : [2, 4, 5, 8, 10, 11, 12];
 
   const roomSparklineData = stats
     ? [
-        Math.max(0, stats.totalRooms - 5),
-        Math.max(0, stats.totalRooms - 4),
-        Math.max(0, stats.totalRooms - 3),
-        Math.max(0, stats.totalRooms - 2),
-        Math.max(0, stats.totalRooms - 1),
-        Math.max(0, stats.totalRooms - 1),
-        stats.totalRooms
-      ]
+      Math.max(0, stats.totalRooms - 5),
+      Math.max(0, stats.totalRooms - 4),
+      Math.max(0, stats.totalRooms - 3),
+      Math.max(0, stats.totalRooms - 2),
+      Math.max(0, stats.totalRooms - 1),
+      Math.max(0, stats.totalRooms - 1),
+      stats.totalRooms
+    ]
     : [1, 2, 2, 3, 3, 4, 4];
 
   const executionSparklineData = stats
     ? [
-        Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 1.2)),
-        Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.9)),
-        Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.7)),
-        Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.5)),
-        Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.3)),
-        Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.1)),
-        stats.totalExecutions
-      ]
+      Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 1.2)),
+      Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.9)),
+      Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.7)),
+      Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.5)),
+      Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.3)),
+      Math.max(0, Math.round(stats.totalExecutions - stats.recentExecutions * 0.1)),
+      stats.totalExecutions
+    ]
     : [15, 22, 10, 31, 25, 40, 42];
 
   const messageSparklineData = stats
     ? [
-        Math.max(0, stats.totalMessages - 12),
-        Math.max(0, stats.totalMessages - 10),
-        Math.max(0, stats.totalMessages - 8),
-        Math.max(0, stats.totalMessages - 6),
-        Math.max(0, stats.totalMessages - 4),
-        Math.max(0, stats.totalMessages - 2),
-        stats.totalMessages
-      ]
+      Math.max(0, stats.totalMessages - 12),
+      Math.max(0, stats.totalMessages - 10),
+      Math.max(0, stats.totalMessages - 8),
+      Math.max(0, stats.totalMessages - 6),
+      Math.max(0, stats.totalMessages - 4),
+      Math.max(0, stats.totalMessages - 2),
+      stats.totalMessages
+    ]
     : [5, 8, 12, 15, 18, 22, 25];
 
   return (
@@ -1410,25 +1411,11 @@ const AdminDashboard = () => {
           )}
 
           {/* TAB 2: DEVELOPERS ACCOUNTS */}
-          {activeTab === "users" && (
-            <div className="tab-pane-table glass-panel animate-fade-in">
-              <div className="table-search-row">
-                <div className="search-input-wrapper">
-                  <Search size={14} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search developers by name or email..."
-                    value={userSearch}
-                    onChange={(e) => {
-                      setUserSearch(e.target.value);
-                      setUserPage(1);
-                    }}
-                    className="table-search-input"
-                  />
-                </div>
-                {loadingUsers && <Loader className="spinner table-inline-loader" size={14} />}
-              </div>
+          {activeTab === "users" && (() => {
+            const adminUsers = users.filter((u) => u.role === "admin");
+            const regularUsers = users.filter((u) => u.role === "user");
 
+            const renderUserTable = (userList, emptyMessage) => (
               <div className="table-wrapper-responsive">
                 <table className="admin-data-table">
                   <thead>
@@ -1444,14 +1431,14 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.length === 0 ? (
+                    {userList.length === 0 ? (
                       <tr>
                         <td colSpan="8" className="empty-table-row">
-                          {loadingUsers ? "Loading developer accounts..." : "No developers found."}
+                          {emptyMessage}
                         </td>
                       </tr>
                     ) : (
-                      users.map((u) => {
+                      userList.map((u) => {
                         const isSelf = String(u.id) === String(user?.id);
                         return (
                           <tr key={u.id} className={isSelf ? "self-row" : ""}>
@@ -1509,27 +1496,29 @@ const AdminDashboard = () => {
                               </div>
                             </td>
                             <td className="actions-cell">
-                              <button
-                                onClick={() => handleRoleToggle(u.id, u.role, u.username)}
-                                className={`btn-action role-toggle ${u.role === "admin" ? "demote" : "promote"}`}
-                                disabled={isSelf || !isSuperAdmin}
-                                title={
-                                  isSelf 
-                                    ? "You cannot modify your own role" 
-                                    : !isSuperAdmin 
-                                      ? "Only the super admin can modify roles" 
-                                      : ""
-                                }
-                              >
-                                {u.role === "admin" ? "Make User" : "Make Admin"}
-                              </button>
+                              {u.email !== "adminsachin@gmail.com" && (
+                                <button
+                                  onClick={() => handleRoleToggle(u.id, u.role, u.username)}
+                                  className={`btn-action role-toggle ${u.role === "admin" ? "demote" : "promote"}`}
+                                  disabled={isSelf || !isSuperAdmin}
+                                  title={
+                                    isSelf
+                                      ? "You cannot modify your own role"
+                                      : !isSuperAdmin
+                                        ? "Only the super admin can modify roles"
+                                        : ""
+                                  }
+                                >
+                                  {u.role === "admin" ? "Make User" : "Make Admin"}
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleUserSuspensionToggle(u.id, u.isSuspended, u.username)}
                                 className={`btn-action-suspend ${u.isSuspended ? "active" : ""}`}
                                 disabled={isSelf || (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))}
                                 title={
-                                  isSelf 
-                                    ? "You cannot suspend your own account" 
+                                  isSelf
+                                    ? "You cannot suspend your own account"
                                     : (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))
                                       ? "Only the super admin can suspend administrators"
                                       : u.isSuspended ? "Reactivate user account" : "Suspend user account"
@@ -1543,7 +1532,7 @@ const AdminDashboard = () => {
                                 className="btn-action-delete"
                                 disabled={isSelf || (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))}
                                 title={
-                                  isSelf 
+                                  isSelf
                                     ? "You cannot delete your own account"
                                     : (!isSuperAdmin && (u.role === "admin" || u.email === "adminsachin@gmail.com"))
                                       ? "Only the super admin can delete administrators"
@@ -1560,33 +1549,72 @@ const AdminDashboard = () => {
                   </tbody>
                 </table>
               </div>
+            );
 
-              {/* PAGINATION */}
-              {userPagination.totalPages > 1 && (
-                <div className="table-pagination-row">
-                  <button
-                    disabled={userPage <= 1}
-                    onClick={() => setUserPage((prev) => Math.max(1, prev - 1))}
-                    className="btn-page-nav"
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Previous</span>
-                  </button>
-                  <span className="page-indicator">
-                    Page <strong>{userPage}</strong> of <strong>{userPagination.totalPages}</strong> ({userPagination.totalUsers} developers)
-                  </span>
-                  <button
-                    disabled={userPage >= userPagination.totalPages}
-                    onClick={() => setUserPage((prev) => Math.min(userPagination.totalPages, prev + 1))}
-                    className="btn-page-nav"
-                  >
-                    <span>Next</span>
-                    <ChevronRight size={14} />
-                  </button>
+            return (
+              <div className="tab-pane-developers-layout animate-fade-in">
+                <div className="table-search-row glass-panel" style={{ marginBottom: "20px" }}>
+                  <div className="search-input-wrapper">
+                    <Search size={14} className="search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Search developers by name or email..."
+                      value={userSearch}
+                      onChange={(e) => {
+                        setUserSearch(e.target.value);
+                        setUserPage(1);
+                      }}
+                      className="table-search-input"
+                    />
+                  </div>
+                  {loadingUsers && <Loader className="spinner table-inline-loader" size={14} />}
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* Box 1: Administrators */}
+                <div className="developer-box-section glass-panel" style={{ marginBottom: "24px" }}>
+                  <div className="section-box-header">
+                    <Shield size={18} className="purple-accent-glow" />
+                    <h4>System Administrators ({adminUsers.length})</h4>
+                  </div>
+                  {renderUserTable(adminUsers, "No administrators found on this page.")}
+                </div>
+
+                {/* Box 2: Regular Developers */}
+                <div className="developer-box-section glass-panel">
+                  <div className="section-box-header">
+                    <UserIcon size={18} className="blue-accent-glow" />
+                    <h4>Registered Developers ({regularUsers.length})</h4>
+                  </div>
+                  {renderUserTable(regularUsers, "No regular developers found on this page.")}
+                </div>
+
+                {/* PAGINATION */}
+                {userPagination.totalPages > 1 && (
+                  <div className="table-pagination-row" style={{ marginTop: "24px" }}>
+                    <button
+                      disabled={userPage <= 1}
+                      onClick={() => setUserPage((prev) => Math.max(1, prev - 1))}
+                      className="btn-page-nav"
+                    >
+                      <ChevronLeft size={14} />
+                      <span>Previous</span>
+                    </button>
+                    <span className="page-indicator">
+                      Page <strong>{userPage}</strong> of <strong>{userPagination.totalPages}</strong> ({userPagination.totalUsers} developers)
+                    </span>
+                    <button
+                      disabled={userPage >= userPagination.totalPages}
+                      onClick={() => setUserPage((prev) => Math.min(userPagination.totalPages, prev + 1))}
+                      className="btn-page-nav"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* TAB 3: ROOM MODERATION */}
           {activeTab === "rooms" && (
@@ -1693,100 +1721,141 @@ const AdminDashboard = () => {
           )}
 
           {/* TAB 4: CHAT MODERATION TIMELINE */}
-          {activeTab === "chat" && (
-            <div className="tab-pane-table glass-panel animate-fade-in">
-              <div className="table-search-row">
-                <div className="search-input-wrapper">
-                  <Search size={14} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search chat message contents..."
-                    value={messageSearch}
-                    onChange={(e) => {
-                      setMessageSearch(e.target.value);
-                      setMessagePage(1);
-                    }}
-                    className="table-search-input"
-                  />
-                </div>
-                {loadingMessages && <Loader className="spinner table-inline-loader" size={14} />}
-              </div>
+          {activeTab === "chat" && (() => {
+            const groupedRooms = {};
+            messages.forEach(m => {
+              if (!groupedRooms[m.roomId]) {
+                groupedRooms[m.roomId] = {
+                  roomId: m.roomId,
+                  roomTitle: m.roomTitle,
+                  messages: []
+                };
+              }
+              groupedRooms[m.roomId].messages.push(m);
+            });
+            const groupedRoomsArray = Object.values(groupedRooms);
 
-              <div className="table-wrapper-responsive">
-                <table className="admin-data-table">
-                  <thead>
-                    <tr>
-                      <th>Room Session</th>
-                      <th>Sender</th>
-                      <th>Message Content</th>
-                      <th>Sent Time</th>
-                      <th className="actions-header">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {messages.length === 0 ? (
-                      <tr>
-                        <td colSpan="5" className="empty-table-row">
-                          {loadingMessages ? "Fetching chat logs..." : "No recent chat messages found."}
-                        </td>
-                      </tr>
-                    ) : (
-                      messages.map((m) => (
-                        <tr key={m.id}>
-                          <td className="room-title-cell">
-                            <span className="room-title-text">{m.roomTitle}</span>
-                            <span className="room-id-subtext">{m.roomId}</span>
-                          </td>
-                          <td className="creator-details">
-                            <span className="creator-name">{m.sender?.username || "System/Deleted"}</span>
-                          </td>
-                          <td className="message-content-cell">
-                            <span className="chat-msg-text">"{m.content}"</span>
-                          </td>
-                          <td>{new Date(m.createdAt).toLocaleString()}</td>
-                          <td className="actions-cell">
-                            <button
-                              onClick={() => handleDeleteMessageClick(m.id, m.sender?.username || "Someone")}
-                              className="btn-action-delete"
-                              title="Delete and moderate chat message"
-                            >
-                              <Trash2 size={12} />
-                              <span>Delete</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* PAGINATION */}
-              {messagePagination.totalPages > 1 && (
-                <div className="table-pagination-row">
-                  <button
-                    disabled={messagePage <= 1}
-                    onClick={() => setMessagePage((prev) => Math.max(1, prev - 1))}
-                    className="btn-page-nav"
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Previous</span>
-                  </button>
-                  <span className="page-indicator">
-                    Page <strong>{messagePage}</strong> of <strong>{messagePagination.totalPages}</strong> ({messagePagination.totalMessages} messages)
-                  </span>
-                  <button
-                    disabled={messagePage >= messagePagination.totalPages}
-                    onClick={() => setMessagePage((prev) => Math.min(messagePagination.totalPages, prev + 1))}
-                    className="btn-page-nav"
-                  >
-                    <span>Next</span>
-                    <ChevronRight size={14} />
-                  </button>
+            return (
+              <div className="tab-pane-chat-moderation animate-fade-in">
+                <div className="table-search-row">
+                  <div className="search-input-wrapper">
+                    <Search size={14} className="search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Search chat message contents..."
+                      value={messageSearch}
+                      onChange={(e) => {
+                        setMessageSearch(e.target.value);
+                        setMessagePage(1);
+                      }}
+                      className="table-search-input"
+                    />
+                  </div>
+                  {loadingMessages && <Loader className="spinner table-inline-loader" size={14} />}
                 </div>
-              )}
-            </div>
-          )}
+
+                <div className="chat-cabinets-grid">
+                  {groupedRoomsArray.length === 0 ? (
+                    <div className="empty-cabinets-state glass-panel">
+                      {loadingMessages ? "Fetching chat logs..." : "No recent chat messages found."}
+                    </div>
+                  ) : (
+                    groupedRoomsArray.map((room) => {
+                      const isExpanded = !!expandedRooms[room.roomId] || !!messageSearch;
+                      return (
+                        <div key={room.roomId} className={`room-chat-cabinet glass-panel ${isExpanded ? "expanded" : ""}`}>
+                          <div className="cabinet-header">
+                            <div className="cabinet-room-info">
+                              <span className="room-title-label">{room.roomTitle}</span>
+                              <span className="room-id-subtext">{room.roomId}</span>
+                            </div>
+                            <div className="cabinet-actions">
+                              <span className="message-count-indicator">
+                                {room.messages.length} {room.messages.length === 1 ? "Message" : "Messages"}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setExpandedRooms(prev => ({
+                                    ...prev,
+                                    [room.roomId]: !prev[room.roomId]
+                                  }));
+                                }}
+                                className="btn-toggle-cabinet"
+                              >
+                                {isExpanded ? "Hide Chats" : "View Chats"}
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="cabinet-content-wrapper animate-slide-down">
+                              <div className="cabinet-messages-list">
+                                {room.messages.map((m) => (
+                                  <div key={m.id} className="cabinet-message-row animate-fade-in">
+                                    <div className="message-bubble-header">
+                                      <div className="sender-avatar-meta">
+                                        {m.sender?.avatar ? (
+                                          <img src={m.sender.avatar} alt={m.sender?.username} className="message-sender-avatar" />
+                                        ) : (
+                                          <div className="message-sender-placeholder">
+                                            {(m.sender?.username || "U").substring(0, 2).toUpperCase()}
+                                          </div>
+                                        )}
+                                        <span className="message-sender-name">{m.sender?.username || "System/Deleted"}</span>
+                                      </div>
+                                      <span className="message-time">
+                                        {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                    <div className="message-bubble-body">
+                                      <p className="message-text-content">"{m.content}"</p>
+                                      <button
+                                        onClick={() => handleDeleteMessageClick(m.id, m.sender?.username || "Someone")}
+                                        className="btn-message-moderate"
+                                        title="Delete and moderate chat message"
+                                      >
+                                        <Trash2 size={12} />
+                                        <span>Moderate</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* PAGINATION */}
+                {messagePagination.totalPages > 1 && (
+                  <div className="table-pagination-row">
+                    <button
+                      disabled={messagePage <= 1}
+                      onClick={() => setMessagePage((prev) => Math.max(1, prev - 1))}
+                      className="btn-page-nav"
+                    >
+                      <ChevronLeft size={14} />
+                      <span>Previous</span>
+                    </button>
+                    <span className="page-indicator">
+                      Page <strong>{messagePage}</strong> of <strong>{messagePagination.totalPages}</strong> ({messagePagination.totalMessages} messages)
+                    </span>
+                    <button
+                      disabled={messagePage >= messagePagination.totalPages}
+                      onClick={() => setMessagePage((prev) => Math.min(messagePagination.totalPages, prev + 1))}
+                      className="btn-page-nav"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* TAB 5: FEEDBACK REVIEWS */}
           {activeTab === "ratings" && (
@@ -1858,115 +1927,126 @@ const AdminDashboard = () => {
 
           {/* TAB 6: SYSTEM LOCKS & RESOURCE CONFIGS */}
           {activeTab === "maintenance" && (
-            <div className="tab-pane-sandbox glass-panel animate-fade-in">
-              <div className="maintenance-diagnostic-box">
-                <div className="maintenance-header-card">
-                  <Sliders size={22} className="panel-accent-icon" />
-                  <h4>System Lockout Configurations</h4>
-                  <p>Configure platform maintenance status gates and resource thresholds.</p>
+            <div className="tab-pane-maintenance animate-fade-in">
+              <div className="maintenance-header-row">
+                <div className="header-title-area">
+                  <Sliders size={26} className="panel-accent-icon glow-accent-icon" />
+                  <div>
+                    <h4>System Lockout Configurations</h4>
+                    <p>Configure platform maintenance status gates and resource thresholds.</p>
+                  </div>
                 </div>
+                {/* Active user diagnostic indicator */}
+                <div className="active-dev-indicator glass-pill">
+                  <ShieldAlert size={14} className="shield-pulse-icon" />
+                  <span>Session: <strong>{user?.username}</strong></span>
+                  <span className="role-tag-sub">ADMIN</span>
+                </div>
+              </div>
 
-                <div className="system-status-indicator-card">
-                  <div className="status-label">
-                    <span>Maintenance Lockout Status:</span>
-                    <strong className={maintenanceMode ? "state-active" : "state-inactive"}>
-                      {maintenanceMode ? "ACTIVE (LOCKED)" : "INACTIVE (OPEN)"}
-                    </strong>
+              <div className="maintenance-grid-container">
+                {/* Left Card: Lockout Control */}
+                <div className={`maintenance-control-card glass-panel ${maintenanceMode ? "system-locked" : "system-open"}`}>
+                  <div className="card-badge">GATE CONTROLLER</div>
+                  
+                  <div className="pulse-indicator-wrapper">
+                    <div className="pulse-ring"></div>
+                    <div className="pulse-core"></div>
                   </div>
 
-                  <p className="status-desc">
+                  <div className="status-title-group">
+                    <span className="status-label-text">Lockout Gate Status</span>
+                    <h3 className="status-value-text">
+                      {maintenanceMode ? "ACTIVE (LOCKED)" : "INACTIVE (OPEN)"}
+                    </h3>
+                  </div>
+
+                  <p className="status-description-paragraph">
                     {maintenanceMode
-                      ? "The system is currently locked. Standard developer accounts see an animated lockout warning page on dashboard loads. Administrative roles are bypassed."
-                      : "The system is open. Normal accounts can connect and compile code snippet files."}
+                      ? "The system is currently locked. Standard developer accounts will see a maintenance lockout splash page upon loading the dashboard. Only administrator roles bypass this gate."
+                      : "The system is open. All developer accounts can connect to active workspaces, compile code snippet files, and chat in real-time."}
                   </p>
 
                   <button
                     onClick={handleMaintenanceToggleClick}
-                    className={`btn-maintenance-toggle-master ${maintenanceMode ? "disable-btn" : "enable-btn"}`}
+                    className="btn-maintenance-glow-toggle"
                   >
-                    {maintenanceMode ? <Unlock size={14} /> : <Lock size={14} />}
+                    {maintenanceMode ? <Unlock size={16} /> : <Lock size={16} />}
                     <span>{maintenanceMode ? "Disable Maintenance Mode" : "Enable Maintenance Mode"}</span>
                   </button>
                 </div>
 
-                {/* RESOURCE LIMIT SLIDERS */}
-                <div className="resource-limits-card" style={{ marginTop: "30px" }}>
-                  <div className="card-header-row" style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-                    <Server size={18} className="purple" />
-                    <h4 style={{ margin: 0, fontSize: "0.92rem", fontWeight: "700" }}>Dynamic Resource Thresholds</h4>
+                {/* Right Card: Resource Limits */}
+                <div className="resource-threshold-card glass-panel">
+                  <div className="card-badge">RESOURCE LIMITS</div>
+
+                  <div className="threshold-card-header">
+                    <Server size={18} className="threshold-icon" />
+                    <h4>Platform Constraints</h4>
                   </div>
 
-                  <div className="slider-group" style={{ marginBottom: "20px" }}>
-                    <div className="slider-labels" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: "8px" }}>
-                      <span>Max Collaboration Rooms per User</span>
-                      <strong style={{ color: "var(--accent)" }}>{configMaxRooms} Rooms</strong>
+                  <div className="sliders-container">
+                    <div className="modern-slider-group">
+                      <div className="slider-header-row">
+                        <span className="slider-label">Max Collaboration Rooms / User</span>
+                        <span className="slider-value-badge">{configMaxRooms} Rooms</span>
+                      </div>
+                      <div className="slider-track-wrapper">
+                        <input
+                          type="range"
+                          min="1"
+                          max="20"
+                          value={configMaxRooms}
+                          onChange={(e) => {
+                            setConfigMaxRooms(e.target.value);
+                            addToast(`Max collaboration rooms set to ${e.target.value}`, "success");
+                          }}
+                          className="modern-range-slider"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="20"
-                      value={configMaxRooms}
-                      onChange={(e) => {
-                        setConfigMaxRooms(e.target.value);
-                        addToast(`Max collaboration rooms set to ${e.target.value}`, "success");
-                      }}
-                      style={{ width: "100%", accentColor: "var(--accent)" }}
-                    />
-                  </div>
 
-                  <div className="slider-group" style={{ marginBottom: "20px" }}>
-                    <div className="slider-labels" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: "8px" }}>
-                      <span>Max Compiler Code Timeout</span>
-                      <strong style={{ color: "var(--accent)" }}>{configTimeout} seconds</strong>
+                    <div className="modern-slider-group">
+                      <div className="slider-header-row">
+                        <span className="slider-label">Max Compiler Execution Timeout</span>
+                        <span className="slider-value-badge">{configTimeout}s</span>
+                      </div>
+                      <div className="slider-track-wrapper">
+                        <input
+                          type="range"
+                          min="2"
+                          max="30"
+                          value={configTimeout}
+                          onChange={(e) => {
+                            setConfigTimeout(e.target.value);
+                            addToast(`Code execution timeout limit set to ${e.target.value}s`, "success");
+                          }}
+                          className="modern-range-slider"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="2"
-                      max="30"
-                      value={configTimeout}
-                      onChange={(e) => {
-                        setConfigTimeout(e.target.value);
-                        addToast(`Code execution timeout limit set to ${e.target.value}s`, "success");
-                      }}
-                      style={{ width: "100%", accentColor: "var(--accent)" }}
-                    />
-                  </div>
 
-                  <div className="slider-group">
-                    <div className="slider-labels" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: "8px" }}>
-                      <span>Websocket Connections Pool Limit</span>
-                      <strong style={{ color: "var(--accent)" }}>{configPoolLimit} Connections</strong>
+                    <div className="modern-slider-group">
+                      <div className="slider-header-row">
+                        <span className="slider-label">Websocket Pool Connection Limit</span>
+                        <span className="slider-value-badge">{configPoolLimit} Connections</span>
+                      </div>
+                      <div className="slider-track-wrapper">
+                        <input
+                          type="range"
+                          min="50"
+                          max="500"
+                          step="10"
+                          value={configPoolLimit}
+                          onChange={(e) => {
+                            setConfigPoolLimit(e.target.value);
+                            addToast(`Websocket capacity pool adjusted to ${e.target.value}`, "success");
+                          }}
+                          className="modern-range-slider"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="50"
-                      max="500"
-                      step="10"
-                      value={configPoolLimit}
-                      onChange={(e) => {
-                        setConfigPoolLimit(e.target.value);
-                        addToast(`Websocket capacity pool adjusted to ${e.target.value}`, "success");
-                      }}
-                      style={{ width: "100%", accentColor: "var(--accent)" }}
-                    />
                   </div>
-                </div>
-              </div>
-
-              {/* DEV SIMULATOR */}
-              <div className="sandbox-warning-alert" style={{ marginTop: "30px" }}>
-                <ShieldAlert size={20} className="warning-icon" />
-                <div className="alert-content">
-                  <h4>Developer Sandbox Utility</h4>
-                  <p>Toggle account settings to test layout gates and bypass routing rules.</p>
-                  <div className="current-user-info-badge" style={{ marginTop: "12px", background: "rgba(0,0,0,0.2)" }}>
-                    <span>Active Developer:</span>
-                    <strong>{user?.username}</strong>
-                    <span className={`role-badge ${user?.role}`}>{user?.role?.toUpperCase()}</span>
-                  </div>
-                  <button onClick={handlePromoteSelfToggle} className="btn-sandbox-promote" style={{ maxWidth: "300px" }}>
-                    Toggle My Account Role ({user?.role === "admin" ? "Demote to User" : "Promote to Admin"})
-                  </button>
                 </div>
               </div>
             </div>
