@@ -17,6 +17,11 @@ const adSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  format: {
+    type: String,
+    enum: ["SIDEBAR", "POPUP"],
+    default: "SIDEBAR"
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

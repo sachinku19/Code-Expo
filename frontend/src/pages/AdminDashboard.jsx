@@ -320,6 +320,7 @@ const AdminDashboard = () => {
   const [loadingAds, setLoadingAds] = useState(false);
   const [adTitle, setAdTitle] = useState("");
   const [adUrl, setAdUrl] = useState("");
+  const [adFormat, setAdFormat] = useState("SIDEBAR");
   const [adImageFile, setAdImageFile] = useState(null);
   const [adImagePreview, setAdImagePreview] = useState("");
 
@@ -778,6 +779,7 @@ const AdminDashboard = () => {
     const formData = new FormData();
     formData.append("title", adTitle.trim());
     formData.append("redirectUrl", adUrl.trim());
+    formData.append("format", adFormat);
     formData.append("image", adImageFile);
 
     setSubmittingAd(true);
@@ -787,6 +789,7 @@ const AdminDashboard = () => {
         addToast("Ad created and broadcasted successfully", "success");
         setAdTitle("");
         setAdUrl("");
+        setAdFormat("SIDEBAR");
         setAdImageFile(null);
         setAdImagePreview("");
         fetchAds();
@@ -2217,6 +2220,18 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className="form-group">
+                      <label className="composer-label">Ad Format / Display Location</label>
+                      <select
+                        value={adFormat}
+                        onChange={(e) => setAdFormat(e.target.value)}
+                        className="composer-select"
+                      >
+                        <option value="SIDEBAR">Sidebar (Sponsored Widget)</option>
+                        <option value="POPUP">Pop-up (Dashboard Entry Modal)</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
                       <label className="composer-label">Banner Image Upload</label>
                       <div className="ad-upload-dropzone" style={{ border: "2px dashed var(--admin-border)", padding: "20px", borderRadius: "8px", textAlign: "center", cursor: "pointer", background: "rgba(0,0,0,0.1)", position: "relative" }}>
                         <input
@@ -2293,6 +2308,9 @@ const AdminDashboard = () => {
                             <div className="item-badge-group">
                               <span className={`badge-type ${ad.isActive ? "update" : "maintenance"}`}>
                                 {ad.isActive ? "ACTIVE" : "PAUSED"}
+                              </span>
+                              <span className={`badge-severity severity-${ad.format === "POPUP" ? "warning" : "info"}`} style={{ textTransform: "uppercase" }}>
+                                {ad.format === "POPUP" ? "POP-UP" : "SIDEBAR"}
                               </span>
                             </div>
                             <div className="ad-actions-top" style={{ display: "flex", alignItems: "center" }}>

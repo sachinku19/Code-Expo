@@ -583,6 +583,9 @@ function Dashboard() {
 
   // Ads states
   const [activeAds, setActiveAds] = useState(() => loadFromCache("ce_cache_activeAds", []));
+  const sidebarAds = useMemo(() => activeAds.filter(ad => ad.format === "SIDEBAR" || !ad.format), [activeAds]);
+  const [currentPopupAd, setCurrentPopupAd] = useState(null);
+  const [hasShownPopup, setHasShownPopup] = useState(false);
 
   // Social states
   const [suggestions, setSuggestions] = useState(() => loadFromCache("ce_cache_suggestions", []));
@@ -1756,6 +1759,36 @@ function Dashboard() {
       return () => clearInterval(interval);
     }
   }, [user?.id, user?._id]);
+
+  useEffect(() => {
+    if (activeAds.length > 0 && !hasShownPopup) {
+      const popupAd = activeAds.find(ad => ad.format === "POPUP");
+      if (popupAd) {
+        const isDismissed = localStorage.getItem(`ce_dismissed_ad_${popupAd._id}`);
+        if (!isDismissed) {
+          setCurrentPopupAd(popupAd);
+          setHasShownPopup(true);
+        }
+      }
+    }
+  }, [activeAds, hasShownPopup]);
+
+  const handleClosePopupAd = () => {
+    if (currentPopupAd) {
+      localStorage.setItem(`ce_dismissed_ad_${currentPopupAd._id}`, "true");
+    }
+    setCurrentPopupAd(null);
+  };
+
+  const handlePopupAdClick = () => {
+    if (currentPopupAd) {
+      localStorage.setItem(`ce_dismissed_ad_${currentPopupAd._id}`, "true");
+      if (currentPopupAd.redirectUrl) {
+        window.open(currentPopupAd.redirectUrl, "_blank", "noopener,noreferrer");
+      }
+    }
+    setCurrentPopupAd(null);
+  };
 
   useEffect(() => {
     if (user && !isEditingProfile) {
@@ -3140,7 +3173,7 @@ function Dashboard() {
                   </section>
 
                   {/* SPONSORED PROMOTIONS */}
-                  {(activeAds.length > 0 || (isLoadingDashboard && activeAds.length === 0)) && (
+                  {(sidebarAds.length > 0 || (isLoadingDashboard && activeAds.length === 0)) && (
                     <section className="ce-dashboard-section sponsored-ads-section">
                       <h3 className="section-title text-warning" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
                         <Sparkles size={14} style={{ color: "var(--ce-warning)" }} /> Sponsored Promotions
@@ -3149,7 +3182,7 @@ function Dashboard() {
                         {isLoadingDashboard && activeAds.length === 0 ? (
                           <AdSkeleton />
                         ) : (
-                          activeAds.map(ad => (
+                          sidebarAds.map(ad => (
                             <a
                               key={ad._id}
                               href={ad.redirectUrl || undefined}
@@ -7146,6 +7179,41 @@ function Dashboard() {
                         </div>
                       );
                     })
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Pop-up Ad Modal Portal */}
+        {currentPopupAd && createPortal(
+          <div className="popup-ad-overlay">
+            <div className="popup-ad-card animate-fade-in">
+              <button className="popup-ad-close-btn" onClick={handleClosePopupAd} aria-label="Close Ad">
+                <X size={18} />
+              </button>
+              
+              <div className="popup-ad-content" onClick={handlePopupAdClick}>
+                <div className="popup-ad-image-container">
+                  <img
+                    src={currentPopupAd.imageUrl}
+                    alt={currentPopupAd.title}
+                    className="popup-ad-image"
+                  />
+                  <span className="popup-ad-sponsored-tag">SPONSORED</span>
+                </div>
+                
+                <div className="popup-ad-body">
+                  <h3 className="popup-ad-title">{currentPopupAd.title}</h3>
+                  {currentPopupAd.redirectUrl && (
+                    <div className="popup-ad-action-btn-wrapper">
+                      <button className="popup-ad-action-btn">
+                        <span>Learn More</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

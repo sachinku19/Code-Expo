@@ -6,7 +6,7 @@ const path = require("path");
 // 1. Create Ad (Admin only)
 const createAd = async (req, res) => {
   try {
-    const { title, redirectUrl } = req.body;
+    const { title, redirectUrl, format } = req.body;
     if (!title) {
       return res.status(400).json({ success: false, message: "Ad title is required." });
     }
@@ -54,6 +54,7 @@ const createAd = async (req, res) => {
       title,
       imageUrl,
       redirectUrl: redirectUrl || "",
+      format: format || "SIDEBAR",
       createdBy: req.user._id
     });
 
