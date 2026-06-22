@@ -139,6 +139,18 @@ function Editor() {
     }
   }, [fromTransition]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "Are you sure you want to exit this workspace?";
+      return "Are you sure you want to exit this workspace?";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
   // Core MERN Room State
   const [room, setRoom] = useState(null);
   const [users, setUsers] = useState([]);
@@ -885,6 +897,17 @@ function Editor() {
 
     socket.emit("leave-call", { roomId });
     triggerNotification("You left the call");
+  };
+
+  const handleLeaveCallManual = async () => {
+    const confirm = await window.showConfirm(
+      "Are you sure you want to end or leave this call?",
+      "Leave Call",
+      "warning"
+    );
+    if (confirm) {
+      handleLeaveCall();
+    }
   };
 
   const toggleMute = () => {
@@ -3360,7 +3383,7 @@ function Editor() {
       inCall={inCall}
       callType={callType}
       onJoinCall={showCallButtons ? handleJoinCall : null}
-      onLeaveCall={handleLeaveCall}
+      onLeaveCall={handleLeaveCallManual}
       activeCallUsers={activeCallUsers}
     >
       <div className={`ce-editor-page mobile-tab-${mobileTab}`}>
@@ -4487,7 +4510,7 @@ function Editor() {
                         <button
                           type="button"
                           className="chat-call-btn active-call"
-                          onClick={handleLeaveCall}
+                          onClick={handleLeaveCallManual}
                           title="Leave Call"
                         >
                           <Phone size={14} />
@@ -4911,7 +4934,7 @@ function Editor() {
                 >
                   <Maximize2 size={13} />
                 </button>
-                <button className="call-panel-close-btn" onClick={handleLeaveCall} title="Leave Call">
+                <button className="call-panel-close-btn" onClick={handleLeaveCallManual} title="Leave Call">
                   <X size={14} />
                 </button>
               </div>
@@ -5064,7 +5087,7 @@ function Editor() {
 
               <button
                 className="call-action-btn hangup"
-                onClick={handleLeaveCall}
+                onClick={handleLeaveCallManual}
                 title="End Call"
               >
                 <Phone size={18} style={{ transform: "rotate(135deg)" }} />
@@ -5092,7 +5115,7 @@ function Editor() {
               </button>
               <button 
                 className="minimized-action-btn leave" 
-                onClick={handleLeaveCall}
+                onClick={handleLeaveCallManual}
                 title="Leave Call"
               >
                 <X size={12} />

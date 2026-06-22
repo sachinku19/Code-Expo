@@ -42,6 +42,20 @@ export default function MainLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useAuth();
+
+  const handleConfirmNavigate = async (path) => {
+    if (location.pathname.startsWith("/editor/")) {
+      if (path !== location.pathname && !path.startsWith(location.pathname + "?") && !path.startsWith(location.pathname + "#")) {
+        const confirmExit = await window.showConfirm(
+          "Are you sure you want to exit this workspace?",
+          "Exit Workspace",
+          "warning"
+        );
+        if (!confirmExit) return;
+      }
+    }
+    navigate(path);
+  };
   const isRoomActive = roomId && roomId !== "default";
 
   // Sidebar state
@@ -206,7 +220,7 @@ export default function MainLayout({
       setDbNotifications(prev => prev.filter(n => n.id !== notifId));
       setLocalNotifs(prev => prev.filter(n => n.id !== notifId));
       setUnreadNotifCount(c => Math.max(0, c - 1));
-      navigate(`/editor/${targetRoomId}`);
+      handleConfirmNavigate(`/editor/${targetRoomId}`);
     } catch (err) {
       console.error("Failed to accept workspace invite:", err);
     }
@@ -633,12 +647,12 @@ export default function MainLayout({
     searchInputRef.current?.blur();
 
     if (item.action.type === "nav") {
-      navigate(item.action.path);
+      handleConfirmNavigate(item.action.path);
     } else if (item.action.type === "room") {
       if (onSearchSelect) {
         onSearchSelect(item.action);
       } else {
-        navigate(`/editor/${item.action.roomId}`);
+        handleConfirmNavigate(`/editor/${item.action.roomId}`);
       }
     } else {
       if (onSearchSelect) {
@@ -693,7 +707,7 @@ export default function MainLayout({
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
-    navigate("/login");
+    handleConfirmNavigate("/login");
   };
 
   const lastRoomId = localStorage.getItem("ceLastActiveRoomId") || "default";
@@ -722,7 +736,7 @@ export default function MainLayout({
     } else if (item.id === "notifications") {
       fetchDbNotifications();
     }
-    navigate(item.path);
+    handleConfirmNavigate(item.path);
   };
 
   const getActiveItem = () => {
@@ -775,7 +789,7 @@ export default function MainLayout({
             <Menu size={18} />
           </button>
 
-          <div className="topnav-brand-container" onClick={() => navigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginRight: "16px" }}>
+          <div className="topnav-brand-container" onClick={() => handleConfirmNavigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginRight: "16px" }}>
             <Logo size={22} showText={false} />
             <span className="topnav-brand-text" style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--ce-text)" }}>CodeExpo</span>
           </div>
@@ -997,7 +1011,7 @@ export default function MainLayout({
               className="topnav-btn"
               onClick={() => {
                 if (!roomId || roomId === "default") {
-                  navigate("/dashboard?tab=notifications");
+                  handleConfirmNavigate("/dashboard?tab=notifications");
                 } else {
                   setNotifDropdownOpen(!notifDropdownOpen);
                 }
@@ -1095,10 +1109,10 @@ export default function MainLayout({
                 <span>{user?.email}</span>
               </div>
               <hr />
-              <button onClick={() => navigate("/dashboard?tab=profile")} className="dropdown-item">
+              <button onClick={() => handleConfirmNavigate("/dashboard?tab=profile")} className="dropdown-item">
                 <User size={14} /> Profile
               </button>
-              <button onClick={() => navigate("/dashboard?tab=settings")} className="dropdown-item">
+              <button onClick={() => handleConfirmNavigate("/dashboard?tab=settings")} className="dropdown-item">
                 <Settings size={14} /> Settings
               </button>
               <hr />
@@ -1160,7 +1174,7 @@ export default function MainLayout({
           <div className="sidebar-footer-new">
             {sidebarExpanded ? (
               <div className="sidebar-profile-card">
-                <div className="profile-card-top" onClick={() => navigate("/dashboard?tab=profile")}>
+                <div className="profile-card-top" onClick={() => handleConfirmNavigate("/dashboard?tab=profile")}>
                   <div className="profile-card-avatar" style={{ backgroundColor: user?.avatar ? "transparent" : getCursorColor(user?.username) }}>
                     {user?.avatar ? (
                       <img src={user.avatar} alt={user.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
@@ -1186,7 +1200,7 @@ export default function MainLayout({
                   <button className="profile-action-btn" onClick={() => setIsRatingModalOpen(true)} title="Rate Us" style={{ color: "#f59e0b" }}>
                     <Star size={13} fill={userRating > 0 ? "#f59e0b" : "transparent"} />
                   </button>
-                  <button className="profile-action-btn" onClick={() => navigate("/dashboard?tab=settings")} title="Settings">
+                  <button className="profile-action-btn" onClick={() => handleConfirmNavigate("/dashboard?tab=settings")} title="Settings">
                     <Settings size={13} />
                   </button>
                   <button className="profile-action-btn logout" onClick={handleLogout} title="Logout">
@@ -1197,7 +1211,7 @@ export default function MainLayout({
             ) : (
               <div
                 className="sidebar-profile-card-collapsed"
-                onClick={() => navigate("/dashboard?tab=profile")}
+                onClick={() => handleConfirmNavigate("/dashboard?tab=profile")}
                 title={`@${user?.username || "developer"} (${userRank}) - ${userXP} XP`}
               >
                 <div className="profile-card-avatar collapsed" style={{ backgroundColor: user?.avatar ? "transparent" : getCursorColor(user?.username) }}>
