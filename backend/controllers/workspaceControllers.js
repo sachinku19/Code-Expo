@@ -439,27 +439,37 @@ exports.setFileEntryPoint = async (req, res) => {
       });
     }
 
-    // Set all other files in this room to false
+    const wasEntryPoint = file.isEntryPoint;
+
+    // Set all files in this room to false
     await WorkspaceItem.updateMany(
       { roomId: file.roomId, type: "file" },
       { isEntryPoint: false }
     );
 
-    // Set this file to true
-    file.isEntryPoint = true;
-    await file.save();
+    // Toggle: if it wasn't the entry point, make it the entry point.
+    // If it was the entry point, it remains false (removed).
+    if (!wasEntryPoint) {
+      file.isEntryPoint = true;
+      await file.save();
+    }
 
     logActivity(
       req.user._id,
       req.user.username,
       room._id,
       room.title,
-      `set "${file.name}" as execution entry point`
+      !wasEntryPoint
+        ? `set "${file.name}" as execution entry point`
+        : `removed "${file.name}" as execution entry point`
     );
 
     res.status(200).json({
       success: true,
-      message: `Successfully set "${file.name}" as compilation entry point`
+      isEntryPoint: !wasEntryPoint,
+      message: !wasEntryPoint
+        ? `Successfully set "${file.name}" as compilation entry point`
+        : `Successfully removed "${file.name}" as compilation entry point`
     });
   } catch (error) {
     res.status(500).json({

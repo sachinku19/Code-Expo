@@ -20,7 +20,9 @@ const {
     changeRole,
     kickUser,
     muteUser,
-    getRoomMembers
+    getRoomMembers,
+    sendWorkspaceInvites,
+    acceptWorkspaceInvite
 } = require("../controllers/roomControllers");
 
 const router = express.Router();
@@ -47,5 +49,8 @@ router.get("/:roomId/members", auth_protect, checkRoomRole(["OWNER", "MODERATOR"
 router.get("/:roomId", auth_protect, getRoom);
 router.delete("/leave/:roomId", auth_protect, leaveRoom);
 router.delete("/delete/:roomId", auth_protect, deleteRoom);
+
+router.post("/:roomId/invite", auth_protect, sendWorkspaceInvites);
+router.post("/:roomId/accept-invite", auth_protect, acceptWorkspaceInvite);
 
 module.exports = router;

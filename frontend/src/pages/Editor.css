@@ -1,20 +1,21 @@
 /* CodeExpo SaaS Redesign - Compact Editor Stylesheet */
 
 :root {
-  --ce-bg-page: #0b0f17;
-  --ce-bg-nav: #121824;
-  --ce-bg-sidebar: #121824;
-  --ce-bg-drawer: #0b0f17;
-  --ce-bg-panel: rgba(18, 24, 36, 0.85);
-  --ce-bg-active: rgba(255, 161, 22, 0.08);
+  --ce-bg-page: #121218;
+  --ce-bg-nav: #07070a;
+  --ce-bg-sidebar: #07070a;
+  --ce-bg-drawer: #07070a;
+  --ce-bg-panel: rgba(16, 16, 22, 0.85);
+  --ce-bg-active: rgba(170, 59, 255, 0.08);
+  --ce-bg-code-header: #07070a;
 
-  --ce-border: #1e293b;
-  --ce-border-active: #ffa116;
-  --ce-accent: #ffa116;
-  --ce-accent-hover: #ffb84d;
+  --ce-border: rgba(255, 255, 255, 0.09);
+  --ce-border-active: #aa3bff;
+  --ce-accent: #aa3bff;
+  --ce-accent-hover: #b857ff;
 
-  --ce-text: #eff2f6;
-  --ce-text-muted: #9ca3af;
+  --ce-text: #cbd5e1;
+  --ce-text-muted: #8e9aa9;
 
   --ce-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   --ce-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -23,20 +24,21 @@
 }
 
 .light {
-  --ce-bg-page: #f6f8fa;
-  --ce-bg-nav: #ffffff;
-  --ce-bg-sidebar: #ffffff;
-  --ce-bg-drawer: #f6f8fa;
+  --ce-bg-page: #ffffff;
+  --ce-bg-nav: #f8fafc;
+  --ce-bg-sidebar: #f8fafc;
+  --ce-bg-drawer: #f8fafc;
   --ce-bg-panel: rgba(255, 255, 255, 0.85);
-  --ce-bg-active: rgba(9, 105, 218, 0.08);
+  --ce-bg-active: rgba(139, 92, 246, 0.06);
+  --ce-bg-code-header: #f8fafc;
 
-  --ce-border: #d0d7de;
-  --ce-border-active: #0969da;
-  --ce-accent: #0969da;
-  --ce-accent-hover: #0550ae;
+  --ce-border: rgba(15, 23, 42, 0.09);
+  --ce-border-active: #8b5cf6;
+  --ce-accent: #8b5cf6;
+  --ce-accent-hover: #7c3aed;
 
-  --ce-text: #24292f;
-  --ce-text-muted: #57606a;
+  --ce-text: #475569;
+  --ce-text-muted: #64748b;
 
   --ce-shadow: 0 3px 12px rgba(140, 149, 159, 0.12);
 }
@@ -577,6 +579,43 @@
   cursor: pointer;
 }
 
+.btn-fullscreen-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--ce-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ce-text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  padding: 0;
+  margin-right: 8px;
+}
+
+.btn-fullscreen-toggle:hover {
+  background: var(--ce-bg-active);
+  color: var(--ce-accent);
+  border-color: var(--ce-accent);
+  box-shadow: 0 0 10px rgba(9, 105, 218, 0.25);
+  transform: scale(1.05);
+}
+
+.btn-fullscreen-toggle.active {
+  background: rgba(255, 161, 22, 0.1) !important;
+  border-color: #ffa116 !important;
+  color: #ffa116 !important;
+  box-shadow: 0 0 10px rgba(255, 161, 22, 0.25);
+}
+
+.light .btn-fullscreen-toggle:hover {
+  background: rgba(9, 105, 218, 0.06);
+  border-color: var(--ce-accent);
+}
+
 /* Resizable split container */
 .workspace-render-split {
   flex: 1;
@@ -719,6 +758,32 @@
   align-items: center;
   gap: 4px;
   cursor: pointer;
+}
+
+.console-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ce-btn-save {
+  background-color: var(--ce-accent);
+  border: none;
+  color: #fff;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.ce-btn-save:hover {
+  background-color: var(--ce-accent-hover);
 }
 
 .console-tab-body {
@@ -2569,23 +2634,30 @@
 .tree-node {
   display: flex;
   align-items: center;
-  height: 28px;
-  padding: 0 6px;
-  border-radius: var(--border-radius-sm, 6px);
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
   cursor: pointer;
   user-select: none;
   position: relative;
-  transition: background-color var(--transition-fast, 0.15s ease);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 2px solid transparent;
 }
 
 .tree-node:hover {
   background-color: var(--ce-bg-active);
+  padding-left: 10px; /* Subtle responsive micro-interaction */
 }
 
-.tree-node.active {
-  background-color: var(--ce-bg-active);
-  color: var(--ce-accent);
+.tree-node.active,
+.tree-node.selected-node {
+  background-color: rgba(9, 105, 218, 0.08) !important;
+  color: var(--ce-accent) !important;
   font-weight: 600;
+  border-left: 2px solid var(--ce-accent);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding-left: 8px;
 }
 
 .node-icon {
@@ -2611,6 +2683,11 @@
   width: 14px;
   margin-right: 2px;
   color: var(--ce-text-muted);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collapse-chevron.expanded {
+  transform: rotate(90deg);
 }
 
 .node-name {
@@ -2645,6 +2722,21 @@
   padding-left: 14px;
   margin-left: 6px;
   border-left: 1px dashed var(--ce-border);
+  overflow: hidden;
+  animation: folderExpand 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes folderExpand {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+    transform: translateY(0);
+  }
 }
 
 .creation-node,
@@ -4553,4 +4645,537 @@ body.resizing-console * {
 
 .video-filter-invert {
   filter: invert(1) !important;
+}
+
+/* File Explorer Node Actions Group (VS Code style) */
+.node-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  margin-left: auto;
+  padding-right: 4px;
+}
+
+.tree-node:hover .node-actions-group,
+.tree-node.active .node-actions-group,
+.tree-node.selected-node .node-actions-group {
+  opacity: 1;
+}
+
+.node-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--ce-text-muted, #8e9aa9);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.node-action-btn:hover {
+  background: var(--ce-bg-active, rgba(255, 255, 255, 0.05));
+  color: var(--ce-text, #e6edf3);
+}
+
+.node-action-btn.delete-action:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Breadcrumbs Bar Above Editor (VS Code style) */
+.ce-breadcrumbs-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--ce-bg-code-header, #1b1b1b);
+  border-bottom: 1px solid var(--ce-border, rgba(255, 255, 255, 0.06));
+  padding: 6px 16px;
+  font-size: 0.75rem;
+  color: var(--ce-text-muted, #8e9aa9);
+  user-select: none;
+  font-family: var(--font-family-mono, monospace);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.ce-breadcrumbs-bar::-webkit-scrollbar {
+  height: 2px;
+}
+
+.ce-breadcrumbs-bar::-webkit-scrollbar-thumb {
+  background: var(--ce-border, rgba(255, 255, 255, 0.06));
+  border-radius: 2px;
+}
+
+.ce-breadcrumbs-room {
+  font-weight: 500;
+  color: var(--ce-text, #e6edf3);
+}
+
+.ce-breadcrumbs-separator {
+  color: var(--ce-text-muted, #8e9aa9);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.ce-breadcrumbs-item {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ce-breadcrumbs-item:hover {
+  color: var(--ce-accent, #ffa116);
+}
+
+.ce-breadcrumbs-item.is-folder {
+  color: var(--ce-text-muted, #8e9aa9);
+}
+
+.ce-breadcrumbs-item.is-file {
+  color: var(--ce-text, #e6edf3);
+}
+
+.ce-breadcrumbs-icon {
+  flex-shrink: 0;
+}
+
+/* Custom Confirm Modal */
+.ce-confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: ceFadeIn 0.2s ease-out;
+}
+
+.ce-confirm-modal {
+  background: rgba(22, 22, 22, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  padding: 24px;
+  animation: ceScaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: #e6edf3;
+  font-family: inherit;
+}
+
+.ce-confirm-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ce-confirm-modal-icon {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.ce-confirm-modal-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.ce-confirm-modal-body {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #8e9aa9;
+  margin-bottom: 24px;
+}
+
+.ce-confirm-modal-body strong {
+  color: #e6edf3;
+}
+
+.ce-confirm-modal-warning {
+  display: block;
+  margin-top: 10px;
+  color: #e0af68;
+  background: rgba(224, 175, 104, 0.08);
+  border-left: 3px solid #e0af68;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.ce-confirm-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.ce-confirm-btn-cancel,
+.ce-confirm-btn-delete {
+  font-size: 0.825rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.ce-confirm-btn-cancel {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e6edf3;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ce-confirm-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.ce-confirm-btn-delete {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.ce-confirm-btn-delete:hover {
+  background: #dc2626;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes ceFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ceScaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Minimized Call Floating Pill CSS */
+.ce-minimized-call-pill {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  height: 40px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 20px;
+  padding: 0 8px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 99999;
+  font-family: inherit;
+  animation: cePillSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ce-minimized-call-pill:hover {
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 25px rgba(34, 197, 94, 0.25), 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.minimized-call-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #22c55e;
+  animation: livePulse 1.5s infinite ease-in-out;
+}
+
+.minimized-phone-icon {
+  color: #22c55e;
+}
+
+.minimized-call-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  white-space: nowrap;
+}
+
+.minimized-call-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.minimized-action-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  color: #9ca3af;
+  transition: all 0.2s ease;
+}
+
+.minimized-action-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.minimized-action-btn.leave:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Call In Progress Glow Styles (Join Call states) */
+.call-in-progress-glow {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: #4ade80 !important;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.2) !important;
+  animation: callGlowPulse 2s infinite ease-in-out;
+}
+
+.call-in-progress-glow:hover {
+  background-color: rgba(34, 197, 94, 0.22) !important;
+  border-color: rgba(34, 197, 94, 0.6) !important;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.35) !important;
+}
+
+.call-pulse-icon {
+  animation: callPulse 1.5s infinite ease-in-out;
+}
+
+/* Keyframes */
+@keyframes livePulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px #22c55e; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+@keyframes callGlowPulse {
+  0% { border-color: rgba(34, 197, 94, 0.4); box-shadow: 0 0 12px rgba(34, 197, 94, 0.2); }
+  50% { border-color: rgba(34, 197, 94, 0.7); box-shadow: 0 0 18px rgba(34, 197, 94, 0.4); }
+  100% { border-color: rgba(34, 197, 94, 0.4); box-shadow: 0 0 12px rgba(34, 197, 94, 0.2); }
+}
+
+@keyframes callPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes cePillSlideIn {
+  from { transform: translateX(30px) scale(0.9); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+/* Console toggle button styling */
+.ce-console-toggle-btn {
+  background: rgba(30, 41, 59, 0.7); /* Dark semi-transparent background */
+  border: 1px solid rgba(56, 189, 248, 0.3); /* Cyan border when expanded */
+  color: #38bdf8; /* Cyber blue/cyan when open */
+  border-radius: 6px;
+  width: 28px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.ce-console-toggle-btn svg {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ce-console-toggle-btn.expanded svg {
+  transform: rotate(0deg);
+}
+
+/* If collapsed, it pulses and the chevron points up */
+.ce-console-toggle-btn.collapsed-pulse {
+  background: rgba(245, 158, 11, 0.12); /* Amber tint when collapsed */
+  border-color: rgba(245, 158, 11, 0.45); /* Amber border */
+  color: #f59e0b; /* Amber/orange text/chevron */
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+  animation: consoleTogglePulse 2s infinite ease-in-out;
+}
+
+.ce-console-toggle-btn.collapsed-pulse svg {
+  transform: rotate(180deg);
+}
+
+.ce-console-toggle-btn:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.7);
+  color: #ffffff;
+  transform: scale(1.15);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+}
+
+.ce-console-toggle-btn.collapsed-pulse:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.85);
+  color: #ffffff;
+  transform: scale(1.15);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.65);
+  animation-play-state: paused; /* Pause pulsing on hover */
+}
+
+@keyframes consoleTogglePulse {
+  0% {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.55);
+    border-color: rgba(245, 158, 11, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+}
+
+/* Follower Invite Modal styling */
+.ce-invite-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.ce-invite-card {
+  width: 400px;
+  background: #0f0f15;
+  border: 1px solid var(--ce-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.ce-invite-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--ce-border);
+}
+
+.ce-invite-modal-header h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.ce-invite-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--ce-text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.ce-invite-close-btn:hover {
+  color: #ffffff;
+}
+
+.ce-invite-search-bar {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--ce-border);
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.ce-invite-search-bar .search-icon {
+  position: absolute;
+  left: 32px;
+  color: var(--ce-text-muted);
+  pointer-events: none;
+}
+
+.ce-invite-search-bar input {
+  width: 100%;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--ce-border);
+  border-radius: 6px;
+  padding: 0 10px 0 32px;
+  font-size: 0.78rem;
+  color: var(--ce-text);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.ce-invite-search-bar input:focus {
+  border-color: var(--ce-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ce-invite-candidates-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.ce-invite-candidate-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-bottom: 2px;
+}
+
+.ce-invite-candidate-item:hover {
+  background-color: var(--ce-hover);
+}
+
+.ce-invite-candidate-item.selected {
+  background-color: rgba(170, 59, 255, 0.08);
 }

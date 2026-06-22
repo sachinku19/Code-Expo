@@ -18,7 +18,6 @@ import {
   Grid,
   Wifi,
   WifiOff,
-  Activity,
   Users,
   ChevronLeft,
   ChevronRight,
@@ -124,10 +123,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   // Socket & presence states
   const [activeCursors, setActiveCursors] = useState({});
   const [activeDrawings, setActiveDrawings] = useState({});
-  const [activities, setActivities] = useState([]);
   const [socketConnected, setSocketConnected] = useState(socket.connected);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
-  const [activityCollapsed, setActivityCollapsed] = useState(false);
 
   // Initialize room data
   useEffect(() => {
@@ -200,10 +197,6 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
       }
     };
 
-    const handleActivity = (data) => {
-      setActivities((prev) => [data, ...prev].slice(0, 15));
-    };
-
     const handleClear = () => {
       setElements([]);
       setActiveDrawings({});
@@ -214,14 +207,12 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     socket.on("cursor-move", handleCursorMove);
     socket.on("draw-element-update", handleDrawUpdate);
     socket.on("sync-whiteboard", handleSyncWhiteboard);
-    socket.on("whiteboard-activity", handleActivity);
     socket.on("clear-board", handleClear);
 
     return () => {
       socket.off("cursor-move", handleCursorMove);
       socket.off("draw-element-update", handleDrawUpdate);
       socket.off("sync-whiteboard", handleSyncWhiteboard);
-      socket.off("whiteboard-activity", handleActivity);
       socket.off("clear-board", handleClear);
     };
   }, [historyIndex]);
@@ -951,9 +942,9 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   };
 
   // Clear Board action
-  const handleClearBoard = () => {
+  const handleClearBoard = async () => {
     if (currentUserRole === "VIEWER") return;
-    const confirmClear = window.confirm("Are you sure you want to clear the whiteboard?");
+    const confirmClear = await window.showConfirm("Are you sure you want to clear the whiteboard?", "Clear Whiteboard", "warning");
     if (!confirmClear) return;
 
     setElements([]);
@@ -1522,44 +1513,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
         </button>
       </div>
 
-      {/* 9. Bottom Right Activity Feed */}
-      {activities.length > 0 && (
-        <div className="whiteboard-activity-feed wb-glass-panel">
-          <p className="wb-panel-title" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <Activity size={12} /> Live Activity
-          </p>
-          <div className="wb-feed-list">
-            {activities.map((act) => (
-              <div key={act.id} className="wb-feed-item" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <div className="wb-feed-avatar-circle" style={{
-                  width: "18px",
-                  height: "18px",
-                  borderRadius: "50%",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "8px",
-                  fontWeight: "bold",
-                  color: "#fff",
-                  backgroundColor: getCursorColor(act.username)
-                }}>
-                  {act.avatar ? (
-                    <img src={act.avatar} alt={act.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    act.username?.charAt(0).toUpperCase() || "U"
-                  )}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span className="wb-feed-name">{act.username}</span>
-                  <span style={{ fontSize: "0.7rem", opacity: 0.85 }}>{act.action}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

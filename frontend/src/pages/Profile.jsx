@@ -339,6 +339,18 @@ const Profile = () => {
       likedRooms.find(r => r.roomId === targetRoomId) ||
       savedRooms.find(r => r.roomId === targetRoomId) ||
       { roomId: targetRoomId, title: "Workspace Room" };
+
+    const isOwner = room.createdBy === authUser?.id || room.createdBy?._id === authUser?.id || room.createdBy === authUser?._id || room.createdBy?._id === authUser?._id;
+    const isParticipant = room.participants?.some(p => {
+      const pId = p.user?._id || p.user?.id || p.user || p._id || p;
+      return String(pId) === String(authUser?.id || authUser?._id);
+    });
+
+    if (isOwner || isParticipant) {
+      navigate(`/editor/${targetRoomId}`);
+      return;
+    }
+
     setJoinTargetRoom(room);
     setShowJoinConfirmModal(true);
   };
@@ -1008,21 +1020,18 @@ const Profile = () => {
                   <button
                     className="ce-btn-primary"
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       setIsJoiningRoom(true);
                       const roomId = joinTargetRoom.roomId;
-                      setTimeout(async () => {
-                        try {
-                          await proceedJoinRoom(roomId);
-                          setShowJoinConfirmModal(false);
-                          setIsJoiningRoom(false);
-                          setJoinTargetRoom(null);
-                        } catch (error) {
-                          setIsJoiningRoom(false);
-                          setJoinTargetRoom(null);
-                          setShowJoinConfirmModal(false);
-                        }
-                      }, 2500);
+                      try {
+                        await proceedJoinRoom(roomId);
+                      } catch (error) {
+                        console.error("Join room error:", error);
+                      } finally {
+                        setIsJoiningRoom(false);
+                        setJoinTargetRoom(null);
+                        setShowJoinConfirmModal(false);
+                      }
                     }}
                   >
                     Yes, Join Room

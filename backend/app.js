@@ -14,6 +14,7 @@ const workspaceRoutes=require("./routes/workspaceRoutes");
 const userRoutes=require("./routes/userRoutes");
 const socialRoutes=require("./routes/socialRoutes");
 const collaborationRoutes=require("./routes/collaborationRoutes");
+const directMessageRoutes=require("./routes/directMessageRoutes");
 const websiteRatingRoutes=require("./routes/websiteRatingRoutes");
 const adminRoutes=require("./routes/adminRoutes");
 const announcementRoutes=require("./routes/announcementRoutes");
@@ -62,6 +63,9 @@ app.use("/api/social",socialRoutes);
 
 //collaboration
 app.use("/api/collaboration",collaborationRoutes);
+
+//direct messages
+app.use("/api/direct-messages",directMessageRoutes);
 
 //website rating
 app.use("/api/website-rating",websiteRatingRoutes);

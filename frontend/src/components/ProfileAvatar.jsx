@@ -195,7 +195,7 @@ export default function ProfileAvatar() {
 
   // Delete Avatar
   const handleDeleteAvatar = async () => {
-    const confirmDelete = window.confirm("Are you sure you want to remove your profile picture?");
+    const confirmDelete = await window.showConfirm("Are you sure you want to remove your profile picture?", "Delete Profile Picture", "warning");
     if (!confirmDelete) return;
 
     setLoading(true);

@@ -702,14 +702,64 @@ body {
   padding: 0;
 }
 
-.sidebar-nav-icon {
+.sidebar-nav-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   margin-right: 14px;
-  transition: margin-right 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s ease;
+  transition: margin-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.ce-sidebar.collapsed .sidebar-nav-icon {
+.ce-sidebar.collapsed .sidebar-nav-icon-wrapper {
   margin-right: 0;
+}
+
+.sidebar-nav-icon-inner {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.drawer-nav-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-badge-count-red {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background-color: #ef4444; /* bright red */
+  color: #ffffff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  box-shadow: 0 0 0 2px var(--ce-surface, #1e1e2e); /* cutout look */
+  pointer-events: none;
+  z-index: 10;
+  animation: pulse-badge-red 2s infinite;
+}
+
+@keyframes pulse-badge-red {
+  0% {
+    box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.4), 0 0 0 2px var(--ce-surface, #1e1e2e);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0), 0 0 0 2px var(--ce-surface, #1e1e2e);
+  }
+  100% {
+    box-shadow: 0 0 0 0px rgba(239, 68, 68, 0), 0 0 0 2px var(--ce-surface, #1e1e2e);
+  }
 }
 
 .sidebar-nav-btn:hover {
@@ -717,14 +767,13 @@ body {
   color: var(--ce-text-h);
 }
 
-.sidebar-nav-btn:hover .sidebar-nav-icon {
+.sidebar-nav-btn:hover .sidebar-nav-icon-inner {
   transform: scale(1.05);
 }
 
 .sidebar-nav-btn.active {
   background-color: var(--ce-sidebar-active-bg) !important;
-  color: var(--ce-accent, #6366F1) !important;
-  font-weight: 600;
+  opacity: 0.95;
 }
 
 .sidebar-nav-btn.active::before {
@@ -732,7 +781,7 @@ body {
   transform: translateY(-50%) scaleY(1);
 }
 
-.sidebar-nav-btn.active .sidebar-nav-icon {
+.sidebar-nav-btn.active .sidebar-nav-icon-inner {
   color: var(--ce-accent, #6366F1);
 }
 
@@ -1786,4 +1835,86 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Hide main sidebar and reset margin when inside a workspace/room */
+.ce-sidebar.room-active {
+  display: none !important;
+}
+.ce-main-content.room-active {
+  margin-left: 0 !important;
+  margin-bottom: 0 !important;
+}
+.ce-mobile-bottom-nav.room-active {
+  display: none !important;
+}
+
+/* Call Hover Dropdown Styles */
+.ce-call-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.ce-call-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background-color: var(--ce-bg-drawer, #0b0b0f) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.09));
+  border-radius: var(--border-radius-sm, 8px);
+  width: 140px;
+  padding: 4px 0;
+  box-shadow: var(--ce-shadow, 0 10px 30px rgba(0, 0, 0, 0.5));
+  z-index: 100;
+  animation: dropdownFadeIn 0.15s ease-out;
+}
+
+/* Hover trigger */
+.ce-call-dropdown-wrapper:hover .ce-call-dropdown-menu {
+  display: block;
+}
+
+/* Buffer area to prevent accidental pointer leave */
+.ce-call-dropdown-wrapper::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: transparent;
+}
+
+.ce-call-dropdown-item {
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ce-text, #cbd5e1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: var(--transition-fast, 0.12s) ease;
+}
+
+.ce-call-dropdown-item:hover {
+  background-color: var(--ce-hover, rgba(170, 59, 255, 0.08));
+  color: var(--ce-accent, #aa3bff);
+}
+
+.ce-call-dropdown-item svg {
+  color: var(--ce-text-muted);
+  transition: color 0.12s ease;
+}
+
+.ce-call-dropdown-item:hover svg {
+  color: var(--ce-accent, #aa3bff);
 }

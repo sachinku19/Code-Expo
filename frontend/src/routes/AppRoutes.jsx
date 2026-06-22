@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, createContext, useContext, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import GateOverlay from "../components/GateOverlay";
+import { ModalProvider } from "../context/ModalContext";
 
 // Lazy loaded page components
 const Home = lazy(() => import("../pages/Home"));
@@ -92,22 +93,24 @@ const UserProfileRedirect = () => {
 const AppRoutes = () => {
   return (
     <BrowserRouter>
-      <GateTransitionProvider>
-        <Suspense fallback={<RouteLoader />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Auth mode="login" />} />
-            <Route path="/register" element={<Auth mode="register" />} />
-            <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
-            <Route path="/user/:userId" element={<UserProfileRedirect />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
-            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            <Route path="/reset-password/:token" element={<ResetPassword />} />
-          </Routes>
-        </Suspense>
-        <AIChatbot />
-      </GateTransitionProvider>
+      <ModalProvider>
+        <GateTransitionProvider>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Auth mode="login" />} />
+              <Route path="/register" element={<Auth mode="register" />} />
+              <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
+              <Route path="/user/:userId" element={<UserProfileRedirect />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
+            </Routes>
+          </Suspense>
+          <AIChatbot />
+        </GateTransitionProvider>
+      </ModalProvider>
     </BrowserRouter>
   );
 };

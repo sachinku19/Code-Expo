@@ -3,7 +3,12 @@ import { createPortal } from "react-dom";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import MonacoEditor, { DiffEditor } from "@monaco-editor/react";
 import socket from "../socket/socket";
-import { getRoom, leaveRoom, deleteRoom, getRecentRooms, createRoom, removeUser, promoteUser, demoteUser, changeRole, kickUser, muteUser } from "../services/roomService";
+
+import * as Y from "yjs";
+import { MonacoBinding } from "y-monaco";
+import * as awarenessProtocol from "y-protocols/awareness.js";
+import { getRoom, leaveRoom, deleteRoom, getRecentRooms, createRoom, removeUser, promoteUser, demoteUser, changeRole, kickUser, muteUser, sendWorkspaceInvites } from "../services/roomService";
+import { getFollowers } from "../services/socialService";
 import { runCode } from "../services/compilerService";
 import { getMessage } from "../services/messageService";
 import Whiteboard from "../components/Whiteboard";
@@ -15,6 +20,7 @@ import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../services/authService";
 import {
   FolderOpen,
+  Folder,
   BookOpen,
   Activity,
   History,
@@ -27,6 +33,7 @@ import {
   Send,
   Play,
   LogOut,
+  DoorOpen,
   Trash2,
   Terminal,
   Code2,
@@ -42,6 +49,7 @@ import {
   Layers,
   Copy,
   Plus,
+  Minus,
   Check,
   X,
   Laptop,
@@ -140,10 +148,65 @@ function Editor() {
   const [notification, setNotification] = useState("");
   const [roomNotifications, setRoomNotifications] = useState([]);
 
+  // Invite Followers Modal State
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [selectedFollowers, setSelectedFollowers] = useState(new Set());
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [sendingInvites, setSendingInvites] = useState(false);
+  const [inviteSearchQuery, setInviteSearchQuery] = useState("");
+
+  const handleOpenInviteModal = async () => {
+    setIsInviteModalOpen(true);
+    setLoadingFollowers(true);
+    setSelectedFollowers(new Set());
+    setInviteSearchQuery("");
+    try {
+      const res = await getFollowers(user.id || user._id);
+      if (res.success) {
+        setFollowers(res.followers || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch followers:", err);
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  const toggleSelectFollower = (followerId) => {
+    setSelectedFollowers(prev => {
+      const updated = new Set(prev);
+      if (updated.has(followerId)) {
+        updated.delete(followerId);
+      } else {
+        updated.add(followerId);
+      }
+      return updated;
+    });
+  };
+
+  const handleSendInvites = async () => {
+    if (selectedFollowers.size === 0) return;
+    setSendingInvites(true);
+    try {
+      const res = await sendWorkspaceInvites(roomId, Array.from(selectedFollowers));
+      if (res.success) {
+        setIsInviteModalOpen(false);
+        triggerNotification("Invitations sent successfully!");
+      }
+    } catch (err) {
+      console.error("Failed to send invitations:", err);
+      triggerNotification("Failed to send invites.");
+    } finally {
+      setSendingInvites(false);
+    }
+  };
+
   // Multi-file Workspace States
   const [tabs, setTabs] = useState([]);
   const [activeFileId, setActiveFileId] = useState(null);
   const [editorLanguage, setEditorLanguage] = useState("javascript");
+  const [explorerPath, setExplorerPath] = useState([]);
   const hasAutoSelectedRef = useRef(false);
 
   const activeFileIdRef = useRef(activeFileId);
@@ -151,39 +214,110 @@ function Editor() {
     activeFileIdRef.current = activeFileId;
   }, [activeFileId]);
 
+  const ydocRef = useRef(null);
+  const bindingRef = useRef(null);
+  const awarenessRef = useRef(null);
+  const isApplyingYjsUpdateRef = useRef(false);
+
   const loadCollaborationState = async (targetRoomId, targetFileId) => {
     if (!targetRoomId) return;
     try {
-      const ownershipRes = await collabService.fetchLineOwnership(targetRoomId, targetFileId);
+      const [ownershipRes, versionsRes, activitiesRes] = await Promise.all([
+        collabService.fetchLineOwnership(targetRoomId, targetFileId).catch(err => {
+          console.error("Error fetching ownership:", err);
+          return { ownership: [] };
+        }),
+        collabService.fetchVersionHistory(targetRoomId, targetFileId).catch(err => {
+          console.error("Error fetching versions:", err);
+          return { versions: [] };
+        }),
+        collabService.fetchEditActivities(targetRoomId, targetFileId).catch(err => {
+          console.error("Error fetching activities:", err);
+          return { activities: [] };
+        })
+      ]);
+
       setLineOwnership(ownershipRes.ownership || []);
-
-      const versionsRes = await collabService.fetchVersionHistory(targetRoomId, targetFileId);
       setVersions(versionsRes.versions || []);
-
-      const activitiesRes = await collabService.fetchEditActivities(targetRoomId, targetFileId);
       setCollabActivities(activitiesRes.activities || []);
     } catch (err) {
       console.error("Error loading collaboration state:", err);
     }
   };
 
-  const handleFileSelect = async (fileId) => {
+  const getFileIconInfo = (name) => {
+    const ext = name.split(".").pop().toLowerCase();
+    let color = "#8e9aa9"; // default gray
+    if (ext === "js" || ext === "jsx") color = "#f1e05a"; // JavaScript yellow
+    else if (ext === "py") color = "#3572A5"; // Python blue
+    else if (ext === "cpp" || ext === "h" || ext === "hpp" || ext === "c") color = "#f34b7d"; // C++ red
+    else if (ext === "java") color = "#b07219"; // Java brown
+    else if (ext === "html") color = "#e34c26"; // HTML orange
+    else if (ext === "css") color = "#563d7c"; // CSS purple
+    else if (ext === "json") color = "#db5858"; // JSON reddish
+    return { color };
+  };
+
+  const handlePathChange = (path) => {
+    setExplorerPath(path);
+  };
+
+  const handleFileSelect = async (fileId, fileInfo = null) => {
     try {
+      // 1. Save current code in tabs before switching away
+      if (activeFileIdRef.current) {
+        setTabs((prev) =>
+          prev.map((t) =>
+            t._id === activeFileIdRef.current ? { ...t, content: code } : t
+          )
+        );
+      }
+
+      // 2. Check if already open in tabs
+      const existingTab = tabs.find((t) => t._id === fileId);
+      if (existingTab) {
+        setActiveFileId(existingTab._id);
+        setCode(existingTab.content || "");
+        setEditorLanguage(existingTab.language || "javascript");
+        
+        // Load stats asynchronously
+        loadCollaborationState(roomId, existingTab._id);
+        return;
+      }
+
+      // 3. Not in tabs, but we have fileInfo
+      if (fileInfo) {
+        // Add optimistic tab safely
+        setTabs((prev) => {
+          const exists = prev.some((t) => t._id === fileId);
+          if (exists) return prev;
+          return [...prev, { ...fileInfo, content: "" }];
+        });
+        setActiveFileId(fileId);
+        setEditorLanguage(fileInfo.language || "javascript");
+        setCode("");
+      }
+
+      // 4. Fetch content from the server
       const data = await workspaceService.getFileContent(fileId);
       const file = data.file;
 
       setTabs((prev) => {
         const exists = prev.some((t) => t._id === file._id);
-        if (exists) return prev;
+        if (exists) {
+          return prev.map((t) => (t._id === file._id ? { ...t, content: file.content || "" } : t));
+        }
         return [...prev, file];
       });
 
-      setActiveFileId(file._id);
-      setCode(file.content || "");
+      // Update editor state if the user is still on this file
+      if (activeFileIdRef.current === file._id) {
+        setCode(file.content || "");
+      }
       setEditorLanguage(file.language || "javascript");
 
       // Load collaboration history, versions, and blame info for the file
-      await loadCollaborationState(roomId, file._id);
+      loadCollaborationState(roomId, file._id);
     } catch (err) {
       console.error("Error opening file:", err);
     }
@@ -255,7 +389,7 @@ function Editor() {
         item: createdItem
       });
 
-      await handleFileSelect(createdItem._id);
+      await handleFileSelect(createdItem._id, createdItem);
     } catch (err) {
       alert(err.response?.data?.message || "Failed to create file.");
     }
@@ -463,6 +597,7 @@ function Editor() {
     }
   };
   const [consoleHeight, setConsoleHeight] = useState(220); // console panel height in pixels
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false); // closed by default
   const [consoleTab, setConsoleTab] = useState("output"); // 'input' | 'output' | 'console'
   const [terminalOutput, setTerminalOutput] = useState("");
   const [terminalInputVal, setTerminalInputVal] = useState("");
@@ -472,6 +607,8 @@ function Editor() {
 
   // WebRTC Call States
   const [inCall, setInCall] = useState(false);
+  const [activeCallUsers, setActiveCallUsers] = useState([]);
+  const [isCallPanelMinimized, setIsCallPanelMinimized] = useState(false);
   const [callType, setCallType] = useState(null); // 'audio' | 'video'
   const [localStream, setLocalStream] = useState(null);
   const [remoteStreams, setRemoteStreams] = useState({}); // { [socketId]: { stream, username } }
@@ -658,6 +795,7 @@ function Editor() {
       const stream = await startLocalStream(type);
       setInCall(true);
       setCallType(type);
+      setIsCallPanelMinimized(false);
       setIsMuted(false);
       setIsCameraOff(false);
 
@@ -741,6 +879,7 @@ function Editor() {
 
     setInCall(false);
     setCallType(null);
+    setIsCallPanelMinimized(false);
     setIsMuted(false);
     setIsCameraOff(false);
 
@@ -1710,15 +1849,15 @@ function Editor() {
   useEffect(() => {
     const autoSelectEntryPoint = async () => {
       if (!roomId || roomId === "default" || hasAutoSelectedRef.current) return;
+      hasAutoSelectedRef.current = true; // Set synchronously immediately to prevent React race conditions!
       try {
         const data = await workspaceService.getWorkspaceTree(roomId);
         if (data && data.items) {
           const files = data.items.filter(item => item.type === "file");
           if (files.length > 0) {
-            hasAutoSelectedRef.current = true;
             const entry = files.find(f => f.isEntryPoint);
             const toSelect = entry || files[0];
-            await handleFileSelect(toSelect._id);
+            await handleFileSelect(toSelect._id, toSelect);
           }
         }
       } catch (err) {
@@ -2121,6 +2260,10 @@ function Editor() {
       });
     };
 
+    const handleActiveCallUsers = (callUsersList) => {
+      setActiveCallUsers(callUsersList || []);
+    };
+
     socket.on("user-joined", handleUserJoined);
     socket.on("room-users", handleRoomUsers);
     socket.on("user-avatar-updated", handleUserAvatarUpdated);
@@ -2161,6 +2304,7 @@ function Editor() {
     socket.on("webrtc-ice-candidate", handleWebRtcIceCandidate);
     socket.on("user-toggle-media", handleUserToggleMedia);
     socket.on("user-left-call", handleUserLeftCall);
+    socket.on("active-call-users", handleActiveCallUsers);
 
     return () => {
       socket.off("user-joined", handleUserJoined);
@@ -2203,6 +2347,7 @@ function Editor() {
       socket.off("webrtc-ice-candidate", handleWebRtcIceCandidate);
       socket.off("user-toggle-media", handleUserToggleMedia);
       socket.off("user-left-call", handleUserLeftCall);
+      socket.off("active-call-users", handleActiveCallUsers);
     };
   }, [privateRecipient, user.id, roomId, layoutMode, activeFileId]);
 
@@ -2228,21 +2373,219 @@ function Editor() {
 
   // Save Code state debounced (workspace file or single buffer fallback)
   useEffect(() => {
+    if (activeFileId) return; // Managed by Yjs sync on backend
     const timer = setTimeout(() => {
-      if (activeFileId) {
-        socket.emit("save-file-content", {
-          roomId,
-          fileId: activeFileId,
-          content: code,
-          userId: user.id,
-          username: user.username
-        });
-      } else {
-        socket.emit("save-code", { roomId, code });
-      }
+      socket.emit("save-code", { roomId, code });
     }, 2000);
     return () => clearTimeout(timer);
   }, [code, roomId, activeFileId]);
+
+  // Helper functions for base64 conversions in the browser
+  const base64ToUint8 = (base64) => {
+    const binaryString = window.atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  };
+
+  const uint8ToBase64 = (uint8) => {
+    let binary = "";
+    for (let i = 0; i < uint8.length; i++) {
+      binary += String.fromCharCode(uint8[i]);
+    }
+    return window.btoa(binary);
+  };
+
+  // Yjs Collaboration Engine Integration Hook
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco || !activeFileId) {
+      return;
+    }
+
+    let ydoc = null;
+    let binding = null;
+    let awareness = null;
+
+    // Join Yjs room/file session
+    socket.emit("yjs:join", { roomId, fileId: activeFileId });
+
+    const handleYjsInit = ({ fileId, update }) => {
+      if (fileId !== activeFileId) return;
+
+      try {
+        // Destroy any existing instances
+        if (binding) binding.destroy();
+        if (ydoc) ydoc.destroy();
+        if (awareness) awareness.destroy();
+
+        ydoc = new Y.Doc();
+        const ytext = ydoc.getText("monaco");
+
+        // Apply init state vector
+        const initBuffer = base64ToUint8(update);
+        isApplyingYjsUpdateRef.current = true;
+        try {
+          Y.applyUpdate(ydoc, initBuffer);
+        } finally {
+          isApplyingYjsUpdateRef.current = false;
+        }
+
+        // Update React code state
+        setCode(ytext.toString());
+
+        // Set up local text observer to keep React code state in sync
+        ytext.observe(() => {
+          setCode(ytext.toString());
+        });
+
+        // Initialize awareness for cursors & selections
+        awareness = new awarenessProtocol.Awareness(ydoc);
+        awareness.setLocalStateField("user", {
+          name: user?.username || "Collaborator",
+          color: getCursorColor(user?.username)
+        });
+
+        // Bind Yjs Text to Monaco Editor Model
+        binding = new MonacoBinding(
+          ytext,
+          editor.getModel(),
+          new Set([editor]),
+          awareness
+        );
+
+        ydocRef.current = ydoc;
+        bindingRef.current = binding;
+        awarenessRef.current = awareness;
+
+        // Local changes -> emit Yjs updates
+        ydoc.on("update", (update, origin) => {
+          if (origin !== socket) {
+            const updateBase64 = uint8ToBase64(update);
+            socket.emit("yjs:update", {
+              roomId,
+              fileId: activeFileId,
+              update: updateBase64
+            });
+          }
+        });
+
+        // Local awareness changes -> emit awareness updates
+        awareness.on("update", ({ added, updated, removed }) => {
+          const localChanges = awarenessProtocol.encodeAwarenessUpdate(awareness, [ydoc.clientID]);
+          socket.emit("yjs:awareness-update", {
+            fileId: activeFileId,
+            update: uint8ToBase64(localChanges)
+          });
+        });
+
+        // Track user presence and render cursor styling dynamically
+        const updateDynamicStyles = () => {
+          const styles = [];
+          awareness.getStates().forEach((state, clientID) => {
+            if (state.user) {
+              const { name, color } = state.user;
+              styles.push(`
+                .yRemoteSelection-${clientID} {
+                  background-color: ${color}25 !important;
+                }
+                .yRemoteSelectionHead-${clientID} {
+                  position: absolute;
+                  border-left: 2px solid ${color} !important;
+                  border-top: 2px solid ${color} !important;
+                  border-bottom: 2px solid ${color} !important;
+                  height: 100%;
+                  box-sizing: border-box;
+                }
+                .yRemoteSelectionHead-${clientID}::after {
+                  content: "${name}";
+                  position: absolute;
+                  top: -14px;
+                  left: 0;
+                  background: ${color};
+                  color: white;
+                  font-size: 9px;
+                  font-family: 'Inter', sans-serif;
+                  font-weight: bold;
+                  padding: 1px 4px;
+                  border-radius: 2px;
+                  white-space: nowrap;
+                  pointer-events: none;
+                  opacity: 0.85;
+                  z-index: 100;
+                }
+              `);
+            }
+          });
+
+          let styleTag = document.getElementById("yjs-dynamic-styles");
+          if (!styleTag) {
+            styleTag = document.createElement("style");
+            styleTag.id = "yjs-dynamic-styles";
+            document.head.appendChild(styleTag);
+          }
+          styleTag.innerHTML = styles.join("\n");
+        };
+
+        awareness.on("change", updateDynamicStyles);
+        updateDynamicStyles(); // initial call
+      } catch (err) {
+        console.error("Yjs Init error:", err);
+      }
+    };
+
+    const handleYjsUpdate = ({ fileId, update }) => {
+      if (fileId === activeFileId && ydoc) {
+        const updateUint8 = base64ToUint8(update);
+        isApplyingYjsUpdateRef.current = true;
+        try {
+          Y.applyUpdate(ydoc, updateUint8, socket);
+        } finally {
+          isApplyingYjsUpdateRef.current = false;
+        }
+      }
+    };
+
+    const handleYjsAwarenessUpdate = ({ fileId, update }) => {
+      if (fileId === activeFileId && awareness) {
+        const updateUint8 = base64ToUint8(update);
+        awarenessProtocol.applyAwarenessUpdate(awareness, updateUint8, socket);
+      }
+    };
+
+    socket.on("yjs:init", handleYjsInit);
+    socket.on("yjs:update", handleYjsUpdate);
+    socket.on("yjs:awareness-update", handleYjsAwarenessUpdate);
+
+    return () => {
+      // Clean up socket listeners
+      socket.off("yjs:init", handleYjsInit);
+      socket.off("yjs:update", handleYjsUpdate);
+      socket.off("yjs:awareness-update", handleYjsAwarenessUpdate);
+
+      // Notify leave
+      socket.emit("yjs:leave", { fileId: activeFileId });
+
+      // Clean up Yjs instances
+      if (binding) binding.destroy();
+      if (ydoc) ydoc.destroy();
+      if (awareness) awareness.destroy();
+
+      ydocRef.current = null;
+      bindingRef.current = null;
+      awarenessRef.current = null;
+
+      // Clean up dynamic styles
+      const styleTag = document.getElementById("yjs-dynamic-styles");
+      if (styleTag) {
+        styleTag.remove();
+      }
+    };
+  }, [activeFileId, editorRef.current, monacoRef.current]);
 
   // Handle Monaco Cursors delta decorations renderer
   useEffect(() => {
@@ -2450,11 +2793,11 @@ function Editor() {
         { token: "number", foreground: "79c0ff" },
       ],
       colors: {
-        "editor.background": "#0b0f17",
-        "editor.lineHighlightBackground": "#1e293b40",
-        "editorCursor.foreground": "#ffa116",
-        "editor.inactiveSelectionBackground": "#388bfd15",
-        "editor.selectionBackground": "#388bfd30",
+        "editor.background": "#121218",
+        "editor.lineHighlightBackground": "#aa3bff15",
+        "editorCursor.foreground": "#aa3bff",
+        "editor.inactiveSelectionBackground": "#aa3bff10",
+        "editor.selectionBackground": "#aa3bff25",
         "editor.lineHighlightBorder": "#00000000"
       }
     });
@@ -2468,11 +2811,11 @@ function Editor() {
         { token: "string", foreground: "0a3069" },
       ],
       colors: {
-        "editor.background": "#f6f8fa",
-        "editor.lineHighlightBackground": "#eaeef250",
-        "editorCursor.foreground": "#0969da",
-        "editor.inactiveSelectionBackground": "#add6ff30",
-        "editor.selectionBackground": "#add6ff",
+        "editor.background": "#ffffff",
+        "editor.lineHighlightBackground": "#8b5cf615",
+        "editorCursor.foreground": "#8b5cf6",
+        "editor.inactiveSelectionBackground": "#8b5cf610",
+        "editor.selectionBackground": "#8b5cf625",
         "editor.lineHighlightBorder": "#00000000"
       }
     });
@@ -2572,6 +2915,7 @@ function Editor() {
     // 3. Document edits listener
     const contentDisposable = editor.onDidChangeModelContent((event) => {
       if (playbackModeActiveRef.current) return;
+      if (isApplyingYjsUpdateRef.current) return;
 
       event.changes.forEach((change) => {
         const startLineNumber = change.range.startLineNumber;
@@ -2660,6 +3004,7 @@ function Editor() {
 
   // Compile runner handler
   const handleRunCode = () => {
+    setIsConsoleOpen(true);
     setConsoleTab("output");
     setTerminalOutput("");
     setIsTerminalExecuting(true);
@@ -2669,6 +3014,17 @@ function Editor() {
       activeFileId: activeFileIdRef.current || null,
       input: programInput
     });
+  };
+
+  const handleConsoleTabClick = (tab) => {
+    if (!isConsoleOpen) {
+      setIsConsoleOpen(true);
+      setConsoleTab(tab);
+    } else if (consoleTab === tab) {
+      setIsConsoleOpen(false);
+    } else {
+      setConsoleTab(tab);
+    }
   };
 
   // Socket actions
@@ -2687,12 +3043,11 @@ function Editor() {
     setJoinRequests((prev) => prev.filter((r) => r.userId !== request.userId));
   };
 
-  const handleLeaveRoomAction = async () => {
-    const confirmLeave = window.confirm("Are you sure you want to leave this room?");
-    if (!confirmLeave) return;
+  const handleExitWorkspaceAction = async () => {
+    const confirmExit = await window.showConfirm("Are you sure you want to exit this workspace?", "Exit Workspace", "warning");
+    if (!confirmExit) return;
     try {
       socket.emit("leave-room", { roomId });
-      await leaveRoom(roomId);
       localStorage.removeItem("ceLastActiveRoomId");
       navigate("/dashboard");
     } catch (error) {
@@ -2701,7 +3056,7 @@ function Editor() {
   };
 
   const handleDeleteRoomAction = async () => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this room?");
+    const confirmDelete = await window.showConfirm("Are you sure you want to delete this room? This action cannot be undone.", "Delete Room", "error");
     if (!confirmDelete) return;
     try {
       socket.emit("room-deleted", { roomId });
@@ -2748,9 +3103,9 @@ function Editor() {
     setMessage("");
   };
 
-  const handleDeleteMessage = (messageId) => {
+  const handleDeleteMessage = async (messageId) => {
     if (!messageId) return;
-    const confirmDelete = window.confirm("Are you sure you want to delete this message?");
+    const confirmDelete = await window.showConfirm("Are you sure you want to delete this message?", "Delete Message", "warning");
     if (!confirmDelete) return;
     socket.emit("delete-message", { roomId, messageId, userId: user.id });
   };
@@ -2934,7 +3289,7 @@ function Editor() {
           setLeftSidebarCollapsed(false);
           break;
         case "leave-room":
-          handleLeaveRoomAction();
+          handleExitWorkspaceAction();
           break;
         default:
           break;
@@ -3006,6 +3361,7 @@ function Editor() {
       callType={callType}
       onJoinCall={showCallButtons ? handleJoinCall : null}
       onLeaveCall={handleLeaveCall}
+      activeCallUsers={activeCallUsers}
     >
       <div className={`ce-editor-page mobile-tab-${mobileTab}`}>
         {/* Main Core Body */}
@@ -3121,6 +3477,7 @@ function Editor() {
                     onFileSelect={handleFileSelect}
                     openTabs={tabs}
                     onFileDelete={handleFileDelete}
+                    onPathChange={handlePathChange}
                   />
                 )}
 
@@ -3333,7 +3690,7 @@ function Editor() {
                                 <button
                                   className="version-action-btn restore"
                                   onClick={async () => {
-                                    const confirmRestore = window.confirm("Are you sure you want to restore the file to this version snapshot?");
+                                    const confirmRestore = await window.showConfirm("Are you sure you want to restore the file to this version snapshot?", "Restore Snapshot", "warning");
                                     if (confirmRestore) {
                                       try {
                                         await collabService.restoreVersion(roomId, activeFileIdRef.current, ver.versionId);
@@ -3695,41 +4052,17 @@ function Editor() {
                   <option value={editorLanguage}>{editorLanguage.toUpperCase()}</option>
                 </select>
 
-                <button
-                  className={`btn-save-code ce-btn-icon ${blameMode ? "active" : ""}`}
-                  onClick={() => setBlameMode(!blameMode)}
-                  title="Toggle Code Ownership (Git Blame)"
-                  style={{
-                    backgroundColor: blameMode ? "rgba(88, 166, 255, 0.15)" : "transparent",
-                    borderColor: blameMode ? "#58a6ff" : "var(--ce-border)",
-                    color: blameMode ? "#58a6ff" : "#e6edf3",
-                    marginRight: "8px"
-                  }}
-                >
-                  <Users size={12} style={{ marginRight: "4px" }} />
-                  <span>Blame</span>
-                </button>
+
 
                 <button
-                  className={`btn-save-code ce-btn-icon ${isFullscreen ? "active" : ""}`}
+                  className={`btn-fullscreen-toggle ${isFullscreen ? "active" : ""}`}
                   onClick={toggleFullscreen}
                   title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-                  style={{
-                    backgroundColor: isFullscreen ? "rgba(255, 161, 22, 0.15)" : "transparent",
-                    borderColor: isFullscreen ? "#ffa116" : "var(--ce-border)",
-                    color: isFullscreen ? "#ffa116" : "#e6edf3",
-                    marginRight: "8px"
-                  }}
                 >
-                  {isFullscreen ? <Minimize2 size={12} style={{ marginRight: "4px" }} /> : <Maximize2 size={12} style={{ marginRight: "4px" }} />}
-                  <span>{isFullscreen ? "Window" : "Full Screen"}</span>
+                  {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
 
-                {currentUserRole !== "VIEWER" && (
-                  <button className="btn-save-code ce-btn-icon" onClick={handleSaveCode} title="Save file state" style={{ marginRight: "8px" }}>
-                    <span>Save</span>
-                  </button>
-                )}
+
               </div>
             </div>
 
@@ -3742,100 +4075,118 @@ function Editor() {
                   display: layoutMode === "whiteboard" ? "none" : "block"
                 }}
               >
-                {activeFileId ? (
-                  <MonacoEditor
-                    height="100%"
-                    theme={editorTheme === "light" ? "custom-light" : "custom-dark"}
-                    language={editorLanguage}
-                    value={code}
-                    onChange={handleEditorChange}
-                    onMount={handleEditorMount}
-                    options={{
-                      readOnly: isPlaybackActive || currentUserRole === "VIEWER",
-                      fontSize: editorFontSize,
-                      fontFamily: editorFontFamily,
-                      minimap: { enabled: editorShowMinimap },
-                      tabSize: editorTabSize,
-                      wordWrap: editorWordWrap,
-                      lineNumbers: editorLineNumbers,
-                      quickSuggestions: editorSuggestions === "disabled" ? false : { other: true, comments: true, strings: true },
-                      suggestOnTriggerCharacters: editorSuggestions !== "disabled",
-                      acceptSuggestionOnEnter: editorSuggestions === "ai" ? "on" : "smart",
-                      snippetSuggestions: editorSuggestions === "disabled" ? "none" : "inline",
-                      detectIndentation: false,
-                      automaticLayout: true,
-                      scrollbar: {
-                        verticalScrollbarSize: 6,
-                        horizontalScrollbarSize: 6
-                      },
-                      cursorBlinking: editorCursorBlinking,
-                      cursorStyle: editorCursorStyle,
-                      cursorWidth: editorCursorStyle === "line" ? 2 : undefined,
-                      bracketPairColorization: { enabled: editorBracketColorization }
-                    }}
-                  />
-                ) : (
-                  <div className="vscode-welcome-screen">
-                    <div className="welcome-inner">
-                      <div className="welcome-header">
-                        <div className="welcome-logo">
-                          <Code2 size={40} className="logo-spark" />
+                <div className="ce-editor-pane-container" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                  {activeFileId && explorerPath.length > 0 && (
+                    <div className="ce-breadcrumbs-bar">
+                      <span className="ce-breadcrumbs-room">{room?.title || "Workspace"}</span>
+                      {explorerPath.map((item) => (
+                        <span key={item._id} className="ce-breadcrumbs-item-wrapper" style={{ display: "inline-flex", alignItems: "center" }}>
+                          <ChevronRight size={12} className="ce-breadcrumbs-separator" style={{ margin: "0 4px" }} />
+                          <span className={`ce-breadcrumbs-item ${item.type === "folder" ? "is-folder" : "is-file"}`}>
+                            {item.type === "folder" ? (
+                              <FolderOpen size={12} className="ce-breadcrumbs-icon folder" style={{ color: "#fca035", marginRight: "4px" }} />
+                            ) : (
+                              <FileCode size={12} className="ce-breadcrumbs-icon file" style={{ color: getFileIconInfo(item.name).color, marginRight: "4px" }} />
+                            )}
+                            {item.name}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {activeFileId ? (
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                      <MonacoEditor
+                        height="100%"
+                        theme={editorTheme === "light" ? "custom-light" : "custom-dark"}
+                        language={editorLanguage}
+                        value={activeFileId ? undefined : code}
+                        onChange={activeFileId ? undefined : handleEditorChange}
+                        onMount={handleEditorMount}
+                        options={{
+                          readOnly: isPlaybackActive || currentUserRole === "VIEWER",
+                          fontSize: editorFontSize,
+                          fontFamily: editorFontFamily,
+                          minimap: { enabled: editorShowMinimap },
+                          tabSize: editorTabSize,
+                          wordWrap: editorWordWrap,
+                          lineNumbers: editorLineNumbers,
+                          quickSuggestions: editorSuggestions === "disabled" ? false : { other: true, comments: true, strings: true },
+                          suggestOnTriggerCharacters: editorSuggestions !== "disabled",
+                          acceptSuggestionOnEnter: editorSuggestions === "ai" ? "on" : "smart",
+                          snippetSuggestions: editorSuggestions === "disabled" ? "none" : "inline",
+                          detectIndentation: false,
+                          automaticLayout: true,
+                          glyphMargin: false,
+                          lineDecorationsWidth: 5,
+                          lineNumbersMinChars: 3,
+                          scrollbar: {
+                            verticalScrollbarSize: 6,
+                            horizontalScrollbarSize: 6
+                          },
+                          cursorBlinking: editorCursorBlinking,
+                          cursorStyle: editorCursorStyle,
+                          cursorWidth: editorCursorStyle === "line" ? 2 : undefined,
+                          bracketPairColorization: { enabled: editorBracketColorization }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="vscode-welcome-screen" style={{ flex: 1 }}>
+                      <div className="welcome-inner">
+                        <div className="welcome-header">
+                          <div className="welcome-logo">
+                            <Code2 size={40} className="logo-spark" />
+                          </div>
+                          <h1 className="welcome-title">CodeExpo Workspace</h1>
+                          <p className="welcome-subtitle">A professional collaborative editor sandboxed in Docker</p>
                         </div>
-                        <h1 className="welcome-title">CodeExpo Workspace</h1>
-                        <p className="welcome-subtitle">A professional collaborative editor sandboxed in Docker</p>
-                      </div>
 
-                      <div className="welcome-sections-grid">
-                        <div className="welcome-section-card">
-                          <h3 className="section-card-title">
-                            <Sparkles size={14} style={{ marginRight: "6px" }} /> Start
-                          </h3>
-                          <ul className="welcome-actions-list">
-                            <li onClick={handleCreateFileFromWelcome}>
-                              <span className="action-icon"><FileCode size={14} /></span>
-                              <span className="action-text">New File...</span>
-                            </li>
-                            <li onClick={handleCreateFolderFromWelcome}>
-                              <span className="action-icon"><FolderOpen size={14} /></span>
-                              <span className="action-text">New Folder...</span>
-                            </li>
-                          </ul>
-                        </div>
+                        <div className="welcome-sections-grid">
+                          <div className="welcome-section-card">
+                            <h3 className="section-card-title">
+                              <Sparkles size={14} style={{ marginRight: "6px" }} /> Start
+                            </h3>
+                            <ul className="welcome-actions-list">
+                              <li onClick={handleCreateFileFromWelcome}>
+                                <span className="action-icon"><FileCode size={14} /></span>
+                                <span className="action-text">New File...</span>
+                              </li>
+                              <li onClick={handleCreateFolderFromWelcome}>
+                                <span className="action-icon"><FolderOpen size={14} /></span>
+                                <span className="action-text">New Folder...</span>
+                              </li>
+                            </ul>
+                          </div>
 
-                        <div className="welcome-section-card">
-                          <h3 className="section-card-title">
-                            <Terminal size={14} style={{ marginRight: "6px" }} /> Workspace Status
-                          </h3>
-                          <div className="workspace-status-details">
-                            <div className="status-row">
-                              <span className="status-label">Room ID:</span>
-                              <span className="status-value">{roomId}</span>
-                            </div>
-                            <div className="status-row">
-                              <span className="status-label">Active Users:</span>
-                              <span className="status-value">{users.length} connected</span>
-                            </div>
-                            <div className="status-row">
-                              <span className="status-label">Sandbox:</span>
-                              <span className="status-value secure-badge">Network Isolated, Read-only OS</span>
+                          <div className="welcome-section-card">
+                            <h3 className="section-card-title">
+                              <Terminal size={14} style={{ marginRight: "6px" }} /> Workspace Status
+                            </h3>
+                            <div className="workspace-status-details">
+                              <div className="status-row">
+                                <span className="status-label">Room ID:</span>
+                                <span className="status-value">{roomId}</span>
+                              </div>
+                              <div className="status-row">
+                                <span className="status-label">Active Users:</span>
+                                <span className="status-value">{users.length} connected</span>
+                              </div>
+                              <div className="status-row">
+                                <span className="status-label">Sandbox:</span>
+                                <span className="status-value secure-badge">Network Isolated, Read-only OS</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="welcome-help-footer">
-                        <p>💡 Tip: Use the explorer on the left to add, rename, drag-and-drop, or delete files.</p>
+                        <div className="welcome-help-footer">
+                          <p>💡 Tip: Use the explorer on the left to add, rename, drag-and-drop, or delete files.</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                <button
-                  className={`floating-whiteboard-btn ${layoutMode !== "editor" ? "active" : ""}`}
-                  onClick={toggleWhiteboard}
-                  title={layoutMode === "editor" ? "Open Whiteboard Split (60% Editor / 40% Whiteboard)" : "Close Whiteboard Split"}
-                >
-                  <Palette size={18} />
-                </button>
+                  )}
+                </div>
               </div>
 
               {/* Draggable Divider Handle */}
@@ -3862,43 +4213,58 @@ function Editor() {
             </div>
 
             {/* Drag Resize Handle for bottom panel */}
-            <div className="console-drag-handle" onMouseDown={startConsoleResizing} />
+            {isConsoleOpen && (
+              <div className="console-drag-handle" onMouseDown={startConsoleResizing} />
+            )}
 
             {/* 6. BOTTOM CONSOLE PANEL */}
-            <div className="ce-console-panel" style={{ height: `${consoleHeight}px` }}>
+            <div className="ce-console-panel" style={{ height: isConsoleOpen ? `${consoleHeight}px` : "32px" }}>
               <div className="console-tab-header">
                 <div className="console-tabs">
                   <button
                     className={`console-tab-btn ${consoleTab === "output" ? "active" : ""}`}
-                    onClick={() => setConsoleTab("output")}
+                    onClick={() => handleConsoleTabClick("output")}
                   >
                     <Laptop size={14} />
                     <span>Terminal Output</span>
                   </button>
                   <button
                     className={`console-tab-btn ${consoleTab === "input" ? "active" : ""}`}
-                    onClick={() => setConsoleTab("input")}
+                    onClick={() => handleConsoleTabClick("input")}
                   >
                     <FileText size={14} />
                     <span>Program Input (stdin)</span>
                   </button>
                   <button
                     className={`console-tab-btn ${consoleTab === "console" ? "active" : ""}`}
-                    onClick={() => setConsoleTab("console")}
+                    onClick={() => handleConsoleTabClick("console")}
                   >
                     <Activity size={14} />
                     <span>Execution Logs</span>
                   </button>
                 </div>
 
-                {currentUserRole !== "VIEWER" && (
-                  <div className="console-actions">
-                    <button className="ce-btn-run" onClick={handleRunCode}>
-                      <Play size={13} />
-                      <span>Run Program</span>
-                    </button>
-                  </div>
-                )}
+                <div className="console-actions">
+                  {currentUserRole !== "VIEWER" && (
+                    <>
+                      <button className="ce-btn-save" onClick={handleSaveCode} title="Save file content">
+                        <Download size={13} />
+                        <span>Save</span>
+                      </button>
+                      <button className="ce-btn-run" onClick={handleRunCode}>
+                        <Play size={13} />
+                        <span>Run Program</span>
+                      </button>
+                    </>
+                  )}
+                  <button 
+                    className={`ce-console-toggle-btn ${!isConsoleOpen ? "collapsed-pulse" : "expanded"}`}
+                    onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+                    title={isConsoleOpen ? "Collapse Panel" : "Expand Panel"}
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
               </div>
 
               <div className="console-tab-body">
@@ -3995,7 +4361,7 @@ function Editor() {
                 <section className="ce-right-section">
                   <div className="section-header">
                     <h3>PARTICIPANTS ({(room?.participants || []).length})</h3>
-                    <button type="button" className="ce-btn-xs" onClick={copyRoomId} title="Copy Room Invite Link">
+                    <button type="button" className="ce-btn-xs" onClick={handleOpenInviteModal} title="Invite Followers to Workspace">
                       <UserPlus size={11} />
                       <span>Invite</span>
                     </button>
@@ -4130,19 +4496,19 @@ function Editor() {
                         <>
                           <button
                             type="button"
-                            className="chat-call-btn"
+                            className={`chat-call-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
                             onClick={() => handleJoinCall("audio")}
-                            title="Start Audio Call"
+                            title={activeCallUsers && activeCallUsers.length > 0 ? "Join Active Audio Call" : "Start Audio Call"}
                           >
-                            <Phone size={14} />
+                            <Phone size={14} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
                           </button>
                           <button
                             type="button"
-                            className="chat-call-btn"
+                            className={`chat-call-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
                             onClick={() => handleJoinCall("video")}
-                            title="Start Video Call"
+                            title={activeCallUsers && activeCallUsers.length > 0 ? "Join Active Video Call" : "Start Video Call"}
                           >
-                            <Video size={14} />
+                            <Video size={14} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
                           </button>
                         </>
                       )}
@@ -4329,9 +4695,9 @@ function Editor() {
                       <span>Delete Room</span>
                     </button>
                   )}
-                  <button className="ce-btn-secondary ce-btn-block" onClick={handleLeaveRoomAction}>
-                    <LogOut size={14} />
-                    <span>Leave Workspace</span>
+                  <button className="ce-btn-secondary ce-btn-block" onClick={handleExitWorkspaceAction}>
+                    <DoorOpen size={14} />
+                    <span>Exit Workspace</span>
                   </button>
                 </div>
               </div>
@@ -4501,7 +4867,7 @@ function Editor() {
         )}
 
         {/* Floating Draggable WebRTC Call Panel */}
-        {inCall && createPortal(
+        {inCall && !isCallPanelMinimized && createPortal(
           <div
             className={`ce-floating-call-panel mode-${callLayoutMode}`}
             style={callLayoutMode === "floating" ? {
@@ -4517,6 +4883,13 @@ function Editor() {
                 <span>{callType === "video" ? "Video Call" : "Audio Call"}</span>
               </div>
               <div className="call-panel-header-actions">
+                <button
+                  className="call-header-action-btn"
+                  onClick={() => setIsCallPanelMinimized(true)}
+                  title="Minimize Call Panel"
+                >
+                  <Minus size={13} />
+                </button>
                 <button
                   className={`call-header-action-btn ${callLayoutMode === "floating" ? "active" : ""}`}
                   onClick={() => setCallLayoutMode("floating")}
@@ -4701,6 +5074,34 @@ function Editor() {
           document.body
         )}
 
+        {/* Minimized Call Floating Pill Portal Overlay */}
+        {inCall && isCallPanelMinimized && createPortal(
+          <div className="ce-minimized-call-pill">
+            <div className="minimized-call-indicator" onClick={() => setIsCallPanelMinimized(false)} style={{ cursor: "pointer" }}>
+              <span className="live-pulse-dot" />
+              <Phone size={14} className="minimized-phone-icon" />
+              <span className="minimized-call-label">Call Active ({Object.keys(remoteStreams).length + 1})</span>
+            </div>
+            <div className="minimized-call-actions">
+              <button 
+                className="minimized-action-btn restore" 
+                onClick={() => setIsCallPanelMinimized(false)}
+                title="Restore Call Panel"
+              >
+                <Maximize2 size={12} />
+              </button>
+              <button 
+                className="minimized-action-btn leave" 
+                onClick={handleLeaveCall}
+                title="Leave Call"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
         {/* Playback Controls Overlay */}
         {isPlaybackActive && (
           <div className="playback-controls-container">
@@ -4775,7 +5176,10 @@ function Editor() {
                     readOnly: true,
                     originalEditable: false,
                     minimap: { enabled: false },
-                    automaticLayout: true
+                    automaticLayout: true,
+                    glyphMargin: false,
+                    lineDecorationsWidth: 5,
+                    lineNumbersMinChars: 3
                   }}
                 />
               </div>
@@ -4790,7 +5194,7 @@ function Editor() {
                 <button
                   className="diff-footer-btn restore"
                   onClick={async () => {
-                    const confirmRestore = window.confirm("Are you sure you want to restore the file to this version snapshot?");
+                    const confirmRestore = await window.showConfirm("Are you sure you want to restore the file to this version snapshot?", "Restore Snapshot", "warning");
                     if (confirmRestore) {
                       try {
                         await collabService.restoreVersion(roomId, activeFileIdRef.current, diffVersion.versionId);
@@ -4936,6 +5340,129 @@ function Editor() {
         {/* Futuristic Exit Gate Animation Overlay */}
         {showGateOpenAnimation && (
           <GateOverlay exiting statusText="Decryption Complete" />
+        )}
+
+        {/* Invite Followers Modal */}
+        {isInviteModalOpen && (
+          <div className="ce-invite-modal-overlay">
+            <div className="ce-invite-card">
+              <div className="ce-invite-modal-header">
+                <h3>Invite Followers</h3>
+                <button type="button" className="ce-invite-close-btn" onClick={() => setIsInviteModalOpen(false)}>×</button>
+              </div>
+
+              <div className="ce-invite-search-bar">
+                <Search size={14} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search followers..."
+                  value={inviteSearchQuery}
+                  onChange={(e) => setInviteSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="ce-invite-candidates-list">
+                {loadingFollowers ? (
+                  <div className="candidates-loading" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "40px", fontSize: "0.8rem", color: "var(--ce-text-muted)", gap: "10px" }}>
+                    <div className="loading-spinner-small" />
+                    <span>Loading followers...</span>
+                  </div>
+                ) : followers.length === 0 ? (
+                  <div className="candidates-empty" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px", textAlign: "center", fontSize: "0.8rem", color: "var(--ce-text-muted)" }}>
+                    <User size={24} style={{ opacity: 0.3, marginBottom: "8px", alignSelf: "center" }} />
+                    <span>You don't have any followers yet</span>
+                  </div>
+                ) : followers.filter(f => f.username.toLowerCase().includes(inviteSearchQuery.toLowerCase())).length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "24px 0", color: "var(--ce-text-muted)", fontSize: "0.85rem" }}>
+                    No followers matching search query.
+                  </div>
+                ) : (
+                  followers
+                    .filter(f => f.username.toLowerCase().includes(inviteSearchQuery.toLowerCase()))
+                    .map((follower) => {
+                      const isAlreadyInRoom = room?.participants?.some(p => {
+                        const pUserId = p.user?._id || p.user;
+                        return String(pUserId) === String(follower._id);
+                      }) || (room && String(room.createdBy?._id || room.createdBy) === String(follower._id));
+
+                      const isSelected = selectedFollowers.has(follower._id);
+                      return (
+                        <div
+                          key={follower._id}
+                          className={`ce-invite-candidate-item ${isSelected ? "selected" : ""} ${isAlreadyInRoom ? "already-in-room" : ""}`}
+                          onClick={() => {
+                            if (!isAlreadyInRoom) {
+                              toggleSelectFollower(follower._id);
+                            }
+                          }}
+                          style={{
+                            opacity: isAlreadyInRoom ? 0.6 : 1,
+                            cursor: isAlreadyInRoom ? "not-allowed" : "pointer"
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isAlreadyInRoom ? true : isSelected}
+                            disabled={isAlreadyInRoom}
+                            onChange={() => {}} // Row onClick triggers it
+                            style={{ marginRight: "12px", cursor: isAlreadyInRoom ? "not-allowed" : "pointer", accentColor: "var(--ce-primary)" }}
+                          />
+                          {follower.avatar ? (
+                            <img src={follower.avatar} alt={follower.username} className="candidate-avatar" style={{ width: "32px", height: "32px", borderRadius: "50%", marginRight: "12px", border: "1px solid var(--ce-border)" }} />
+                          ) : (
+                            <div className="candidate-avatar-placeholder" style={{ width: "32px", height: "32px", borderRadius: "50%", marginRight: "12px", background: "var(--ce-primary)", color: "#fff", display: "grid", placeItems: "center", fontWeight: "bold", fontSize: "0.85rem" }}>
+                              {follower.username.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="candidate-info" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                            <span className="cand-name" style={{ fontSize: "0.82rem", fontWeight: "600", color: "var(--ce-text)", marginRight: "8px" }}>{follower.username}</span>
+                            {isAlreadyInRoom && (
+                              <span style={{ fontSize: "0.68rem", color: "var(--ce-success)", background: "rgba(16, 185, 129, 0.1)", padding: "2px 6px", borderRadius: "4px", fontWeight: "600" }}>Joined</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+
+              <div style={{ padding: "12px 16px", borderTop: "1px solid var(--ce-border)", display: "flex", justifyContent: "flex-end", gap: "10px", background: "rgba(0, 0, 0, 0.1)" }}>
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  style={{
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid var(--ce-border)",
+                    borderRadius: "6px",
+                    color: "var(--ce-text-muted)",
+                    padding: "6px 12px",
+                    fontSize: "0.75rem",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendInvites}
+                  disabled={selectedFollowers.size === 0 || sendingInvites}
+                  style={{
+                    background: selectedFollowers.size > 0 ? "var(--ce-primary)" : "rgba(170, 59, 255, 0.3)",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "6px 16px",
+                    fontSize: "0.75rem",
+                    fontWeight: "750",
+                    cursor: selectedFollowers.size > 0 ? "pointer" : "not-allowed"
+                  }}
+                >
+                  {sendingInvites ? "Sending..." : `Send Invites (${selectedFollowers.size})`}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </MainLayout>

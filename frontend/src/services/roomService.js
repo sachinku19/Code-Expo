@@ -282,3 +282,31 @@ export const muteUser = async (roomId, userId, mute) => {
     );
     return response.data;
 };
+
+export const sendWorkspaceInvites = async (roomId, userIds) => {
+    const token = localStorage.getItem("token");
+    const response = await API.post(
+        `/rooms/${roomId}/invite`,
+        { userIds },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};
+
+export const acceptWorkspaceInvite = async (roomId) => {
+    const token = localStorage.getItem("token");
+    const response = await API.post(
+        `/rooms/${roomId}/accept-invite`,
+        {},
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};

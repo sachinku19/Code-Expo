@@ -55,7 +55,7 @@ const createRoom = async (req, res) => {
                 type: "file",
                 content: defaultFile.content,
                 language: roomLanguage,
-                isEntryPoint: true,
+                isEntryPoint: false,
                 createdBy: req.user._id
             });
         }
@@ -944,6 +944,79 @@ const getRoomMembers = async (req, res) => {
     }
 };
 
+const sendWorkspaceInvites = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const { userIds } = req.body;
+        const currentUserId = req.user._id;
+        const { createAndSendNotification } = require("./notificationControllers");
+
+        if (!userIds || !Array.isArray(userIds)) {
+            return res.status(400).json({ success: false, message: "userIds array is required" });
+        }
+
+        const room = await Room.findOne({ roomId });
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        const isOwner = room.createdBy.toString() === currentUserId.toString();
+        const isParticipant = room.participants.some(p => p.user && p.user.toString() === currentUserId.toString());
+        if (!isOwner && !isParticipant) {
+            return res.status(403).json({ success: false, message: "Only room participants can send invites" });
+        }
+
+        const io = req.app.get("io");
+        for (const targetId of userIds) {
+            const isAlreadyJoined = room.participants.some(p => p.user && p.user.toString() === targetId.toString());
+            if (!isAlreadyJoined && String(room.createdBy) !== String(targetId)) {
+                await createAndSendNotification(targetId, currentUserId, "INVITE", "COLLABORATION", room._id, io);
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Invites sent successfully"
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const acceptWorkspaceInvite = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const userId = req.user._id;
+
+        const room = await Room.findOne({ roomId });
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        const isOwner = room.createdBy.toString() === userId.toString();
+        const alreadyJoined = room.participants.some(p => p.user && p.user.toString() === userId.toString());
+
+        if (!isOwner && !alreadyJoined) {
+            room.participants.push({ user: userId, role: "MEMBER" });
+            await room.save();
+            
+            const io = req.app.get("io");
+            if (io) {
+                const populatedRoom = await Room.findOne({ roomId }).populate("participants.user", "username email avatar");
+                io.to(roomId).emit("room-participants-update", populatedRoom.participants);
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            room,
+            message: "Joined room successfully via invitation"
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     createRoom,
     joinRoom,
@@ -963,5 +1036,7 @@ module.exports = {
     changeRole,
     kickUser,
     muteUser,
-    getRoomMembers
+    getRoomMembers,
+    sendWorkspaceInvites,
+    acceptWorkspaceInvite
 }

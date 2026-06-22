@@ -7,12 +7,14 @@ import {
   Pin, Search, Bell, Sun, Moon, LogOut, Terminal, Palette,
   Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle,
-  Globe, Bookmark, UserCheck, Trophy, Award
+  Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail
 } from "lucide-react";
+import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
 import * as messageService from "../services/messageService";
 import * as roomService from "../services/roomService";
 import * as socialService from "../services/socialService";
+import * as dmService from "../services/directMessageService";
 import { submitWebsiteRating, getWebsiteRatingInfo } from "../services/websiteRatingService";
 import "./MainLayout.css";
 import Logo from "../components/shared/Logo";
@@ -34,11 +36,13 @@ export default function MainLayout({
   onJoinCall = null,
   onLeaveCall = null,
   userXP = 0,
-  userRank = "Junior Coder"
+  userRank = "Junior Coder",
+  activeCallUsers = []
 }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useAuth();
+  const isRoomActive = roomId && roomId !== "default";
 
   // Sidebar state
   const [isPinned, setIsPinned] = useState(
@@ -53,6 +57,184 @@ export default function MainLayout({
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const [dbNotifications, setDbNotifications] = useState([]);
+  const [localNotifs, setLocalNotifs] = useState([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  const fetchDbNotifications = async () => {
+    try {
+      const res = await socialService.getNotifications(1, 10);
+      if (res && res.success) {
+        setUnreadNotifCount(res.unreadCount || 0);
+        const formatted = (res.notifications || []).map(n => ({
+          id: n._id,
+          message: `${n.sender?.username || "Someone"} ${
+            n.type === "FOLLOW" ? "followed you" :
+            n.type === "LIKE" ? `liked room "${n.targetRoom?.title || "workspace"}"` :
+            n.type === "BOOKMARK" ? `bookmarked room "${n.targetRoom?.title || "workspace"}"` :
+            n.type === "JOIN" ? `wants to join "${n.targetRoom?.title || "workspace"}"` :
+            n.type === "INVITE" ? `invited you to join workspace "${n.targetRoom?.title || "workspace"}"` :
+            "sent you a notification"
+          }`,
+          time: n.createdAt,
+          type: n.type,
+          roomId: n.targetRoom?.roomId
+        }));
+        setDbNotifications(formatted);
+      }
+    } catch (err) {
+      console.error("Error fetching notifications in MainLayout:", err);
+    }
+  };
+
+  const fetchUnreadMessageCount = async () => {
+    try {
+      const res = await dmService.getConversations();
+      if (res && res.success) {
+        const myId = user?.id || user?._id;
+        const count = (res.conversations || []).reduce((acc, conv) => {
+          const lastMsg = conv.lastMessage;
+          if (lastMsg && String(lastMsg.senderId) !== String(myId) && !lastMsg.isRead) {
+            return acc + 1;
+          }
+          return acc;
+        }, 0);
+        setUnreadMessageCount(count);
+      }
+    } catch (err) {
+      console.error("Error fetching conversations in MainLayout:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchDbNotifications();
+      fetchUnreadMessageCount();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const userId = user?.id || user?._id;
+    if (!userId) return;
+
+    const handleIncomingMessage = (msg) => {
+      if (String(msg.sender?._id || msg.sender) !== String(userId)) {
+        setUnreadMessageCount(c => c + 1);
+        const audio = new Audio("/message.mp3");
+        audio.play().catch(() => {});
+      }
+    };
+
+    const handleUnreadMessagesUpdate = () => {
+      fetchUnreadMessageCount();
+    };
+
+    const handleUnreadNotificationsUpdate = () => {
+      fetchDbNotifications();
+    };
+
+    socket.on("dm:receive", handleIncomingMessage);
+    window.addEventListener("ce-unread-messages-update", handleUnreadMessagesUpdate);
+    window.addEventListener("ce-unread-notifications-update", handleUnreadNotificationsUpdate);
+
+    return () => {
+      socket.off("dm:receive", handleIncomingMessage);
+      window.removeEventListener("ce-unread-messages-update", handleUnreadMessagesUpdate);
+      window.removeEventListener("ce-unread-notifications-update", handleUnreadNotificationsUpdate);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    const userId = user?.id || user?._id;
+    if (!userId) return;
+
+    socket.emit("register-user", userId);
+
+    const handleRealtimeNotif = (notif) => {
+      const formatted = {
+        id: notif._id,
+        message: `${notif.sender?.username || "Someone"} ${
+          notif.type === "FOLLOW" ? "followed you" :
+          notif.type === "LIKE" ? `liked room "${notif.targetRoom?.title || "workspace"}"` :
+          notif.type === "BOOKMARK" ? `bookmarked room "${notif.targetRoom?.title || "workspace"}"` :
+          notif.type === "JOIN" ? `wants to join "${notif.targetRoom?.title || "workspace"}"` :
+          notif.type === "INVITE" ? `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"` :
+          "sent you a notification"
+        }`,
+        time: notif.createdAt,
+        type: notif.type,
+        roomId: notif.targetRoom?.roomId
+      };
+
+      setDbNotifications(prev => {
+        if (prev.some(n => n.id === formatted.id)) return prev;
+        setUnreadNotifCount(c => c + 1);
+        return [formatted, ...prev];
+      });
+
+      // Play sound if in editor
+      if (roomId && roomId !== "default") {
+        const audio = new Audio("/notification.mp3");
+        audio.play().catch(() => {});
+      }
+    };
+
+    socket.on("notification-received", handleRealtimeNotif);
+    return () => {
+      socket.off("notification-received", handleRealtimeNotif);
+    };
+  }, [user, roomId]);
+
+  useEffect(() => {
+    const merged = [...(notifications || [])];
+    dbNotifications.forEach(dbN => {
+      if (!merged.some(m => m.id === dbN.id)) {
+        merged.push(dbN);
+      }
+    });
+    // Sort descending by time
+    merged.sort((a, b) => new Date(b.time) - new Date(a.time));
+    setLocalNotifs(merged);
+  }, [notifications, dbNotifications]);
+
+  const handleAcceptInvite = async (targetRoomId, notifId) => {
+    try {
+      await roomService.acceptWorkspaceInvite(targetRoomId);
+      await socialService.markNotificationsRead(notifId);
+      setDbNotifications(prev => prev.filter(n => n.id !== notifId));
+      setLocalNotifs(prev => prev.filter(n => n.id !== notifId));
+      setUnreadNotifCount(c => Math.max(0, c - 1));
+      navigate(`/editor/${targetRoomId}`);
+    } catch (err) {
+      console.error("Failed to accept workspace invite:", err);
+    }
+  };
+
+  const handleIgnoreInvite = async (notifId) => {
+    try {
+      await socialService.markNotificationsRead(notifId);
+      setDbNotifications(prev => prev.filter(n => n.id !== notifId));
+      setLocalNotifs(prev => prev.filter(n => n.id !== notifId));
+      setUnreadNotifCount(c => Math.max(0, c - 1));
+    } catch (err) {
+      console.error("Failed to ignore workspace invite:", err);
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      if (clearNotifications) {
+        clearNotifications();
+      }
+      await socialService.markNotificationsRead();
+      setDbNotifications([]);
+      setUnreadNotifCount(0);
+    } catch (err) {
+      console.error("Failed to clear notifications:", err);
+    }
+  };
 
   // Live stats ticker
   const [tickerIndex, setTickerIndex] = useState(0);
@@ -241,6 +423,7 @@ export default function MainLayout({
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (roomId && roomId !== "default") return;
       // Ctrl + K focus search
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -254,7 +437,7 @@ export default function MainLayout({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [roomId]);
 
   const getFilteredItems = () => {
     const q = searchQuery.toLowerCase().trim();
@@ -289,7 +472,7 @@ export default function MainLayout({
         { label: "Open Notes tab", action: { type: "action", action: "switch-tab", tab: "notes" }, icon: BookOpen },
         { label: "Open Activity tab", action: { type: "action", action: "switch-tab", tab: "activity" }, icon: Activity },
         { label: "Open Settings tab", action: { type: "action", action: "switch-tab", tab: "settings" }, icon: Settings },
-        { label: "Leave Room Workspace", action: { type: "action", action: "leave-room" }, icon: LogOut }
+        { label: "Exit Workspace", action: { type: "action", action: "leave-room" }, icon: DoorOpen }
       ];
       const matchedCommands = commands
         .filter(c => !q || c.label.toLowerCase().includes(q))
@@ -521,8 +704,8 @@ export default function MainLayout({
     { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard?tab=rooms&subtab=explore" },
     { id: "liverooms", label: "Live Rooms", icon: Activity, path: "/dashboard?tab=liverooms" },
     { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard?tab=myrooms" },
-    { id: "bookmarks", label: "Bookmarks", icon: Bookmark, path: "/dashboard?tab=bookmarks" },
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
+    { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
     { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
@@ -534,6 +717,11 @@ export default function MainLayout({
   }
 
   const handleMenuClick = (item) => {
+    if (item.id === "messages") {
+      fetchUnreadMessageCount();
+    } else if (item.id === "notifications") {
+      fetchDbNotifications();
+    }
     navigate(item.path);
   };
 
@@ -610,79 +798,81 @@ export default function MainLayout({
         </div>
 
         <div className="topnav-center">
-          <div ref={searchBoxRef} className="search-box">
-            <Search size={14} className="search-icon" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSelectedIndex(0);
-              }}
-              onFocus={() => setIsSearchFocused(true)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder={roomId && roomId !== "default" ? "Search functions, whiteboard..." : "Global search rooms, languages..."}
-            />
+          {!isRoomActive && (
+            <div ref={searchBoxRef} className="search-box">
+              <Search size={14} className="search-icon" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSelectedIndex(0);
+                }}
+                onFocus={() => setIsSearchFocused(true)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder={roomId && roomId !== "default" ? "Search functions, whiteboard..." : "Global search rooms, languages..."}
+              />
 
-            {!searchQuery && (
-              <span className="search-shortcut-hint">
-                Ctrl + K
-              </span>
-            )}
+              {!searchQuery && (
+                <span className="search-shortcut-hint">
+                  Ctrl + K
+                </span>
+              )}
 
-            {isSearchFocused && (
-              <>
-                <div className="search-dropdown-overlay" onClick={() => setIsSearchFocused(false)} />
-                <div className="search-dropdown-panel">
-                  {loadingSearchData ? (
-                    <div className="dropdown-empty">Loading search items...</div>
-                  ) : sections.length === 0 ? (
-                    <div className="dropdown-empty">No results found for "{searchQuery}"</div>
-                  ) : (
-                    sections.map((section, secIdx) => (
-                      <div key={secIdx} className="search-section">
-                        <div className="search-section-header">{section.title}</div>
-                        {section.items.map((item) => {
-                          const Icon = item.icon || Code2;
-                          const flatIndex = flatItems.findIndex(fi => fi.id === item.id);
-                          const isSelected = flatIndex === selectedIndex;
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              className={`search-result-item ${isSelected ? "selected" : ""}`}
-                              onClick={() => handleItemClick(item)}
-                              onMouseEnter={() => setSelectedIndex(flatIndex)}
-                            >
-                              {item.avatar !== undefined ? (
-                                <div className="user-avatar-small" style={{ backgroundColor: item.avatar ? "transparent" : getCursorColor(item.title), flexShrink: 0 }}>
-                                  {item.avatar ? (
-                                    <img src={item.avatar} alt={item.title} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                                  ) : (
-                                    item.title.charAt(0).toUpperCase()
-                                  )}
+              {isSearchFocused && (
+                <>
+                  <div className="search-dropdown-overlay" onClick={() => setIsSearchFocused(false)} />
+                  <div className="search-dropdown-panel">
+                    {loadingSearchData ? (
+                      <div className="dropdown-empty">Loading search items...</div>
+                    ) : sections.length === 0 ? (
+                      <div className="dropdown-empty">No results found for "{searchQuery}"</div>
+                    ) : (
+                      sections.map((section, secIdx) => (
+                        <div key={secIdx} className="search-section">
+                          <div className="search-section-header">{section.title}</div>
+                          {section.items.map((item) => {
+                            const Icon = item.icon || Code2;
+                            const flatIndex = flatItems.findIndex(fi => fi.id === item.id);
+                            const isSelected = flatIndex === selectedIndex;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className={`search-result-item ${isSelected ? "selected" : ""}`}
+                                onClick={() => handleItemClick(item)}
+                                onMouseEnter={() => setSelectedIndex(flatIndex)}
+                              >
+                                {item.avatar !== undefined ? (
+                                  <div className="user-avatar-small" style={{ backgroundColor: item.avatar ? "transparent" : getCursorColor(item.title), flexShrink: 0 }}>
+                                    {item.avatar ? (
+                                      <img src={item.avatar} alt={item.title} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                    ) : (
+                                      item.title.charAt(0).toUpperCase()
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="item-icon">
+                                    <Icon size={14} />
+                                  </span>
+                                )}
+                                <div className="item-content">
+                                  <span className="item-title">{item.title}</span>
+                                  <span className="item-subtitle">{item.subtitle}</span>
                                 </div>
-                              ) : (
-                                <span className="item-icon">
-                                  <Icon size={14} />
-                                </span>
-                              )}
-                              <div className="item-content">
-                                <span className="item-title">{item.title}</span>
-                                <span className="item-subtitle">{item.subtitle}</span>
-                              </div>
-                              {item.badge && <span className="item-badge">{item.badge}</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+                                {item.badge && <span className="item-badge">{item.badge}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="topnav-right">
@@ -748,36 +938,38 @@ export default function MainLayout({
               </div>
 
               {onJoinCall && (
-                <>
+                inCall ? (
                   <button
-                    className={`ce-nav-action-btn ${inCall && callType === "audio" ? "active-call" : ""}`}
-                    onClick={() => {
-                      if (inCall) {
-                        onLeaveCall();
-                      } else {
-                        onJoinCall("audio");
-                      }
-                    }}
-                    title={inCall && callType === "audio" ? "Leave Audio Call" : "Start Audio Call"}
+                    className="ce-nav-action-btn active-call"
+                    onClick={onLeaveCall}
+                    title="Leave Call"
+                    style={{ backgroundColor: "#ef4444" }}
                   >
-                    <Phone size={13} />
-                    <span>{inCall && callType === "audio" ? "Leave" : "Audio"}</span>
+                    <Phone size={13} style={{ transform: "rotate(135deg)" }} />
+                    <span>Leave Call</span>
                   </button>
-                  <button
-                    className={`ce-nav-action-btn ${inCall && callType === "video" ? "active-call" : ""}`}
-                    onClick={() => {
-                      if (inCall) {
-                        onLeaveCall();
-                      } else {
-                        onJoinCall("video");
-                      }
-                    }}
-                    title={inCall && callType === "video" ? "Leave Video Call" : "Start Video Call"}
-                  >
-                    <Video size={13} />
-                    <span>{inCall && callType === "video" ? "Leave" : "Video"}</span>
-                  </button>
-                </>
+                ) : (
+                  <div className="ce-call-dropdown-wrapper">
+                    <button 
+                      className={`ce-nav-action-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
+                      title={activeCallUsers && activeCallUsers.length > 0 ? "Active Call in Progress - Click to Join" : "Start a Call"}
+                    >
+                      <Phone size={13} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
+                      <span>{activeCallUsers && activeCallUsers.length > 0 ? `Join Call (${activeCallUsers.length})` : "Call"}</span>
+                      <ChevronDown size={11} style={{ marginLeft: "2px" }} />
+                    </button>
+                    <div className="ce-call-dropdown-menu">
+                      <button className="ce-call-dropdown-item" onClick={() => onJoinCall("audio")}>
+                        <Phone size={12} />
+                        <span>Audio Call</span>
+                      </button>
+                      <button className="ce-call-dropdown-item" onClick={() => onJoinCall("video")}>
+                        <Video size={12} />
+                        <span>Video Call</span>
+                      </button>
+                    </div>
+                  </div>
+                )
               )}
 
               <button className="ce-nav-action-btn" onClick={copyRoomId} title="Share Room Invite">
@@ -813,26 +1005,66 @@ export default function MainLayout({
               title="Notifications"
             >
               <Bell size={15} />
-              {notifications.length > 0 && <span className="notification-dot"></span>}
+              {localNotifs.length > 0 && <span className="notification-dot"></span>}
             </button>
 
             {notifDropdownOpen && (
               <div className="ce-notifications-dropdown">
                 <div className="dropdown-header">
                   <span>Recent Notifications</span>
-                  {notifications.length > 0 && clearNotifications && (
-                    <button className="clear-all-btn" onClick={clearNotifications}>Clear</button>
+                  {localNotifs.length > 0 && (
+                    <button className="clear-all-btn" onClick={handleClearAll}>Clear</button>
                   )}
                 </div>
                 <div className="dropdown-body">
-                  {notifications.length > 0 ? (
-                    notifications.map((n) => (
-                      <div key={n.id} className="dropdown-notif-item">
-                        <div className="notif-bullet" />
-                        <div className="notif-content">
-                          <p className="notif-text">{n.message}</p>
-                          <span className="notif-time">{formatTime(n.time)}</span>
+                  {localNotifs.length > 0 ? (
+                    localNotifs.map((n) => (
+                      <div key={n.id} className="dropdown-notif-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
+                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
+                          <div className="notif-bullet" style={{ marginTop: "6px" }} />
+                          <div className="notif-content" style={{ flex: 1 }}>
+                            <p className="notif-text">{n.message}</p>
+                            <span className="notif-time">{formatTime(n.time)}</span>
+                          </div>
                         </div>
+                        {n.type === "INVITE" && n.roomId && (
+                          <div className="notif-invite-actions" style={{ display: "flex", gap: "8px", marginLeft: "14px", marginTop: "4px" }}>
+                            <button
+                              type="button"
+                              className="ce-btn-invite-accept"
+                              onClick={() => handleAcceptInvite(n.roomId, n.id)}
+                              style={{
+                                background: "var(--ce-success)",
+                                color: "#ffffff",
+                                border: "none",
+                                borderRadius: "4px",
+                                padding: "4px 8px",
+                                fontSize: "0.68rem",
+                                fontWeight: "700",
+                                cursor: "pointer"
+                              }}
+                            >
+                              Join Workspace
+                            </button>
+                            <button
+                              type="button"
+                              className="ce-btn-invite-ignore"
+                              onClick={() => handleIgnoreInvite(n.id)}
+                              style={{
+                                background: "rgba(255, 255, 255, 0.08)",
+                                border: "1px solid var(--ce-border)",
+                                color: "var(--ce-text-muted)",
+                                borderRadius: "4px",
+                                padding: "4px 8px",
+                                fontSize: "0.68rem",
+                                fontWeight: "600",
+                                cursor: "pointer"
+                              }}
+                            >
+                              Ignore
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -882,7 +1114,7 @@ export default function MainLayout({
       <div className="ce-layout-body">
         {/* COLLAPSIBLE SIDEBAR */}
         <aside
-          className={`ce-sidebar ${sidebarExpanded ? "expanded" : "collapsed"}`}
+          className={`ce-sidebar ${isRoomActive ? "room-active" : (sidebarExpanded ? "expanded" : "collapsed")}`}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -896,6 +1128,14 @@ export default function MainLayout({
             {menuItems.map(item => {
               const Icon = item.icon;
               const isActive = activeItem === item.id;
+              
+              let badgeCount = 0;
+              if (item.id === "messages") {
+                badgeCount = unreadMessageCount;
+              } else if (item.id === "notifications") {
+                badgeCount = unreadNotifCount;
+              }
+
               return (
                 <button
                   key={item.id}
@@ -903,7 +1143,14 @@ export default function MainLayout({
                   className={`sidebar-nav-btn ${isActive ? "active" : ""}`}
                   data-tooltip={item.label}
                 >
-                  <Icon size={16} className="sidebar-nav-icon" />
+                  <div className="sidebar-nav-icon-wrapper">
+                    <Icon size={16} className="sidebar-nav-icon-inner" />
+                    {badgeCount > 0 && (
+                      <span className="sidebar-badge-count-red">
+                        {badgeCount}
+                      </span>
+                    )}
+                  </div>
                   <span className="btn-label">{item.label}</span>
                 </button>
               );
@@ -976,13 +1223,13 @@ export default function MainLayout({
         </aside>
 
         {/* PAGE CONTENT CONTAINER */}
-        <main className={`ce-main-content ${isPinned ? "sidebar-expanded" : "sidebar-collapsed"}`}>
+        <main className={`ce-main-content ${isRoomActive ? "room-active" : (isPinned ? "sidebar-expanded" : "sidebar-collapsed")}`}>
           {children}
         </main>
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="ce-mobile-bottom-nav">
+      <nav className={`ce-mobile-bottom-nav ${isRoomActive ? "room-active" : ""}`}>
         {menuItems.filter(item => ["dashboard", "rooms", "workspace", "profile"].includes(item.id)).map(item => {
           const Icon = item.icon;
           const isActive = activeItem === item.id;
@@ -1017,6 +1264,14 @@ export default function MainLayout({
           {menuItems.map(item => {
             const Icon = item.icon;
             const isActive = activeItem === item.id;
+            
+            let badgeCount = 0;
+            if (item.id === "messages") {
+              badgeCount = unreadMessageCount;
+            } else if (item.id === "notifications") {
+              badgeCount = unreadNotifCount;
+            }
+
             return (
               <button
                 key={item.id}
@@ -1026,7 +1281,14 @@ export default function MainLayout({
                 }}
                 className={`drawer-nav-btn ${isActive ? "active" : ""}`}
               >
-                <Icon size={16} />
+                <div className="drawer-nav-icon-wrapper">
+                  <Icon size={16} />
+                  {badgeCount > 0 && (
+                    <span className="sidebar-badge-count-red">
+                      {badgeCount}
+                    </span>
+                  )}
+                </div>
                 <span className="btn-label">{item.label}</span>
               </button>
             );

@@ -4218,6 +4218,35 @@
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
+.profile-message-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--ce-surface-card);
+  border: 1px solid var(--ce-border);
+  color: var(--ce-text);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.profile-message-btn:hover {
+  background: var(--ce-hover);
+  border-color: var(--ce-primary);
+  color: var(--ce-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--ce-primary-glow);
+}
+
+.profile-message-btn:active {
+  transform: translateY(0);
+}
+
 /* Liked By Section inside Details Modal */
 .modal-likes-section {
   margin-top: 16px;

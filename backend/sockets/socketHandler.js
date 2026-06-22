@@ -8,8 +8,44 @@ const LineOwnership = require("../models/LineOwnership");
 const Version = require("../models/Version");
 const EditActivity = require("../models/EditActivity");
 
+const Y = require("yjs");
+
+// Active Yjs docs in memory
+const activeYDocs = {}; // fileId -> Y.Doc
+const pendingYDocSaves = {}; // fileId -> setTimeout ID
+const fileSockets = {}; // fileId -> Set of socket.ids
+
+const saveYDocToDB = (fileId, roomId) => {
+  if (pendingYDocSaves[fileId]) return;
+
+  pendingYDocSaves[fileId] = setTimeout(async () => {
+    delete pendingYDocSaves[fileId];
+    const ydoc = activeYDocs[fileId];
+    if (!ydoc) return;
+
+    try {
+      const stateUpdate = Y.encodeStateAsUpdate(ydoc);
+      const textContent = ydoc.getText('monaco').toString();
+
+      // Save both binary state and string content
+      await WorkspaceItem.updateOne(
+        { _id: fileId },
+        {
+          yjsState: Buffer.from(stateUpdate),
+          content: textContent
+        }
+      );
+      console.log(`💾 Persisted Yjs Doc state and plain text for file: ${fileId}`);
+    } catch (error) {
+      console.error(`Failed to persist Yjs Doc state for file: ${fileId}:`, error.message);
+    }
+  }, 3000);
+};
+
 // Store online users by room
 const roomUsers = {};
+// Store call participants by room
+const callUsers = {};
 // Store active interactive child execution processes
 const activeExecutions = {};
 
@@ -79,6 +115,17 @@ const socketHandler = (io) => {
       if (!userId) return;
       socket.join(String(userId));
       console.log(`👤 User registered for notifications: ${userId} (${socket.id})`);
+    });
+
+    // Typing indicators for direct messaging
+    socket.on("dm:typing", ({ recipientId }) => {
+      if (!recipientId || !socket.userId) return;
+      io.to(String(recipientId)).emit("dm:typing", { senderId: socket.userId });
+    });
+
+    socket.on("dm:stop-typing", ({ recipientId }) => {
+      if (!recipientId || !socket.userId) return;
+      io.to(String(recipientId)).emit("dm:stop-typing", { senderId: socket.userId });
     });
 
     // ======================
@@ -179,6 +226,12 @@ const socketHandler = (io) => {
           roomUsers[roomId]
         );
 
+        // Send active call users list to the joining socket
+        socket.emit(
+          "active-call-users",
+          callUsers[roomId] ? Object.values(callUsers[roomId]) : []
+        );
+
         // Notify others
         socket.to(roomId).emit(
           "user-joined",
@@ -256,7 +309,7 @@ const socketHandler = (io) => {
 
           // Clean up from pendingRequests
           room.pendingRequests = room.pendingRequests.filter(r => r.user.toString() !== userId);
-          
+
           // Clean up from rejectedRequests
           room.rejectedRequests = (room.rejectedRequests || []).filter(r => r.user.toString() !== userId);
 
@@ -295,13 +348,13 @@ const socketHandler = (io) => {
         const room = await Room.findOne({ roomId });
         if (room) {
           room.pendingRequests = room.pendingRequests.filter(r => r.user.toString() !== userId);
-          
+
           if (!room.rejectedRequests) room.rejectedRequests = [];
           const alreadyRejected = room.rejectedRequests.some(r => r.user.toString() === userId);
           if (!alreadyRejected) {
             room.rejectedRequests.push({ user: userId, username: "User" });
           }
-          
+
           await room.save();
         }
 
@@ -634,6 +687,109 @@ const socketHandler = (io) => {
     // MULTI-FILE WORKSPACE SOCKET SYNCS
     // ===================================
 
+    // 0. Yjs Synchronization Syncs
+    socket.on("yjs:join", async ({ roomId, fileId }) => {
+      try {
+        if (!fileId) return;
+
+        // Leave previous active file if any
+        if (socket.activeFileId && socket.activeFileId !== fileId) {
+          handleYjsLeave(socket.activeFileId);
+        }
+        socket.activeFileId = fileId;
+
+        // Initialize user tracking for this file
+        if (!fileSockets[fileId]) {
+          fileSockets[fileId] = new Set();
+        }
+        fileSockets[fileId].add(socket.id);
+
+        let ydoc = activeYDocs[fileId];
+        if (!ydoc) {
+          ydoc = new Y.Doc();
+          const file = await WorkspaceItem.findById(fileId);
+          if (file) {
+            if (file.yjsState) {
+              Y.applyUpdate(ydoc, new Uint8Array(file.yjsState));
+            } else if (file.content) {
+              ydoc.getText('monaco').insert(0, file.content);
+            }
+          }
+          activeYDocs[fileId] = ydoc;
+        }
+
+        // Send initialization state to client
+        const stateUpdate = Y.encodeStateAsUpdate(ydoc);
+        socket.emit("yjs:init", {
+          fileId,
+          update: Buffer.from(stateUpdate).toString("base64")
+        });
+
+      } catch (err) {
+        console.error("Error in yjs:join:", err.message);
+      }
+    });
+
+    socket.on("yjs:update", ({ roomId, fileId, update }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
+      try {
+        const ydoc = activeYDocs[fileId];
+        if (ydoc && update) {
+          const updateBuffer = Buffer.from(update, "base64");
+          Y.applyUpdate(ydoc, new Uint8Array(updateBuffer));
+          
+          // Broadcast to other users in the room
+          socket.to(roomId).emit("yjs:update", { fileId, update });
+
+          // Schedule save to DB
+          saveYDocToDB(fileId, roomId);
+        }
+      } catch (err) {
+        console.error("Error in yjs:update:", err.message);
+      }
+    });
+
+    socket.on("yjs:awareness-update", ({ fileId, update }) => {
+      const roomId = socket.roomId;
+      if (roomId) {
+        socket.to(roomId).emit("yjs:awareness-update", { fileId, update });
+      }
+    });
+
+    const handleYjsLeave = (fileId) => {
+      if (!fileId || !fileSockets[fileId]) return;
+      fileSockets[fileId].delete(socket.id);
+      if (fileSockets[fileId].size === 0) {
+        delete fileSockets[fileId];
+        // Save immediately on last user leave
+        if (pendingYDocSaves[fileId]) {
+          clearTimeout(pendingYDocSaves[fileId]);
+          delete pendingYDocSaves[fileId];
+        }
+        const ydoc = activeYDocs[fileId];
+        if (ydoc) {
+          const stateUpdate = Y.encodeStateAsUpdate(ydoc);
+          const textContent = ydoc.getText('monaco').toString();
+          WorkspaceItem.updateOne(
+            { _id: fileId },
+            {
+              yjsState: Buffer.from(stateUpdate),
+              content: textContent
+            }
+          ).catch(err => console.error("Error on final Yjs save:", err.message));
+          delete activeYDocs[fileId];
+          console.log(`🧹 Cleaned up inactive Yjs Doc for file: ${fileId}`);
+        }
+      }
+    };
+
+    socket.on("yjs:leave", ({ fileId }) => {
+      handleYjsLeave(fileId);
+      if (socket.activeFileId === fileId) {
+        socket.activeFileId = null;
+      }
+    });
+
     // 1. Real-time multi-file keystroke sync
     socket.on("file-content-changed", async ({ roomId, fileId, content }) => {
       if (getUserRole(roomId, socket.id) === "VIEWER") return;
@@ -667,6 +823,11 @@ const socketHandler = (io) => {
         const file = await WorkspaceItem.findById(fileId);
         if (!file) return;
         file.content = content;
+        
+        const ydoc = activeYDocs[fileId];
+        if (ydoc) {
+          file.yjsState = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+        }
         await file.save();
 
         const room = await Room.findOne({ roomId });
@@ -1284,11 +1445,23 @@ const socketHandler = (io) => {
     // ======================
     socket.on("join-call", (data) => {
       if (!data || !data.roomId) return;
-      socket.to(data.roomId).emit("user-joined-call", {
+      const roomId = data.roomId;
+      if (!callUsers[roomId]) {
+        callUsers[roomId] = {};
+      }
+      callUsers[roomId][socket.id] = {
+        socketId: socket.id,
+        username: socket.username || data.username,
+        mediaType: data.mediaType
+      };
+
+      socket.to(roomId).emit("user-joined-call", {
         socketId: socket.id,
         username: socket.username || data.username,
         mediaType: data.mediaType
       });
+
+      io.to(roomId).emit("active-call-users", Object.values(callUsers[roomId]));
     });
 
     socket.on("webrtc-offer", (data) => {
@@ -1317,10 +1490,19 @@ const socketHandler = (io) => {
 
     socket.on("leave-call", (data) => {
       if (!data || !data.roomId) return;
-      socket.to(data.roomId).emit("user-left-call", {
+      const roomId = data.roomId;
+      if (callUsers[roomId]) {
+        delete callUsers[roomId][socket.id];
+        if (Object.keys(callUsers[roomId]).length === 0) {
+          delete callUsers[roomId];
+        }
+      }
+      socket.to(roomId).emit("user-left-call", {
         socketId: socket.id,
         username: socket.username
       });
+
+      io.to(roomId).emit("active-call-users", callUsers[roomId] ? Object.values(callUsers[roomId]) : []);
     });
 
     socket.on("toggle-media", (data) => {
@@ -1337,6 +1519,10 @@ const socketHandler = (io) => {
         `❌ ${socket.username || "User"} disconnected`
       );
 
+      if (socket.activeFileId) {
+        handleYjsLeave(socket.activeFileId);
+      }
+
       const roomId = socket.roomId;
       // Clean up active cursor on disconnect
       if (roomId && activeCursors[roomId] && activeCursors[roomId][socket.id]) {
@@ -1346,10 +1532,17 @@ const socketHandler = (io) => {
 
       // Clean up WebRTC call state
       if (roomId) {
+        if (callUsers[roomId]) {
+          delete callUsers[roomId][socket.id];
+          if (Object.keys(callUsers[roomId]).length === 0) {
+            delete callUsers[roomId];
+          }
+        }
         socket.to(roomId).emit("user-left-call", {
           socketId: socket.id,
           username: socket.username
         });
+        io.to(roomId).emit("active-call-users", callUsers[roomId] ? Object.values(callUsers[roomId]) : []);
       }
 
       // Clean up running process on disconnect

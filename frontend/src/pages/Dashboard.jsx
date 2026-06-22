@@ -16,7 +16,8 @@ import {
   leaveRoom,
   deleteRoom,
   getAllPublicRooms,
-  getMySentRequests
+  getMySentRequests,
+  acceptWorkspaceInvite
 } from "../services/roomService";
 import socket from "../socket/socket";
 import { useAuth } from "../context/AuthContext";
@@ -28,7 +29,7 @@ import {
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronDown, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar,
-  Megaphone, Wrench, Award, Compass
+  Megaphone, Wrench, Award, Compass, MessageSquare
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -52,6 +53,7 @@ import { updateUserProfile, getActiveAnnouncements, getActiveAds } from "../serv
 import "./Dashboard.css";
 import MainLayout from "../layouts/MainLayout";
 import ProfileAvatar from "../components/ProfileAvatar";
+import DirectMessages from "../components/chat/DirectMessages";
 const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
 import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
 import { useGateTransition } from "../routes/AppRoutes";
@@ -616,6 +618,7 @@ function Dashboard() {
 
   // Viewed user states
   const [viewingUserProfile, setViewingUserProfile] = useState(null);
+  const [preselectedChatPartner, setPreselectedChatPartner] = useState(null);
   const [viewingUserStats, setViewingUserStats] = useState(null);
   const [viewingUserRooms, setViewingUserRooms] = useState([]);
   const [viewingUserLikedRooms, setViewingUserLikedRooms] = useState([]);
@@ -1695,6 +1698,7 @@ function Dashboard() {
       if (res.success) {
         setUnreadNotificationsCount(0);
         setNotificationsList(prev => prev.map(n => ({ ...n, isRead: true })));
+        window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
       }
     } catch (err) {
       console.error("Failed to mark notifications read:", err);
@@ -1707,9 +1711,32 @@ function Dashboard() {
       if (res.success) {
         setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
         setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true } : n));
+        window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
       }
     } catch (err) {
       console.error("Failed to mark notification read:", err);
+    }
+  };
+
+  const handleAcceptInvite = async (targetRoomId, notifId) => {
+    try {
+      await acceptWorkspaceInvite(targetRoomId);
+      await markNotificationsRead(notifId);
+      setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
+      setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true } : n));
+      navigate(`/editor/${targetRoomId}`);
+    } catch (err) {
+      console.error("Failed to accept workspace invite:", err);
+    }
+  };
+
+  const handleIgnoreInvite = async (notifId) => {
+    try {
+      await markNotificationsRead(notifId);
+      setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
+      setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error("Failed to ignore workspace invite:", err);
     }
   };
 
@@ -1962,6 +1989,18 @@ function Dashboard() {
       historyRooms.find(r => r.roomId === targetRoomId) ||
       publicRooms.find(r => r.roomId === targetRoomId) ||
       { roomId: targetRoomId, title: "Workspace Room" };
+
+    const isOwner = room.createdBy === user?.id || room.createdBy?._id === user?.id || room.createdBy === user?._id || room.createdBy?._id === user?._id;
+    const isParticipant = room.participants?.some(p => {
+      const pId = p.user?._id || p.user?.id || p.user || p._id || p;
+      return String(pId) === String(user?.id || user?._id);
+    });
+
+    if (isOwner || isParticipant) {
+      triggerGateAndNavigate(targetRoomId);
+      return;
+    }
+
     setJoinTargetRoom(room);
     setShowJoinConfirmModal(true);
   };
@@ -1986,7 +2025,7 @@ function Dashboard() {
   };
 
   const handleLeaveRoom = async (targetRoomId) => {
-    const confirmLeave = window.confirm("Are you sure you want to leave this room?");
+    const confirmLeave = await window.showConfirm("Are you sure you want to leave this room?", "Leave Room", "warning");
     if (!confirmLeave) return;
     try {
       socket.emit("leave-room", { roomId: targetRoomId });
@@ -1998,7 +2037,7 @@ function Dashboard() {
   };
 
   const handleDeleteRoom = async (targetRoomId) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this room? This action cannot be undone.");
+    const confirmDelete = await window.showConfirm("Are you sure you want to delete this room? This action cannot be undone.", "Delete Room", "error");
     if (!confirmDelete) return;
     try {
       socket.emit("room-deleted", { roomId: targetRoomId });
@@ -2491,10 +2530,13 @@ function Dashboard() {
       else if (notif.type === "LIKE") actionText = `liked room "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "BOOKMARK") actionText = `bookmarked room "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "JOIN") actionText = `wants to join "${notif.targetRoom?.title || "workspace"}"`;
+      else if (notif.type === "INVITE") actionText = `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"`;
       return {
         id: notif._id,
         message: `${notif.sender?.username || "Someone"} ${actionText}`,
-        time: notif.createdAt
+        time: notif.createdAt,
+        type: notif.type,
+        roomId: notif.targetRoom?.roomId
       };
     });
 
@@ -4722,8 +4764,8 @@ function Dashboard() {
                     <div
                       className="ce-pill-bg-slide"
                       style={{
-                        width: "calc(25% - 2px)",
-                        transform: `translateX(${(roomsTab === "public" ? 0 : roomsTab === "recent" ? 1 : roomsTab === "myrooms" ? 2 : 3) * 100}%)`
+                        width: "calc(33.333% - 2px)",
+                        transform: `translateX(${(roomsTab === "public" ? 0 : roomsTab === "myrooms" ? 1 : 2) * 100}%)`
                       }}
                     />
                     <button
@@ -4732,13 +4774,6 @@ function Dashboard() {
                       onClick={() => setRoomsTab("public")}
                     >
                       Explore Public ({publicRooms.length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`ce-pill-btn ${roomsTab === "recent" ? "active" : ""}`}
-                      onClick={() => setRoomsTab("recent")}
-                    >
-                      Continue Coding ({recentRooms.length})
                     </button>
                     <button
                       type="button"
@@ -4757,112 +4792,7 @@ function Dashboard() {
                   </div>
                 </div>
 
-                {roomsTab === "recent" && (
-                  <div style={{ marginTop: "8px" }}>
-                    {(() => {
-                      const filteredRecent = recentRooms.filter(room => {
-                        const term = continueCodingSearch.toLowerCase();
-                        return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
-                      });
 
-                      const activeRecent = filteredRecent.filter(room => (room.activeUsersCount || 0) > 0);
-                      const offlineRecent = filteredRecent.filter(room => (room.activeUsersCount || 0) === 0);
-
-                      return (
-                        <>
-                          <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <Clock size={16} className="brand-logo" />
-                              <h3 className="section-title">Continue Coding</h3>
-                            </div>
-                            {recentRooms.length > 0 && (
-                              <div className="section-search-container">
-                                <Search size={13} className="section-search-icon" />
-                                <input
-                                  type="text"
-                                  placeholder="Search by ID or name..."
-                                  value={continueCodingSearch}
-                                  onChange={(e) => setContinueCodingSearch(e.target.value)}
-                                  className="section-search-input"
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          {recentRooms.length === 0 ? (
-                            <div className="empty-state-card">
-                              <Terminal size={18} className="empty-state-icon" />
-                              <p>No recently opened rooms. Create a room on the left to begin!</p>
-                            </div>
-                          ) : filteredRecent.length === 0 ? (
-                            <div className="empty-state-card">
-                              <Search size={18} className="empty-state-icon" />
-                              <p>No recently opened rooms match "{continueCodingSearch}".</p>
-                            </div>
-                          ) : (
-                            <div className="dashboard-split-layout">
-                              {/* ACTIVE RECENT ROOMS COLUMN */}
-                              <div className="split-column">
-                                <h4 className="split-column-title">
-                                  <span className="live-indicator-dot" />
-                                  Active Rooms ({activeRecent.length})
-                                </h4>
-                                {activeRecent.length === 0 ? (
-                                  <div className="empty-state-card compact">
-                                    <p>No active rooms match your search.</p>
-                                  </div>
-                                ) : (
-                                  <div className="split-column-cards-list">
-                                    {activeRecent
-                                      .slice(0, showAllActiveContinueCoding ? undefined : 2)
-                                      .map(room => renderRoomCard(room))}
-                                  </div>
-                                )}
-                                {activeRecent.length > 2 && (
-                                  <button
-                                    onClick={() => setShowAllActiveContinueCoding(!showAllActiveContinueCoding)}
-                                    className="split-column-toggle-btn"
-                                  >
-                                    <span>{showAllActiveContinueCoding ? "Show Less" : "Show All"}</span>
-                                    <ChevronDown size={14} style={{ transform: showAllActiveContinueCoding ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* OFFLINE RECENT ROOMS COLUMN */}
-                              <div className="split-column">
-                                <h4 className="split-column-title">
-                                  <span className="offline-indicator-dot" />
-                                  Offline Rooms ({offlineRecent.length})
-                                </h4>
-                                {offlineRecent.length === 0 ? (
-                                  <div className="empty-state-card compact">
-                                    <p>No offline rooms match your search.</p>
-                                  </div>
-                                ) : (
-                                  <div className="split-column-cards-list">
-                                    {offlineRecent
-                                      .slice(0, showAllOfflineContinueCoding ? undefined : 2)
-                                      .map(room => renderRoomCard(room))}
-                                  </div>
-                                )}
-                                {offlineRecent.length > 2 && (
-                                  <button
-                                    onClick={() => setShowAllOfflineContinueCoding(!showAllOfflineContinueCoding)}
-                                    className="split-column-toggle-btn"
-                                  >
-                                    <span>{showAllOfflineContinueCoding ? "Show Less" : "Show All"}</span>
-                                    <ChevronDown size={14} style={{ transform: showAllOfflineContinueCoding ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
 
                 {roomsTab === "public" && (
                   <div style={{ marginTop: "8px" }}>
@@ -5283,6 +5213,16 @@ function Dashboard() {
           </div>
         )}
 
+        {/* DIRECT MESSAGES SECTION */}
+        {activeSection === "messages" && (
+          <div className="history-section-container">
+            <DirectMessages 
+              preselectedUser={preselectedChatPartner}
+              onChatLoaded={() => setPreselectedChatPartner(null)}
+            />
+          </div>
+        )}
+
         {/* NOTIFICATIONS FEED SECTION */}
         {activeSection === "notifications" && (
           <div className="history-section-container">
@@ -5398,7 +5338,7 @@ function Dashboard() {
                 const filteredNotifs = notificationsList.filter(notif => {
                   if (notifFilter === "unread") return !notif.isRead;
                   if (notifFilter === "social") return notif.category === "SOCIAL" || notif.type === "FOLLOW";
-                  if (notifFilter === "workspaces") return notif.category === "ROOMS" || notif.category === "COLLABORATION" || ["LIKE", "BOOKMARK", "JOIN"].includes(notif.type);
+                  if (notifFilter === "workspaces") return notif.category === "ROOMS" || notif.category === "COLLABORATION" || ["LIKE", "BOOKMARK", "JOIN", "INVITE"].includes(notif.type);
                   return true;
                 });
 
@@ -5445,6 +5385,10 @@ function Dashboard() {
                         notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-warning)" }} />;
                         actionText = `wants to join "${roomTitle}"`;
                         typeClass = "notif-type-join";
+                      } else if (notif.type === "INVITE") {
+                        notifIcon = <Mail size={14} style={{ color: "var(--ce-primary)" }} />;
+                        actionText = `invited you to join workspace "${roomTitle}"`;
+                        typeClass = "notif-type-invite";
                       }
 
                       // Follow status mapping for social notifications
@@ -5555,6 +5499,55 @@ function Dashboard() {
                                   ) : (
                                     <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
                                       Request processed
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {notif.type === "INVITE" && (
+                                <div style={{ marginTop: "4px" }}>
+                                  {!notif.isRead ? (
+                                    <div style={{ display: "flex", gap: "8px" }}>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleAcceptInvite(roomLink, notif._id);
+                                        }}
+                                        className="history-resume-btn notif-action-btn accept"
+                                        style={{
+                                          fontSize: "0.68rem",
+                                          padding: "3px 8px",
+                                          borderRadius: "6px",
+                                          background: "rgba(16, 185, 129, 0.12)",
+                                          color: "#10b981",
+                                          border: "1px solid rgba(16, 185, 129, 0.25)",
+                                          cursor: "pointer"
+                                        }}
+                                      >
+                                        Join Workspace
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleIgnoreInvite(notif._id);
+                                        }}
+                                        className="history-resume-btn notif-action-btn reject"
+                                        style={{
+                                          fontSize: "0.68rem",
+                                          padding: "3px 8px",
+                                          borderRadius: "6px",
+                                          background: "rgba(239, 68, 68, 0.12)",
+                                          color: "#ef4444",
+                                          border: "1px solid rgba(239, 68, 68, 0.25)",
+                                          cursor: "pointer"
+                                        }}
+                                      >
+                                        Ignore
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
+                                      Invite processed
                                     </span>
                                   )}
                                 </div>
@@ -5692,21 +5685,40 @@ function Dashboard() {
                     {viewingUserProfile ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
                         {String(viewingUserProfile._id) !== String(user?.id || user?._id) && (
-                          followingList.some(f => String(f._id || f) === String(viewingUserProfile._id)) ? (
+                          <div style={{ display: "flex", gap: "8px", width: "100%" }}>
+                            {followingList.some(f => String(f._id || f) === String(viewingUserProfile._id)) ? (
+                              <button
+                                className="profile-follow-btn unfollow"
+                                onClick={() => handleFollowToggle(viewingUserProfile._id)}
+                                style={{ flex: 1 }}
+                              >
+                                Unfollow
+                              </button>
+                            ) : (
+                              <button
+                                className="profile-follow-btn follow"
+                                onClick={() => handleFollowToggle(viewingUserProfile._id)}
+                                style={{ flex: 1 }}
+                              >
+                                Follow
+                              </button>
+                            )}
                             <button
-                              className="profile-follow-btn unfollow"
-                              onClick={() => handleFollowToggle(viewingUserProfile._id)}
+                              className="profile-message-btn"
+                              onClick={() => {
+                                setPreselectedChatPartner({
+                                  _id: viewingUserProfile._id,
+                                  username: viewingUserProfile.username,
+                                  avatar: viewingUserProfile.avatar,
+                                  bio: viewingUserProfile.bio || "Developer"
+                                });
+                                navigate("/dashboard?tab=messages");
+                              }}
+                              style={{ flex: 1 }}
                             >
-                              Unfollow
+                              <MessageSquare size={14} /> Message
                             </button>
-                          ) : (
-                            <button
-                              className="profile-follow-btn follow"
-                              onClick={() => handleFollowToggle(viewingUserProfile._id)}
-                            >
-                              Follow
-                            </button>
-                          )
+                          </div>
                         )}
                         <button
                           className="profile-back-btn"
@@ -6976,21 +6988,18 @@ function Dashboard() {
                     <button
                       className="ce-btn-primary"
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setIsJoiningRoom(true);
                         const roomId = joinTargetRoom.roomId;
-                        setTimeout(async () => {
-                          try {
-                            await proceedJoinRoom(roomId);
-                            setShowJoinConfirmModal(false);
-                            setIsJoiningRoom(false);
-                            setJoinTargetRoom(null);
-                          } catch (error) {
-                            setIsJoiningRoom(false);
-                            setJoinTargetRoom(null);
-                            setShowJoinConfirmModal(false);
-                          }
-                        }, 2500);
+                        try {
+                          await proceedJoinRoom(roomId);
+                        } catch (error) {
+                          console.error("Join room error:", error);
+                        } finally {
+                          setIsJoiningRoom(false);
+                          setJoinTargetRoom(null);
+                          setShowJoinConfirmModal(false);
+                        }
                       }}
                     >
                       Yes, Join Room

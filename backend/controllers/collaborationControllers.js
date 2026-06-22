@@ -10,7 +10,7 @@ const checkRoomAccess = async (roomId, userId) => {
   if (!room) return null;
   const isCreator = room.createdBy.toString() === userId.toString();
   const isParticipant = room.participants.some(
-    (p) => p.toString() === userId.toString()
+    (p) => p.user && p.user.toString() === userId.toString()
   );
   if (isCreator || isParticipant) return room;
   return null;
