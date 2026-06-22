@@ -67,10 +67,6 @@ export const getGoogleConfig = async () => {
   return response.data;
 };
 
-export const verifyEmail = async (token) => {
-  const response = await API.get(`/auth/verify-email/${token}`);
-  return response.data;
-};
 
 export const forgotPassword = async (emailData) => {
   const response = await API.post("/auth/forgot-password", emailData);

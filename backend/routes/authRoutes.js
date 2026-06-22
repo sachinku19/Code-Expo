@@ -1,5 +1,5 @@
 const express=require("express");
-const { registerUser, loginUser, my_profile, totalUser,logoutUser, changePassword, getPublicStats, googleLogin, getGoogleConfig, verifyEmail, forgotPassword, resetPassword } = require("../controllers/authControllers");
+const { registerUser, loginUser, my_profile, totalUser,logoutUser, changePassword, getPublicStats, googleLogin, getGoogleConfig, forgotPassword, resetPassword } = require("../controllers/authControllers");
 const auth_protect = require("../middleware/authMiddleware");
 
 //make router
@@ -17,7 +17,6 @@ router.put("/logout", auth_protect, logoutUser);
 router.put("/change-password", auth_protect, changePassword);
 
 // Email Verification & Password Reset routes
-router.get("/verify-email/:token", verifyEmail);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword);
 

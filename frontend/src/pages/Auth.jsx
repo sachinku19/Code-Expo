@@ -57,10 +57,6 @@ function Auth({ mode }) {
   const [forgotSuccess, setForgotSuccess] = useState(null);
   const [forgotLoading, setForgotLoading] = useState(false);
 
-  // State for Registration Success (Verification Pending)
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   // Shared Google Client state
@@ -81,10 +77,17 @@ function Auth({ mode }) {
     setForgotEmail("");
     setForgotError(null);
     setForgotSuccess(null);
-    setRegistrationSuccess(false);
-    setSuccessMessage("");
     setAgreeTerms(false);
   }, [mode]);
+
+  useEffect(() => {
+    if (location.state?.successMessage) {
+      const timer = setTimeout(() => {
+        navigate(location.pathname, { replace: true, state: { ...location.state, successMessage: undefined } });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state, navigate, location.pathname]);
 
   useEffect(() => {
     const initGoogleOAuth = async () => {
@@ -197,8 +200,11 @@ function Auth({ mode }) {
 
     try {
       const data = await registerUser(registerData);
-      setSuccessMessage(data.message || "Registration successful! Please check your email to verify your account.");
-      setRegistrationSuccess(true);
+      navigate("/login", {
+        state: {
+          successMessage: data.message || "Registration successful! You can now log in."
+        }
+      });
     } catch (error) {
       const errMsg = error.response?.data?.message || error.message || "Registration failed. Please try again.";
       setRegisterError(errMsg);
@@ -361,48 +367,6 @@ function Auth({ mode }) {
                     </button>
                   </div>
                 </motion.div>
-              ) : registrationSuccess ? (
-                <motion.div
-                  key="verification-pending"
-                  custom={direction}
-                  variants={formVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  className="auth-form-motion-wrapper"
-                >
-                  <div className="auth-header">
-                    <div className="brand-logo-glow" onClick={() => navigate("/")}>
-                      <div className="logo-symbol">&lt;/&gt;</div>
-                      <div className="logo-text">
-                        Code<span className="logo-highlight">Expo</span>
-                      </div>
-                    </div>
-                    <p className="auth-tagline-explore">Verification Required</p>
-                    <p className="auth-tagline-world">A security link was dispatched to your inbox.</p>
-                  </div>
-
-                  <div className="success-alert-banner" style={{ borderLeft: "4px solid #aa3bff", backgroundColor: "rgba(170, 59, 255, 0.15)", padding: "15px", borderRadius: "8px", marginBottom: "20px", display: "flex", flexDirection: "column", gap: "10px", alignItems: "center", textAlign: "center" }}>
-                    <Mail size={36} style={{ color: "#aa3bff", animation: "pulse 2s infinite" }} />
-                    <span className="success-text" style={{ color: "#c9d1d9", fontSize: "14px", lineHeight: "1.5" }}>{successMessage}</span>
-                  </div>
-
-                  <p className="auth-tagline-explore" style={{ textAlign: "center", fontSize: "12px", opacity: 0.8, marginBottom: "25px", padding: "0 10px" }}>
-                    Please click the verification link in the email to activate your account. Check spam if it does not arrive within a few minutes.
-                  </p>
-
-                  <button 
-                    onClick={() => {
-                      setRegistrationSuccess(false);
-                      setSuccessMessage("");
-                      setIsForgotPassword(false);
-                      navigate("/login");
-                    }} 
-                    className="btn-submit-premium"
-                  >
-                    <span>Proceed to Log in</span>
-                  </button>
-                </motion.div>
               ) : mode === "login" ? (
                 <motion.div
                   key="login"
@@ -423,6 +387,13 @@ function Auth({ mode }) {
                     <p className="auth-tagline-explore">Explore. Code. Innovate.</p>
                     <p className="auth-tagline-world">The <span className="text-highlight">World</span> is our Playground.</p>
                   </div>
+
+                  {location.state?.successMessage && (
+                    <div className="success-alert-banner" style={{ borderLeft: "4px solid #aa3bff", backgroundColor: "rgba(170, 59, 255, 0.15)", padding: "10px", borderRadius: "5px", marginBottom: "15px", display: "flex", gap: "8px", alignItems: "center" }}>
+                      <span className="success-icon" style={{ color: "#aa3bff" }}>✓</span>
+                      <span className="success-text" style={{ color: "#c9d1d9", fontSize: "14px" }}>{location.state.successMessage}</span>
+                    </div>
+                  )}
 
                   {activeError && (
                     <div className="error-alert-banner">

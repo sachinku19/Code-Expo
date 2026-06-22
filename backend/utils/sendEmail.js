@@ -5,11 +5,19 @@ const sendEmail = async (options) => {
   // 1. If Resend HTTP API Key is configured, prioritize it to completely bypass SMTP blocks
   if (process.env.RESEND_API_KEY) {
     console.log("Resend API Key detected. Sending email via HTTP API...");
+    
+    // Auto-fallback: Resend blocks outbound emails from gmail.com domain
+    let fromAddress = process.env.EMAIL_FROM || '"CodeExpo" <onboarding@resend.dev>';
+    if (fromAddress.includes("@gmail.com")) {
+      console.warn("WARNING: Resend API does not allow sending from gmail.com domains. Automatically falling back to sandbox 'onboarding@resend.dev'.");
+      fromAddress = '"CodeExpo" <onboarding@resend.dev>';
+    }
+
     try {
       const response = await axios.post(
         "https://api.resend.com/emails",
         {
-          from: process.env.EMAIL_FROM || '"CodeExpo" <onboarding@resend.dev>',
+          from: fromAddress,
           to: [options.email],
           subject: options.subject,
           html: options.html,
