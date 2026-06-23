@@ -1769,6 +1769,12 @@ function Dashboard() {
   };
 
   const handleAcceptInvite = async (targetRoomId, notifId) => {
+    const confirm = await window.showConfirm(
+      "Are you sure you want to accept this invitation and enter the workspace?",
+      "Join Workspace",
+      "info"
+    );
+    if (!confirm) return;
     try {
       await acceptWorkspaceInvite(targetRoomId);
       await markNotificationsRead(notifId);
@@ -2077,17 +2083,6 @@ function Dashboard() {
       historyRooms.find(r => r.roomId === targetRoomId) ||
       publicRooms.find(r => r.roomId === targetRoomId) ||
       { roomId: targetRoomId, title: "Workspace Room" };
-
-    const isOwner = room.createdBy === user?.id || room.createdBy?._id === user?.id || room.createdBy === user?._id || room.createdBy?._id === user?._id;
-    const isParticipant = room.participants?.some(p => {
-      const pId = p.user?._id || p.user?.id || p.user || p._id || p;
-      return String(pId) === String(user?.id || user?._id);
-    });
-
-    if (isOwner || isParticipant) {
-      triggerGateAndNavigate(targetRoomId);
-      return;
-    }
 
     setJoinTargetRoom(room);
     setShowJoinConfirmModal(true);
@@ -5241,15 +5236,10 @@ function Dashboard() {
                           </td>
                           <td className="text-right">
                             <button
-                              onClick={() => triggerResumeHistory(room.roomId)}
-                              className={`history-resume-btn ${resumingHistoryRoomId === room.roomId ? 'loading' : ''}`}
-                              disabled={resumingHistoryRoomId !== null}
+                              onClick={() => handleJoinRoomDirect(room.roomId)}
+                              className="history-resume-btn"
                             >
-                              {resumingHistoryRoomId === room.roomId ? (
-                                <>
-                                  <span className="btn-spinner"></span> Loading...
-                                </>
-                              ) : "Resume"}
+                              Resume
                             </button>
                           </td>
                         </tr>

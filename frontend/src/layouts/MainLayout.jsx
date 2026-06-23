@@ -214,6 +214,12 @@ export default function MainLayout({
   }, [notifications, dbNotifications]);
 
   const handleAcceptInvite = async (targetRoomId, notifId) => {
+    const confirm = await window.showConfirm(
+      "Are you sure you want to accept this invitation and enter the workspace?",
+      "Join Workspace",
+      "info"
+    );
+    if (!confirm) return;
     try {
       await roomService.acceptWorkspaceInvite(targetRoomId);
       await socialService.markNotificationsRead(notifId);
@@ -641,7 +647,7 @@ export default function MainLayout({
     }
   };
 
-  const handleItemClick = (item) => {
+  const handleItemClick = async (item) => {
     setSearchQuery("");
     setIsSearchFocused(false);
     searchInputRef.current?.blur();
@@ -652,7 +658,14 @@ export default function MainLayout({
       if (onSearchSelect) {
         onSearchSelect(item.action);
       } else {
-        handleConfirmNavigate(`/editor/${item.action.roomId}`);
+        const confirm = await window.showConfirm(
+          `Are you sure you want to join the workspace "${item.label || "Workspace"}"?`,
+          "Join Workspace",
+          "info"
+        );
+        if (confirm) {
+          handleConfirmNavigate(`/editor/${item.action.roomId}`);
+        }
       }
     } else {
       if (onSearchSelect) {

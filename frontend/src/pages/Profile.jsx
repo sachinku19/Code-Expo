@@ -352,17 +352,6 @@ const Profile = () => {
       savedRooms.find(r => r.roomId === targetRoomId) ||
       { roomId: targetRoomId, title: "Workspace Room" };
 
-    const isOwner = room.createdBy === authUser?.id || room.createdBy?._id === authUser?.id || room.createdBy === authUser?._id || room.createdBy?._id === authUser?._id;
-    const isParticipant = room.participants?.some(p => {
-      const pId = p.user?._id || p.user?.id || p.user || p._id || p;
-      return String(pId) === String(authUser?.id || authUser?._id);
-    });
-
-    if (isOwner || isParticipant) {
-      navigate(`/editor/${targetRoomId}`);
-      return;
-    }
-
     setJoinTargetRoom(room);
     setShowJoinConfirmModal(true);
   };

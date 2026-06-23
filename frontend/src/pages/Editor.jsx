@@ -3244,11 +3244,18 @@ function Editor() {
 
               <form
                 className="join-room-inline-form"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   const joinRoomId = e.target.elements.joinRoomIdInput.value.trim();
                   if (joinRoomId) {
-                    navigate(`/editor/${joinRoomId}`);
+                    const confirm = await window.showConfirm(
+                      "Are you sure you want to join this room?",
+                      "Join Workspace",
+                      "info"
+                    );
+                    if (confirm) {
+                      navigate(`/editor/${joinRoomId}`);
+                    }
                   }
                 }}
               >
