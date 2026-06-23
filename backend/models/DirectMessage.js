@@ -13,8 +13,17 @@ const directMessageSchema = new mongoose.Schema({
   },
   message: {
     type: String,
-    required: true,
-    trim: true
+    trim: true,
+    default: ""
+  },
+  fileUrl: {
+    type: String
+  },
+  fileType: {
+    type: String
+  },
+  fileName: {
+    type: String
   },
   isRead: {
     type: Boolean,

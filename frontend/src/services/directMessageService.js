@@ -27,3 +27,24 @@ export const sendDirectMessage = async (recipientId, message) => {
   const response = await API.post("/send", { recipientId, message }, getHeaders());
   return response.data;
 };
+
+export const sendDirectMessageAttachment = async (formData) => {
+  const token = localStorage.getItem("token");
+  const response = await API.post("/send-attachment", formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return response.data;
+};
+
+export const deleteDirectMessage = async (messageId) => {
+  const response = await API.delete(`/delete/${messageId}`, getHeaders());
+  return response.data;
+};
+
+export const editDirectMessage = async (messageId, text) => {
+  const response = await API.put(`/edit/${messageId}`, { text }, getHeaders());
+  return response.data;
+};

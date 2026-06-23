@@ -128,6 +128,31 @@ const socketHandler = (io) => {
       io.to(String(recipientId)).emit("dm:stop-typing", { senderId: socket.userId });
     });
 
+    // Calling events for direct messaging
+    socket.on("dm:call:invite", ({ recipientId, type, callerInfo }) => {
+      if (!recipientId) return;
+      io.to(String(recipientId)).emit("dm:call:invite", {
+        callerId: socket.userId,
+        callerInfo,
+        type
+      });
+    });
+
+    socket.on("dm:call:accept", ({ callerId }) => {
+      if (!callerId) return;
+      io.to(String(callerId)).emit("dm:call:accept");
+    });
+
+    socket.on("dm:call:decline", ({ callerId }) => {
+      if (!callerId) return;
+      io.to(String(callerId)).emit("dm:call:decline");
+    });
+
+    socket.on("dm:call:end", ({ partnerId }) => {
+      if (!partnerId) return;
+      io.to(String(partnerId)).emit("dm:call:end");
+    });
+
     // ======================
     // JOIN ROOM
     // ======================

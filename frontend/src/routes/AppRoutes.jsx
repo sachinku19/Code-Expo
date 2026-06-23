@@ -17,6 +17,8 @@ import AdminRoute from "../components/AdminRoute";
 
 // Components
 import AIChatbot from "../components/chatbot/AIChatbot";
+import { CallProvider } from "../context/CallContext";
+import CallOverlay from "../components/chat/CallOverlay";
 
 // Global Transition Context
 export const GateTransitionContext = createContext({
@@ -94,22 +96,25 @@ const AppRoutes = () => {
   return (
     <BrowserRouter>
       <ModalProvider>
-        <GateTransitionProvider>
-          <Suspense fallback={<RouteLoader />}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Auth mode="login" />} />
-              <Route path="/register" element={<Auth mode="register" />} />
-              <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
-              <Route path="/user/:userId" element={<UserProfileRedirect />} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
-              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-              <Route path="/reset-password/:token" element={<ResetPassword />} />
-            </Routes>
-          </Suspense>
-          <AIChatbot />
-        </GateTransitionProvider>
+        <CallProvider>
+          <GateTransitionProvider>
+            <Suspense fallback={<RouteLoader />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Auth mode="login" />} />
+                <Route path="/register" element={<Auth mode="register" />} />
+                <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
+                <Route path="/user/:userId" element={<UserProfileRedirect />} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+                <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
+              </Routes>
+            </Suspense>
+            <AIChatbot />
+            <CallOverlay />
+          </GateTransitionProvider>
+        </CallProvider>
       </ModalProvider>
     </BrowserRouter>
   );

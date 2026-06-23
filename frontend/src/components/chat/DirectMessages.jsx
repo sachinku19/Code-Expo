@@ -2,11 +2,48 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import socket from "../../socket/socket";
 import { getFollowers, getFollowing } from "../../services/socialService";
-import { getConversations, getChatHistory, sendDirectMessage } from "../../services/directMessageService";
-import { Send, User, MessageSquare, Search, Plus, Circle, ShieldAlert, Sparkles, ArrowLeft } from "lucide-react";
+import {
+  getConversations,
+  getChatHistory,
+  sendDirectMessage,
+  sendDirectMessageAttachment,
+  deleteDirectMessage,
+  editDirectMessage
+} from "../../services/directMessageService";
+import {
+  Send, User, MessageSquare, Search, Plus, Circle, ShieldAlert, Sparkles, ArrowLeft,
+  Phone, Video, PhoneOff, Mic, MicOff, VideoOff, FileText, Download, X,
+  Check, CheckCheck, Trash2, Pencil, Minimize2, Maximize2, Minus, Square
+} from "lucide-react";
+import { useCall } from "../../context/CallContext";
 import "./DirectMessages.css";
 
-export default function DirectMessages({ preselectedUser, onChatLoaded }) {
+const formatChatDate = (dateString) => {
+  const messageDate = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (messageDate.toDateString() === today.toDateString()) {
+    return "Today";
+  } else if (messageDate.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
+  } else {
+    return messageDate.toLocaleDateString([], {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  }
+};
+
+const formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+};
+
+export default function DirectMessages({ preselectedUser, onChatLoaded, onViewProfile }) {
   const { user } = useAuth();
   const currentUserId = user?.id || user?._id;
 
@@ -32,6 +69,19 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
   const chatEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Attachment states
+  const [attachment, setAttachment] = useState(null); // { file, previewUrl, type: 'image'|'pdf' }
+  const [isSending, setIsSending] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Message delete states (edit functionality removed)
+
+  // Global calling context
+  const {
+    activeCall,
+    handleStartCall
+  } = useCall();
 
   // Auto-focus chat input field when activeChat changes
   useEffect(() => {
@@ -127,7 +177,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
     }
   };
 
-  // Socket listeners for real-time messages & typing
+  // Socket listeners for real-time messages & typing, edits, deletions, and read receipts
   useEffect(() => {
     const handleReceiveMessage = (msg) => {
       // If the message is part of the active chat
@@ -163,16 +213,41 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
       }
     };
 
+    const handleReceiveDelete = ({ messageId }) => {
+      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+      fetchConversations();
+    };
+
+    const handleReceiveReadReceipt = ({ readerId, senderId }) => {
+      if (
+        activeChat &&
+        String(readerId) === String(activeChat._id) &&
+        String(senderId) === String(currentUserId)
+      ) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m.sender._id || m.sender) === String(currentUserId)
+              ? { ...m, isRead: true }
+              : m
+          )
+        );
+      }
+    };
+
     socket.on("dm:receive", handleReceiveMessage);
     socket.on("dm:typing", handlePartnerTyping);
     socket.on("dm:stop-typing", handlePartnerStopTyping);
+    socket.on("dm:delete", handleReceiveDelete);
+    socket.on("dm:read", handleReceiveReadReceipt);
 
     return () => {
       socket.off("dm:receive", handleReceiveMessage);
       socket.off("dm:typing", handlePartnerTyping);
       socket.off("dm:stop-typing", handlePartnerStopTyping);
+      socket.off("dm:delete", handleReceiveDelete);
+      socket.off("dm:read", handleReceiveReadReceipt);
     };
-  }, [activeChat]);
+  }, [activeChat, currentUserId]);
 
   // Load chat history when active chat changes
   useEffect(() => {
@@ -206,10 +281,75 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
     }
   };
 
+  // Local stream and calling socket listeners removed (now managed globally in CallContext)
+
+  // Revoke object URL on attachment changes/unmount
+  useEffect(() => {
+    return () => {
+      if (attachment && attachment.previewUrl) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
+    };
+  }, [attachment]);
+
+  // Media device controls and helpers removed (now managed globally in CallContext)
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "application/pdf"
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Only images (PNG, JPG, JPEG, WEBP) and PDF files are allowed!");
+      e.target.value = "";
+      return;
+    }
+
+    const type = file.type === "application/pdf" ? "pdf" : "image";
+    const previewUrl = type === "image" ? URL.createObjectURL(file) : null;
+
+    setAttachment({
+      file,
+      previewUrl,
+      type
+    });
+  };
+
+  const handleRemoveAttachment = () => {
+    if (attachment && attachment.previewUrl) {
+      URL.revokeObjectURL(attachment.previewUrl);
+    }
+    setAttachment(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if (!window.confirm("Are you sure you want to delete this message?")) return;
+    try {
+      await deleteDirectMessage(messageId);
+      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+      fetchConversations();
+    } catch (err) {
+      console.error("Error deleting message:", err);
+    }
+  };
+
+
+
+  // 3D background animation removed
+
   // Handle send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessageText.trim() || !activeChat) return;
+    if ((!newMessageText.trim() && !attachment) || !activeChat || isSending) return;
 
     const messageToSend = newMessageText.trim();
     setNewMessageText("");
@@ -222,17 +362,37 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
     setIsTyping(false);
 
     try {
-      const res = await sendDirectMessage(activeChat._id, messageToSend);
-      if (res.success) {
-        // Appends to message array (the controller socket broadcast also catches this, but to guarantee order we check duplication)
-        setMessages((prev) => {
-          if (prev.some((m) => m._id === res.message._id)) return prev;
-          return [...prev, res.message];
-        });
-        fetchConversations();
+      setIsSending(true);
+      if (attachment) {
+        const formData = new FormData();
+        formData.append("recipientId", activeChat._id);
+        formData.append("file", attachment.file);
+        if (messageToSend) {
+          formData.append("message", messageToSend);
+        }
+        const res = await sendDirectMessageAttachment(formData);
+        if (res.success) {
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === res.message._id)) return prev;
+            return [...prev, res.message];
+          });
+          handleRemoveAttachment();
+          fetchConversations();
+        }
+      } else {
+        const res = await sendDirectMessage(activeChat._id, messageToSend);
+        if (res.success) {
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === res.message._id)) return prev;
+            return [...prev, res.message];
+          });
+          fetchConversations();
+        }
       }
     } catch (err) {
-      console.error("Error sending direct message:", err);
+      console.error("Error sending message:", err);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -341,7 +501,17 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
                     );
                   }}
                 >
-                  <div className="avatar-wrapper">
+                  <div 
+                    className="avatar-wrapper chat-list-avatar-clickable"
+                    onClick={(e) => {
+                      if (onViewProfile) {
+                        e.stopPropagation();
+                        onViewProfile(conv.user._id);
+                      }
+                    }}
+                    style={{ cursor: onViewProfile ? "pointer" : "default" }}
+                    title={`View @${conv.user.username}'s profile`}
+                  >
                     {conv.user.avatar ? (
                       <img src={conv.user.avatar} alt={conv.user.username} className="user-avatar" />
                     ) : (
@@ -360,7 +530,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
                     </div>
                     <p className="last-message">
                       {conv.lastMessage.senderId === currentUserId ? "You: " : ""}
-                      {conv.lastMessage.text}
+                      {conv.lastMessage.fileUrl ? (
+                        <span className="attachment-indicator">
+                          {conv.lastMessage.fileType === "image" ? "📷 Image" : "📄 PDF Document"}
+                        </span>
+                      ) : (
+                        conv.lastMessage.text
+                      )}
                     </p>
                   </div>
                   {!conv.lastMessage.isRead && conv.lastMessage.senderId !== currentUserId && (
@@ -380,7 +556,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
         {activeChat ? (
           <>
             {/* Chat header */}
-            <div className="chat-header">
+            <div className="chat-header animate-fade-in">
               <button 
                 type="button" 
                 className="chat-back-btn" 
@@ -389,7 +565,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
               >
                 <ArrowLeft size={18} />
               </button>
-              <div className="header-user-info">
+              <div 
+                className="header-user-info active-chat-header-clickable"
+                onClick={() => onViewProfile && onViewProfile(activeChat._id)}
+                style={{ cursor: onViewProfile ? "pointer" : "default" }}
+                title={`View @${activeChat.username}'s profile`}
+              >
                 <div className="avatar-wrapper">
                   {activeChat.avatar ? (
                     <img src={activeChat.avatar} alt={activeChat.username} className="user-avatar-header" />
@@ -407,6 +588,26 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
                   </span>
                 </div>
               </div>
+              <div className="chat-header-actions">
+                <button
+                  type="button"
+                  className="header-action-btn audio-call-btn"
+                  onClick={() => handleStartCall("audio", activeChat)}
+                  title={`Start Audio Call with ${activeChat.username}`}
+                  disabled={!!activeCall}
+                >
+                  <Phone size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="header-action-btn video-call-btn"
+                  onClick={() => handleStartCall("video", activeChat)}
+                  title={`Start Video Call with ${activeChat.username}`}
+                  disabled={!!activeCall}
+                >
+                  <Video size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Chat message board */}
@@ -418,19 +619,106 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
                 </div>
               ) : (
                 <>
-                  {messages.map((msg) => {
-                    const isMe = String(msg.sender._id || msg.sender) === String(currentUserId);
-                    return (
-                      <div key={msg._id} className={`message-bubble-wrapper ${isMe ? "sent" : "received"}`}>
-                        <div className="message-bubble">
-                          <p className="message-text">{msg.message}</p>
-                          <span className="message-time">
-                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {(() => {
+                    let lastDateStr = null;
+                    return messages.map((msg) => {
+                      const isMe = String(msg.sender._id || msg.sender) === String(currentUserId);
+                      const msgDateStr = new Date(msg.createdAt).toDateString();
+                      const showDateHeader = msgDateStr !== lastDateStr;
+                      lastDateStr = msgDateStr;
+
+                      return (
+                        <React.Fragment key={msg._id}>
+                          {showDateHeader && (
+                            <div className="chat-date-header">
+                              <span className="chat-date-badge">{formatChatDate(msg.createdAt)}</span>
+                            </div>
+                          )}
+                          <div className={`message-bubble-wrapper ${isMe ? "sent" : "received"}`}>
+                            <div className="message-bubble-container">
+                              {isMe && (
+                                <div className="message-bubble-actions">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteMessage(msg._id)}
+                                    className="bubble-action-btn delete-btn"
+                                    title="Delete message"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              )}
+                              
+                              <div className="message-bubble">
+                                {msg.fileUrl && (
+                                  <div className="message-attachment-container">
+                                    <div className="message-attachment">
+                                      {msg.fileType === "image" ? (
+                                        <img
+                                          src={msg.fileUrl}
+                                          alt={msg.fileName || "Image attachment"}
+                                          className="dm-message-image"
+                                          onClick={() => window.open(msg.fileUrl, "_blank")}
+                                          title="Click to view image"
+                                        />
+                                      ) : (
+                                        <div className="dm-message-pdf" onClick={() => window.open(msg.fileUrl, "_blank")} title="Open PDF">
+                                          <div className="pdf-icon-box">
+                                            <FileText size={24} className="pdf-icon" />
+                                          </div>
+                                          <div className="pdf-info">
+                                            <span className="pdf-name">{msg.fileName || "Document.pdf"}</span>
+                                            <span className="pdf-action">Open PDF</span>
+                                          </div>
+                                          <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="pdf-download-link" onClick={e => e.stopPropagation()}>
+                                            <Download size={14} />
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Standalone media attachment metadata overlay */}
+                                    {msg.fileUrl && !msg.message && (
+                                      <span className="attachment-meta-overlay">
+                                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {isMe && (
+                                          <span className="tick-container">
+                                            {msg.isRead ? (
+                                              <CheckCheck size={12} className="read-tick" />
+                                            ) : (
+                                              <Check size={12} className="sent-tick" />
+                                            )}
+                                          </span>
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {msg.message && (
+                                  <div className="message-text">
+                                    {msg.message}
+                                    <span className="message-meta-inline">
+                                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      {isMe && (
+                                        <span className="tick-container">
+                                          {msg.isRead ? (
+                                            <CheckCheck size={12} className="read-tick" />
+                                          ) : (
+                                            <Check size={12} className="sent-tick" />
+                                          )}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </React.Fragment>
+                      );
+                    });
+                  })()}
                   {partnerTyping && (
                     <div className="message-bubble-wrapper received">
                       <div className="message-bubble typing-bubble">
@@ -446,23 +734,63 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
             </div>
 
             {/* Chat input box */}
-            <form className="chat-input-form" onSubmit={handleSendMessage}>
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder={`Message ${activeChat.username}...`}
-                value={newMessageText}
-                onChange={handleInputChange}
-                className="message-textarea"
-              />
-              <button
-                type="submit"
-                className={`send-msg-btn ${newMessageText.trim() ? "active" : ""}`}
-                disabled={!newMessageText.trim()}
-              >
-                <Send size={15} />
-              </button>
-            </form>
+            <div className="chat-input-container animate-fade-in">
+              {attachment && (
+                <div className="attachment-preview-panel animate-slide-up">
+                  <div className="preview-info">
+                    {attachment.type === "pdf" ? (
+                      <div className="preview-pdf-wrapper">
+                        <FileText className="preview-icon pdf" size={24} />
+                      </div>
+                    ) : (
+                      <img src={attachment.previewUrl} alt="Preview" className="preview-thumb" />
+                    )}
+                    <div className="preview-details">
+                      <span className="preview-name">{attachment.file.name}</span>
+                      <span className="preview-size">{(attachment.file.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                  </div>
+                  <button type="button" className="remove-preview-btn" onClick={handleRemoveAttachment}>
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              <form className="chat-input-form" onSubmit={handleSendMessage}>
+                <button
+                  type="button"
+                  className="attachment-trigger-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Add Image or PDF"
+                  disabled={isSending}
+                >
+                  <Plus size={20} />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/png, image/jpeg, image/jpg, image/webp, application/pdf"
+                  style={{ display: "none" }}
+                />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder={attachment ? "Add a caption..." : `Message ${activeChat.username}...`}
+                  value={newMessageText}
+                  onChange={handleInputChange}
+                  className="message-textarea"
+                  disabled={isSending}
+                />
+                <button
+                  type="submit"
+                  className={`send-msg-btn ${(newMessageText.trim() || attachment) && !isSending ? "active" : ""}`}
+                  disabled={(!newMessageText.trim() && !attachment) || isSending}
+                >
+                  {isSending ? <div className="loading-spinner-tiny animate-spin" /> : <Send size={15} />}
+                </button>
+              </form>
+            </div>
           </>
         ) : (
           <div className="dm-empty-state">
@@ -531,6 +859,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded }) {
           </div>
         </div>
       )}
+
+      {/* Calling overlay removed (rendered globally via CallOverlay) */}
     </div>
   );
 }

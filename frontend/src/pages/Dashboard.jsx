@@ -5257,6 +5257,7 @@ function Dashboard() {
             <DirectMessages 
               preselectedUser={preselectedChatPartner}
               onChatLoaded={() => setPreselectedChatPartner(null)}
+              onViewProfile={handleViewUserProfile}
             />
           </div>
         )}
