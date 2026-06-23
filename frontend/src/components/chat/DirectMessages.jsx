@@ -74,6 +74,21 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const [attachment, setAttachment] = useState(null); // { file, previewUrl, type: 'image'|'pdf' }
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
+  const activeChatRef = useRef(activeChat);
+  const currentUserIdRef = useRef(currentUserId);
+  const preselectedUserRef = useRef(preselectedUser);
+
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
+
+  useEffect(() => {
+    preselectedUserRef.current = preselectedUser;
+  }, [preselectedUser]);
 
   // Message delete states (edit functionality removed)
 
@@ -137,17 +152,19 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       if (res.success) {
         setConversations((prev) => {
           let list = res.conversations || [];
+          const activeChatVal = activeChatRef.current;
+          const preselectedUserVal = preselectedUserRef.current;
           
           // Force activeChat's unread count to 0 locally to prevent any race condition flickers
-          if (activeChat) {
+          if (activeChatVal) {
             list = list.map((c) =>
-              String(c.user?._id || c.user?.id) === String(activeChat._id)
+              String(c.user?._id || c.user?.id) === String(activeChatVal._id)
                 ? { ...c, unreadCount: 0, lastMessage: { ...c.lastMessage, isRead: true } }
                 : c
             );
           }
 
-          const partner = activeChat || preselectedUser;
+          const partner = activeChatVal || preselectedUserVal;
           if (partner) {
             const exists = list.some((c) => String(c.user?._id || c.user?.id) === String(partner._id));
             if (!exists) {
@@ -180,15 +197,16 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   // Socket listeners for real-time messages & typing, edits, deletions, and read receipts
   useEffect(() => {
     const handleReceiveMessage = (msg) => {
+      const activeChatVal = activeChatRef.current;
       // If the message is part of the active chat
       if (
-        activeChat &&
-        (String(msg.sender._id) === String(activeChat._id) ||
-         String(msg.recipient._id) === String(activeChat._id))
+        activeChatVal &&
+        (String(msg.sender._id) === String(activeChatVal._id) ||
+         String(msg.recipient._id) === String(activeChatVal._id))
       ) {
-        // If the active partner sent this message, hit getChatHistory in background to mark it read on database
-        if (String(msg.sender._id) === String(activeChat._id)) {
-          getChatHistory(activeChat._id).catch((e) => console.error("Error marking messages read:", e));
+        // If the active partner sent this message, mark it read on database
+        if (String(msg.sender._id) === String(activeChatVal._id)) {
+          getChatHistory(activeChatVal._id).catch((e) => console.error("Error marking messages read:", e));
         }
 
         setMessages((prev) => {
@@ -202,13 +220,15 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     };
 
     const handlePartnerTyping = ({ senderId }) => {
-      if (activeChat && String(senderId) === String(activeChat._id)) {
+      const activeChatVal = activeChatRef.current;
+      if (activeChatVal && String(senderId) === String(activeChatVal._id)) {
         setPartnerTyping(true);
       }
     };
 
     const handlePartnerStopTyping = ({ senderId }) => {
-      if (activeChat && String(senderId) === String(activeChat._id)) {
+      const activeChatVal = activeChatRef.current;
+      if (activeChatVal && String(senderId) === String(activeChatVal._id)) {
         setPartnerTyping(false);
       }
     };
@@ -219,14 +239,16 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     };
 
     const handleReceiveReadReceipt = ({ readerId, senderId }) => {
+      const activeChatVal = activeChatRef.current;
+      const currentUserIdVal = currentUserIdRef.current;
       if (
-        activeChat &&
-        String(readerId) === String(activeChat._id) &&
-        String(senderId) === String(currentUserId)
+        activeChatVal &&
+        String(readerId) === String(activeChatVal._id) &&
+        String(senderId) === String(currentUserIdVal)
       ) {
         setMessages((prev) =>
           prev.map((m) =>
-            String(m.sender._id || m.sender) === String(currentUserId)
+            String(m.sender._id || m.sender) === String(currentUserIdVal)
               ? { ...m, isRead: true }
               : m
           )
@@ -247,7 +269,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       socket.off("dm:delete", handleReceiveDelete);
       socket.off("dm:read", handleReceiveReadReceipt);
     };
-  }, [activeChat, currentUserId]);
+  }, []);
 
   // Load chat history when active chat changes
   useEffect(() => {

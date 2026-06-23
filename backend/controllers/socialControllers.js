@@ -23,6 +23,7 @@ const toggleFollowUser = async (req, res) => {
     }
 
     const existingFollow = await Follow.findOne({ follower: currentUserId, following: targetUserId });
+    const io = req.app.get("io");
 
     if (existingFollow) {
       await Follow.deleteOne({ _id: existingFollow._id });
@@ -32,6 +33,11 @@ const toggleFollowUser = async (req, res) => {
 
       await User.updateOne({ _id: currentUserId }, { followingCount });
       await User.updateOne({ _id: targetUserId }, { followersCount });
+
+      if (io) {
+        io.to(String(currentUserId)).emit("user:follow-update", { targetUserId, isFollowing: false, followingCount });
+        io.to(String(targetUserId)).emit("user:followers-update", { followerId: currentUserId, isFollowing: false, followersCount });
+      }
 
       return res.status(200).json({
         success: true,
@@ -47,8 +53,12 @@ const toggleFollowUser = async (req, res) => {
       await User.updateOne({ _id: currentUserId }, { followingCount });
       await User.updateOne({ _id: targetUserId }, { followersCount });
 
+      if (io) {
+        io.to(String(currentUserId)).emit("user:follow-update", { targetUserId, isFollowing: true, followingCount });
+        io.to(String(targetUserId)).emit("user:followers-update", { followerId: currentUserId, isFollowing: true, followersCount });
+      }
+
       // Create notification
-      const io = req.app.get("io");
       createAndSendNotification(targetUserId, currentUserId, "FOLLOW", "SOCIAL", null, io);
 
       // Log activity
@@ -83,6 +93,12 @@ const removeFollower = async (req, res) => {
 
     await User.updateOne({ _id: targetUserId }, { followingCount });
     await User.updateOne({ _id: currentUserId }, { followersCount });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(String(targetUserId)).emit("user:follow-update", { targetUserId: currentUserId, isFollowing: false, followingCount });
+      io.to(String(currentUserId)).emit("user:followers-update", { followerId: targetUserId, isFollowing: false, followersCount });
+    }
 
     res.status(200).json({
       success: true,
@@ -149,9 +165,17 @@ const toggleLikeRoom = async (req, res) => {
     }
 
     const existingLike = await RoomLike.findOne({ user: userId, room: room._id });
+    const io = req.app.get("io");
 
     if (existingLike) {
       await RoomLike.deleteOne({ _id: existingLike._id });
+      const likesCount = await RoomLike.countDocuments({ room: room._id });
+
+      if (io) {
+        io.emit("room:like-update", { roomId, likesCount });
+        io.to(String(userId)).emit("room:my-likes-update", { roomId, isLiked: false });
+      }
+
       return res.status(200).json({
         success: true,
         isLiked: false,
@@ -162,6 +186,11 @@ const toggleLikeRoom = async (req, res) => {
         await RoomLike.create({ user: userId, room: room._id });
       } catch (error) {
         if (error.code === 11000) {
+          const likesCount = await RoomLike.countDocuments({ room: room._id });
+          if (io) {
+            io.emit("room:like-update", { roomId, likesCount });
+            io.to(String(userId)).emit("room:my-likes-update", { roomId, isLiked: true });
+          }
           return res.status(200).json({
             success: true,
             isLiked: true,
@@ -171,9 +200,14 @@ const toggleLikeRoom = async (req, res) => {
         throw error;
       }
 
+      const likesCount = await RoomLike.countDocuments({ room: room._id });
+      if (io) {
+        io.emit("room:like-update", { roomId, likesCount });
+        io.to(String(userId)).emit("room:my-likes-update", { roomId, isLiked: true });
+      }
+
       // Notify owner
       if (String(room.createdBy) !== String(userId)) {
-        const io = req.app.get("io");
         createAndSendNotification(room.createdBy, userId, "LIKE", "ROOMS", room._id, io);
       }
 
@@ -203,9 +237,15 @@ const toggleBookmarkRoom = async (req, res) => {
     }
 
     const existingBookmark = await Bookmark.findOne({ user: userId, room: room._id });
+    const io = req.app.get("io");
 
     if (existingBookmark) {
       await Bookmark.deleteOne({ _id: existingBookmark._id });
+
+      if (io) {
+        io.to(String(userId)).emit("room:bookmark-update", { roomId, isBookmarked: false });
+      }
+
       return res.status(200).json({
         success: true,
         isBookmarked: false,
@@ -214,9 +254,12 @@ const toggleBookmarkRoom = async (req, res) => {
     } else {
       await Bookmark.create({ user: userId, room: room._id });
 
+      if (io) {
+        io.to(String(userId)).emit("room:bookmark-update", { roomId, isBookmarked: true });
+      }
+
       // Notify owner
       if (String(room.createdBy) !== String(userId)) {
-        const io = req.app.get("io");
         createAndSendNotification(room.createdBy, userId, "BOOKMARK", "ROOMS", room._id, io);
       }
 

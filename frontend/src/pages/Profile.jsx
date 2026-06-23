@@ -26,6 +26,8 @@ const Profile = () => {
   const navigate = useNavigate();
   const { user: authUser, setUser: setAuthUser } = useAuth();
   const pendingLikesRef = useRef(new Set());
+  const pendingFollowsRef = useRef(new Set());
+  const pendingBookmarksRef = useRef(new Set());
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
@@ -170,6 +172,9 @@ const Profile = () => {
   };
 
   const handleFollowToggle = async (candidateId) => {
+    if (pendingFollowsRef.current.has(candidateId)) return;
+    pendingFollowsRef.current.add(candidateId);
+
     const prevProfileUser = profileUser ? { ...profileUser } : null;
     const prevFollowersList = [...followersList];
     const prevFollowingList = [...followingList];
@@ -225,6 +230,8 @@ const Profile = () => {
       setFollowersList(prevFollowersList);
       setFollowingList(prevFollowingList);
       if (prevAuthUser) setAuthUser(prevAuthUser);
+    } finally {
+      pendingFollowsRef.current.delete(candidateId);
     }
   };
 
@@ -290,6 +297,9 @@ const Profile = () => {
   };
 
   const handleBookmarkRoom = async (roomId) => {
+    if (pendingBookmarksRef.current.has(roomId)) return;
+    pendingBookmarksRef.current.add(roomId);
+
     const prevSavedRooms = [...savedRooms];
     const isBookmarked = savedRooms.some(r => r && (r.roomId === roomId || r._id === roomId));
 
@@ -318,6 +328,8 @@ const Profile = () => {
       addToast(err.response?.data?.message || err.message, "error");
       // Rollback on failure
       setSavedRooms(prevSavedRooms);
+    } finally {
+      pendingBookmarksRef.current.delete(roomId);
     }
   };
 

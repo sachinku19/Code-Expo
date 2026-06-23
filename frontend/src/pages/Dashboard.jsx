@@ -535,6 +535,8 @@ function Dashboard() {
   const { user, setUser } = useAuth();
   const { triggerGateTransition } = useGateTransition();
   const pendingLikesRef = useRef(new Set());
+  const pendingFollowsRef = useRef(new Set());
+  const pendingBookmarksRef = useRef(new Set());
   const followingSearchInputRef = useRef(null);
 
   const [stats, setStats] = useState(() => loadFromCache("ce_cache_stats", {
@@ -1333,6 +1335,9 @@ function Dashboard() {
   };
 
   const handleFollowToggle = async (candidateId) => {
+    if (pendingFollowsRef.current.has(candidateId)) return;
+    pendingFollowsRef.current.add(candidateId);
+
     // Keep copies of original states for potential rollback
     const prevFollowingList = [...followingList];
     const prevOnlineFollows = [...onlineFollows];
@@ -1415,6 +1420,8 @@ function Dashboard() {
       setFollowersList(prevFollowersList);
       if (prevUser) setUser(prevUser);
       if (prevViewingUser) setViewingUserProfile(prevViewingUser);
+    } finally {
+      pendingFollowsRef.current.delete(candidateId);
     }
   };
 
@@ -1553,6 +1560,9 @@ function Dashboard() {
   };
 
   const handleBookmarkRoom = async (roomId) => {
+    if (pendingBookmarksRef.current.has(roomId)) return;
+    pendingBookmarksRef.current.add(roomId);
+
     const prevSavedRooms = [...savedRooms];
     const isBookmarked = savedRooms.some(r => r && (r.roomId === roomId || r._id === roomId));
 
@@ -1582,6 +1592,8 @@ function Dashboard() {
       addToast(err.response?.data?.message || err.message, "error");
       // Rollback on failure
       setSavedRooms(prevSavedRooms);
+    } finally {
+      pendingBookmarksRef.current.delete(roomId);
     }
   };
 
@@ -1956,6 +1968,38 @@ function Dashboard() {
       setActiveAds(prev => prev.filter(a => a._id !== adId));
     };
 
+    const handleRoomLikeUpdate = ({ roomId, likesCount }) => {
+      const updateLikes = (roomsArray) =>
+        roomsArray.map(r => (r && (r.roomId === roomId || r._id === roomId) ? { ...r, likesCount } : r));
+
+      setTrendingRooms(prev => updateLikes(prev));
+      setHistoryRooms(prev => updateLikes(prev));
+      setPublicRooms(prev => updateLikes(prev));
+      setLiveRooms(prev => updateLikes(prev));
+      setRecentRooms(prev => updateLikes(prev));
+      setViewingUserRooms(prev => updateLikes(prev));
+      setSavedRooms(prev => updateLikes(prev));
+      setViewingUserLikedRooms(prev => updateLikes(prev));
+    };
+
+    const handleRoomMyLikesUpdate = () => {
+      fetchSocialDashboardData();
+    };
+
+    const handleRoomBookmarkUpdate = () => {
+      fetchSocialDashboardData();
+    };
+
+    const handleFollowUpdate = () => {
+      fetchSocialDashboardData();
+    };
+
+    socket.on("room:like-update", handleRoomLikeUpdate);
+    socket.on("room:my-likes-update", handleRoomMyLikesUpdate);
+    socket.on("room:bookmark-update", handleRoomBookmarkUpdate);
+    socket.on("user:follow-update", handleFollowUpdate);
+    socket.on("user:followers-update", handleFollowUpdate);
+
     socket.on("join-request", handleJoinRequest);
     socket.on("notification-received", handleRealtimeNotification);
     socket.on("already-online", (data) => {
@@ -1970,6 +2014,12 @@ function Dashboard() {
     socket.on("ad:deleted", handleAdDeleted);
 
     return () => {
+      socket.off("room:like-update", handleRoomLikeUpdate);
+      socket.off("room:my-likes-update", handleRoomMyLikesUpdate);
+      socket.off("room:bookmark-update", handleRoomBookmarkUpdate);
+      socket.off("user:follow-update", handleFollowUpdate);
+      socket.off("user:followers-update", handleFollowUpdate);
+
       socket.off("join-request", handleJoinRequest);
       socket.off("notification-received", handleRealtimeNotification);
       socket.off("already-online");
