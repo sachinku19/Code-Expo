@@ -535,15 +535,22 @@ const getUserPublicProfile = async (req, res) => {
     const targetUserId = req.params.id;
     const currentUserId = req.user._id;
 
-    const targetUser = await User.findById(targetUserId)
-      .select("username email avatar bio programmingLanguages followersCount followingCount executionsCount");
+    const [targetUser, followersCount, followingCount, isFollowing, rawRooms, likes, activitiesList] = await Promise.all([
+      User.findById(targetUserId).select("username email avatar bio programmingLanguages followersCount followingCount executionsCount"),
+      Follow.countDocuments({ following: targetUserId }),
+      Follow.countDocuments({ follower: targetUserId }),
+      Follow.exists({ follower: currentUserId, following: targetUserId }),
+      Room.find({ createdBy: targetUserId, isPrivate: false }).populate("createdBy", "username avatar").sort({ createdAt: -1 }),
+      RoomLike.find({ user: targetUserId }).populate({
+        path: "room",
+        populate: { path: "createdBy", select: "username avatar" }
+      }),
+      Activity.find({ user: targetUserId })
+    ]);
 
     if (!targetUser) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-
-    const followersCount = await Follow.countDocuments({ following: targetUserId });
-    const followingCount = await Follow.countDocuments({ follower: targetUserId });
 
     if (targetUser.followersCount !== followersCount || targetUser.followingCount !== followingCount) {
       await User.updateOne(
@@ -554,17 +561,6 @@ const getUserPublicProfile = async (req, res) => {
       targetUser.followingCount = followingCount;
     }
 
-    const isFollowing = await Follow.exists({ follower: currentUserId, following: targetUserId });
-
-    const rawRooms = await Room.find({ createdBy: targetUserId, isPrivate: false })
-      .populate("createdBy", "username avatar")
-      .sort({ createdAt: -1 });
-
-    const likes = await RoomLike.find({ user: targetUserId })
-      .populate({
-        path: "room",
-        populate: { path: "createdBy", select: "username avatar" }
-      });
     const rawLikedRooms = likes.map(l => l.room).filter(Boolean).filter(r => !r.isPrivate);
 
     // Calculate likesCount for target user's rooms and liked rooms
@@ -595,7 +591,6 @@ const getUserPublicProfile = async (req, res) => {
     );
 
     // Calculate contribution stats & heatmap for target user
-    const activitiesList = await Activity.find({ user: targetUserId });
 
     const yearQuery = req.query.year;
     const defaultActions = () => ({

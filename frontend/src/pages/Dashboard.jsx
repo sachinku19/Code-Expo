@@ -1049,6 +1049,15 @@ function Dashboard() {
   const [achievementFilter, setAchievementFilter] = useState("all");
   const [expandedAchievementId, setExpandedAchievementId] = useState(null);
 
+  const targetUserIdFromUrl = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("userId");
+  }, [location.search]);
+
+  const isViewingPublicProfile = activeSection === "profile" && !!targetUserIdFromUrl;
+
+  const isPublicProfileLoading = isViewingPublicProfile && (!viewingUserProfile || (String(viewingUserProfile._id) !== String(targetUserIdFromUrl) && String(viewingUserProfile.id) !== String(targetUserIdFromUrl)));
+
   // Gate Opening Portal Animation State
   const [resumingHistoryRoomId, setResumingHistoryRoomId] = useState(null);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
@@ -1104,7 +1113,12 @@ function Dashboard() {
       setActiveSection(tab);
       if (tab === "profile") {
         if (userId) {
-          if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId))) {
+          const isOwnProfile = user && (String(userId) === String(user.id) || String(userId) === String(user._id));
+          if (isOwnProfile) {
+            setViewingUserProfile(null);
+            setViewingUserStats(null);
+            navigate("/dashboard?tab=profile", { replace: true });
+          } else if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId))) {
             handleViewUserProfile(userId);
           }
         } else {
@@ -1120,7 +1134,7 @@ function Dashboard() {
       setViewingUserProfile(null);
       setViewingUserStats(null);
     }
-  }, [location]);
+  }, [location, user]);
 
   // Admin redirect logic
   useEffect(() => {
@@ -1599,6 +1613,34 @@ function Dashboard() {
   };
 
   const handleViewUserProfile = async (targetUserId) => {
+    // If viewing own profile, redirect to own profile tab directly
+    if (user && (String(targetUserId) === String(user.id) || String(targetUserId) === String(user._id))) {
+      setViewingUserProfile(null);
+      setViewingUserRooms([]);
+      setViewingUserLikedRooms([]);
+      setViewingUserStats(null);
+      setActiveSection("profile");
+      setProfileTab("rooms");
+      navigate("/dashboard?tab=profile");
+      return;
+    }
+
+    // Clear previous profile to avoid flashing old data
+    setViewingUserProfile(null);
+    setViewingUserRooms([]);
+    setViewingUserLikedRooms([]);
+    setViewingUserStats(null);
+
+    // Transition immediately
+    setActiveSection("profile");
+    setProfileTab("rooms");
+
+    // Smoothly update URL if needed
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get("tab") !== "profile" || searchParams.get("userId") !== String(targetUserId)) {
+      navigate(`/dashboard?tab=profile&userId=${targetUserId}`);
+    }
+
     try {
       setIsLoadingDashboard(true);
       setSelectedYear("last12");
@@ -1608,15 +1650,11 @@ function Dashboard() {
         setViewingUserRooms(res.rooms || []);
         setViewingUserLikedRooms(res.likedRooms || []);
         setViewingUserStats(res.stats || null);
-        setProfileTab("rooms");
-        setActiveSection("profile");
-        const searchParams = new URLSearchParams(location.search);
-        if (searchParams.get("tab") !== "profile" || searchParams.get("userId") !== String(targetUserId)) {
-          navigate(`/dashboard?tab=profile&userId=${targetUserId}`);
-        }
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
+      setActiveSection("dashboard");
+      navigate("/dashboard");
     } finally {
       setIsLoadingDashboard(false);
     }
@@ -5599,7 +5637,17 @@ function Dashboard() {
         {/* PROFILE SECTION */}
         {activeSection === "profile" && (
           <div className="profile-section-container">
-            <div className="github-profile-layout">
+            {isPublicProfileLoading ? (
+              <div className="profile-loader-container" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "400px", gap: "16px" }}>
+                <div className="modal-roller-spinner">
+                  <div></div><div></div><div></div><div></div>
+                  <div></div><div></div><div></div><div></div>
+                </div>
+                <h4 style={{ color: "var(--ce-text)", fontWeight: "500", letterSpacing: "0.5px" }}>Loading Developer Profile...</h4>
+                <p style={{ color: "var(--ce-text-muted)", fontSize: "0.8rem", marginTop: "-8px" }}>Fetching portfolios, stats, and workspaces</p>
+              </div>
+            ) : (
+              <div className="github-profile-layout">
 
               {/* Profile Card Header / Sidebar */}
               <div className="profile-sidebar-card">
@@ -6070,8 +6118,9 @@ function Dashboard() {
               </div>
 
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
 
         {/* SETTINGS SECTION */}
