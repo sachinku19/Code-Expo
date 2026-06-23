@@ -42,12 +42,16 @@ function Home() {
     }
   };
 
- 
-
   useEffect(() => {
     const savedTheme = localStorage.getItem("codeExpoHomeTheme");
     if (savedTheme === "light" || savedTheme === "dark") {
       setTheme(savedTheme);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!window.location.hash) {
+      window.scrollTo(0, 0);
     }
   }, []);
 

@@ -10,6 +10,7 @@ function SocialHubShowcase() {
   ]);
   const [inputText, setInputText] = useState("");
   const chatEndRef = useRef(null);
+  const isFirstRender = useRef(true);
 
   // Simulated leaderboard records
   const leaderboard = [
@@ -63,6 +64,10 @@ function SocialHubShowcase() {
   };
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
