@@ -1,4 +1,5 @@
 const User=require("../models/User");
+const Follow=require("../models/Follow");
 const jwt=require("jsonwebtoken");
 const bcrypt=require("bcryptjs");
 const validator=require("validator");
@@ -155,6 +156,19 @@ const my_profile=async(req,res)=>{
                 success:false,
                 message:"Your account has been suspended by an administrator."
             });
+        }
+
+        if (req.user) {
+            const followersCount = await Follow.countDocuments({ following: req.user._id });
+            const followingCount = await Follow.countDocuments({ follower: req.user._id });
+            if (req.user.followersCount !== followersCount || req.user.followingCount !== followingCount) {
+                await User.updateOne(
+                    { _id: req.user._id },
+                    { followersCount, followingCount }
+                );
+                req.user.followersCount = followersCount;
+                req.user.followingCount = followingCount;
+            }
         }
 
         res.status(200).json({

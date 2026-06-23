@@ -26,8 +26,12 @@ const toggleFollowUser = async (req, res) => {
 
     if (existingFollow) {
       await Follow.deleteOne({ _id: existingFollow._id });
-      await User.updateOne({ _id: currentUserId }, { $inc: { followingCount: -1 } });
-      await User.updateOne({ _id: targetUserId }, { $inc: { followersCount: -1 } });
+
+      const followingCount = await Follow.countDocuments({ follower: currentUserId });
+      const followersCount = await Follow.countDocuments({ following: targetUserId });
+
+      await User.updateOne({ _id: currentUserId }, { followingCount });
+      await User.updateOne({ _id: targetUserId }, { followersCount });
 
       return res.status(200).json({
         success: true,
@@ -36,8 +40,12 @@ const toggleFollowUser = async (req, res) => {
       });
     } else {
       await Follow.create({ follower: currentUserId, following: targetUserId });
-      await User.updateOne({ _id: currentUserId }, { $inc: { followingCount: 1 } });
-      await User.updateOne({ _id: targetUserId }, { $inc: { followersCount: 1 } });
+
+      const followingCount = await Follow.countDocuments({ follower: currentUserId });
+      const followersCount = await Follow.countDocuments({ following: targetUserId });
+
+      await User.updateOne({ _id: currentUserId }, { followingCount });
+      await User.updateOne({ _id: targetUserId }, { followersCount });
 
       // Create notification
       const io = req.app.get("io");
@@ -69,8 +77,12 @@ const removeFollower = async (req, res) => {
     }
 
     await Follow.deleteOne({ _id: followRelation._id });
-    await User.updateOne({ _id: targetUserId }, { $inc: { followingCount: -1 } });
-    await User.updateOne({ _id: currentUserId }, { $inc: { followersCount: -1 } });
+
+    const followingCount = await Follow.countDocuments({ follower: targetUserId });
+    const followersCount = await Follow.countDocuments({ following: currentUserId });
+
+    await User.updateOne({ _id: targetUserId }, { followingCount });
+    await User.updateOne({ _id: currentUserId }, { followersCount });
 
     res.status(200).json({
       success: true,
@@ -91,7 +103,7 @@ const getFollowers = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      followers: followers.map(f => f.follower)
+      followers: followers.map(f => f.follower).filter(Boolean)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -528,6 +540,18 @@ const getUserPublicProfile = async (req, res) => {
 
     if (!targetUser) {
       return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const followersCount = await Follow.countDocuments({ following: targetUserId });
+    const followingCount = await Follow.countDocuments({ follower: targetUserId });
+
+    if (targetUser.followersCount !== followersCount || targetUser.followingCount !== followingCount) {
+      await User.updateOne(
+        { _id: targetUserId },
+        { followersCount, followingCount }
+      );
+      targetUser.followersCount = followersCount;
+      targetUser.followingCount = followingCount;
     }
 
     const isFollowing = await Follow.exists({ follower: currentUserId, following: targetUserId });

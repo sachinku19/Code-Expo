@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Follow = require("../models/Follow");
 const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 const path = require("path");
@@ -231,6 +232,17 @@ const updateProfile = async (req, res) => {
     }
 
     await user.save();
+
+    const followersCount = await Follow.countDocuments({ following: user._id });
+    const followingCount = await Follow.countDocuments({ follower: user._id });
+    if (user.followersCount !== followersCount || user.followingCount !== followingCount) {
+      await User.updateOne(
+        { _id: user._id },
+        { followersCount, followingCount }
+      );
+      user.followersCount = followersCount;
+      user.followingCount = followingCount;
+    }
 
     res.status(200).json({
       success: true,
