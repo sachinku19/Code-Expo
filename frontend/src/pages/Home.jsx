@@ -4,7 +4,9 @@ import Hero from "../components/hero/Hero";
 import TrustedTech from "../components/trusted/TrustedTech";
 import Features from "../components/features/Features";
 import CollaborationDemo from "../components/collaboration/CollaborationDemo";
+import WhiteboardShowcase from "../components/collaboration/WhiteboardShowcase";
 import AIShowcase from "../components/ai/AIShowcase";
+import SocialHubShowcase from "../components/social/SocialHubShowcase";
 import Stats from "../components/stats/Stats";
 import Testimonials from "../components/testimonials/Testimonials";
 import CTA from "../components/cta/CTA";
@@ -60,7 +62,7 @@ function Home() {
   };
 
   useEffect(() => {
-    const sections = ["hero", "demo", "features", "collaboration", "ai"];
+    const sections = ["hero", "demo", "features", "collaboration", "whiteboard", "ai", "social-hub"];
     
     const observerOptions = {
       root: null,
@@ -113,9 +115,17 @@ function Home() {
       <div id="collaboration">
         <CollaborationDemo />
       </div>
+
+      <div id="whiteboard">
+        <WhiteboardShowcase />
+      </div>
       
       <div id="ai">
         <AIShowcase />
+      </div>
+
+      <div id="social-hub">
+        <SocialHubShowcase />
       </div>
       
       <Stats />

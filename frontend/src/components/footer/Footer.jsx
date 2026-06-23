@@ -57,33 +57,34 @@ function Footer() {
         <div className="footer-links">
           <div>
             <h4>Product</h4>
-            <a href="#features">Features</a>
-            <a href="#templates">Templates</a>
-            <a href="#ai">AI Assistant</a>
-            <a href="#collaboration">Multiplayer</a>
+            <a href="#collaboration">Collaborative Editor</a>
+            <a href="#ai">AI Copilot Pair</a>
+            <a href="#demo">Compiler Sandbox</a>
+            <a href="#features">Interactive Canvas</a>
           </div>
 
           <div>
             <h4>Resources</h4>
             <a href="#">Documentation</a>
-            <a href="#">Release Notes</a>
             <a href="#">API Runtimes</a>
-            <a href="#">Support Help</a>
+            <a href="#">Developer Setup</a>
+            <a href="#">Support Center</a>
           </div>
 
           <div>
             <h4>Community</h4>
-            <a href="#">Discord Server</a>
-            <a href="#">GitHub Repo</a>
+            <a href="#">Discord Workspace</a>
+            <a href="#">GitHub Project</a>
+            <a href="#">Developer Forum</a>
             <a href="#">Twitter Feed</a>
-            <a href="#">YouTube Channel</a>
           </div>
 
           <div>
             <h4>Legal</h4>
             <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Use</a>
-            <a href="#">Cookie settings</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Security Grid</a>
+            <a href="#">Cookie Settings</a>
           </div>
         </div>
       </div>

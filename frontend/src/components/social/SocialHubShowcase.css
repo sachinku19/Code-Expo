@@ -1,0 +1,402 @@
+.social-hub-showcase-section {
+  padding: 80px max(24px, calc((100vw - 1200px) / 2));
+  background-color: var(--bg-dark);
+  position: relative;
+  overflow: hidden;
+}
+
+.sh-header {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.sh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  color: var(--accent-purple);
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.18);
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+
+.sh-badge-icon {
+  color: var(--accent-purple);
+}
+
+.sh-header h2 {
+  margin: 0;
+  font-size: clamp(1.85rem, 3.4vw, 2.55rem);
+  line-height: 1.15;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -1px;
+}
+
+.sh-header p {
+  margin-top: 18px;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+/* Showcase Grid */
+.sh-showcase-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 32px;
+}
+
+.sh-left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.sh-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  text-align: left;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+
+.card-icon {
+  color: var(--accent-cyan);
+}
+
+.points-label {
+  margin-left: auto;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #ff9e00;
+  background: rgba(255, 158, 0, 0.1);
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Heatmap Grid */
+.heatmap-grid-container {
+  overflow-x: auto;
+}
+
+.heatmap-grid {
+  display: grid;
+  gap: 4px;
+  min-width: 320px;
+}
+
+.heatmap-box {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: #18181b;
+  transition: transform 0.15s ease;
+}
+
+.heatmap-box:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.heatmap-box.level-0 { background: rgba(255, 255, 255, 0.03); }
+.heatmap-box.level-1 { background: #14532d; }
+.heatmap-box.level-2 { background: #166534; }
+.heatmap-box.level-3 { background: #22c55e; }
+.heatmap-box.level-4 { background: #4ade80; }
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.heatmap-legend .heatmap-box {
+  width: 12px;
+  height: 12px;
+}
+
+/* Leaderboard */
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 12px 16px;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+.leaderboard-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  transform: translateX(4px);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.rank {
+  font-size: 0.85rem;
+  font-weight: 800;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  color: var(--text-muted);
+}
+
+.rank-1 { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.rank-2 { background: rgba(156, 163, 175, 0.15); color: #9ca3af; }
+.rank-3 { background: rgba(217, 119, 6, 0.15); color: #d97706; }
+
+.dev-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dev-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.dev-badge-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: white;
+  width: max-content;
+}
+
+.dev-stats-points {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.dev-stats-points strong {
+  font-size: 0.95rem;
+  color: var(--accent-cyan);
+}
+
+.dev-stats-points span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* DM Chat CSS */
+.sh-right-panel {
+  z-index: 5;
+}
+
+.chat-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+}
+
+.status-indicator {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.chat-body-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+  min-height: 280px;
+}
+
+.chat-message-bubble {
+  align-self: flex-start;
+  max-width: 80%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 2px;
+}
+
+.chat-message-bubble.own-message {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border-color: rgba(59, 130, 246, 0.25);
+  border-radius: 18px 18px 2px 18px;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sender-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.message-time {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.message-content {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.chat-input-row {
+  display: flex;
+  position: relative;
+  width: 100%;
+}
+
+.chat-input-row input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 12px 48px 12px 16px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.chat-input-row input:focus {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.chat-input-row button {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  bottom: 6px;
+  background: var(--grad-primary);
+  color: white;
+  border: none;
+  width: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+}
+
+.chat-input-row button:hover {
+  opacity: 0.95;
+}
+
+/* Light Theme Variables */
+.home-page.light-theme .social-hub-showcase-section {
+  background-color: transparent;
+}
+
+.home-page.light-theme .sh-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.58));
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.06);
+}
+
+.home-page.light-theme .card-header {
+  border-bottom-color: rgba(15, 23, 42, 0.06);
+}
+
+.home-page.light-theme .heatmap-box.level-0 {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.home-page.light-theme .leaderboard-item {
+  background: rgba(15, 23, 42, 0.01);
+  border-color: rgba(15, 23, 42, 0.04);
+}
+
+.home-page.light-theme .leaderboard-item:hover {
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(99, 102, 241, 0.16);
+}
+
+.home-page.light-theme .chat-message-bubble {
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.06);
+}
+
+.home-page.light-theme .chat-message-bubble.own-message {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border-color: rgba(59, 130, 246, 0.18);
+}
+
+.home-page.light-theme .chat-input-row input {
+  background: rgba(15, 23, 42, 0.02);
+  border-color: rgba(15, 23, 42, 0.08);
+  color: var(--text-primary);
+}
+
+.home-page.light-theme .chat-input-row input:focus {
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+@media (max-width: 992px) {
+  .sh-showcase-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .social-hub-showcase-section {
+    padding-top: 60px;
+    padding-bottom: 60px;
+  }
+}

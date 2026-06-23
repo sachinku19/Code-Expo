@@ -1,46 +1,63 @@
 import "./Features.css";
 import FeatureCard from "./FeatureCard";
 import {
-  Bot,
-  Box,
   Code2,
-  Globe2,
+  Bot,
   Rocket,
   Video,
-  Zap,
+  Palette,
+  MessageSquare,
+  Flame,
+  Trophy,
+  Key
 } from "lucide-react";
 
 function Features() {
   const features = [
     {
-      icon: Zap,
-      title: "Real-Time Collaboration",
-      desc: "Multiple developers can write, refactor, and review code together with zero latency.",
+      icon: Code2,
+      title: "Multiplayer Code Editor",
+      desc: "Write and edit code with your team in real-time. See live cursor movements and typing updates instantly.",
     },
     {
       icon: Bot,
       title: "AI Pair Programmer",
-      desc: "Generate functions, explain complex logic, find syntax bugs, and refactor code instantly.",
+      desc: "Get intelligent pair programming help to write clean code, explain logic, and debug problems instantly.",
     },
     {
       icon: Rocket,
-      title: "Zero-Config Compilation",
-      desc: "Compile and execute JavaScript, Python, C++, and Java in isolated sandbox environments.",
+      title: "Sandboxed Compiler",
+      desc: "Compile and execute JavaScript, Python, C++, and Java securely inside isolated runtime containers.",
     },
     {
       icon: Video,
-      title: "Voice & Video Call Rooms",
-      desc: "Conduct sprints, debug sessions, and code reviews directly inside your coding workspace.",
+      title: "Voice & Video Calls",
+      desc: "Initiate voice or video sprint meetings directly inside your shared workspace to align the team.",
     },
     {
-      icon: Globe2,
-      title: "Polyglot Language Support",
-      desc: "Choose from multiple supported runtimes with syntax highlighting and autocompletion.",
+      icon: Palette,
+      title: "Collaborative Whiteboard",
+      desc: "Brainstorm, sketch architecture plans, and draw system flows side-by-side with other developers.",
     },
     {
-      icon: Box,
-      title: "Quick-Start Templates",
-      desc: "Spin up React, Next.js, MERN stack, or simple scripts from ready-made presets.",
+      icon: MessageSquare,
+      title: "Team Channels & DMs",
+      desc: "Chat in shared project rooms or start direct messages with customizable notification alerts.",
+    },
+    {
+      icon: Flame,
+      title: "Developer Activity Heatmap",
+      desc: "Track coding metrics, daily points, active days, and streaks on an interactive profile calendar.",
+    },
+    {
+      icon: Trophy,
+      title: "Global Leaderboard",
+      desc: "Grow your social network, build followers, join trending public rooms, and claim top rankings.",
+    },
+    {
+      icon: Key,
+      title: "Git & Custom API Keys",
+      desc: "Synchronize with GitHub repositories and generate developer access tokens for API requests.",
     },
   ];
 
