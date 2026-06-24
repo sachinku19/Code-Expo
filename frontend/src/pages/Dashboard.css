@@ -9923,4 +9923,13 @@ tier-badge.master {
   color: var(--ce-text-h) !important;
   border-color: rgba(0, 0, 0, 0.06) !important;
 }
+
+.story-viewer-delete {
+  transition: all 0.2s ease;
+}
+
+.story-viewer-delete:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
 

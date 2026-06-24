@@ -32,7 +32,8 @@ const {
 } = require("../controllers/postController");
 const {
   createStory,
-  getStories
+  getStories,
+  deleteStory
 } = require("../controllers/storyController");
 
 const router = express.Router();
@@ -74,6 +75,7 @@ router.post("/posts/:id/comment", auth_protect, addComment);
 // Stories
 router.post("/stories", auth_protect, createStory);
 router.get("/stories", auth_protect, getStories);
+router.delete("/stories/:id", auth_protect, deleteStory);
 
 // Status & Analytics
 router.post("/status", auth_protect, updateStatus);

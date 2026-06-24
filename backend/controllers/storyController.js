@@ -44,7 +44,30 @@ const getStories = async (req, res) => {
   }
 };
 
+// Delete story
+const deleteStory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const story = await Story.findById(id);
+
+    if (!story) {
+      return res.status(404).json({ success: false, message: "Story not found" });
+    }
+
+    // Check if story belongs to the user
+    if (story.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized to delete this story" });
+    }
+
+    await Story.findByIdAndDelete(id);
+    res.status(200).json({ success: true, message: "Story deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createStory,
-  getStories
+  getStories,
+  deleteStory
 };

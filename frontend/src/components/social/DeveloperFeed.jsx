@@ -12,6 +12,8 @@ export default function DeveloperFeed({ user, addToast }) {
   const [isPosting, setIsPosting] = useState(false);
   const [activeComments, setActiveComments] = useState({}); // postId: true/false
   const [commentInputs, setCommentInputs] = useState({}); // postId: text
+  const [postToDelete, setPostToDelete] = useState(null); // Custom delete post modal
+  const [isDeletingPost, setIsDeletingPost] = useState(false); // Spinner state for deleting post
 
   const fetchPosts = async () => {
     try {
@@ -128,17 +130,25 @@ export default function DeveloperFeed({ user, addToast }) {
     }
   };
 
-  const handleDeletePost = async (postId) => {
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
+  const handleDeletePostClick = (postId) => {
+    if (!postId) return;
+    setPostToDelete(postId);
+  };
 
+  const confirmDeletePost = async () => {
+    if (!postToDelete) return;
+    setIsDeletingPost(true);
     try {
-      const res = await deletePost(postId);
+      const res = await deletePost(postToDelete);
       if (res.success) {
-        addToast(res.message, "success");
-        setPosts(prev => prev.filter(post => post._id !== postId));
+        addToast(res.message || "Post deleted successfully", "success");
+        setPosts(prev => prev.filter(post => post._id !== postToDelete));
+        setPostToDelete(null);
       }
     } catch (err) {
       addToast("Failed to delete post", "error");
+    } finally {
+      setIsDeletingPost(false);
     }
   };
 
@@ -246,7 +256,7 @@ export default function DeveloperFeed({ user, addToast }) {
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <span className="post-time">{new Date(post.createdAt).toLocaleDateString()}</span>
                       {isOwner && (
-                        <button onClick={() => handleDeletePost(post._id)} className="post-delete-btn" aria-label="Delete post">
+                        <button onClick={() => handleDeletePostClick(post._id)} className="post-delete-btn" aria-label="Delete post">
                           <Trash2 size={13} />
                         </button>
                       )}
@@ -329,6 +339,77 @@ export default function DeveloperFeed({ user, addToast }) {
           </AnimatePresence>
         )}
       </div>
+
+      {/* Delete Post Custom Confirmation Modal */}
+      <AnimatePresence>
+        {postToDelete && (
+          <div className="ce-modal-overlay" onClick={() => setPostToDelete(null)} style={{ zIndex: 10005 }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="ce-modal-card"
+              style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center", background: "var(--ce-bg-card, rgba(16, 16, 22, 0.95))", border: "1px solid var(--ce-border)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)", fontSize: "1.1rem", fontWeight: "700" }}>Delete Post?</h3>
+              <p style={{ margin: "0 0 20px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
+                Are you sure you want to delete this post? This action cannot be undone and your post will be permanently removed from the developer feed.
+              </p>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setPostToDelete(null)}
+                  style={{
+                    flex: 1,
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--ce-border)",
+                    background: "transparent",
+                    color: "var(--ce-text)",
+                    fontSize: "0.75rem",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeletePost}
+                  disabled={isDeletingPost}
+                  style={{
+                    flex: 1,
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    border: "none",
+                    background: "var(--ce-danger, #ef4444)",
+                    color: "#fff",
+                    fontSize: "0.75rem",
+                    fontWeight: "700",
+                    cursor: isDeletingPost ? "not-allowed" : "pointer",
+                    boxShadow: "0 2px 6px rgba(239, 68, 68, 0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    opacity: isDeletingPost ? 0.7 : 1
+                  }}
+                >
+                  {isDeletingPost ? (
+                    <>
+                      <span className="btn-spinner" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

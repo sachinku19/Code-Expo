@@ -135,6 +135,11 @@ export const getStories = async () => {
   return response.data;
 };
 
+export const deleteStory = async (storyId) => {
+  const response = await API.delete(`/stories/${storyId}`, getHeaders());
+  return response.data;
+};
+
 export const updateStatus = async (status) => {
   const response = await API.post("/status", { status }, getHeaders());
   return response.data;
