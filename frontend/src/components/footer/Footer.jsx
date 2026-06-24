@@ -58,7 +58,7 @@ function Footer() {
           <div>
             <h4>Product</h4>
             <a href="#collaboration">Collaborative Editor</a>
-            <a href="#ai">AI Copilot Pair</a>
+            <a href="#ai">Expo AI</a>
             <a href="#demo">Compiler Sandbox</a>
             <a href="#features">Interactive Canvas</a>
           </div>

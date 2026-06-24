@@ -33,6 +33,7 @@ import {
   Send,
   Play,
   LogOut,
+  Loader2,
   DoorOpen,
   Trash2,
   Terminal,
@@ -1865,6 +1866,7 @@ function Editor() {
 
   // Fetch Room Details
   useEffect(() => {
+    if (!localStorage.getItem("token") || user.id === "guest") return;
     fetchRoom();
   }, [roomId, navigate, user.id]);
 
@@ -3027,6 +3029,7 @@ function Editor() {
 
   // Compile runner handler
   const handleRunCode = () => {
+    if (isTerminalExecuting || currentUserRole === "VIEWER") return;
     setIsConsoleOpen(true);
     setConsoleTab("output");
     setTerminalOutput("");
@@ -4281,9 +4284,17 @@ function Editor() {
                         <Download size={13} />
                         <span>Save</span>
                       </button>
-                      <button className="ce-btn-run" onClick={handleRunCode}>
-                        <Play size={13} />
-                        <span>Run Program</span>
+                      <button 
+                        className={`ce-btn-run ${isTerminalExecuting ? "running" : ""}`} 
+                        onClick={handleRunCode}
+                        disabled={isTerminalExecuting}
+                      >
+                        {isTerminalExecuting ? (
+                          <Loader2 size={13} className="ce-btn-loader" />
+                        ) : (
+                          <Play size={13} />
+                        )}
+                        <span>{isTerminalExecuting ? "Running..." : "Run Program"}</span>
                       </button>
                     </>
                   )}

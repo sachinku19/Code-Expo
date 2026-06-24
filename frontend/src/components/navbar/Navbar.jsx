@@ -19,7 +19,7 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
     { label: "Features", id: "features" },
     { label: "Editor", id: "collaboration" },
     { label: "Whiteboard", id: "whiteboard" },
-    { label: "AI Copilot", id: "ai" },
+    { label: "Expo AI", id: "ai" },
     { label: "Social Hub", id: "social-hub" },
   ];
 

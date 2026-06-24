@@ -56,7 +56,7 @@ function AIShowcase() {
         <h2>Your AI Pair Programmer</h2>
 
         <p>
-          Interact with our built-in Copilot. Click any question below to test its intelligence in real-time.
+          Interact with our built-in Expo AI. Click any question below to test its intelligence in real-time.
         </p>
 
         <div className="ai-prompt-selector-grid">

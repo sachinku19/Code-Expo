@@ -386,9 +386,28 @@
   .navbar-container {
     padding: 0 20px;
   }
+  .nav-links a {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .nav-links {
+    gap: 2px;
+  }
+  .nav-buttons {
+    gap: 8px;
+  }
+  .login-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .start-btn {
+    padding: 7px 14px;
+    font-size: 0.8rem;
+    gap: 4px;
+  }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
   .nav-links,
   .nav-buttons {
     display: none;

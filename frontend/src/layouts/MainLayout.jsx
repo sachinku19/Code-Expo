@@ -750,7 +750,7 @@ export default function MainLayout({
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
-    handleConfirmNavigate("/login");
+    navigate("/login");
   };
 
   const lastRoomId = localStorage.getItem("ceLastActiveRoomId") || "default";

@@ -440,6 +440,20 @@
   cursor: not-allowed;
 }
 
+.run-btn-loader {
+  animation: run-btn-spin 1s linear infinite;
+}
+
+@keyframes run-btn-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
 /* Output terminal panel */
 .terminal-panel {
   margin-top: 16px;

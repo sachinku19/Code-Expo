@@ -758,7 +758,27 @@
   align-items: center;
   gap: 4px;
   cursor: pointer;
+  transition: opacity 0.2s, background-color 0.2s;
 }
+
+.ce-btn-run:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.ce-btn-loader {
+  animation: ce-btn-spin 1s linear infinite;
+}
+
+@keyframes ce-btn-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 
 .console-actions {
   display: flex;

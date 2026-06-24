@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypeAnimation } from "react-type-animation";
-import { ArrowRight, Play, Radio, ShieldCheck, Terminal, Zap, Code } from "lucide-react";
+import { ArrowRight, Play, Radio, ShieldCheck, Terminal, Zap, Code, Loader2 } from "lucide-react";
 import FloatingOrb from "../shared/FloatingOrb";
 import "./Hero.css";
 import { getCountUser, getPublicStats } from "../../services/authService";
@@ -300,7 +300,11 @@ public class Sandbox {
               onClick={handleRunCode}
               disabled={isRunning}
             >
-              <Code size={16} />
+              {isRunning ? (
+                <Loader2 size={16} className="run-btn-loader" />
+              ) : (
+                <Code size={16} />
+              )}
               <span>{isRunning ? "Compiling..." : "Run Code"}</span>
             </button>
           </div>
