@@ -5,9 +5,11 @@ const userSchema=new mongoose.Schema({
     username:{
         type:String,
         required:[true,"Username is required"],
+        unique:true,
         trim:true,
         minlength:3,
-        maxlength:30
+        maxlength:30,
+        index:true
     },
     email:{
         type: String,
@@ -73,6 +75,79 @@ const userSchema=new mongoose.Schema({
     title:{
         type:String,
         default:"Developer"
+    },
+    reputationScore: {
+        type: Number,
+        default: 0
+    },
+    contributionScore: {
+        type: Number,
+        default: 0
+    },
+    developerLevel: {
+        type: Number,
+        default: 1
+    },
+    codingStreak: {
+        type: Number,
+        default: 0
+    },
+    lastActive: {
+        type: Date,
+        default: Date.now
+    },
+    projectsShared: {
+        type: Number,
+        default: 0
+    },
+    profileViews: {
+        type: Number,
+        default: 0
+    },
+    status: {
+        type: String,
+        enum: ["Available", "Busy", "Coding", "In Meeting"],
+        default: "Available"
+    },
+    location: {
+        type: String,
+        default: ""
+    },
+    company: {
+        type: String,
+        default: ""
+    },
+    college: {
+        type: String,
+        default: ""
+    },
+    githubUrl: {
+        type: String,
+        default: ""
+    },
+    linkedinUrl: {
+        type: String,
+        default: ""
+    },
+    portfolioUrl: {
+        type: String,
+        default: ""
+    },
+    coverBanner: {
+        type: String,
+        default: ""
+    },
+    experience: {
+        type: String,
+        default: ""
+    },
+    interests: {
+        type: [String],
+        default: []
+    },
+    careerGoals: {
+        type: String,
+        default: ""
     },
     isSuspended:{
         type:Boolean,

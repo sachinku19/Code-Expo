@@ -25,6 +25,27 @@ export const deleteAvatar = async () => {
   return response.data;
 };
 
+export const uploadCoverBanner = async (formData) => {
+  const token = localStorage.getItem("token");
+  const response = await API.post("/users/cover-banner", formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return response.data;
+};
+
+export const deleteCoverBanner = async () => {
+  const token = localStorage.getItem("token");
+  const response = await API.delete("/users/cover-banner", {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+};
+
 export const updateUserProfile = async (profileData) => {
   const token = localStorage.getItem("token");
   const response = await API.put("/users/profile", profileData, {

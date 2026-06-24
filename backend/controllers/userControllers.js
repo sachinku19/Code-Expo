@@ -253,6 +253,7 @@ const updateProfile = async (req, res) => {
         email: user.email,
         role: user.role,
         avatar: user.avatar,
+        coverBanner: user.coverBanner,
         bio: user.bio,
         programmingLanguages: user.programmingLanguages,
         followersCount: user.followersCount,
@@ -267,10 +268,180 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Upload Cover Banner Controller
+const uploadCoverBanner = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select an image file to upload as cover banner."
+      });
+    }
+
+    const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
+                                   process.env.CLOUDINARY_API_KEY &&
+                                   process.env.CLOUDINARY_API_SECRET;
+
+    if (!isCloudinaryConfigured) {
+      // Local storage fallback
+      const uploadsDir = path.join(__dirname, "../uploads");
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      const filename = `banner-${req.user._id}-${Date.now()}.jpg`;
+      const filePath = path.join(uploadsDir, filename);
+
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
+      // Cleanup old local banner
+      if (user.coverBanner && user.coverBanner.includes("/uploads/")) {
+        const oldFilename = user.coverBanner.split("/uploads/")[1];
+        const oldFilePath = path.join(uploadsDir, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+          } catch (unlinkErr) {
+            console.error("Failed to clean up old local banner file:", unlinkErr.message);
+          }
+        }
+      }
+
+      const localUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+      user.coverBanner = localUrl;
+      await user.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Cover banner updated successfully (local backup)",
+        coverBanner: user.coverBanner
+      });
+    }
+
+    // Upload to Cloudinary
+    const uploadToCloudinary = (fileBuffer) => {
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { 
+            folder: "codeexpo_banners",
+            resource_type: "image",
+            allowed_formats: ["jpg", "jpeg", "png", "webp"]
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
+        uploadStream.end(fileBuffer);
+      });
+    };
+
+    const cloudinaryResult = await uploadToCloudinary(req.file.buffer);
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (user.coverBanner) {
+      if (user.coverBanner.includes("/uploads/")) {
+        const oldFilename = user.coverBanner.split("/uploads/")[1];
+        const oldFilePath = path.join(__dirname, "../uploads", oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+          } catch (unlinkErr) {
+            console.error("Failed to clean up old local banner file:", unlinkErr.message);
+          }
+        }
+      } else {
+        const oldPublicId = getPublicIdFromUrl(user.coverBanner);
+        if (oldPublicId) {
+          try {
+            await cloudinary.uploader.destroy(oldPublicId);
+          } catch (destroyErr) {
+            console.error("Failed to delete old banner from Cloudinary:", destroyErr.message);
+          }
+        }
+      }
+    }
+
+    user.coverBanner = cloudinaryResult.secure_url;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Cover banner updated successfully",
+      coverBanner: user.coverBanner
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to upload cover banner"
+    });
+  }
+};
+
+// Delete Cover Banner Controller
+const deleteCoverBanner = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (!user.coverBanner) {
+      return res.status(400).json({ success: false, message: "No cover banner to delete." });
+    }
+
+    if (user.coverBanner.includes("/uploads/")) {
+      const filename = user.coverBanner.split("/uploads/")[1];
+      const filePath = path.join(__dirname, "../uploads", filename);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (unlinkErr) {
+          console.error("Failed to delete local file:", unlinkErr.message);
+        }
+      }
+    } else {
+      const publicId = getPublicIdFromUrl(user.coverBanner);
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (destroyErr) {
+          console.error("Failed to delete banner from Cloudinary:", destroyErr.message);
+        }
+      }
+    }
+
+    user.coverBanner = "";
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Cover banner deleted successfully",
+      coverBanner: ""
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete cover banner"
+    });
+  }
+};
+
 module.exports = {
   uploadAvatar,
   deleteAvatar,
-  updateProfile
+  updateProfile,
+  uploadCoverBanner,
+  deleteCoverBanner
 };
 
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,11 +49,16 @@ import {
   getUserPublicProfile,
   getLeaderboard
 } from "../services/socialService";
-import { updateUserProfile, getActiveAnnouncements, getActiveAds } from "../services/userService";
+import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBanner, deleteCoverBanner } from "../services/userService";
 import "./Dashboard.css";
 import MainLayout from "../layouts/MainLayout";
 import ProfileAvatar from "../components/ProfileAvatar";
 import DirectMessages from "../components/chat/DirectMessages";
+import StoriesSystem from "../components/social/StoriesSystem";
+import DeveloperFeed from "../components/social/DeveloperFeed";
+import NetworkSidebar from "../components/social/NetworkSidebar";
+import NetworkAnalytics from "../components/social/NetworkAnalytics";
+import UserProfileModal from "../components/social/UserProfileModal";
 const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
 import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
 import { useGateTransition } from "../routes/AppRoutes";
@@ -714,6 +719,8 @@ function Dashboard() {
   const [feedLoading, setFeedLoading] = useState(false);
   const [followersList, setFollowersList] = useState(() => loadFromCache("ce_cache_followersList", []));
   const [followingList, setFollowingList] = useState(() => loadFromCache("ce_cache_followingList", []));
+  const [isFollowingLoading, setIsFollowingLoading] = useState(false);
+  const [socialSubTab, setSocialSubTab] = useState("feed");
   const [visibleFollowingCount, setVisibleFollowingCount] = useState(6);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
@@ -1411,6 +1418,32 @@ function Dashboard() {
     }
   };
 
+  const fetchFollowingListOnly = async () => {
+    if (!user) return;
+    setIsFollowingLoading(true);
+    try {
+      const res = await getFollowing(user.id || user._id);
+      if (res.success) {
+        const following = res.following || [];
+        setFollowingList(following);
+        localStorage.setItem("ce_cache_followingList", JSON.stringify(following));
+        const online = following.filter(f => f.isOnline === "true" || f.isOnline === true);
+        setOnlineFollows(online);
+        localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(online));
+      }
+    } catch (err) {
+      console.error("Error fetching following:", err);
+    } finally {
+      setIsFollowingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === "following") {
+      fetchFollowingListOnly();
+    }
+  }, [activeSection]);
+
   const handleLoadMoreFeed = async () => {
     if (feedLoading || feedPage >= feedTotalPages) return;
     setFeedLoading(true);
@@ -1447,7 +1480,38 @@ function Dashboard() {
     }
   };
 
-  const handleFollowToggle = async (candidateId) => {
+  const fetchAndAppendSuggestion = useCallback(async (followedId) => {
+    try {
+      const res = await getDeveloperSuggestions();
+      if (res.success && res.suggestions) {
+        setSuggestions(prev => {
+          const currentIds = new Set(prev.map(s => String(s._id || s)));
+          const newSuggestion = res.suggestions.find(s => 
+            !currentIds.has(String(s._id || s)) && 
+            String(s._id || s) !== String(followedId)
+          );
+          
+          let next = prev;
+          if (newSuggestion) {
+            next = [...prev, newSuggestion];
+          } else if (prev.length < 5) {
+            const missingCount = 5 - prev.length;
+            const itemsToAdd = res.suggestions.filter(s => 
+              !currentIds.has(String(s._id || s)) && 
+              String(s._id || s) !== String(followedId)
+            ).slice(0, missingCount);
+            next = [...prev, ...itemsToAdd];
+          }
+          localStorage.setItem("ce_cache_suggestions", JSON.stringify(next));
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch replacement suggestion in background:", err);
+    }
+  }, []);
+
+  const handleFollowToggle = useCallback(async (candidateId) => {
     if (pendingFollowsRef.current.has(candidateId)) return;
     pendingFollowsRef.current.add(candidateId);
 
@@ -1468,75 +1532,116 @@ function Dashboard() {
     // Optimistic UI updates
     if (isFollowing) {
       // Unfollow
-      setFollowingList(prev => prev.filter(f => String(f._id || f) !== String(candidateId)));
-      setOnlineFollows(prev => prev.filter(f => String(f._id || f) !== String(candidateId)));
+      setFollowingList(prev => {
+        const next = prev.filter(f => String(f._id || f) !== String(candidateId));
+        localStorage.setItem("ce_cache_followingList", JSON.stringify(next));
+        return next;
+      });
+      setOnlineFollows(prev => {
+        const next = prev.filter(f => String(f._id || f) !== String(candidateId));
+        localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(next));
+        return next;
+      });
       if (user) {
-        setUser(prev => ({ ...prev, followingCount: Math.max(0, (prev.followingCount || 1) - 1) }));
+        setUser(prev => {
+          if (!prev) return null;
+          const next = { ...prev, followingCount: Math.max(0, (prev.followingCount || 1) - 1) };
+          localStorage.setItem("user", JSON.stringify(next));
+          return next;
+        });
       }
-      setSuggestions(prev => prev.map(s => {
-        if (String(s._id || s) === String(candidateId)) {
-          return { ...s, followersCount: Math.max(0, (s.followersCount || 1) - 1), isFollowing: false };
-        }
-        return s;
-      }));
-      setFollowersList(prev => prev.map(f => {
-        if (String(f._id || f) === String(candidateId)) {
-          return { ...f, isFollowing: false };
-        }
-        return f;
-      }));
+      setSuggestions(prev => {
+        const next = prev.map(s => {
+          if (String(s._id || s) === String(candidateId)) {
+            return { ...s, followersCount: Math.max(0, (s.followersCount || 1) - 1), isFollowing: false };
+          }
+          return s;
+        });
+        localStorage.setItem("ce_cache_suggestions", JSON.stringify(next));
+        return next;
+      });
+      setFollowersList(prev => {
+        const next = prev.map(f => {
+          if (String(f._id || f) === String(candidateId)) {
+            return { ...f, isFollowing: false };
+          }
+          return f;
+        });
+        localStorage.setItem("ce_cache_followersList", JSON.stringify(next));
+        return next;
+      });
       if (viewingUserProfile && String(viewingUserProfile._id) === String(candidateId)) {
         setViewingUserProfile(prev => ({ ...prev, followersCount: Math.max(0, (prev.followersCount || 1) - 1), isFollowing: false }));
       }
     } else {
       // Follow
       const newFollowItem = { ...targetUser, isFollowing: true };
-      setFollowingList(prev => [...prev, newFollowItem]);
+      setFollowingList(prev => {
+        const next = [...prev, newFollowItem];
+        localStorage.setItem("ce_cache_followingList", JSON.stringify(next));
+        return next;
+      });
       if (targetUser.isOnline === "true" || targetUser.isOnline === true) {
-        setOnlineFollows(prev => [...prev, newFollowItem]);
+        setOnlineFollows(prev => {
+          const next = [...prev, newFollowItem];
+          localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(next));
+          return next;
+        });
       }
       if (user) {
-        setUser(prev => ({ ...prev, followingCount: (prev.followingCount || 0) + 1 }));
+        setUser(prev => {
+          if (!prev) return null;
+          const next = { ...prev, followingCount: (prev.followingCount || 0) + 1 };
+          localStorage.setItem("user", JSON.stringify(next));
+          return next;
+        });
       }
-      setSuggestions(prev => prev.map(s => {
-        if (String(s._id || s) === String(candidateId)) {
-          return { ...s, followersCount: (s.followersCount || 0) + 1, isFollowing: true };
-        }
-        return s;
-      }));
-      setFollowersList(prev => prev.map(f => {
-        if (String(f._id || f) === String(candidateId)) {
-          return { ...f, isFollowing: true };
-        }
-        return f;
-      }));
+      setSuggestions(prev => {
+        const next = prev.filter(s => String(s._id || s) !== String(candidateId));
+        localStorage.setItem("ce_cache_suggestions", JSON.stringify(next));
+        return next;
+      });
+      setFollowersList(prev => {
+        const next = prev.map(f => {
+          if (String(f._id || f) === String(candidateId)) {
+            return { ...f, isFollowing: true };
+          }
+          return f;
+        });
+        localStorage.setItem("ce_cache_followersList", JSON.stringify(next));
+        return next;
+      });
       if (viewingUserProfile && String(viewingUserProfile._id) === String(candidateId)) {
         setViewingUserProfile(prev => ({ ...prev, followersCount: (prev.followersCount || 0) + 1, isFollowing: true }));
       }
+
+      fetchAndAppendSuggestion(candidateId);
     }
 
     try {
       const res = await toggleFollowUser(candidateId);
       if (res.success) {
         addToast(res.message, "success");
-        // Silent background synchronization
-        fetchSocialDashboardData();
       } else {
         throw new Error(res.message || "Failed to toggle follow status");
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
-      // Rollback to previous states on failure
       setFollowingList(prevFollowingList);
       setOnlineFollows(prevOnlineFollows);
       setSuggestions(prevSuggestions);
       setFollowersList(prevFollowersList);
       if (prevUser) setUser(prevUser);
       if (prevViewingUser) setViewingUserProfile(prevViewingUser);
+      localStorage.setItem("ce_cache_followingList", JSON.stringify(prevFollowingList));
+      localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(prevOnlineFollows));
+      localStorage.setItem("ce_cache_suggestions", JSON.stringify(prevSuggestions));
+      localStorage.setItem("ce_cache_followersList", JSON.stringify(prevFollowersList));
+      if (prevUser) localStorage.setItem("user", JSON.stringify(prevUser));
     } finally {
       pendingFollowsRef.current.delete(candidateId);
     }
-  };
+  }, [user, setUser, followingList, onlineFollows, suggestions, followersList, viewingUserProfile, addToast, fetchAndAppendSuggestion]);
 
   const handleRemoveFollower = async (followerId) => {
     const prevFollowersList = [...followersList];
@@ -1737,6 +1842,55 @@ function Dashboard() {
     }
   };
 
+  const handleCoverBannerUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      addToast("Please upload an image file.", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      addToast("Image size must be less than 5MB.", "error");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("coverBanner", file);
+
+    try {
+      addToast("Uploading cover banner...", "info");
+      const res = await uploadCoverBanner(formData);
+      if (res.success) {
+        setUser(prev => {
+          const updated = { ...prev, coverBanner: res.coverBanner };
+          localStorage.setItem("user", JSON.stringify(updated));
+          return updated;
+        });
+        addToast("Cover banner updated successfully", "success");
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleCoverBannerDelete = async () => {
+    try {
+      addToast("Deleting cover banner...", "info");
+      const res = await deleteCoverBanner();
+      if (res.success) {
+        setUser(prev => {
+          const updated = { ...prev, coverBanner: "" };
+          localStorage.setItem("user", JSON.stringify(updated));
+          return updated;
+        });
+        addToast("Cover banner removed successfully", "success");
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
   const handleViewUserProfile = async (targetUserId) => {
     // If viewing own profile, redirect to own profile tab directly
     if (user && (String(targetUserId) === String(user.id) || String(targetUserId) === String(user._id))) {
@@ -1756,11 +1910,11 @@ function Dashboard() {
     setViewingUserLikedRooms([]);
     setViewingUserStats(null);
 
-    // Transition immediately
+    // Always transition to profile section tab
     setActiveSection("profile");
     setProfileTab("rooms");
 
-    // Smoothly update URL if needed
+    // Update URL to point to this target user's public profile
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get("tab") !== "profile" || searchParams.get("userId") !== String(targetUserId)) {
       navigate(`/dashboard?tab=profile&userId=${targetUserId}`);
@@ -2109,15 +2263,143 @@ function Dashboard() {
       fetchSocialDashboardData();
     };
 
-    const handleFollowUpdate = () => {
-      fetchSocialDashboardData();
+    const handleUserFollowUpdate = ({ targetUserId, isFollowing, followingCount }) => {
+      if (followingCount !== undefined) {
+        setUser(prev => prev ? { ...prev, followingCount } : null);
+      }
+      setSuggestions(prev => prev.map(s => {
+        if (String(s._id || s) === String(targetUserId)) {
+          return { 
+            ...s, 
+            isFollowing,
+            followersCount: isFollowing ? (s.followersCount || 0) + 1 : Math.max(0, (s.followersCount || 1) - 1)
+          };
+        }
+        return s;
+      }));
+      if (isFollowing) {
+        setFollowingList(prev => {
+          if (prev.some(f => String(f._id || f) === String(targetUserId))) return prev;
+          const candidate = suggestions.find(s => String(s._id || s) === String(targetUserId)) || { _id: targetUserId, username: "Developer" };
+          return [...prev, { ...candidate, isFollowing: true }];
+        });
+      } else {
+        setFollowingList(prev => prev.filter(f => String(f._id || f) !== String(targetUserId)));
+        setOnlineFollows(prev => prev.filter(f => String(f._id || f) !== String(targetUserId)));
+      }
+    };
+
+    const handleUserFollowersUpdate = ({ followerId, isFollowing, followersCount }) => {
+      if (followersCount !== undefined) {
+        setUser(prev => prev ? { ...prev, followersCount } : null);
+      }
+      const currentUserId = user?.id || user?._id;
+      if (currentUserId) {
+        getFollowers(currentUserId).then(res => {
+          if (res.success) {
+            setFollowersList(res.followers || []);
+            localStorage.setItem("ce_cache_followersList", JSON.stringify(res.followers || []));
+          }
+        }).catch(err => console.error("Error updating followers list:", err));
+      }
+    };
+
+    const handleFollowSuccess = ({ targetUserId, isFollowing, followingCount }) => {
+      if (followingCount !== undefined) {
+        setUser(prev => {
+          if (!prev) return null;
+          const next = { ...prev, followingCount };
+          localStorage.setItem("user", JSON.stringify(next));
+          return next;
+        });
+      }
+    };
+
+    const handleNewFollower = ({ followerId, isFollowing, followersCount }) => {
+      if (followersCount !== undefined) {
+        setUser(prev => {
+          if (!prev) return null;
+          const next = { ...prev, followersCount };
+          localStorage.setItem("user", JSON.stringify(next));
+          return next;
+        });
+      }
+      const currentUserId = user?.id || user?._id;
+      if (currentUserId) {
+        getFollowers(currentUserId).then(res => {
+          if (res.success) {
+            setFollowersList(res.followers || []);
+            localStorage.setItem("ce_cache_followersList", JSON.stringify(res.followers || []));
+          }
+        }).catch(err => console.error("Error syncing followers list:", err));
+      }
+    };
+
+    const handleFollowCountUpdated = ({ userId, followersCount, followerId, followingCount }) => {
+      setSuggestions(prev => {
+        const next = prev.map(s => {
+          if (String(s._id || s) === String(userId)) {
+            return { ...s, followersCount };
+          }
+          if (String(s._id || s) === String(followerId)) {
+            return { ...s, followingCount };
+          }
+          return s;
+        });
+        localStorage.setItem("ce_cache_suggestions", JSON.stringify(next));
+        return next;
+      });
+
+      setFollowingList(prev => {
+        const next = prev.map(f => {
+          if (String(f._id || f) === String(userId)) {
+            return { ...f, followersCount };
+          }
+          if (String(f._id || f) === String(followerId)) {
+            return { ...f, followingCount };
+          }
+          return f;
+        });
+        localStorage.setItem("ce_cache_followingList", JSON.stringify(next));
+        return next;
+      });
+
+      setFollowersList(prev => {
+        const next = prev.map(f => {
+          if (String(f._id || f) === String(userId)) {
+            return { ...f, followersCount };
+          }
+          if (String(f._id || f) === String(followerId)) {
+            return { ...f, followingCount };
+          }
+          return f;
+        });
+        localStorage.setItem("ce_cache_followersList", JSON.stringify(next));
+        return next;
+      });
+
+      if (viewingUserProfile) {
+        if (String(viewingUserProfile._id) === String(userId)) {
+          setViewingUserProfile(prev => ({ ...prev, followersCount }));
+        } else if (String(viewingUserProfile._id) === String(followerId)) {
+          setViewingUserProfile(prev => ({ ...prev, followingCount }));
+        }
+      }
+    };
+
+    const handleSuggestionRefresh = ({ followedUserId }) => {
+      fetchAndAppendSuggestion(followedUserId);
     };
 
     socket.on("room:like-update", handleRoomLikeUpdate);
     socket.on("room:my-likes-update", handleRoomMyLikesUpdate);
     socket.on("room:bookmark-update", handleRoomBookmarkUpdate);
-    socket.on("user:follow-update", handleFollowUpdate);
-    socket.on("user:followers-update", handleFollowUpdate);
+    socket.on("user:follow-update", handleUserFollowUpdate);
+    socket.on("user:followers-update", handleUserFollowersUpdate);
+    socket.on("follow-success", handleFollowSuccess);
+    socket.on("new-follower", handleNewFollower);
+    socket.on("follow-count-updated", handleFollowCountUpdated);
+    socket.on("suggestion-refresh", handleSuggestionRefresh);
 
     socket.on("join-request", handleJoinRequest);
     socket.on("notification-received", handleRealtimeNotification);
@@ -2136,8 +2418,12 @@ function Dashboard() {
       socket.off("room:like-update", handleRoomLikeUpdate);
       socket.off("room:my-likes-update", handleRoomMyLikesUpdate);
       socket.off("room:bookmark-update", handleRoomBookmarkUpdate);
-      socket.off("user:follow-update", handleFollowUpdate);
-      socket.off("user:followers-update", handleFollowUpdate);
+      socket.off("user:follow-update", handleUserFollowUpdate);
+      socket.off("user:followers-update", handleUserFollowersUpdate);
+      socket.off("follow-success", handleFollowSuccess);
+      socket.off("new-follower", handleNewFollower);
+      socket.off("follow-count-updated", handleFollowCountUpdated);
+      socket.off("suggestion-refresh", handleSuggestionRefresh);
 
       socket.off("join-request", handleJoinRequest);
       socket.off("notification-received", handleRealtimeNotification);
@@ -2150,7 +2436,7 @@ function Dashboard() {
       socket.off("ad:toggled", handleAdToggled);
       socket.off("ad:deleted", handleAdDeleted);
     };
-  }, [user?.id, user?._id, socket]);
+  }, [user?.id, user?._id, socket, fetchAndAppendSuggestion]);
 
 
   const handleCreateRoom = async (e) => {
@@ -2295,6 +2581,25 @@ function Dashboard() {
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
+  };
+
+  const getBannerGradient = (username) => {
+    const colors = [
+      "linear-gradient(135deg, #3f37c9 0%, #480ca8 100%)",
+      "linear-gradient(135deg, #7209b7 0%, #f72585 100%)",
+      "linear-gradient(135deg, #03045e 0%, #0077b6 100%)",
+      "linear-gradient(135deg, #1b4332 0%, #40916c 100%)",
+      "linear-gradient(135deg, #d90429 0%, #ef233c 100%)",
+      "linear-gradient(135deg, #ffa116 0%, #ff5500 100%)",
+      "linear-gradient(135deg, #240046 0%, #7b2cbf 100%)",
+    ];
+    if (!username) return colors[0];
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+      hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
   };
 
   const renderRoomCard = (room) => {
@@ -3854,7 +4159,80 @@ function Dashboard() {
             transition={{ duration: 0.22, ease: "easeOut" }}
             className="following-section-container"
           >
-            <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
+            {/* V2 Sub-navigation tabs */}
+            <div className="social-v2-tabs-nav">
+              <button 
+                onClick={() => setSocialSubTab("feed")} 
+                className={`social-v2-tab-btn ${socialSubTab === "feed" ? "active" : ""}`}
+              >
+                Network Feed
+              </button>
+              <button 
+                onClick={() => setSocialSubTab("explore")} 
+                className={`social-v2-tab-btn ${socialSubTab === "explore" ? "active" : ""}`}
+              >
+                Explore Developers
+              </button>
+              <button 
+                onClick={() => setSocialSubTab("analytics")} 
+                className={`social-v2-tab-btn ${socialSubTab === "analytics" ? "active" : ""}`}
+              >
+                Analytics
+              </button>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {socialSubTab === "feed" && (
+                <motion.div
+                  key="feed"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.18 }}
+                  style={{ width: "100%" }}
+                >
+                  <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
+                    <div className="network-left-column" style={{ flex: "1 1 70%", minWidth: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <StoriesSystem user={user} addToast={addToast} />
+                      <DeveloperFeed user={user} addToast={addToast} />
+                    </div>
+                    <div className="network-right-column" style={{ flex: "0 0 30%", minWidth: "280px" }}>
+                      <NetworkSidebar 
+                        suggestions={suggestions} 
+                        onlineFollows={onlineFollows} 
+                        handleFollowToggle={handleFollowToggle}
+                        handleViewUserProfile={handleViewUserProfile}
+                        setPreselectedChatPartner={setPreselectedChatPartner}
+                        navigate={navigate}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {socialSubTab === "analytics" && (
+                <motion.div
+                  key="analytics"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.18 }}
+                  style={{ width: "100%" }}
+                >
+                  <NetworkAnalytics addToast={addToast} />
+                </motion.div>
+              )}
+
+              {socialSubTab === "explore" && (
+                <motion.div
+                  key="explore"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.18 }}
+                  style={{ width: "100%" }}
+                >
+                  <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
 
               {/* 70% Left Column */}
               <div className="network-left-column" style={{ flex: "0 0 70%", minWidth: 0 }}>
@@ -3896,6 +4274,9 @@ function Dashboard() {
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <UserCheck size={18} className="brand-logo" style={{ color: "var(--ce-primary)" }} />
                     <h3 className="section-title">Developer Network</h3>
+                    {isFollowingLoading && (
+                      <span className="btn-spinner" style={{ marginLeft: "4px" }} />
+                    )}
                     <AnimatePresence>
                       {followingSearch && (
                         <motion.span
@@ -4005,6 +4386,7 @@ function Dashboard() {
                                 key={String(dev._id || dev.id || dev)}
                                 className="developer-card-premium"
                               >
+                                <div className="dev-card-banner" style={{ background: dev.coverBanner ? `url(${dev.coverBanner}) center/cover no-repeat` : getBannerGradient(dev.username) }} />
                                 <div className="dev-card-avatar-wrapper">
                                   {dev.avatar ? (
                                     <img src={dev.avatar} alt={dev.username} className="dev-card-avatar" />
@@ -4051,17 +4433,28 @@ function Dashboard() {
 
                                 <div className="dev-card-actions">
                                   <button
-                                    onClick={() => handleViewUserProfile(dev._id || dev.id)}
-                                    className="dev-btn-view-profile"
+                                    onClick={() => {
+                                      setPreselectedChatPartner(dev);
+                                      navigate("/dashboard?tab=messages");
+                                    }}
+                                    className="dev-btn-message"
                                   >
-                                    Profile
+                                    <MessageSquare size={14} /> Message
                                   </button>
-                                  <button
-                                    onClick={() => handleFollowToggle(dev._id || dev.id)}
-                                    className="dev-btn-unfollow"
-                                  >
-                                    Unfollow
-                                  </button>
+                                  <div className="dev-card-secondary-actions">
+                                    <button
+                                      onClick={() => handleViewUserProfile(dev._id || dev.id)}
+                                      className="dev-btn-view-profile"
+                                    >
+                                      Profile
+                                    </button>
+                                    <button
+                                      onClick={() => handleFollowToggle(dev._id || dev.id)}
+                                      className="dev-btn-unfollow"
+                                    >
+                                      Unfollow
+                                    </button>
+                                  </div>
                                 </div>
                               </motion.div>
                             );
@@ -4172,7 +4565,7 @@ function Dashboard() {
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                       {suggestions.slice(0, 5).map(dev => (
-                        <div key={dev._id} className="suggested-dev-card-compact" style={{ padding: "8px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.02)" }}>
+                        <div key={dev._id} className="suggested-dev-card-compact">
                           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                             <div className="suggested-avatar-wrapper" style={{ position: "relative" }}>
                               {dev.avatar ? (
@@ -4195,32 +4588,12 @@ function Dashboard() {
                             <button
                               onClick={() => handleViewUserProfile(dev._id || dev.id)}
                               className="suggested-btn-profile"
-                              style={{
-                                flex: 1,
-                                fontSize: "0.68rem",
-                                padding: "4px 8px",
-                                borderRadius: "6px",
-                                border: "1px solid var(--ce-border)",
-                                background: "transparent",
-                                color: "var(--ce-text-muted)",
-                                cursor: "pointer"
-                              }}
                             >
                               Profile
                             </button>
                             <button
                               onClick={() => handleFollowToggle(dev._id || dev.id)}
                               className="suggested-btn-follow"
-                              style={{
-                                flex: 1,
-                                fontSize: "0.68rem",
-                                padding: "4px 8px",
-                                borderRadius: "6px",
-                                border: "1px solid var(--ce-primary)",
-                                background: "var(--ce-primary-glow)",
-                                color: "var(--ce-primary)",
-                                cursor: "pointer"
-                              }}
                             >
                               + Follow
                             </button>
@@ -4232,6 +4605,11 @@ function Dashboard() {
                 )}
               </div>
             </div>
+                  </motion.div>
+                )}
+            </AnimatePresence>
+
+
           </motion.div>
         )}
 
@@ -5773,139 +6151,190 @@ function Dashboard() {
               <div className="github-profile-layout">
 
               {/* Profile Card Header / Sidebar */}
-              <div className="profile-sidebar-card">
-                {viewingUserProfile ? (
-                  <div style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: viewingUserProfile.avatar ? "transparent" : getAvatarColor(viewingUserProfile.username), fontSize: "1.8rem", color: "#fff", fontWeight: "600", border: "2px solid var(--ce-border)" }}>
-                    {viewingUserProfile.avatar ? (
-                      <img src={viewingUserProfile.avatar} alt={viewingUserProfile.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : (
-                      viewingUserProfile.username.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                ) : (
-                  <ProfileAvatar />
-                )}
-                <h2>{viewingUserProfile ? viewingUserProfile.username : user?.username}</h2>
-                <span className="profile-email">{viewingUserProfile ? viewingUserProfile.email : user?.email}</span>
-                <span
-                  className="profile-badge"
-                  style={getBadgeStyle(viewingUserProfile ? viewingUserProfile.title : user?.title)}
+              <div className="profile-sidebar-card" style={{ padding: 0, overflow: "hidden" }}>
+                
+                {/* Cover Banner */}
+                <div 
+                  className="profile-cover-banner" 
+                  style={{ 
+                    background: (viewingUserProfile ? viewingUserProfile.coverBanner : user?.coverBanner) 
+                      ? `url(${viewingUserProfile ? viewingUserProfile.coverBanner : user.coverBanner}) center/cover no-repeat` 
+                      : "linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(6, 182, 212, 0.4) 100%)",
+                    height: "100px",
+                    width: "100%",
+                    position: "relative",
+                    cursor: !viewingUserProfile ? "pointer" : "default"
+                  }}
+                  onClick={() => {
+                    if (!viewingUserProfile) {
+                      document.getElementById("banner-upload-input").click();
+                    }
+                  }}
                 >
-                  {viewingUserProfile ? viewingUserProfile.title : user?.title || "Developer"}
-                </span>
-
-                {/* Followers & Following Statistics Count */}
-                <div className="profile-stats-bar">
-                  <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowersModal(true); }}>
-                    <strong>{viewingUserProfile ? viewingUserProfile.followersCount : user?.followersCount || 0}</strong>
-                    <span>Followers</span>
-                  </div>
-                  <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowingModal(true); }}>
-                    <strong>{viewingUserProfile ? viewingUserProfile.followingCount : user?.followingCount || 0}</strong>
-                    <span>Following</span>
-                  </div>
+                  {!viewingUserProfile && (
+                    <div className="banner-edit-overlay" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.2s ease", color: "#fff", fontSize: "0.7rem", fontWeight: "600" }}>
+                      Change Banner
+                    </div>
+                  )}
+                  <style>{`
+                    .profile-cover-banner:hover .banner-edit-overlay {
+                      opacity: 1 !important;
+                    }
+                  `}</style>
                 </div>
+                
+                {!viewingUserProfile && (
+                  <input 
+                    type="file" 
+                    id="banner-upload-input" 
+                    accept="image/*" 
+                    style={{ display: "none" }} 
+                    onChange={handleCoverBannerUpload}
+                  />
+                )}
 
-                {/* Profile Bio Details & Update Form */}
-                {isEditingProfile && !viewingUserProfile ? (
-                  <div className="profile-edit-form-card" style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", marginTop: "12px" }}>
-                    <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Bio</label>
-                      <textarea
-                        value={bioInput}
-                        onChange={(e) => setBioInput(e.target.value)}
-                        placeholder="Write a bio..."
-                        className="profile-edit-textarea"
-                        style={{ width: "100%", minHeight: "60px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem", resize: "none" }}
-                      />
-                    </div>
-                    <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Languages</label>
-                      <input
-                        type="text"
-                        value={langsInput}
-                        onChange={(e) => setLangsInput(e.target.value)}
-                        placeholder="e.g. JavaScript, Python"
-                        className="profile-edit-input"
-                        style={{ width: "100%", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
-                      />
-                    </div>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <button className="profile-edit-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile} style={{ flex: 1, padding: "6px", background: "var(--ce-primary)", color: "var(--ce-primary-text)", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "600" }}>
-                        {isSavingProfile ? "Saving..." : "Save"}
-                      </button>
-                      <button className="profile-edit-cancel-btn" onClick={() => setIsEditingProfile(false)} style={{ flex: 1, padding: "6px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" }}>
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ width: "100%" }}>
-                    <p className="profile-bio-text" style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", marginTop: "12px", textAlign: "center", fontStyle: "italic", lineHeight: "1.4" }}>
-                      {viewingUserProfile ? viewingUserProfile.bio || "No bio yet." : user?.bio || "No bio set yet. Click Edit Profile below to tell developers about yourself!"}
-                    </p>
-                    {((viewingUserProfile ? viewingUserProfile.programmingLanguages : user?.programmingLanguages) || []).length > 0 && (
-                      <div className="profile-languages-chips" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "12px", justifyContent: "center" }}>
-                        {(viewingUserProfile ? viewingUserProfile.programmingLanguages : user.programmingLanguages).map(lang => (
-                          <span key={lang} className="lang-chip-badge" style={{ fontSize: "0.62rem", padding: "2px 6px", background: "var(--ce-primary-glow)", color: "var(--ce-primary)", borderRadius: "4px", border: "1px solid var(--ce-border)", fontWeight: "600" }}>
-                            {lang}
-                          </span>
-                        ))}
+                {/* Main Card Content Wrapper (with padding) */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: "0 24px 24px 24px" }}>
+                  
+                  {/* Avatar overlapped over the banner */}
+                  <div style={{ marginTop: "-40px", zIndex: 2, position: "relative" }}>
+                    {viewingUserProfile ? (
+                      <div style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: viewingUserProfile.avatar ? "transparent" : getAvatarColor(viewingUserProfile.username), fontSize: "1.8rem", color: "#fff", fontWeight: "600", border: "4px solid var(--ce-surface-card)" }}>
+                        {viewingUserProfile.avatar ? (
+                          <img src={viewingUserProfile.avatar} alt={viewingUserProfile.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          viewingUserProfile.username.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ border: "4px solid var(--ce-surface-card)", borderRadius: "50%", background: "var(--ce-surface-card)" }}>
+                        <ProfileAvatar />
                       </div>
                     )}
-                    {viewingUserProfile ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
-                        {String(viewingUserProfile._id) !== String(user?.id || user?._id) && (
-                          <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            {followingList.some(f => String(f._id || f) === String(viewingUserProfile._id)) ? (
-                              <button
-                                className="profile-follow-btn unfollow"
-                                onClick={() => handleFollowToggle(viewingUserProfile._id)}
-                                style={{ flex: 1 }}
-                              >
-                                Unfollow
-                              </button>
-                            ) : (
-                              <button
-                                className="profile-follow-btn follow"
-                                onClick={() => handleFollowToggle(viewingUserProfile._id)}
-                                style={{ flex: 1 }}
-                              >
-                                Follow
-                              </button>
-                            )}
-                            <button
-                              className="profile-message-btn"
-                              onClick={() => {
-                                setPreselectedChatPartner({
-                                  _id: viewingUserProfile._id,
-                                  username: viewingUserProfile.username,
-                                  avatar: viewingUserProfile.avatar,
-                                  bio: viewingUserProfile.bio || "Developer"
-                                });
-                                navigate("/dashboard?tab=messages");
-                              }}
-                              style={{ flex: 1 }}
-                            >
-                              <MessageSquare size={14} /> Message
-                            </button>
-                          </div>
-                        )}
-                        <button
-                          className="profile-back-btn"
-                          onClick={() => navigate("/dashboard?tab=profile")}
-                          style={{ width: "100%", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                        >
-                          <ArrowLeft size={13} /> Back to My Profile
+                  </div>
+
+                  <h2>{viewingUserProfile ? viewingUserProfile.username : user?.username}</h2>
+                  <span className="profile-email">{viewingUserProfile ? viewingUserProfile.email : user?.email}</span>
+                  <span
+                    className="profile-badge"
+                    style={getBadgeStyle(viewingUserProfile ? viewingUserProfile.title : user?.title)}
+                  >
+                    {viewingUserProfile ? viewingUserProfile.title : user?.title || "Developer"}
+                  </span>
+
+                  {/* Followers & Following Statistics Count */}
+                  <div className="profile-stats-bar">
+                    <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowersModal(true); }}>
+                      <strong>{viewingUserProfile ? viewingUserProfile.followersCount : user?.followersCount || 0}</strong>
+                      <span>Followers</span>
+                    </div>
+                    <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowingModal(true); }}>
+                      <strong>{viewingUserProfile ? viewingUserProfile.followingCount : user?.followingCount || 0}</strong>
+                      <span>Following</span>
+                    </div>
+                  </div>
+
+                  {/* Profile Bio Details & Update Form */}
+                  {isEditingProfile && !viewingUserProfile ? (
+                    <div className="profile-edit-form-card" style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", marginTop: "12px" }}>
+                      <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Bio</label>
+                        <textarea
+                          value={bioInput}
+                          onChange={(e) => setBioInput(e.target.value)}
+                          placeholder="Write a bio..."
+                          className="profile-edit-textarea"
+                          style={{ width: "100%", minHeight: "60px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem", resize: "none" }}
+                        />
+                      </div>
+                      <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Languages</label>
+                        <input
+                          type="text"
+                          value={langsInput}
+                          onChange={(e) => setLangsInput(e.target.value)}
+                          placeholder="e.g. JavaScript, Python"
+                          className="profile-edit-input"
+                          style={{ width: "100%", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button className="profile-edit-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile} style={{ flex: 1, padding: "6px", background: "var(--ce-primary)", color: "var(--ce-primary-text)", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "600" }}>
+                          {isSavingProfile ? "Saving..." : "Save"}
+                        </button>
+                        <button className="profile-edit-cancel-btn" onClick={() => setIsEditingProfile(false)} style={{ flex: 1, padding: "6px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" }}>
+                          Cancel
                         </button>
                       </div>
-                    ) : (
-                      <button className="profile-edit-trigger-btn" onClick={startEditingProfile} style={{ width: "100%", marginTop: "16px", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}>
-                        Edit Profile
-                      </button>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  ) : (
+                    <div style={{ width: "100%" }}>
+                      <p className="profile-bio-text" style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", marginTop: "12px", textAlign: "center", fontStyle: "italic", lineHeight: "1.4" }}>
+                        {viewingUserProfile ? viewingUserProfile.bio || "No bio yet." : user?.bio || "No bio set yet. Click Edit Profile below to tell developers about yourself!"}
+                      </p>
+                      {((viewingUserProfile ? viewingUserProfile.programmingLanguages : user?.programmingLanguages) || []).length > 0 && (
+                        <div className="profile-languages-chips" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "12px", justifyContent: "center" }}>
+                          {(viewingUserProfile ? viewingUserProfile.programmingLanguages : user.programmingLanguages).map(lang => (
+                            <span key={lang} className="lang-chip-badge" style={{ fontSize: "0.62rem", padding: "2px 6px", background: "var(--ce-primary-glow)", color: "var(--ce-primary)", borderRadius: "4px", border: "1px solid var(--ce-border)", fontWeight: "600" }}>
+                              {lang}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {viewingUserProfile ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
+                          {String(viewingUserProfile._id) !== String(user?.id || user?._id) && (
+                            <div style={{ display: "flex", gap: "8px", width: "100%" }}>
+                              {followingList.some(f => String(f._id || f) === String(viewingUserProfile._id)) ? (
+                                <button
+                                  className="profile-follow-btn unfollow"
+                                  onClick={() => handleFollowToggle(viewingUserProfile._id)}
+                                  style={{ flex: 1 }}
+                                >
+                                  Unfollow
+                                </button>
+                              ) : (
+                                <button
+                                  className="profile-follow-btn follow"
+                                  onClick={() => handleFollowToggle(viewingUserProfile._id)}
+                                  style={{ flex: 1 }}
+                                >
+                                  Follow
+                                </button>
+                              )}
+                              <button
+                                className="profile-message-btn"
+                                onClick={() => {
+                                  setPreselectedChatPartner({
+                                    _id: viewingUserProfile._id,
+                                    username: viewingUserProfile.username,
+                                    avatar: viewingUserProfile.avatar,
+                                    bio: viewingUserProfile.bio || "Developer"
+                                  });
+                                  navigate("/dashboard?tab=messages");
+                                }}
+                                style={{ flex: 1 }}
+                              >
+                                <MessageSquare size={14} /> Message
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            className="profile-back-btn"
+                            onClick={() => navigate("/dashboard?tab=profile")}
+                            style={{ width: "100%", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                          >
+                            <ArrowLeft size={13} /> Back to My Profile
+                          </button>
+                        </div>
+                      ) : (
+                        <button className="profile-edit-trigger-btn" onClick={startEditingProfile} style={{ width: "100%", marginTop: "16px", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}>
+                          Edit Profile
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Profile Main Content */}
@@ -7402,6 +7831,8 @@ function Dashboard() {
           </div>,
           document.body
         )}
+
+
 
         {/* Real-time Toast Notifications stack overlay */}
         {createPortal(

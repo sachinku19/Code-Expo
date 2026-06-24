@@ -99,3 +99,48 @@ export const getLeaderboard = async () => {
   const response = await API.get("/leaderboard", getHeaders());
   return response.data;
 };
+
+export const createPost = async (postData) => {
+  const response = await API.post("/posts", postData, getHeaders());
+  return response.data;
+};
+
+export const getPosts = async (page = 1, limit = 10) => {
+  const response = await API.get(`/posts?page=${page}&limit=${limit}`, getHeaders());
+  return response.data;
+};
+
+export const toggleLikePost = async (postId) => {
+  const response = await API.post(`/posts/${postId}/like`, {}, getHeaders());
+  return response.data;
+};
+
+export const addCommentPost = async (postId, text) => {
+  const response = await API.post(`/posts/${postId}/comment`, { text }, getHeaders());
+  return response.data;
+};
+
+export const deletePost = async (postId) => {
+  const response = await API.delete(`/posts/${postId}`, getHeaders());
+  return response.data;
+};
+
+export const createStory = async (storyData) => {
+  const response = await API.post("/stories", storyData, getHeaders());
+  return response.data;
+};
+
+export const getStories = async () => {
+  const response = await API.get("/stories", getHeaders());
+  return response.data;
+};
+
+export const updateStatus = async (status) => {
+  const response = await API.post("/status", { status }, getHeaders());
+  return response.data;
+};
+
+export const getNetworkAnalytics = async () => {
+  const response = await API.get("/analytics", getHeaders());
+  return response.data;
+};

@@ -15,12 +15,25 @@ const {
   getBookmarkedRooms,
   searchUsers,
   getUserPublicProfile,
-  getLeaderboard
+  getLeaderboard,
+  updateStatus,
+  getNetworkAnalytics
 } = require("../controllers/socialControllers");
 const {
   getNotifications,
   markNotificationsRead
 } = require("../controllers/notificationControllers");
+const {
+  createPost,
+  getPosts,
+  toggleLikePost,
+  addComment,
+  deletePost
+} = require("../controllers/postController");
+const {
+  createStory,
+  getStories
+} = require("../controllers/storyController");
 
 const router = express.Router();
 
@@ -50,6 +63,21 @@ router.get("/users/profile/:id", auth_protect, getUserPublicProfile);
 // Notifications
 router.get("/notifications", auth_protect, getNotifications);
 router.post("/notifications/read", auth_protect, markNotificationsRead);
+
+// Posts
+router.post("/posts", auth_protect, createPost);
+router.get("/posts", auth_protect, getPosts);
+router.delete("/posts/:id", auth_protect, deletePost);
+router.post("/posts/:id/like", auth_protect, toggleLikePost);
+router.post("/posts/:id/comment", auth_protect, addComment);
+
+// Stories
+router.post("/stories", auth_protect, createStory);
+router.get("/stories", auth_protect, getStories);
+
+// Status & Analytics
+router.post("/status", auth_protect, updateStatus);
+router.get("/analytics", auth_protect, getNetworkAnalytics);
 
 module.exports = router;
 

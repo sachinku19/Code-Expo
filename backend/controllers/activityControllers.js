@@ -2,7 +2,7 @@ const Activity = require("../models/Activity");
 
 const getActivityFeed = async (req, res) => {
   try {
-    const activities = await Activity.find()
+    const activities = await Activity.find({ activityType: { $ne: "VIEW_PROFILE" } })
       .populate("user", "username email avatar")
       .sort({ timestamp: -1 })
       .limit(30);
@@ -124,7 +124,7 @@ const getStats = async (req, res) => {
     const userId = req.user._id;
     const Room = require("../models/Room");
 
-    const activities = await Activity.find({ user: userId });
+    const activities = await Activity.find({ user: userId, activityType: { $ne: "VIEW_PROFILE" } });
 
     // 1. Heatmap: Activity level for each of the last 365 days or calendar year
     const yearQuery = req.query.year;

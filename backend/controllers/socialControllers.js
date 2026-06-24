@@ -17,7 +17,7 @@ const toggleFollowUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "You cannot follow yourself" });
     }
 
-    const targetUser = await User.findById(targetUserId);
+    const targetUser = await User.findById(targetUserId).select("username").lean();
     if (!targetUser) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
@@ -28,15 +28,21 @@ const toggleFollowUser = async (req, res) => {
     if (existingFollow) {
       await Follow.deleteOne({ _id: existingFollow._id });
 
-      const followingCount = await Follow.countDocuments({ follower: currentUserId });
-      const followersCount = await Follow.countDocuments({ following: targetUserId });
+      const [currentUser, updatedTargetUser] = await Promise.all([
+        User.findByIdAndUpdate(currentUserId, { $inc: { followingCount: -1 } }, { new: true, select: "followingCount" }),
+        User.findByIdAndUpdate(targetUserId, { $inc: { followersCount: -1 } }, { new: true, select: "followersCount" })
+      ]);
 
-      await User.updateOne({ _id: currentUserId }, { followingCount });
-      await User.updateOne({ _id: targetUserId }, { followersCount });
+      const followingCount = currentUser?.followingCount || 0;
+      const followersCount = updatedTargetUser?.followersCount || 0;
 
       if (io) {
         io.to(String(currentUserId)).emit("user:follow-update", { targetUserId, isFollowing: false, followingCount });
         io.to(String(targetUserId)).emit("user:followers-update", { followerId: currentUserId, isFollowing: false, followersCount });
+        
+        io.to(String(currentUserId)).emit("follow-success", { targetUserId, isFollowing: false, followingCount });
+        io.to(String(targetUserId)).emit("new-follower", { followerId: currentUserId, isFollowing: false, followersCount });
+        io.emit("follow-count-updated", { userId: targetUserId, followersCount, followerId: currentUserId, followingCount });
       }
 
       return res.status(200).json({
@@ -47,15 +53,22 @@ const toggleFollowUser = async (req, res) => {
     } else {
       await Follow.create({ follower: currentUserId, following: targetUserId });
 
-      const followingCount = await Follow.countDocuments({ follower: currentUserId });
-      const followersCount = await Follow.countDocuments({ following: targetUserId });
+      const [currentUser, updatedTargetUser] = await Promise.all([
+        User.findByIdAndUpdate(currentUserId, { $inc: { followingCount: 1 } }, { new: true, select: "followingCount" }),
+        User.findByIdAndUpdate(targetUserId, { $inc: { followersCount: 1 } }, { new: true, select: "followersCount" })
+      ]);
 
-      await User.updateOne({ _id: currentUserId }, { followingCount });
-      await User.updateOne({ _id: targetUserId }, { followersCount });
+      const followingCount = currentUser?.followingCount || 0;
+      const followersCount = updatedTargetUser?.followersCount || 0;
 
       if (io) {
         io.to(String(currentUserId)).emit("user:follow-update", { targetUserId, isFollowing: true, followingCount });
         io.to(String(targetUserId)).emit("user:followers-update", { followerId: currentUserId, isFollowing: true, followersCount });
+        
+        io.to(String(currentUserId)).emit("follow-success", { targetUserId, isFollowing: true, followingCount });
+        io.to(String(targetUserId)).emit("new-follower", { followerId: currentUserId, isFollowing: true, followersCount });
+        io.emit("follow-count-updated", { userId: targetUserId, followersCount, followerId: currentUserId, followingCount });
+        io.to(String(currentUserId)).emit("suggestion-refresh", { followedUserId: targetUserId });
       }
 
       // Create notification
@@ -81,20 +94,22 @@ const removeFollower = async (req, res) => {
     const targetUserId = req.params.id;
     const currentUserId = req.user._id;
 
-    const followRelation = await Follow.findOne({ follower: targetUserId, following: currentUserId });
+    const followRelation = await Follow.findOne({ follower: targetUserId, following: currentUserId }).lean();
     if (!followRelation) {
       return res.status(404).json({ success: false, message: "Follower relation not found" });
     }
 
-    await Follow.deleteOne({ _id: followRelation._id });
-
-    const followingCount = await Follow.countDocuments({ follower: targetUserId });
-    const followersCount = await Follow.countDocuments({ following: currentUserId });
-
-    await User.updateOne({ _id: targetUserId }, { followingCount });
-    await User.updateOne({ _id: currentUserId }, { followersCount });
-
     const io = req.app.get("io");
+
+    const [, targetUser, currentUser] = await Promise.all([
+      Follow.deleteOne({ _id: followRelation._id }),
+      User.findByIdAndUpdate(targetUserId, { $inc: { followingCount: -1 } }, { new: true, select: "followingCount" }),
+      User.findByIdAndUpdate(currentUserId, { $inc: { followersCount: -1 } }, { new: true, select: "followersCount" })
+    ]);
+
+    const followingCount = targetUser?.followingCount || 0;
+    const followersCount = currentUser?.followersCount || 0;
+
     if (io) {
       io.to(String(targetUserId)).emit("user:follow-update", { targetUserId: currentUserId, isFollowing: false, followingCount });
       io.to(String(currentUserId)).emit("user:followers-update", { followerId: targetUserId, isFollowing: false, followersCount });
@@ -114,8 +129,9 @@ const getFollowers = async (req, res) => {
   try {
     const userId = req.params.id;
     const followers = await Follow.find({ following: userId })
-      .populate("follower", "username email avatar bio followersCount followingCount")
-      .sort({ createdAt: -1 });
+      .populate("follower", "username email avatar bio followersCount followingCount coverBanner")
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -131,14 +147,15 @@ const getFollowing = async (req, res) => {
   try {
     const userId = req.params.id;
     const following = await Follow.find({ follower: userId })
-      .populate("following", "username email avatar bio followersCount followingCount")
-      .sort({ createdAt: -1 });
+      .populate("following", "username email avatar bio followersCount followingCount coverBanner")
+      .sort({ createdAt: -1 })
+      .lean();
 
     const io = req.app.get("io");
 
     const followingWithOnline = following.map(f => {
       if (!f.following) return null;
-      const uObj = f.following.toObject();
+      const uObj = f.following;
       const userRoom = io?.sockets?.adapter?.rooms?.get(String(uObj._id));
       uObj.isOnline = !!(userRoom && userRoom.size > 0);
       return uObj;
@@ -291,7 +308,10 @@ const getSocialFeed = async (req, res) => {
     // Include followed developers and the user themselves
     const feedUserIds = [...followingIds, userId];
 
-    const activities = await Activity.find({ user: { $in: feedUserIds } })
+    const activities = await Activity.find({ 
+      user: { $in: feedUserIds },
+      activityType: { $ne: "VIEW_PROFILE" }
+    })
       .populate("user", "username email avatar bio")
       .populate("targetUser", "username email avatar")
       .populate("room", "title roomId language")
@@ -299,7 +319,10 @@ const getSocialFeed = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const totalCount = await Activity.countDocuments({ user: { $in: feedUserIds } });
+    const totalCount = await Activity.countDocuments({ 
+      user: { $in: feedUserIds },
+      activityType: { $ne: "VIEW_PROFILE" }
+    });
 
     res.status(200).json({
       success: true,
@@ -317,19 +340,20 @@ const getDeveloperSuggestions = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const followingRelations = await Follow.find({ follower: userId });
+    const followingRelations = await Follow.find({ follower: userId }).lean();
     const followingIds = followingRelations.map(f => String(f.following));
     const excludedIds = new Set([...followingIds, String(userId)]);
 
     const users = await User.find({ _id: { $nin: Array.from(excludedIds) } })
-      .select("username email avatar bio programmingLanguages followersCount")
-      .limit(100);
+      .select("username avatar bio programmingLanguages followersCount coverBanner")
+      .limit(100)
+      .lean();
 
-    const currentUser = await User.findById(userId).select("programmingLanguages");
+    const currentUser = await User.findById(userId).select("programmingLanguages").lean();
     const currentUserLangs = new Set(currentUser?.programmingLanguages || []);
 
     // 2nd degree follow checks (mutual connections)
-    const secondDegreeRelations = await Follow.find({ follower: { $in: followingIds } });
+    const secondDegreeRelations = await Follow.find({ follower: { $in: followingIds } }).lean();
     const mutualCandidates = {};
     secondDegreeRelations.forEach(rel => {
       const id = String(rel.following);
@@ -368,7 +392,7 @@ const getDeveloperSuggestions = async (req, res) => {
     const io = req.app.get("io");
 
     const suggestions = scoredSuggestions.slice(0, 5).map(item => {
-      const uObj = item.user.toObject();
+      const uObj = item.user;
       const userRoom = io?.sockets?.adapter?.rooms?.get(String(uObj._id));
       uObj.isOnline = !!(userRoom && userRoom.size > 0);
       return {
@@ -564,7 +588,7 @@ const searchUsers = async (req, res) => {
         { email: { $regex: query, $options: "i" } }
       ]
     })
-      .select("username email avatar bio programmingLanguages followersCount followingCount")
+      .select("username email avatar bio programmingLanguages followersCount followingCount coverBanner")
       .limit(10);
 
     res.status(200).json({ success: true, users });
@@ -579,7 +603,7 @@ const getUserPublicProfile = async (req, res) => {
     const currentUserId = req.user._id;
 
     const [targetUser, followersCount, followingCount, isFollowing, rawRooms, likes, activitiesList] = await Promise.all([
-      User.findById(targetUserId).select("username email avatar bio programmingLanguages followersCount followingCount executionsCount"),
+      User.findById(targetUserId).select("username email avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner"),
       Follow.countDocuments({ following: targetUserId }),
       Follow.countDocuments({ follower: targetUserId }),
       Follow.exists({ follower: currentUserId, following: targetUserId }),
@@ -588,11 +612,26 @@ const getUserPublicProfile = async (req, res) => {
         path: "room",
         populate: { path: "createdBy", select: "username avatar" }
       }),
-      Activity.find({ user: targetUserId })
+      Activity.find({ user: targetUserId, activityType: { $ne: "VIEW_PROFILE" } })
     ]);
 
     if (!targetUser) {
       return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (String(currentUserId) !== String(targetUserId)) {
+      Promise.all([
+        User.updateOne({ _id: targetUserId }, { $inc: { profileViews: 1 } }),
+        Activity.create({
+          user: currentUserId,
+          userId: currentUserId,
+          username: req.user.username,
+          action: `viewed ${targetUser.username}'s profile`,
+          activityType: "VIEW_PROFILE",
+          targetUser: targetUserId,
+          points: 0
+        })
+      ]).catch(err => console.error("Error updating profile view stats:", err));
     }
 
     if (targetUser.followersCount !== followersCount || targetUser.followingCount !== followingCount) {
@@ -826,6 +865,140 @@ const getLeaderboard = async (req, res) => {
   }
 };
 
+const updateStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!["Available", "Busy", "Coding", "In Meeting"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status value" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { status },
+      { new: true }
+    );
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("user:status-update", { userId: req.user._id, status });
+    }
+
+    res.status(200).json({ success: true, status: updatedUser.status });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getNetworkAnalytics = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    // 1. Fetch user stats
+    const user = await User.findById(userId).select("followersCount followingCount executionsCount codingHours profileViews developerLevel reputationScore").lean();
+
+    // 2. Fetch all follower relations to compute growth over the last 6 months
+    const follows = await Follow.find({ following: userId }).select("createdAt").sort({ createdAt: 1 }).lean();
+    
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = d.toLocaleString("default", { month: "short" });
+      months.push({ monthName, year: d.getFullYear(), monthIndex: d.getMonth() });
+    }
+
+    const followersGrowth = months.map(m => {
+      // Find count of followers registered before the end of this month
+      const endOfMonth = new Date(Date.UTC(m.year, m.monthIndex + 1, 1));
+      const count = follows.filter(f => new Date(f.createdAt) < endOfMonth).length;
+      return { month: m.monthName, count };
+    });
+
+    // 3. Fetch VIEW_PROFILE activities for this user over the last 7 days (Daily views)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const views = await Activity.find({
+      targetUser: userId,
+      activityType: "VIEW_PROFILE",
+      createdAt: { $gte: sevenDaysAgo }
+    }).select("createdAt").lean();
+
+    const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dayMap = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dayMap[daysOfWeek[d.getDay()]] = 0;
+    }
+
+    views.forEach(v => {
+      const dayName = daysOfWeek[new Date(v.createdAt).getDay()];
+      if (dayMap[dayName] !== undefined) {
+        dayMap[dayName]++;
+      }
+    });
+
+    const profileViews = Object.keys(dayMap).map(day => ({
+      day,
+      count: dayMap[day]
+    }));
+
+    // 4. Weekly engagement percentage calculation (compare last 7 days views vs previous 7 days)
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    fourteenDaysAgo.setHours(0, 0, 0, 0);
+
+    const allRecentViews = await Activity.find({
+      targetUser: userId,
+      activityType: "VIEW_PROFILE",
+      createdAt: { $gte: fourteenDaysAgo }
+    }).select("createdAt").lean();
+
+    const thisWeekViews = allRecentViews.filter(v => new Date(v.createdAt) >= sevenDaysAgo).length;
+    const lastWeekViews = allRecentViews.filter(v => new Date(v.createdAt) < sevenDaysAgo).length;
+
+    let weeklyEngagement = "+0%";
+    if (lastWeekViews > 0) {
+      const diff = ((thisWeekViews - lastWeekViews) / lastWeekViews) * 100;
+      weeklyEngagement = (diff >= 0 ? "+" : "") + diff.toFixed(1) + "%";
+    } else if (thisWeekViews > 0) {
+      weeklyEngagement = "+" + (thisWeekViews * 100) + "%";
+    }
+
+    // 5. Coding activity (using actual executionsCount)
+    const codingActivity = [
+      { week: "W1", hours: Math.floor((user?.executionsCount || 0) * 0.1) },
+      { week: "W2", hours: Math.floor((user?.executionsCount || 0) * 0.2) },
+      { week: "W3", hours: Math.floor((user?.executionsCount || 0) * 0.3) },
+      { week: "W4", hours: Math.floor((user?.executionsCount || 0) * 0.4) }
+    ];
+
+    // Determine developer rating tier based on reputationScore
+    let developerRating = "Bronze Tier";
+    if (user?.reputationScore >= 100) developerRating = "Diamond Tier";
+    else if (user?.reputationScore >= 50) developerRating = "Platinum Tier";
+    else if (user?.reputationScore >= 20) developerRating = "Gold Tier";
+    else if (user?.reputationScore >= 5) developerRating = "Silver Tier";
+
+    res.status(200).json({
+      success: true,
+      followersGrowth,
+      profileViews,
+      codingActivity,
+      stats: {
+        totalViews: user?.profileViews || 0,
+        weeklyEngagement,
+        roomHours: user?.codingHours || 0,
+        developerRating
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   toggleFollowUser,
   removeFollower,
@@ -841,6 +1014,8 @@ module.exports = {
   getBookmarkedRooms,
   searchUsers,
   getUserPublicProfile,
-  getLeaderboard
+  getLeaderboard,
+  updateStatus,
+  getNetworkAnalytics
 };
 
