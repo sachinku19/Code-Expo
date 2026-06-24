@@ -64,11 +64,20 @@ export default function MainLayout({
   );
   const [isHovered, setIsHovered] = useState(false);
   const [theme, setTheme] = useState(
-    localStorage.getItem("codeExpoHomeTheme") || "dark"
+    localStorage.getItem("codeExpoHomeTheme") || "system"
   );
+  const [activeDropdownView, setActiveDropdownView] = useState("main");
   const [participantsDropdownOpen, setParticipantsDropdownOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!profileDropdownOpen) {
+      setActiveDropdownView("main");
+    }
+  }, [profileDropdownOpen]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -374,6 +383,9 @@ export default function MainLayout({
       if (searchBoxRef.current && !searchBoxRef.current.contains(event.target)) {
         setIsSearchFocused(false);
       }
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
@@ -678,8 +690,25 @@ export default function MainLayout({
 
   // Sync theme to document element
   useEffect(() => {
-    document.documentElement.className = theme;
+    const applyTheme = () => {
+      let resolvedTheme = theme;
+      if (theme === "system") {
+        const isSystemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        resolvedTheme = isSystemDark ? "dark" : "light";
+      }
+      document.documentElement.className = resolvedTheme;
+      document.documentElement.setAttribute("data-theme-mode", theme);
+    };
+
+    applyTheme();
     localStorage.setItem("codeExpoHomeTheme", theme);
+
+    if (theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => applyTheme();
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
   }, [theme]);
 
   // Sync theme state if updated elsewhere (e.g. from Settings tab)
@@ -689,13 +718,20 @@ export default function MainLayout({
         if (mutation.attributeName === "class") {
           const currentTheme = document.documentElement.className;
           const cleanTheme = currentTheme.includes("light") ? "light" : "dark";
-          setTheme(cleanTheme);
+          const resolvedTheme = theme === "system"
+            ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+            : theme;
+          if (cleanTheme !== resolvedTheme) {
+            if (theme !== "system") {
+              setTheme(cleanTheme);
+            }
+          }
         }
       });
     });
     observer.observe(document.documentElement, { attributes: true });
     return () => observer.disconnect();
-  }, []);
+  }, [theme]);
 
   // Sync last active room ID
   useEffect(() => {
@@ -703,10 +739,6 @@ export default function MainLayout({
       localStorage.setItem("ceLastActiveRoomId", roomId);
     }
   }, [roomId]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === "dark" ? "light" : "dark");
-  };
 
   const handlePinToggle = (e) => {
     e.stopPropagation();
@@ -824,83 +856,7 @@ export default function MainLayout({
           )}
         </div>
 
-        <div className="topnav-center">
-          {!isRoomActive && (
-            <div ref={searchBoxRef} className="search-box">
-              <Search size={14} className="search-icon" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setSelectedIndex(0);
-                }}
-                onFocus={() => setIsSearchFocused(true)}
-                onKeyDown={handleSearchKeyDown}
-                placeholder={roomId && roomId !== "default" ? "Search functions, whiteboard..." : "Global search rooms, languages..."}
-              />
-
-              {!searchQuery && (
-                <span className="search-shortcut-hint">
-                  Ctrl + K
-                </span>
-              )}
-
-              {isSearchFocused && (
-                <>
-                  <div className="search-dropdown-overlay" onClick={() => setIsSearchFocused(false)} />
-                  <div className="search-dropdown-panel">
-                    {loadingSearchData ? (
-                      <div className="dropdown-empty">Loading search items...</div>
-                    ) : sections.length === 0 ? (
-                      <div className="dropdown-empty">No results found for "{searchQuery}"</div>
-                    ) : (
-                      sections.map((section, secIdx) => (
-                        <div key={secIdx} className="search-section">
-                          <div className="search-section-header">{section.title}</div>
-                          {section.items.map((item) => {
-                            const Icon = item.icon || Code2;
-                            const flatIndex = flatItems.findIndex(fi => fi.id === item.id);
-                            const isSelected = flatIndex === selectedIndex;
-                            return (
-                              <button
-                                key={item.id}
-                                type="button"
-                                className={`search-result-item ${isSelected ? "selected" : ""}`}
-                                onClick={() => handleItemClick(item)}
-                                onMouseEnter={() => setSelectedIndex(flatIndex)}
-                              >
-                                {item.avatar !== undefined ? (
-                                  <div className="user-avatar-small" style={{ backgroundColor: item.avatar ? "transparent" : getCursorColor(item.title), flexShrink: 0 }}>
-                                    {item.avatar ? (
-                                      <img src={item.avatar} alt={item.title} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                                    ) : (
-                                      item.title.charAt(0).toUpperCase()
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="item-icon">
-                                    <Icon size={14} />
-                                  </span>
-                                )}
-                                <div className="item-content">
-                                  <span className="item-title">{item.title}</span>
-                                  <span className="item-subtitle">{item.subtitle}</span>
-                                </div>
-                                {item.badge && <span className="item-badge">{item.badge}</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        <div className="topnav-center"></div>
 
         <div className="topnav-right">
           {roomId && roomId !== "default" && (
@@ -1013,6 +969,79 @@ export default function MainLayout({
             </>
           )}
 
+          {/* SEARCH BOX */}
+          {!isRoomActive && (
+            <div ref={searchBoxRef} className="search-box">
+              <Search size={14} className="search-icon" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSelectedIndex(0);
+                }}
+                onFocus={() => setIsSearchFocused(true)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search..."
+              />
+              <span className="search-shortcut-hint">
+                Ctrl + K
+              </span>
+
+              {isSearchFocused && (
+                <>
+                  <div className="search-dropdown-overlay" onClick={() => setIsSearchFocused(false)} />
+                  <div className="search-dropdown-panel">
+                    {loadingSearchData ? (
+                      <div className="dropdown-empty">Loading search items...</div>
+                    ) : sections.length === 0 ? (
+                      <div className="dropdown-empty">No results found for "{searchQuery}"</div>
+                    ) : (
+                      sections.map((section, secIdx) => (
+                        <div key={secIdx} className="search-section">
+                          <div className="search-section-header">{section.title}</div>
+                          {section.items.map((item) => {
+                            const Icon = item.icon || Code2;
+                            const flatIndex = flatItems.findIndex(fi => fi.id === item.id);
+                            const isSelected = flatIndex === selectedIndex;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className={`search-result-item ${isSelected ? "selected" : ""}`}
+                                onClick={() => handleItemClick(item)}
+                                onMouseEnter={() => setSelectedIndex(flatIndex)}
+                              >
+                                {item.avatar !== undefined ? (
+                                  <div className="user-avatar-small" style={{ backgroundColor: item.avatar ? "transparent" : getCursorColor(item.title), flexShrink: 0 }}>
+                                    {item.avatar ? (
+                                      <img src={item.avatar} alt={item.title} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                    ) : (
+                                      item.title.charAt(0).toUpperCase()
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="item-icon">
+                                    <Icon size={14} />
+                                  </span>
+                                )}
+                                <div className="item-content">
+                                  <span className="item-title">{item.title}</span>
+                                  <span className="item-subtitle">{item.subtitle}</span>
+                                </div>
+                                {item.badge && <span className="item-badge">{item.badge}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           <div
             className="topnav-bell-wrapper"
@@ -1105,8 +1134,8 @@ export default function MainLayout({
             )}
           </div>
 
-          <div className="user-dropdown">
-            <div className="user-profile-trigger">
+          <div className="user-dropdown" ref={profileDropdownRef}>
+            <div className="user-profile-trigger" onClick={() => setProfileDropdownOpen(prev => !prev)} title={user?.username || "Developer"}>
               {user?.avatar ? (
                 <img src={user.avatar} className="user-avatar-img" alt={user.username} />
               ) : (
@@ -1114,25 +1143,127 @@ export default function MainLayout({
                   {user?.username?.charAt(0).toUpperCase() || "U"}
                 </span>
               )}
-              <span className="user-name-label">{user?.username || "Developer"}</span>
             </div>
-            <div className="dropdown-menu">
-              <div className="dropdown-user-info">
-                <strong>{user?.username}</strong>
-                <span>{user?.email}</span>
+            {profileDropdownOpen && (
+              <div className="dropdown-menu premium-menu">
+                <div 
+                  className="dropdown-profile-header"
+                  onClick={() => {
+                    setProfileDropdownOpen(false);
+                    handleConfirmNavigate("/dashboard?tab=profile");
+                  }}
+                  title="View Profile"
+                >
+                  <div className="profile-header-top">
+                    <div className="dropdown-avatar-wrapper" style={{ backgroundColor: user?.avatar ? "transparent" : getCursorColor(user?.username) }}>
+                      {user?.avatar ? (
+                        <img src={user.avatar} alt={user.username} className="dropdown-avatar-img" />
+                      ) : (
+                        user?.username?.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="profile-header-info">
+                      <span className="profile-header-username">@{user?.username || "developer"}</span>
+                      <span className="profile-header-rank">{userRank}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Slim Premium Progress Bar */}
+                  <div className="dropdown-xp-progress">
+                    <div className="dropdown-xp-bar-container">
+                      <div className="dropdown-xp-bar" style={{ width: `${(userXP % 100)}%` }} />
+                    </div>
+                    <div className="dropdown-xp-labels">
+                      <span>Lvl {Math.floor(userXP / 100) + 1}</span>
+                      <span>{userXP} XP</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dropdown-grid-menu">
+                  <button onClick={() => { setProfileDropdownOpen(false); handleConfirmNavigate("/dashboard?tab=leaderboard"); }} className="grid-menu-item">
+                    <div className="custom-leaderboard-graphic">
+                      <Trophy size={20} className="trophy-main-icon" />
+                      <div className="podium-container">
+                        <div className="podium-bar bar-2">2</div>
+                        <div className="podium-bar bar-1">1</div>
+                        <div className="podium-bar bar-3">3</div>
+                      </div>
+                    </div>
+                    <span className="grid-item-label">Leaderboard</span>
+                  </button>
+
+                  <button onClick={() => { setProfileDropdownOpen(false); handleConfirmNavigate("/dashboard?tab=achievements"); }} className="grid-menu-item">
+                    <div className="custom-achievements-graphic">
+                      <Award size={20} className="award-main-icon" />
+                      <div className="progress-lines-container">
+                        <div className="progress-line-row">
+                          <span className="progress-badge badge-blue" />
+                          <div className="progress-track"><div className="progress-fill fill-blue" style={{ width: "65%" }} /></div>
+                        </div>
+                        <div className="progress-line-row">
+                          <span className="progress-badge badge-yellow" />
+                          <div className="progress-track"><div className="progress-fill fill-yellow" style={{ width: "80%" }} /></div>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="grid-item-label">Badges</span>
+                  </button>
+                </div>
+
+                <div className="dropdown-list-menu">
+                  <button onClick={() => { setProfileDropdownOpen(false); handleConfirmNavigate("/dashboard?tab=settings"); }} className="list-menu-item">
+                    <Settings size={15} />
+                    <span>Settings</span>
+                  </button>
+
+                  <button onClick={() => { setProfileDropdownOpen(false); handleConfirmNavigate("/dashboard?tab=helpdesk"); }} className="list-menu-item">
+                    <HelpCircle size={15} />
+                    <span>Help Desk</span>
+                  </button>
+                  
+                  <div className="list-menu-item appearance-trigger">
+                    {theme === "dark" ? <Moon size={15} /> : (theme === "light" ? <Sun size={15} /> : <Palette size={15} />)}
+                    <span style={{ flex: 1 }}>Appearance: {theme === "system" ? "System" : (theme === "dark" ? "Dark" : "Light")}</span>
+                    <ChevronDown size={12} style={{ transform: "rotate(-90deg)", color: "var(--ce-text-muted)", marginLeft: "auto" }} />
+                    
+                    <div className="appearance-hover-submenu">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setTheme("system"); }} 
+                        className={`submenu-item ${theme === "system" ? "active" : ""}`}
+                      >
+                        <span className="item-label">System Default</span>
+                        {theme === "system" && <Check size={14} className="active-check-icon" />}
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setTheme("light"); }} 
+                        className={`submenu-item ${theme === "light" ? "active" : ""}`}
+                      >
+                        <span className="item-label">Light</span>
+                        {theme === "light" && <Check size={14} className="active-check-icon" />}
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setTheme("dark"); }} 
+                        className={`submenu-item ${theme === "dark" ? "active" : ""}`}
+                      >
+                        <span className="item-label">Dark</span>
+                        {theme === "dark" && <Check size={14} className="active-check-icon" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button onClick={() => { setProfileDropdownOpen(false); setIsRatingModalOpen(true); }} className="list-menu-item rating-btn">
+                    <Star size={15} fill={userRating > 0 ? "currentColor" : "transparent"} style={{ color: "#ec4899" }} />
+                    <span>Rate Us</span>
+                  </button>
+
+                  <button onClick={() => { setProfileDropdownOpen(false); handleLogout(); }} className="list-menu-item logout-btn">
+                    <LogOut size={15} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               </div>
-              <hr />
-              <button onClick={() => handleConfirmNavigate("/dashboard?tab=profile")} className="dropdown-item">
-                <User size={14} /> Profile
-              </button>
-              <button onClick={() => handleConfirmNavigate("/dashboard?tab=settings")} className="dropdown-item">
-                <Settings size={14} /> Settings
-              </button>
-              <hr />
-              <button onClick={handleLogout} className="dropdown-item text-danger">
-                <LogOut size={14} /> Logout
-              </button>
-            </div>
+            )}
           </div>
         </div>
       </header>
@@ -1152,8 +1283,10 @@ export default function MainLayout({
           </div>
 
           <nav className="sidebar-nav-menu">
-            {menuItems.map(item => {
-              const Icon = item.icon;
+            {menuItems
+              .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk")
+              .map(item => {
+                const Icon = item.icon;
               const isActive = activeItem === item.id;
               
               let badgeCount = 0;
@@ -1183,70 +1316,6 @@ export default function MainLayout({
               );
             })}
           </nav>
-
-          <div className="sidebar-footer-new">
-            {sidebarExpanded ? (
-              <div className="sidebar-profile-card">
-                <div className="profile-card-top" onClick={() => handleConfirmNavigate("/dashboard?tab=profile")}>
-                  <div className="profile-card-avatar" style={{ backgroundColor: user?.avatar ? "transparent" : getCursorColor(user?.username) }}>
-                    {user?.avatar ? (
-                      <img src={user.avatar} alt={user.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                    ) : (
-                      user?.username?.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className="profile-card-info">
-                    <span className="profile-card-name">@{user?.username || "developer"}</span>
-                    <span className="profile-card-rank">{userRank}</span>
-                  </div>
-                </div>
-                <div className="profile-card-xp-progress">
-                  <div className="profile-xp-bar-container">
-                    <div className="profile-xp-bar" style={{ width: `${(userXP % 100)}%` }} />
-                  </div>
-                  <div className="profile-xp-labels">
-                    <span>Lvl {Math.floor(userXP / 100) + 1}</span>
-                    <span>{userXP} XP</span>
-                  </div>
-                </div>
-                <div className="profile-card-actions">
-                  <button className="profile-action-btn" onClick={() => setIsRatingModalOpen(true)} title="Rate Us" style={{ color: "#f59e0b" }}>
-                    <Star size={13} fill={userRating > 0 ? "#f59e0b" : "transparent"} />
-                  </button>
-                  <button className="profile-action-btn" onClick={() => handleConfirmNavigate("/dashboard?tab=settings")} title="Settings">
-                    <Settings size={13} />
-                  </button>
-                  <button className="profile-action-btn logout" onClick={handleLogout} title="Logout">
-                    <LogOut size={13} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div
-                className="sidebar-profile-card-collapsed"
-                onClick={() => handleConfirmNavigate("/dashboard?tab=profile")}
-                title={`@${user?.username || "developer"} (${userRank}) - ${userXP} XP`}
-              >
-                <div className="profile-card-avatar collapsed" style={{ backgroundColor: user?.avatar ? "transparent" : getCursorColor(user?.username) }}>
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt={user.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                  ) : (
-                    user?.username?.charAt(0).toUpperCase()
-                  )}
-                </div>
-                <button
-                  className="profile-collapsed-logout-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleLogout();
-                  }}
-                  title="Logout"
-                >
-                  <LogOut size={12} />
-                </button>
-              </div>
-            )}
-          </div>
         </aside>
 
         {/* PAGE CONTENT CONTAINER */}
@@ -1288,7 +1357,9 @@ export default function MainLayout({
         </div>
 
         <nav className="drawer-nav-menu">
-          {menuItems.map(item => {
+          {menuItems
+            .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk")
+            .map(item => {
             const Icon = item.icon;
             const isActive = activeItem === item.id;
             
