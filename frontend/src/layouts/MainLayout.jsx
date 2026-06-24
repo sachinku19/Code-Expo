@@ -93,14 +93,13 @@ export default function MainLayout({
         setUnreadNotifCount(res.unreadCount || 0);
         const formatted = (res.notifications || []).map(n => ({
           id: n._id,
-          message: `${n.sender?.username || "Someone"} ${
-            n.type === "FOLLOW" ? "followed you" :
-            n.type === "LIKE" ? `liked room "${n.targetRoom?.title || "workspace"}"` :
-            n.type === "BOOKMARK" ? `bookmarked room "${n.targetRoom?.title || "workspace"}"` :
-            n.type === "JOIN" ? `wants to join "${n.targetRoom?.title || "workspace"}"` :
-            n.type === "INVITE" ? `invited you to join workspace "${n.targetRoom?.title || "workspace"}"` :
-            "sent you a notification"
-          }`,
+          message: `${n.sender?.username || "Someone"} ${n.type === "FOLLOW" ? "followed you" :
+              n.type === "LIKE" ? `liked room "${n.targetRoom?.title || "workspace"}"` :
+                n.type === "BOOKMARK" ? `bookmarked room "${n.targetRoom?.title || "workspace"}"` :
+                  n.type === "JOIN" ? `wants to join "${n.targetRoom?.title || "workspace"}"` :
+                    n.type === "INVITE" ? `invited you to join workspace "${n.targetRoom?.title || "workspace"}"` :
+                      "sent you a notification"
+            }`,
           time: n.createdAt,
           type: n.type,
           roomId: n.targetRoom?.roomId
@@ -146,7 +145,7 @@ export default function MainLayout({
       if (String(msg.sender?._id || msg.sender) !== String(userId)) {
         setUnreadMessageCount(c => c + 1);
         const audio = new Audio("/message.mp3");
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
       }
     };
 
@@ -178,14 +177,13 @@ export default function MainLayout({
     const handleRealtimeNotif = (notif) => {
       const formatted = {
         id: notif._id,
-        message: `${notif.sender?.username || "Someone"} ${
-          notif.type === "FOLLOW" ? "followed you" :
-          notif.type === "LIKE" ? `liked room "${notif.targetRoom?.title || "workspace"}"` :
-          notif.type === "BOOKMARK" ? `bookmarked room "${notif.targetRoom?.title || "workspace"}"` :
-          notif.type === "JOIN" ? `wants to join "${notif.targetRoom?.title || "workspace"}"` :
-          notif.type === "INVITE" ? `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"` :
-          "sent you a notification"
-        }`,
+        message: `${notif.sender?.username || "Someone"} ${notif.type === "FOLLOW" ? "followed you" :
+            notif.type === "LIKE" ? `liked room "${notif.targetRoom?.title || "workspace"}"` :
+              notif.type === "BOOKMARK" ? `bookmarked room "${notif.targetRoom?.title || "workspace"}"` :
+                notif.type === "JOIN" ? `wants to join "${notif.targetRoom?.title || "workspace"}"` :
+                  notif.type === "INVITE" ? `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"` :
+                    "sent you a notification"
+          }`,
         time: notif.createdAt,
         type: notif.type,
         roomId: notif.targetRoom?.roomId
@@ -200,7 +198,7 @@ export default function MainLayout({
       // Play sound if in editor
       if (roomId && roomId !== "default") {
         const audio = new Audio("/notification.mp3");
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
       }
     };
 
@@ -835,8 +833,7 @@ export default function MainLayout({
           </button>
 
           <div className="topnav-brand-container" onClick={() => handleConfirmNavigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginRight: "16px" }}>
-            <Logo size={22} showText={false} />
-            <span className="topnav-brand-text" style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--ce-text)" }}>CodeExpo</span>
+            <Logo size={22} showText={true} />
           </div>
 
 
@@ -933,7 +930,7 @@ export default function MainLayout({
                   </button>
                 ) : (
                   <div className="ce-call-dropdown-wrapper">
-                    <button 
+                    <button
                       className={`ce-nav-action-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
                       title={activeCallUsers && activeCallUsers.length > 0 ? "Active Call in Progress - Click to Join" : "Start a Call"}
                     >
@@ -1146,7 +1143,7 @@ export default function MainLayout({
             </div>
             {profileDropdownOpen && (
               <div className="dropdown-menu premium-menu">
-                <div 
+                <div
                   className="dropdown-profile-header"
                   onClick={() => {
                     setProfileDropdownOpen(false);
@@ -1167,7 +1164,7 @@ export default function MainLayout({
                       <span className="profile-header-rank">{userRank}</span>
                     </div>
                   </div>
-                  
+
                   {/* Slim Premium Progress Bar */}
                   <div className="dropdown-xp-progress">
                     <div className="dropdown-xp-bar-container">
@@ -1221,29 +1218,29 @@ export default function MainLayout({
                     <HelpCircle size={15} />
                     <span>Help Desk</span>
                   </button>
-                  
+
                   <div className="list-menu-item appearance-trigger">
                     {theme === "dark" ? <Moon size={15} /> : (theme === "light" ? <Sun size={15} /> : <Palette size={15} />)}
                     <span style={{ flex: 1 }}>Appearance: {theme === "system" ? "System" : (theme === "dark" ? "Dark" : "Light")}</span>
                     <ChevronDown size={12} style={{ transform: "rotate(-90deg)", color: "var(--ce-text-muted)", marginLeft: "auto" }} />
-                    
+
                     <div className="appearance-hover-submenu">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setTheme("system"); }} 
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setTheme("system"); }}
                         className={`submenu-item ${theme === "system" ? "active" : ""}`}
                       >
                         <span className="item-label">System Default</span>
                         {theme === "system" && <Check size={14} className="active-check-icon" />}
                       </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setTheme("light"); }} 
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setTheme("light"); }}
                         className={`submenu-item ${theme === "light" ? "active" : ""}`}
                       >
                         <span className="item-label">Light</span>
                         {theme === "light" && <Check size={14} className="active-check-icon" />}
                       </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setTheme("dark"); }} 
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setTheme("dark"); }}
                         className={`submenu-item ${theme === "dark" ? "active" : ""}`}
                       >
                         <span className="item-label">Dark</span>
@@ -1287,34 +1284,34 @@ export default function MainLayout({
               .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk")
               .map(item => {
                 const Icon = item.icon;
-              const isActive = activeItem === item.id;
-              
-              let badgeCount = 0;
-              if (item.id === "messages") {
-                badgeCount = unreadMessageCount;
-              } else if (item.id === "notifications") {
-                badgeCount = unreadNotifCount;
-              }
+                const isActive = activeItem === item.id;
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleMenuClick(item)}
-                  className={`sidebar-nav-btn ${isActive ? "active" : ""}`}
-                  data-tooltip={item.label}
-                >
-                  <div className="sidebar-nav-icon-wrapper">
-                    <Icon size={16} className="sidebar-nav-icon-inner" />
-                    {badgeCount > 0 && (
-                      <span className="sidebar-badge-count-red">
-                        {badgeCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className="btn-label">{item.label}</span>
-                </button>
-              );
-            })}
+                let badgeCount = 0;
+                if (item.id === "messages") {
+                  badgeCount = unreadMessageCount;
+                } else if (item.id === "notifications") {
+                  badgeCount = unreadNotifCount;
+                }
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleMenuClick(item)}
+                    className={`sidebar-nav-btn ${isActive ? "active" : ""}`}
+                    data-tooltip={item.label}
+                  >
+                    <div className="sidebar-nav-icon-wrapper">
+                      <Icon size={16} className="sidebar-nav-icon-inner" />
+                      {badgeCount > 0 && (
+                        <span className="sidebar-badge-count-red">
+                          {badgeCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="btn-label">{item.label}</span>
+                  </button>
+                );
+              })}
           </nav>
         </aside>
 
@@ -1360,37 +1357,37 @@ export default function MainLayout({
           {menuItems
             .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk")
             .map(item => {
-            const Icon = item.icon;
-            const isActive = activeItem === item.id;
-            
-            let badgeCount = 0;
-            if (item.id === "messages") {
-              badgeCount = unreadMessageCount;
-            } else if (item.id === "notifications") {
-              badgeCount = unreadNotifCount;
-            }
+              const Icon = item.icon;
+              const isActive = activeItem === item.id;
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setIsDrawerOpen(false);
-                  handleMenuClick(item);
-                }}
-                className={`drawer-nav-btn ${isActive ? "active" : ""}`}
-              >
-                <div className="drawer-nav-icon-wrapper">
-                  <Icon size={16} />
-                  {badgeCount > 0 && (
-                    <span className="sidebar-badge-count-red">
-                      {badgeCount}
-                    </span>
-                  )}
-                </div>
-                <span className="btn-label">{item.label}</span>
-              </button>
-            );
-          })}
+              let badgeCount = 0;
+              if (item.id === "messages") {
+                badgeCount = unreadMessageCount;
+              } else if (item.id === "notifications") {
+                badgeCount = unreadNotifCount;
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    handleMenuClick(item);
+                  }}
+                  className={`drawer-nav-btn ${isActive ? "active" : ""}`}
+                >
+                  <div className="drawer-nav-icon-wrapper">
+                    <Icon size={16} />
+                    {badgeCount > 0 && (
+                      <span className="sidebar-badge-count-red">
+                        {badgeCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="btn-label">{item.label}</span>
+                </button>
+              );
+            })}
         </nav>
 
         <div className="drawer-footer" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>

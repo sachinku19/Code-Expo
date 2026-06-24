@@ -4,6 +4,7 @@ import { resetPassword } from "../services/authService";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Eye, EyeOff, CheckCircle2, XCircle, ArrowRight, Sparkles } from "lucide-react";
 import GlobalNetworkBackground from "../components/auth/GlobalNetworkBackground";
+import Logo from "../components/shared/Logo";
 import "./ResetPassword.css";
 
 function ResetPassword() {
@@ -100,10 +101,7 @@ function ResetPassword() {
             >
               <div className="reset-header">
                 <div className="brand-logo-glow" onClick={() => navigate("/")}>
-                  <div className="logo-symbol">&lt;/&gt;</div>
-                  <div className="logo-text">
-                    Code<span className="logo-highlight">Expo</span>
-                  </div>
+                  <Logo size={36} showText={true} />
                 </div>
                 <h2 className="reset-title">Reset Password</h2>
                 <p className="reset-text text-dim">Create a secure new password for your developer terminal.</p>

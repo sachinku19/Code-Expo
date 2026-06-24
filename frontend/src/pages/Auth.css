@@ -216,7 +216,8 @@
 
 .brand-logo-glow {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: center;
   align-items: center;
   gap: 6px;
   margin-bottom: 12px;

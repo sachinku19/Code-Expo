@@ -6,6 +6,7 @@ import { User, Mail, Lock, ArrowLeft, Sparkles, Eye, EyeOff } from "lucide-react
 import AuthBackground from "../components/auth/AuthBackground";
 import GlobalNetworkBackground from "../components/auth/GlobalNetworkBackground";
 import { motion, AnimatePresence } from "framer-motion";
+import Logo from "../components/shared/Logo";
 import "./Auth.css";
 
 function Auth({ mode }) {
@@ -299,10 +300,7 @@ function Auth({ mode }) {
                 >
                   <div className="auth-header">
                     <div className="brand-logo-glow" onClick={() => navigate("/")}>
-                      <div className="logo-symbol">&lt;/&gt;</div>
-                      <div className="logo-text">
-                        Code<span className="logo-highlight">Expo</span>
-                      </div>
+                      <Logo size={36} showText={true} />
                     </div>
                     <p className="auth-tagline-explore">Forgot Password?</p>
                     <p className="auth-tagline-world">Recover your access to the <span className="text-highlight">Grid</span>.</p>
@@ -379,10 +377,7 @@ function Auth({ mode }) {
                 >
                   <div className="auth-header">
                     <div className="brand-logo-glow" onClick={() => navigate("/")}>
-                      <div className="logo-symbol">&lt;/&gt;</div>
-                      <div className="logo-text">
-                        Code<span className="logo-highlight">Expo</span>
-                      </div>
+                      <Logo size={36} showText={true} />
                     </div>
                     <p className="auth-tagline-explore">Explore. Code. Innovate.</p>
                     <p className="auth-tagline-world">The <span className="text-highlight">World</span> is our Playground.</p>
@@ -505,10 +500,7 @@ function Auth({ mode }) {
                 >
                   <div className="auth-header">
                     <div className="brand-logo-glow" onClick={() => navigate("/")}>
-                      <div className="logo-symbol">&lt;/&gt;</div>
-                      <div className="logo-text">
-                        Code<span className="logo-highlight">Expo</span>
-                      </div>
+                      <Logo size={36} showText={true} />
                     </div>
                     <p className="auth-tagline-explore">Explore. Code. Innovate.</p>
                     <p className="auth-tagline-world">The <span className="text-highlight">World</span> is our Playground.</p>

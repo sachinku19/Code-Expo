@@ -67,7 +67,7 @@ function Home() {
 
   useEffect(() => {
     const sections = ["hero", "demo", "features", "collaboration", "whiteboard", "ai", "social-hub"];
-    
+
     const observerOptions = {
       root: null,
       rootMargin: "-40% 0px -50% 0px", // Trigger when the section occupies the center of the viewport
@@ -101,21 +101,21 @@ function Home() {
   return (
     <main className={`home-page ${theme === "light" ? "light-theme" : "dark-theme"}`}>
       <Navbar activeSection={activeSection} theme={theme} onThemeToggle={toggleTheme} onScrollToSection={handleScrollToSection} />
-      
+
       <div id="hero">
         <Hero onWatchDemo={() => setIsVideoModalOpen(true)} />
       </div>
-      
+
       <TrustedTech />
 
       <div id="demo">
         <VideoShowcase videoSrc="/make_it_more_convenience_and_m.mp4" onWatchDemo={() => setIsVideoModalOpen(true)} />
       </div>
-      
+
       <div id="features">
         <Features />
       </div>
-      
+
       <div id="collaboration">
         <CollaborationDemo />
       </div>
@@ -123,7 +123,7 @@ function Home() {
       <div id="whiteboard">
         <WhiteboardShowcase />
       </div>
-      
+
       <div id="ai">
         <AIShowcase />
       </div>
@@ -131,13 +131,13 @@ function Home() {
       <div id="social-hub">
         <SocialHubShowcase />
       </div>
-      
+
       <Stats />
-      
+
       <Testimonials />
-      
+
       <CTA />
-      
+
       <Footer />
 
       <VideoModal

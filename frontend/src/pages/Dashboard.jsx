@@ -520,6 +520,119 @@ const getBadgeStyle = (title) => {
   };
 };
 
+const renderLanguageLogo = (lang, title) => {
+  let l = String(lang || "").toLowerCase().trim();
+  const t = String(title || "").toLowerCase();
+  
+  if (!l) {
+    if (t.includes("cpp") || t.includes("c++")) l = "cpp";
+    else if (t.includes("python") || t.includes("py-") || t.includes("-py") || t.includes("api")) l = "python";
+    else if (t.includes("java") && !t.includes("javascript") && !t.includes("js")) l = "java";
+    else if (t.includes("node") || t.includes("js") || t.includes("javascript")) l = "node";
+    else l = "javascript";
+  }
+
+  // Normalize name
+  if (l === "js") l = "javascript";
+  if (l === "py") l = "python";
+  if (l === "c++") l = "cpp";
+  if (l === "nodejs" || l === "node.js") l = "node";
+  if (l === "ts") l = "typescript";
+  if (l === "html5") l = "html";
+  if (l === "css3") l = "css";
+
+  if (l === "javascript") {
+    return (
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="JavaScript">
+        <rect width="24" height="24" rx="6" fill="#f7df1e" />
+        <path d="M13.5 12.5c0 .8.5 1.3 1.2 1.3s1.2-.5 1.2-1.3v-3.5h1.2v3.5c0 1.5-1 2.5-2.4 2.5s-2.4-1-2.4-2.5h1.2zm3.8.7c.3.5.8.8 1.5.8.7 0 1.2-.4 1.2-.9 0-.6-.5-.8-1.2-1.1l-.8-.3c-.9-.4-1.5-1-1.5-2 0-1.4 1.1-2.2 2.5-2.2 1.1 0 1.9.5 2.3 1.3l-1 .6c-.3-.5-.7-.7-1.3-.7-.6 0-1 .3-1 .8 0 .5.4.7 1 .9l.8.3c1.1.4 1.7 1 1.7 2.1 0 1.5-1.1 2.3-2.6 2.3-1.4 0-2.3-.7-2.7-1.6l1-.6z" fill="#000000" />
+      </svg>
+    );
+  }
+  
+  if (l === "python") {
+    return (
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="Python">
+        <rect width="24" height="24" rx="6" fill="#1e1e24" />
+        <path d="M12 4c-1.6 0-3 .5-3.5 1.3-.8 1.2-.5 2.2.5 2.2H12v1H9.8c-1.6 0-2.8 1.2-2.8 2.8 0 1.5 1.2 2.8 2.8 2.8H11v-1.5c0-1.1.9-2 2-2h3c1.1 0 2-.9 2-2V9c0-2.8-2.2-5-5-5z" fill="#3776ab" />
+        <path d="M12 20c1.6 0 3-.5 3.5-1.3.8-1.2.5-2.2-.5-2.2H12v-1h2.2c1.6 0 2.8-1.2 2.8-2.8 0-1.5-1.2-2.8-2.8-2.8H13v1.5c0 1.1-.9 2-2 2H8c-1.1 0-2 .9-2 2V15c0 2.8 2.2 5 5 5z" fill="#ffd343" />
+        <circle cx="10.5" cy="6.5" r="0.5" fill="#ffffff" />
+        <circle cx="13.5" cy="17.5" r="0.5" fill="#1e1e24" />
+      </svg>
+    );
+  }
+
+  if (l === "cpp") {
+    return (
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="C++">
+        <rect width="24" height="24" rx="6" fill="#1d2d3d" />
+        <path d="M12 4l6.5 3.8v7.5L12 19.2l-6.5-3.8V7.8L12 4z" fill="#00599c" />
+        <path d="M10 9.5c-.8 0-1.5.7-1.5 1.5v2c0 .8.7 1.5 1.5 1.5h2.5v-1.2H10v-1.6h2.5V9.5H10z" fill="#ffffff" />
+        <path d="M14.5 11.5h1.5v-1.5h1v1.5h1.5v1h-1.5v1.5h-1v-1.5h-1.5v-1zM18.5 11.5H20v-1.5h1v1.5h1.5v1H21v1.5h-1v-1.5h-1.5v-1z" fill="#ffffff" />
+      </svg>
+    );
+  }
+
+  if (l === "java") {
+    return (
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="Java">
+        <rect width="24" height="24" rx="6" fill="#2b2625" />
+        <path d="M10 5c.5-1 .5-2 0-3M13 5c.8-1 .8-2 0-3M16 6c.5-1 .5-2 0-3" stroke="#f05a28" strokeWidth="1.2" strokeLinecap="round" />
+        <path d="M6 10c0 4 3 5 6 5s6-1 6-5H6z" fill="#5382a1" />
+        <path d="M7 11h10v1.5c0 2-2 3.5-5 3.5s-5-1.5-5-3.5V11z" fill="#f05a28" />
+        <path d="M17 11c1.5 0 2 .5 2 1.25s-.5 1.25-2 1.25v-2.5z" stroke="#5382a1" strokeWidth="1.2" fill="none" />
+        <path d="M5 17c3 1 11 1 14 0" stroke="#5382a1" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (l === "node") {
+    return (
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="Node.js">
+        <rect width="24" height="24" rx="6" fill="#1e291b" />
+        <path d="M6 8.5v7M6 11.5c.5-1 1.5-1.5 2.5-1.5s2 .5 2.5 1.5v4h-1.5v-3.5c0-.8-.4-1.2-1-1.2s-1 .4-1 1.2v3.5H6v-7z" stroke="#68a063" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M14.5 10c-1.5 0-2.5 1-2.5 2.5s1 2.5 2.5 2.5 2.5-1 2.5-2.5-1-2.5-2.5-2.5zm0 3.8c-.8 0-1.2-.5-1.2-1.3s.4-1.3 1.2-1.3 1.2.5 1.2 1.3-.4 1.3-1.2 1.3z" stroke="#68a063" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M19 8.5v7M19 11.5c.5-1 1.5-1.5 2.5-1.5v1.5c-.8 0-1.5.4-2 1v4H18v-7z" stroke="#68a063" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (l === "typescript") {
+    return (
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="TypeScript">
+        <rect width="24" height="24" rx="6" fill="#3178c6" />
+        <path d="M12 9.2H9v1.2h1.2v4.8h1.2v-4.8H12.6V9.2zm2.5 4c.3.5.8.8 1.5.8.7 0 1.2-.4 1.2-.9 0-.6-.5-.8-1.2-1.1l-.8-.3c-.9-.4-1.5-1-1.5-2 0-1.4 1.1-2.2 2.5-2.2 1.1 0 1.9.5 2.3 1.3l-1 .6c-.3-.5-.7-.7-1.3-.7-.6 0-1 .3-1 .8 0 .5.4.7 1 .9l.8.3c1.1.4 1.7 1 1.7 2.1 0 1.5-1.1 2.3-2.6 2.3-1.4 0-2.3-.7-2.7-1.6l1-.6z" fill="#ffffff" />
+      </svg>
+    );
+  }
+
+  if (l === "html") {
+    return (
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="HTML5">
+        <rect width="24" height="24" rx="6" fill="#f06529" />
+        <path d="M6 6l1.2 11.5L12 19l4.8-1.5L18 6H6zm9.5 3H9.2l.1 1.2h6.1l-.3 3-3 1-3-1-.2-1.8H10l.2 2.2 1.8.6 1.8-.6.2-1.8H9.4l-.2-2.4h6.5L15.5 9z" fill="#ffffff" />
+      </svg>
+    );
+  }
+
+  if (l === "css") {
+    return (
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="CSS3">
+        <rect width="24" height="24" rx="6" fill="#2965f1" />
+        <path d="M6 6l1.2 11.5L12 19l4.8-1.5L18 6H6zm9.5 3H9.2l.1 1.2h6.1l-.3 3-3 1-3-1-.2-1.8H10l.2 2.2 1.8.6 1.8-.6.2-1.8H9.4l-.2-2.4h6.5L15.5 9z" fill="#ffffff" />
+      </svg>
+    );
+  }
+
+  // Fallback default code icon
+  return (
+    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title={lang}>
+      <rect width="24" height="24" rx="6" fill="#4f46e5" />
+      <path d="M8.5 9.5L6 12l2.5 2.5m7-5L18 12l-2.5 2.5M13.5 7.5l-3 9" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
 const loadFromCache = (key, fallback) => {
   try {
     const cached = localStorage.getItem(key);
@@ -3006,17 +3119,18 @@ function Dashboard() {
                                   onClick={() => handleJoinRoomDirect(room.roomId)}
                                   onMouseEnter={prefetchEditor}
                                 >
-                                  <div className="joined-card-header">
-                                    <h4 className="joined-room-title" title={room.title}>{room.title}</h4>
-                                    <span className={`joined-lang-badge lang-${langClass}`}>{room.language || "JS"}</span>
+                                  <div className="joined-card-top-content">
+                                    <div className="joined-card-logo-area">
+                                      {renderLanguageLogo(room.language, room.title)}
+                                    </div>
+                                    <div className="joined-card-info-area">
+                                      <h4 className="joined-room-title" title={room.title}>{room.title}</h4>
+                                      <span className="joined-room-owner">
+                                        Owner: <strong>@{room.createdBy?.username || "Developer"}</strong>
+                                      </span>
+                                    </div>
                                   </div>
-                                  <div className="joined-card-body">
-                                    <span className="joined-room-owner">
-                                      Owner: <strong>@{room.createdBy?.username || "Developer"}</strong>
-                                    </span>
-                                    <span className="joined-room-id">ID: {room.roomId}</span>
-                                  </div>
-                                  <div className="joined-card-footer">
+                                  <div className="joined-card-footer-layout">
                                     <span className={`joined-status ${isOnline ? "online" : "offline"}`}>
                                       <span className={`status-dot-mini ${isOnline ? "active" : "offline"}`} />
                                       {isOnline ? `${activeCount} Active` : "Offline"}
@@ -3045,38 +3159,6 @@ function Dashboard() {
                 {/* RIGHT COLUMN */}
                 <div className="ce-column-right">
 
-                  {/* QUICK ACTIONS */}
-                  <section className="ce-dashboard-section">
-                    <h3 className="section-title" style={{ marginBottom: "12px" }}>Quick Actions</h3>
-                    <div className="quick-actions-grid-sidebar">
-                      <div className="quick-action-card-item create" onClick={() => {
-                        setFormData({
-                          title: "",
-                          language: localStorage.getItem("default_language") || "javascript",
-                          isPrivate: false
-                        });
-                        setShowQuickCreateModal(true);
-                      }}>
-                        <div className="quick-action-icon-wrapper">
-                          <Plus size={18} />
-                        </div>
-                        <div className="quick-action-details">
-                          <h4>Create Room</h4>
-                          <p>Launch a collaborative sandbox</p>
-                        </div>
-                      </div>
-
-                      <div className="quick-action-card-item join" onClick={() => setShowQuickJoinModal(true)}>
-                        <div className="quick-action-icon-wrapper">
-                          <LogIn size={18} />
-                        </div>
-                        <div className="quick-action-details">
-                          <h4>Join Room</h4>
-                          <p>Enter workspace via code ID</p>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
 
                   {/* PENDING JOIN REQUESTS */}
                   {joinRequests.length > 0 && (

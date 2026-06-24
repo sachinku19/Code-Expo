@@ -291,7 +291,7 @@ function Editor() {
         setActiveFileId(existingTab._id);
         setCode(existingTab.content || "");
         setEditorLanguage(existingTab.language || "javascript");
-        
+
         // Load stats asynchronously
         loadCollaborationState(roomId, existingTab._id);
         return;
@@ -4287,7 +4287,7 @@ function Editor() {
                       </button>
                     </>
                   )}
-                  <button 
+                  <button
                     className={`ce-console-toggle-btn ${!isConsoleOpen ? "collapsed-pulse" : "expanded"}`}
                     onClick={() => setIsConsoleOpen(!isConsoleOpen)}
                     title={isConsoleOpen ? "Collapse Panel" : "Expand Panel"}
@@ -5113,15 +5113,15 @@ function Editor() {
               <span className="minimized-call-label">Call Active ({Object.keys(remoteStreams).length + 1})</span>
             </div>
             <div className="minimized-call-actions">
-              <button 
-                className="minimized-action-btn restore" 
+              <button
+                className="minimized-action-btn restore"
                 onClick={() => setIsCallPanelMinimized(false)}
                 title="Restore Call Panel"
               >
                 <Maximize2 size={12} />
               </button>
-              <button 
-                className="minimized-action-btn leave" 
+              <button
+                className="minimized-action-btn leave"
                 onClick={handleLeaveCallManual}
                 title="Leave Call"
               >
@@ -5434,7 +5434,7 @@ function Editor() {
                             type="checkbox"
                             checked={isAlreadyInRoom ? true : isSelected}
                             disabled={isAlreadyInRoom}
-                            onChange={() => {}} // Row onClick triggers it
+                            onChange={() => { }} // Row onClick triggers it
                             style={{ marginRight: "12px", cursor: isAlreadyInRoom ? "not-allowed" : "pointer", accentColor: "var(--ce-primary)" }}
                           />
                           {follower.avatar ? (
