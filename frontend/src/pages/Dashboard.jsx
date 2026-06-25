@@ -673,6 +673,8 @@ function Dashboard() {
   }));
 
   const [historyRooms, setHistoryRooms] = useState(() => loadFromCache("ce_cache_historyRooms", []));
+  const [visibleJoinedRooms, setVisibleJoinedRooms] = useState(4);
+  const [visibleFeedCount, setVisibleFeedCount] = useState(4);
   const [recentRooms, setRecentRooms] = useState(() => loadFromCache("ce_cache_recentRooms", []));
   const [liveRooms, setLiveRooms] = useState(() => loadFromCache("ce_cache_liveRooms", []));
   const [joinRequests, setJoinRequests] = useState(() => loadFromCache("ce_cache_joinRequests", []));
@@ -1459,6 +1461,14 @@ function Dashboard() {
       console.error("Error loading more feed:", err);
     } finally {
       setFeedLoading(false);
+    }
+  };
+
+  const handleLoadMoreFeedClick = () => {
+    const nextVisible = visibleFeedCount + 4;
+    setVisibleFeedCount(nextVisible);
+    if (nextVisible > feedActivities.length && feedPage < feedTotalPages) {
+      handleLoadMoreFeed();
     }
   };
 
@@ -3108,7 +3118,16 @@ function Dashboard() {
       onSearchSelect={handleSearchSelect}
     >
       <div className="ce-dashboard-container">
+        <AnimatePresence mode="wait">
         {activeSection === "dashboard" && (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="dashboard-home-section">
             {/* SYSTEM ANNOUNCEMENTS BROADCAST FEED */}
             {activeAnnouncements.filter(ann => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
@@ -3339,7 +3358,7 @@ function Dashboard() {
                         </div>
                       ) : (
                         <div className="social-activities-list">
-                          {feedActivities.map(act => (
+                          {feedActivities.slice(0, visibleFeedCount).map(act => (
                             <div key={act._id} className="social-activity-card">
                               <div className="social-activity-header">
                                 <div className="social-activity-actor-info">
@@ -3372,9 +3391,9 @@ function Dashboard() {
                             </div>
                           ))}
 
-                          {feedPage < feedTotalPages && (
+                          {(visibleFeedCount < feedActivities.length || feedPage < feedTotalPages) && (
                             <button
-                              onClick={handleLoadMoreFeed}
+                              onClick={handleLoadMoreFeedClick}
                               className="feed-load-more-btn"
                               disabled={feedLoading}
                             >
@@ -3413,7 +3432,7 @@ function Dashboard() {
 
                         return (
                           <div className="recent-joined-list">
-                            {joinedRooms.slice(0, 5).map(room => {
+                            {joinedRooms.slice(0, visibleJoinedRooms).map(room => {
                               const activeCount = room.activeUsersCount || 0;
                               const isOnline = activeCount > 0;
                               const langClass = (room.language || "javascript").toLowerCase();
@@ -3453,6 +3472,15 @@ function Dashboard() {
                                 </div>
                               );
                             })}
+                            {joinedRooms.length > visibleJoinedRooms && (
+                              <button
+                                onClick={() => setVisibleJoinedRooms(prev => prev + 4)}
+                                className="feed-load-more-btn"
+                                style={{ marginTop: "14px" }}
+                              >
+                                Load More Rooms
+                              </button>
+                            )}
                           </div>
                         );
                       })()}
@@ -3752,9 +3780,18 @@ function Dashboard() {
               </div>
             </div>
           </div>
+          </motion.div>
         )}
         {/* MY ROOMS SECTION */}
         {activeSection === "myrooms" && (
+          <motion.div
+            key="myrooms"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="myrooms-section-container">
             {/* Stats Cards Grid for My Rooms */}
             <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
@@ -3920,10 +3957,19 @@ function Dashboard() {
               );
             })()}
           </div>
+          </motion.div>
         )}
 
         {/* LIVE ROOMS SECTION */}
         {activeSection === "liverooms" && (
+          <motion.div
+            key="liverooms"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="liverooms-section-container">
             {/* Stats Header for Live Rooms */}
             <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
@@ -4004,10 +4050,19 @@ function Dashboard() {
               );
             })()}
           </div>
+          </motion.div>
         )}
 
         {/* BOOKMARKS SECTION */}
         {activeSection === "bookmarks" && (
+          <motion.div
+            key="bookmarks"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="bookmarks-section-container">
             {/* Stats Cards Grid for Bookmarks */}
             <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
@@ -4147,16 +4202,17 @@ function Dashboard() {
               );
             })()}
           </div>
+          </motion.div>
         )}
 
         {/* FOLLOWING SECTION */}
         {activeSection === "following" && (
           <motion.div
             key="following"
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
             className="following-section-container"
           >
             {/* V2 Sub-navigation tabs */}
@@ -4617,10 +4673,10 @@ function Dashboard() {
         {activeSection === "leaderboard" && (
           <motion.div
             key="leaderboard"
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
             className="leaderboard-section-container"
           >
             {/* Leaderboard Stats Cards */}
@@ -5038,10 +5094,10 @@ function Dashboard() {
           return (
             <motion.div
               key="achievements"
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
               className="achievements-section-container"
             >
               {/* Upgraded Level & Career Dashboard Banner */}
@@ -5218,6 +5274,14 @@ function Dashboard() {
 
         {/* ROOMS & ACTIONS SECTION */}
         {activeSection === "rooms" && (
+          <motion.div
+            key="rooms"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="rooms-section-container">
             <div className="rooms-split-layout">
               {/* Left Side: Actions */}
@@ -5622,10 +5686,19 @@ function Dashboard() {
               </div>
             </div>
           </div>
+          </motion.div>
         )}
 
         {/* ROOM HISTORY SECTION */}
         {activeSection === "history" && (
+          <motion.div
+            key="history"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="history-section-container">
             <div className="history-table-controls">
               <div className="search-bar-container">
@@ -5710,10 +5783,19 @@ function Dashboard() {
               </table>
             </div>
           </div>
+          </motion.div>
         )}
 
         {/* WHITEBOARDS TAB SECTION */}
         {activeSection === "whiteboards" && (
+          <motion.div
+            key="whiteboards"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="history-section-container">
             <div className="section-header" style={{ marginBottom: "16px" }}>
               <Palette size={16} className="brand-logo" />
@@ -5749,21 +5831,37 @@ function Dashboard() {
               )}
             </div>
           </div>
+          </motion.div>
         )}
 
         {/* DIRECT MESSAGES SECTION */}
         {activeSection === "messages" && (
-          <div className="history-section-container">
+          <motion.div
+            key="messages"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
             <DirectMessages 
               preselectedUser={preselectedChatPartner}
               onChatLoaded={() => setPreselectedChatPartner(null)}
               onViewProfile={handleViewUserProfile}
             />
-          </div>
+          </motion.div>
         )}
 
         {/* NOTIFICATIONS FEED SECTION */}
         {activeSection === "notifications" && (
+          <motion.div
+            key="notifications"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="history-section-container">
             <div className="section-header" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -6133,10 +6231,19 @@ function Dashboard() {
               })()}
             </div>
           </div>
+          </motion.div>
         )}
 
         {/* PROFILE SECTION */}
         {activeSection === "profile" && (
+          <motion.div
+            key="profile"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="profile-section-container">
             {isPublicProfileLoading ? (
               <div className="profile-loader-container" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "400px", gap: "16px" }}>
@@ -6672,11 +6779,20 @@ function Dashboard() {
             </div>
           )}
         </div>
+          </motion.div>
       )}
 
 
         {/* SETTINGS SECTION */}
         {activeSection === "settings" && (
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
           <div className="settings-section-container">
             <div className="settings-tabbed-layout">
               <aside className="settings-tabs-sidebar">
@@ -7222,11 +7338,22 @@ function Dashboard() {
               </div>
             </div>
           </div>
+          </motion.div>
         )}
 
         {activeSection === "helpdesk" && (
-          <HelpDesk />
+          <motion.div
+            key="helpdesk"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <HelpDesk />
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Room Details Modal */}
         {selectedRoomDetails && createPortal(

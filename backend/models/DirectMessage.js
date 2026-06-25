@@ -9,7 +9,11 @@ const directMessageSchema = new mongoose.Schema({
   recipient: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true
+    required: false
+  },
+  groupChat: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "GroupChat"
   },
   message: {
     type: String,
@@ -32,5 +36,6 @@ const directMessageSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 directMessageSchema.index({ sender: 1, recipient: 1, createdAt: 1 });
+directMessageSchema.index({ groupChat: 1, createdAt: 1 });
 
 module.exports = mongoose.model("DirectMessage", directMessageSchema);

@@ -1,20 +1,23 @@
 const DirectMessage = require("../models/DirectMessage");
 const User = require("../models/User");
+const GroupChat = require("../models/GroupChat");
 const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 const path = require("path");
 
-// 1. Get list of active conversations
+// 1. Get list of active conversations (one-to-one and group chats merged)
 exports.getConversations = async (req, res) => {
   try {
     const myId = req.user._id;
     const io = req.app.get("io");
 
+    // Get direct messages
     const messages = await DirectMessage.find({
       $or: [
         { sender: myId },
         { recipient: myId }
-      ]
+      ],
+      groupChat: { $exists: false }
     })
     .sort({ createdAt: -1 })
     .populate("sender", "username avatar bio")
@@ -28,6 +31,8 @@ exports.getConversations = async (req, res) => {
       if (!conversationsMap[otherUserId]) {
         const userRoom = io?.sockets?.adapter?.rooms?.get(otherUserId);
         conversationsMap[otherUserId] = {
+          _id: otherUserId,
+          isGroup: false,
           user: {
             _id: otherUser._id,
             username: otherUser.username,
@@ -51,7 +56,51 @@ exports.getConversations = async (req, res) => {
       }
     });
 
-    const conversations = Object.values(conversationsMap);
+    // Get group chats
+    const myGroups = await GroupChat.find({ members: myId });
+    const groupConversations = [];
+
+    for (const group of myGroups) {
+      const lastMsg = await DirectMessage.findOne({ groupChat: group._id })
+        .sort({ createdAt: -1 })
+        .populate("sender", "username avatar");
+
+      groupConversations.push({
+        _id: group._id,
+        isGroup: true,
+        group: {
+          _id: group._id,
+          name: group.name,
+          avatar: group.avatar,
+          bio: group.bio,
+          members: group.members,
+          isGroup: true
+        },
+        lastMessage: lastMsg ? {
+          text: lastMsg.message,
+          fileUrl: lastMsg.fileUrl,
+          fileType: lastMsg.fileType,
+          senderId: lastMsg.sender?._id || lastMsg.sender,
+          senderName: lastMsg.sender?.username || "Unknown",
+          createdAt: lastMsg.createdAt,
+          isRead: lastMsg.isRead
+        } : null,
+        unreadCount: 0
+      });
+    }
+
+    const conversations = [
+      ...Object.values(conversationsMap),
+      ...groupConversations
+    ];
+
+    // Sort conversations by last message timestamp
+    conversations.sort((a, b) => {
+      const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+      const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
     res.status(200).json({
       success: true,
       conversations
@@ -64,15 +113,29 @@ exports.getConversations = async (req, res) => {
   }
 };
 
-// 2. Get chat history between current user and a target user
+// 2. Get chat history between current user and a target user/group
 exports.getChatHistory = async (req, res) => {
   try {
     const myId = req.user._id;
     const { userId } = req.params;
 
+    const group = await GroupChat.findById(userId);
+
+    if (group) {
+      // Return group history
+      const messages = await DirectMessage.find({ groupChat: userId })
+        .sort({ createdAt: 1 })
+        .populate("sender", "username avatar");
+
+      return res.status(200).json({
+        success: true,
+        messages
+      });
+    }
+
     // Mark messages sent by target user to me as read
     const updated = await DirectMessage.updateMany(
-      { sender: userId, recipient: myId, isRead: false },
+      { sender: userId, recipient: myId, isRead: false, groupChat: { $exists: false } },
       { isRead: true }
     );
 
@@ -90,7 +153,8 @@ exports.getChatHistory = async (req, res) => {
       $or: [
         { sender: myId, recipient: userId },
         { sender: userId, recipient: myId }
-      ]
+      ],
+      groupChat: { $exists: false }
     })
     .sort({ createdAt: 1 })
     .populate("sender", "username avatar")
@@ -108,7 +172,7 @@ exports.getChatHistory = async (req, res) => {
   }
 };
 
-// 3. Send direct message
+// 3. Send direct message (to user or group)
 exports.sendDirectMessage = async (req, res) => {
   try {
     const myId = req.user._id;
@@ -118,6 +182,29 @@ exports.sendDirectMessage = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Recipient ID and message text are required"
+      });
+    }
+
+    const group = await GroupChat.findById(recipientId);
+
+    if (group) {
+      const newMessage = await DirectMessage.create({
+        sender: myId,
+        groupChat: recipientId,
+        message
+      });
+
+      const populated = await DirectMessage.findById(newMessage._id)
+        .populate("sender", "username avatar");
+
+      const io = req.app.get("io");
+      if (io) {
+        io.to(String(recipientId)).emit("dm:receive", populated);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: populated
       });
     }
 
@@ -133,9 +220,7 @@ exports.sendDirectMessage = async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      // Emit to recipient's socket room
       io.to(String(recipientId)).emit("dm:receive", populated);
-      // Emit to sender's socket room (useful if connected in multiple tabs)
       io.to(String(myId)).emit("dm:receive", populated);
     }
 
@@ -151,7 +236,7 @@ exports.sendDirectMessage = async (req, res) => {
   }
 };
 
-// 4. Send direct message attachment
+// 4. Send direct message attachment (strictly images only)
 exports.sendDirectMessageAttachment = async (req, res) => {
   try {
     const myId = req.user._id;
@@ -173,7 +258,16 @@ exports.sendDirectMessageAttachment = async (req, res) => {
 
     const originalName = req.file.originalname;
     const ext = path.extname(originalName).toLowerCase();
-    const fileType = (ext === ".pdf" || req.file.mimetype === "application/pdf") ? "pdf" : "image";
+    
+    // Strict image attachment validation
+    const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({
+        success: false,
+        message: "Only image files (jpg, jpeg, png, webp) are allowed as attachments."
+      });
+    }
+    const fileType = "image";
 
     let fileUrl = "";
     const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
@@ -198,7 +292,7 @@ exports.sendDirectMessageAttachment = async (req, res) => {
           const uploadStream = cloudinary.uploader.upload_stream(
             {
               folder: "codeexpo_attachments",
-              resource_type: "auto"
+              resource_type: "image"
             },
             (error, result) => {
               if (error) return reject(error);
@@ -212,25 +306,45 @@ exports.sendDirectMessageAttachment = async (req, res) => {
       fileUrl = uploadResult.secure_url;
     }
 
-    const newMessage = await DirectMessage.create({
-      sender: myId,
-      recipient: recipientId,
-      message: message || "",
-      fileUrl,
-      fileType,
-      fileName: originalName
-    });
+    const group = await GroupChat.findById(recipientId);
+    let populated;
 
-    const populated = await DirectMessage.findById(newMessage._id)
-      .populate("sender", "username avatar")
-      .populate("recipient", "username avatar");
+    if (group) {
+      const newMessage = await DirectMessage.create({
+        sender: myId,
+        groupChat: recipientId,
+        message: message || "",
+        fileUrl,
+        fileType,
+        fileName: originalName
+      });
 
-    const io = req.app.get("io");
-    if (io) {
-      // Emit to recipient's socket room
-      io.to(String(recipientId)).emit("dm:receive", populated);
-      // Emit to sender's socket room
-      io.to(String(myId)).emit("dm:receive", populated);
+      populated = await DirectMessage.findById(newMessage._id)
+        .populate("sender", "username avatar");
+
+      const io = req.app.get("io");
+      if (io) {
+        io.to(String(recipientId)).emit("dm:receive", populated);
+      }
+    } else {
+      const newMessage = await DirectMessage.create({
+        sender: myId,
+        recipient: recipientId,
+        message: message || "",
+        fileUrl,
+        fileType,
+        fileName: originalName
+      });
+
+      populated = await DirectMessage.findById(newMessage._id)
+        .populate("sender", "username avatar")
+        .populate("recipient", "username avatar");
+
+      const io = req.app.get("io");
+      if (io) {
+        io.to(String(recipientId)).emit("dm:receive", populated);
+        io.to(String(myId)).emit("dm:receive", populated);
+      }
     }
 
     res.status(200).json({
@@ -331,6 +445,104 @@ exports.editDirectMessage = async (req, res) => {
     res.status(200).json({
       success: true,
       message: populated
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// 7. Create group chat channel
+exports.createGroupChat = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { name, bio, members } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Group name is required"
+      });
+    }
+
+    let parsedMembers = [];
+    if (members) {
+      try {
+        parsedMembers = typeof members === "string" ? JSON.parse(members) : members;
+      } catch (e) {
+        parsedMembers = [];
+      }
+    }
+
+    // Ensure creator is in the members list
+    const memberIds = Array.from(new Set([myId.toString(), ...parsedMembers.map(id => id.toString())]));
+
+    let avatarUrl = "";
+    if (req.file) {
+      const originalName = req.file.originalname;
+      const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
+                                     process.env.CLOUDINARY_API_KEY &&
+                                     process.env.CLOUDINARY_API_SECRET;
+
+      if (!isCloudinaryConfigured) {
+        // Local fallback
+        const uploadsDir = path.join(__dirname, "../uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const filename = `group-${Date.now()}-${sanitizedName}`;
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, req.file.buffer);
+        avatarUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+      } else {
+        // Upload directly to Cloudinary
+        const uploadToCloudinary = (fileBuffer) => {
+          return new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              {
+                folder: "codeexpo_groups",
+                resource_type: "image"
+              },
+              (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+              }
+            );
+            uploadStream.end(fileBuffer);
+          });
+        };
+        const uploadResult = await uploadToCloudinary(req.file.buffer);
+        avatarUrl = uploadResult.secure_url;
+      }
+    }
+
+    const newGroup = await GroupChat.create({
+      name: name.trim(),
+      bio: bio || "",
+      avatar: avatarUrl || "",
+      members: memberIds,
+      createdBy: myId,
+      isGroup: true
+    });
+
+    const populatedGroup = await GroupChat.findById(newGroup._id)
+      .populate("members", "username avatar bio")
+      .populate("createdBy", "username avatar");
+
+    // Emit group:created to all group members via socket
+    const io = req.app.get("io");
+    if (io) {
+      memberIds.forEach(memberId => {
+        io.to(String(memberId)).emit("group:created", populatedGroup);
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      group: populatedGroup
     });
   } catch (error) {
     res.status(500).json({

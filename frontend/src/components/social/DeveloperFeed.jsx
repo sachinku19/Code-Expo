@@ -6,6 +6,7 @@ import ProfileAvatar from "../ProfileAvatar";
 
 export default function DeveloperFeed({ user, addToast }) {
   const [posts, setPosts] = useState([]);
+  const [visiblePosts, setVisiblePosts] = useState(4);
   const [inputText, setInputText] = useState("");
   const [techInput, setTechInput] = useState("");
   const [techChips, setTechChips] = useState([]);
@@ -215,7 +216,7 @@ export default function DeveloperFeed({ user, addToast }) {
           </div>
         ) : (
           <AnimatePresence>
-            {posts.map(post => {
+            {posts.slice(0, visiblePosts).map(post => {
               if (!post.author) return null;
               const hasLiked = post.likes.includes(user?.id || user?._id);
               const showComments = activeComments[post._id];
@@ -337,6 +338,15 @@ export default function DeveloperFeed({ user, addToast }) {
               );
             })}
           </AnimatePresence>
+        )}
+        {posts.length > visiblePosts && (
+          <button
+            onClick={() => setVisiblePosts(prev => prev + 4)}
+            className="feed-load-more-btn"
+            style={{ marginTop: "20px" }}
+          >
+            Load More Activity
+          </button>
         )}
       </div>
 

@@ -48,3 +48,14 @@ export const editDirectMessage = async (messageId, text) => {
   const response = await API.put(`/edit/${messageId}`, { text }, getHeaders());
   return response.data;
 };
+
+export const createGroupChat = async (formData) => {
+  const token = localStorage.getItem("token");
+  const response = await API.post("/group/create", formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return response.data;
+};

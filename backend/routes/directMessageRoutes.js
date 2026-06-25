@@ -8,28 +8,29 @@ const {
   sendDirectMessage,
   sendDirectMessageAttachment,
   deleteDirectMessage,
-  editDirectMessage
+  editDirectMessage,
+  createGroupChat
 } = require("../controllers/directMessageControllers");
 
 const router = express.Router();
 
 const storage = multer.memoryStorage();
 
-const attachmentFileFilter = (req, file, cb) => {
-  const allowedExtensions = /jpeg|jpg|png|webp|pdf/;
+const imageFileFilter = (req, file, cb) => {
+  const allowedExtensions = /jpeg|jpg|png|webp/;
   const ext = path.extname(file.originalname).toLowerCase();
-  const isMimeValid = allowedExtensions.test(file.mimetype) || file.mimetype === "application/pdf";
+  const isMimeValid = allowedExtensions.test(file.mimetype);
   const isExtValid = allowedExtensions.test(ext);
   
   if (isMimeValid && isExtValid) {
     return cb(null, true);
   }
-  cb(new Error("Upload rejected: Only images (jpg, jpeg, png, webp) and PDFs (.pdf) are allowed!"), false);
+  cb(new Error("Upload rejected: Only image files (jpg, jpeg, png, webp) are allowed!"), false);
 };
 
-const uploadAttachment = multer({
+const uploadImage = multer({
   storage: storage,
-  fileFilter: attachmentFileFilter,
+  fileFilter: imageFileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB limit
   }
@@ -43,7 +44,7 @@ router.post(
   "/send-attachment",
   auth_protect,
   (req, res, next) => {
-    uploadAttachment.single("file")(req, res, (err) => {
+    uploadImage.single("file")(req, res, (err) => {
       if (err) {
         return res.status(400).json({ success: false, message: err.message });
       }
@@ -51,6 +52,20 @@ router.post(
     });
   },
   sendDirectMessageAttachment
+);
+
+router.post(
+  "/group/create",
+  auth_protect,
+  (req, res, next) => {
+    uploadImage.single("avatar")(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      next();
+    });
+  },
+  createGroupChat
 );
 
 router.delete("/delete/:messageId", auth_protect, deleteDirectMessage);

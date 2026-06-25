@@ -759,7 +759,6 @@ export default function MainLayout({
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
     { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard?tab=rooms&subtab=explore" },
-    { id: "liverooms", label: "Live Rooms", icon: Activity, path: "/dashboard?tab=liverooms" },
     { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard?tab=myrooms" },
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
@@ -773,7 +772,14 @@ export default function MainLayout({
     menuItems.push({ id: "admin", label: "Admin Panel", icon: Shield, path: "/admin" });
   }
 
+  const [localActiveItem, setLocalActiveItem] = useState(null);
+
+  useEffect(() => {
+    setLocalActiveItem(null);
+  }, [location]);
+
   const handleMenuClick = (item) => {
+    setLocalActiveItem(item.id);
     if (item.id === "messages") {
       fetchUnreadMessageCount();
     } else if (item.id === "notifications") {
@@ -785,11 +791,8 @@ export default function MainLayout({
   const getActiveItem = () => {
     const searchParams = new URLSearchParams(location.search);
     const tab = searchParams.get("tab");
-    const subtab = searchParams.get("subtab");
     if (location.pathname === "/dashboard") {
       if (tab === "rooms") {
-        if (subtab === "explore") return "explore-rooms";
-        if (subtab === "live") return "liverooms";
         return "explore-rooms";
       }
       if (tab) return tab;
@@ -804,7 +807,7 @@ export default function MainLayout({
     return "dashboard";
   };
 
-  const activeItem = getActiveItem();
+  const activeItem = localActiveItem || getActiveItem();
   const sidebarExpanded = isPinned || isHovered;
 
   const formatTime = (timeVal) => {
@@ -1301,7 +1304,7 @@ export default function MainLayout({
                     data-tooltip={item.label}
                   >
                     <div className="sidebar-nav-icon-wrapper">
-                      <Icon size={16} className="sidebar-nav-icon-inner" />
+                      <Icon size={20} className="sidebar-nav-icon-inner" />
                       {badgeCount > 0 && (
                         <span className="sidebar-badge-count-red">
                           {badgeCount}
@@ -1377,7 +1380,7 @@ export default function MainLayout({
                   className={`drawer-nav-btn ${isActive ? "active" : ""}`}
                 >
                   <div className="drawer-nav-icon-wrapper">
-                    <Icon size={16} />
+                    <Icon size={20} />
                     {badgeCount > 0 && (
                       <span className="sidebar-badge-count-red">
                         {badgeCount}
@@ -1399,7 +1402,7 @@ export default function MainLayout({
             }}
             style={{ color: "#f59e0b" }}
           >
-            <Star size={16} fill={userRating > 0 ? "#f59e0b" : "transparent"} />
+            <Star size={20} fill={userRating > 0 ? "#f59e0b" : "transparent"} />
             <span className="btn-label" style={{ fontWeight: 600 }}>Rate Us ★</span>
           </button>
           <button className="drawer-nav-btn" onClick={() => {

@@ -111,10 +111,33 @@ const socketHandler = (io) => {
     console.log(`⚡ User connected: ${socket.id}`);
 
     // Register user globally for direct notifications
-    socket.on("register-user", (userId) => {
+    socket.on("register-user", async (userId) => {
       if (!userId) return;
+      socket.userId = userId;
       socket.join(String(userId));
       console.log(`👤 User registered for notifications: ${userId} (${socket.id})`);
+      
+      // Join all group rooms the user belongs to
+      try {
+        const GroupChat = require("../models/GroupChat");
+        const groups = await GroupChat.find({ members: userId });
+        groups.forEach(group => {
+          socket.join(String(group._id));
+          console.log(`👥 Socket ${socket.id} joined Group Room: ${group._id}`);
+        });
+      } catch (err) {
+        console.error("Error joining group rooms on register-user:", err);
+      }
+
+      // Broadcast online status to all other users in real-time
+      socket.broadcast.emit("user:status", { userId, isOnline: true });
+    });
+
+    // Dynamic join to group room
+    socket.on("group:join", ({ groupId }) => {
+      if (!groupId) return;
+      socket.join(String(groupId));
+      console.log(`👥 Socket ${socket.id} dynamically joined Group Room: ${groupId}`);
     });
 
     // Typing indicators for direct messaging
@@ -1614,6 +1637,14 @@ const socketHandler = (io) => {
 
         if (roomUsers[roomId].length === 0) {
           delete roomUsers[roomId];
+        }
+      }
+
+      if (socket.userId) {
+        // Broadcast offline status to all other users in real-time if all connections closed
+        const activeSockets = io.sockets.adapter.rooms.get(String(socket.userId));
+        if (!activeSockets || activeSockets.size === 0) {
+          socket.broadcast.emit("user:status", { userId: socket.userId, isOnline: false });
         }
       }
     });
