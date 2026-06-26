@@ -786,3 +786,99 @@ exports.removeGroupMember = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.updateGroupChat = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { groupId } = req.params;
+    const { name, bio } = req.body;
+
+    const group = await GroupChat.findById(groupId);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "Group not found"
+      });
+    }
+
+    // Verify creator is updating
+    if (String(group.createdBy) !== String(myId)) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the group creator can update group details"
+      });
+    }
+
+    if (name && name.trim()) {
+      group.name = name.trim();
+    }
+    if (bio !== undefined) {
+      group.bio = bio.trim();
+    }
+
+    if (req.file) {
+      const originalName = req.file.originalname;
+      const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
+                                     process.env.CLOUDINARY_API_KEY &&
+                                     process.env.CLOUDINARY_API_SECRET;
+
+      let avatarUrl = "";
+      if (!isCloudinaryConfigured) {
+        // Local fallback
+        const uploadsDir = path.join(__dirname, "../uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const filename = `group-${Date.now()}-${sanitizedName}`;
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, req.file.buffer);
+        avatarUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+      } else {
+        // Upload directly to Cloudinary
+        const uploadToCloudinary = (fileBuffer) => {
+          return new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              {
+                folder: "codeexpo_groups",
+                resource_type: "image"
+              },
+              (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+              }
+            );
+            uploadStream.end(fileBuffer);
+          });
+        };
+        const uploadResult = await uploadToCloudinary(req.file.buffer);
+        avatarUrl = uploadResult.secure_url;
+      }
+      group.avatar = avatarUrl;
+    }
+
+    await group.save();
+
+    const populatedGroup = await GroupChat.findById(groupId)
+      .populate("members", "username avatar bio isOnline")
+      .populate("createdBy", "username avatar");
+
+    // Emit group:member-added (to trigger frontend update of group details)
+    const io = req.app.get("io");
+    if (io) {
+      populatedGroup.members.forEach(member => {
+        io.to(String(member._id)).emit("group:member-added", { groupId, group: populatedGroup });
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      group: populatedGroup
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles } from "lucide-react";
+import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image } from "lucide-react";
 import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost } from "../../services/socialService";
 import ProfileAvatar from "../ProfileAvatar";
 
@@ -15,6 +15,11 @@ export default function DeveloperFeed({ user, addToast }) {
   const [commentInputs, setCommentInputs] = useState({}); // postId: text
   const [postToDelete, setPostToDelete] = useState(null); // Custom delete post modal
   const [isDeletingPost, setIsDeletingPost] = useState(false); // Spinner state for deleting post
+  
+  // Image Upload State
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const fileInputRef = useRef(null);
 
   const fetchPosts = async () => {
     try {
@@ -46,20 +51,51 @@ export default function DeveloperFeed({ user, addToast }) {
     setTechChips(techChips.filter(c => c !== chipToRemove));
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      addToast("Only image files (JPEG, JPG, PNG, WEBP) are allowed!", "error");
+      return;
+    }
+
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveSelectedImage = () => {
+    setSelectedImage(null);
+    setImagePreview("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleCreatePost = async (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
     setIsPosting(true);
     try {
-      const res = await createPost({
-        text: inputText,
-        techStack: techChips
-      });
+      const formData = new FormData();
+      formData.append("text", inputText);
+      formData.append("techStack", JSON.stringify(techChips));
+      if (selectedImage) {
+        formData.append("image", selectedImage);
+      }
+
+      const res = await createPost(formData);
       if (res.success) {
         addToast("Update shared to Developer Feed!", "success");
         setInputText("");
         setTechChips([]);
+        setSelectedImage(null);
+        setImagePreview("");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         fetchPosts();
       }
     } catch (err) {
@@ -199,7 +235,40 @@ export default function DeveloperFeed({ user, addToast }) {
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+        {/* Image Preview */}
+        {imagePreview && (
+          <div className="feed-image-preview-container">
+            <img src={imagePreview} alt="Selected preview" />
+            <button 
+              type="button" 
+              onClick={handleRemoveSelectedImage}
+              className="feed-image-remove-btn"
+              title="Remove image"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px", gap: "12px", flexWrap: "wrap" }}>
+          <div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="feed-upload-image-btn"
+              title="Upload an Image"
+            >
+              <Image size={14} />
+              <span>{selectedImage ? "Change Image" : "Add Image"}</span>
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              accept="image/png, image/jpeg, image/jpg, image/webp"
+              onChange={handleImageChange}
+            />
+          </div>
           <button type="submit" disabled={isPosting} className="dev-btn-message" style={{ width: "auto" }}>
             {isPosting ? "Posting..." : "Share Update"}
           </button>
@@ -267,6 +336,11 @@ export default function DeveloperFeed({ user, addToast }) {
                   {/* Post Body */}
                   <div className="post-body">
                     <p className="post-text">{post.text}</p>
+                    {post.image && (
+                      <div className="post-image-container">
+                        <img src={post.image} alt="Shared upload" />
+                      </div>
+                    )}
                     {post.techStack && post.techStack.length > 0 && (
                       <div className="post-tags-row">
                         {post.techStack.map(tag => (

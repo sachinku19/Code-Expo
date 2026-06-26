@@ -722,7 +722,7 @@ function Dashboard() {
   const [followersList, setFollowersList] = useState(() => loadFromCache("ce_cache_followersList", []));
   const [followingList, setFollowingList] = useState(() => loadFromCache("ce_cache_followingList", []));
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
-  const [socialSubTab, setSocialSubTab] = useState("feed");
+  const [socialSubTab, setSocialSubTab] = useState("explore");
   const [visibleFollowingCount, setVisibleFollowingCount] = useState(6);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
@@ -4205,6 +4205,36 @@ function Dashboard() {
           </motion.div>
         )}
 
+        {/* NETWORK FEED SECTION */}
+        {activeSection === "feed" && (
+          <motion.div
+            key="feed"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="feed-section-container"
+            style={{ width: "100%" }}
+          >
+            <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
+              <div className="network-left-column" style={{ flex: "1 1 70%", minWidth: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+                <StoriesSystem user={user} addToast={addToast} />
+                <DeveloperFeed user={user} addToast={addToast} />
+              </div>
+              <div className="network-right-column" style={{ flex: "0 0 30%", minWidth: "280px" }}>
+                <NetworkSidebar 
+                  suggestions={suggestions} 
+                  onlineFollows={onlineFollows} 
+                  handleFollowToggle={handleFollowToggle}
+                  handleViewUserProfile={handleViewUserProfile}
+                  setPreselectedChatPartner={setPreselectedChatPartner}
+                  navigate={navigate}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* FOLLOWING SECTION */}
         {activeSection === "following" && (
           <motion.div
@@ -4217,12 +4247,6 @@ function Dashboard() {
           >
             {/* V2 Sub-navigation tabs */}
             <div className="social-v2-tabs-nav">
-              <button 
-                onClick={() => setSocialSubTab("feed")} 
-                className={`social-v2-tab-btn ${socialSubTab === "feed" ? "active" : ""}`}
-              >
-                Network Feed
-              </button>
               <button 
                 onClick={() => setSocialSubTab("explore")} 
                 className={`social-v2-tab-btn ${socialSubTab === "explore" ? "active" : ""}`}
@@ -4238,33 +4262,6 @@ function Dashboard() {
             </div>
 
             <AnimatePresence mode="wait">
-              {socialSubTab === "feed" && (
-                <motion.div
-                  key="feed"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.18 }}
-                  style={{ width: "100%" }}
-                >
-                  <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
-                    <div className="network-left-column" style={{ flex: "1 1 70%", minWidth: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
-                      <StoriesSystem user={user} addToast={addToast} />
-                      <DeveloperFeed user={user} addToast={addToast} />
-                    </div>
-                    <div className="network-right-column" style={{ flex: "0 0 30%", minWidth: "280px" }}>
-                      <NetworkSidebar 
-                        suggestions={suggestions} 
-                        onlineFollows={onlineFollows} 
-                        handleFollowToggle={handleFollowToggle}
-                        handleViewUserProfile={handleViewUserProfile}
-                        setPreselectedChatPartner={setPreselectedChatPartner}
-                        navigate={navigate}
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
 
               {socialSubTab === "analytics" && (
                 <motion.div

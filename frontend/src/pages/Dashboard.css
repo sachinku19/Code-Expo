@@ -9932,4 +9932,99 @@ tier-badge.master {
   color: #ef4444 !important;
   background: rgba(239, 68, 68, 0.1) !important;
 }
+
+/* Feed Image Uploader and Post Image Styles */
+.feed-image-preview-container {
+  position: relative;
+  margin-top: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.feed-image-preview-container img {
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+.feed-image-remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.feed-image-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.8);
+}
+
+.feed-upload-image-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px dashed rgba(139, 92, 246, 0.3);
+  color: var(--ce-primary);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feed-upload-image-btn:hover {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
+}
+
+/* Post shared image container */
+.post-image-container {
+  margin: 12px 0 6px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.post-image-container img {
+  width: 100%;
+  max-height: 380px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.post-image-container img:hover {
+  transform: scale(1.01);
+}
+
+.light .feed-image-preview-container {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.light .feed-upload-image-btn {
+  background: rgba(139, 92, 246, 0.04);
+}
+
+.light .post-image-container {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
 

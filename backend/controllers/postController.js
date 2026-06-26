@@ -1,3 +1,6 @@
+const path = require("path");
+const fs = require("fs");
+const cloudinary = require("../config/cloudinary");
 const Post = require("../models/Post");
 const User = require("../models/User");
 
@@ -9,11 +12,65 @@ const createPost = async (req, res) => {
       return res.status(400).json({ success: false, message: "Post content is required" });
     }
 
+    let finalTechStack = [];
+    if (techStack) {
+      if (Array.isArray(techStack)) {
+        finalTechStack = techStack;
+      } else {
+        try {
+          finalTechStack = JSON.parse(techStack);
+          if (!Array.isArray(finalTechStack)) {
+            finalTechStack = [finalTechStack];
+          }
+        } catch (e) {
+          finalTechStack = techStack.split(",").map(t => t.trim()).filter(Boolean);
+        }
+      }
+    }
+
+    let imageUrl = "";
+    if (req.file) {
+      const originalName = req.file.originalname;
+      const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
+                                     process.env.CLOUDINARY_API_KEY &&
+                                     process.env.CLOUDINARY_API_SECRET;
+
+      if (!isCloudinaryConfigured) {
+        const uploadsDir = path.join(__dirname, "../uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const filename = `post-${Date.now()}-${sanitizedName}`;
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, req.file.buffer);
+        imageUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+      } else {
+        const uploadToCloudinary = (fileBuffer) => {
+          return new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              {
+                folder: "codeexpo_posts",
+                resource_type: "image"
+              },
+              (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+              }
+            );
+            uploadStream.end(fileBuffer);
+          });
+        };
+        const uploadResult = await uploadToCloudinary(req.file.buffer);
+        imageUrl = uploadResult.secure_url;
+      }
+    }
+
     const newPost = await Post.create({
       author: req.user._id,
       text,
-      techStack: techStack || [],
-      image: image || ""
+      techStack: finalTechStack,
+      image: imageUrl || image || ""
     });
 
     const populatedPost = await Post.findById(newPost._id)

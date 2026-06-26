@@ -84,3 +84,14 @@ export const removeGroupMember = async (groupId, userId) => {
   const response = await API.post(`/group/${groupId}/members/remove`, { userId }, getHeaders());
   return response.data;
 };
+
+export const updateGroupChat = async (groupId, formData) => {
+  const token = localStorage.getItem("token");
+  const response = await API.put(`/group/${groupId}/update`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return response.data;
+};

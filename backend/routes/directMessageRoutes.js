@@ -14,7 +14,8 @@ const {
   unblockUser,
   deleteGroupChat,
   addGroupMember,
-  removeGroupMember
+  removeGroupMember,
+  updateGroupChat
 } = require("../controllers/directMessageControllers");
 
 const router = express.Router();
@@ -79,6 +80,19 @@ router.put("/edit/:messageId", auth_protect, editDirectMessage);
 router.delete("/group/:groupId", auth_protect, deleteGroupChat);
 router.post("/group/:groupId/members/add", auth_protect, addGroupMember);
 router.post("/group/:groupId/members/remove", auth_protect, removeGroupMember);
+router.put(
+  "/group/:groupId/update",
+  auth_protect,
+  (req, res, next) => {
+    uploadImage.single("avatar")(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      next();
+    });
+  },
+  updateGroupChat
+);
 router.post("/block/:userId", auth_protect, blockUser);
 router.post("/unblock/:userId", auth_protect, unblockUser);
 

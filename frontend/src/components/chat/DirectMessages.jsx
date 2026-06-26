@@ -13,7 +13,8 @@ import {
   unblockUser,
   deleteGroupChat,
   addGroupMember,
-  removeGroupMember
+  removeGroupMember,
+  updateGroupChat
 } from "../../services/directMessageService";
 import {
   Send, User, MessageSquare, Search, Plus, ArrowLeft,
@@ -762,6 +763,36 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     } catch (err) {
       console.error("Error removing group member:", err);
       alert(err.response?.data?.message || "Failed to remove member. Please try again.");
+    }
+  };
+
+  const handleUpdateGroupAvatar = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !activeChat) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Only image files (JPEG, JPG, PNG, WEBP) are allowed for group icon!");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const res = await updateGroupChat(activeChat._id, formData);
+      if (res.success) {
+        setActiveChat(res.group);
+        setConversations(prev => prev.map(c => {
+          if (c.isGroup && String(c.group?._id) === String(activeChat._id)) {
+            return { ...c, group: res.group };
+          }
+          return c;
+        }));
+      }
+    } catch (err) {
+      console.error("Error updating group icon:", err);
+      alert(err.response?.data?.message || "Failed to update group icon. Please try again.");
     }
   };
 
@@ -1664,22 +1695,50 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
                 <div className="group-info-scroll-container">
                   {/* Avatar & Meta */}
-                  <div className="group-info-meta-card">
-                    <div className="group-info-avatar-box">
-                      {activeChat.avatar ? (
-                        <img src={activeChat.avatar} alt={activeChat.name} className="group-info-avatar" />
-                      ) : (
-                        <div className="group-info-avatar-placeholder">
-                          <Users size={32} />
+                  {(() => {
+                    const isAdminOfGroup = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId));
+                    return (
+                      <div className="group-info-meta-card">
+                        <div 
+                          className={`group-info-avatar-box ${isAdminOfGroup ? "editable" : ""}`}
+                          onClick={() => {
+                            if (isAdminOfGroup) {
+                              document.getElementById("group-info-avatar-input").click();
+                            }
+                          }}
+                          style={{ cursor: isAdminOfGroup ? "pointer" : "default" }}
+                          title={isAdminOfGroup ? "Change Group Icon" : ""}
+                        >
+                          {activeChat.avatar ? (
+                            <img src={activeChat.avatar} alt={activeChat.name} className="group-info-avatar" />
+                          ) : (
+                            <div className="group-info-avatar-placeholder">
+                              <Users size={32} />
+                            </div>
+                          )}
+                          {isAdminOfGroup && (
+                            <div className="group-info-avatar-edit-overlay">
+                              <span className="edit-icon-text">Change DP</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <h4 className="group-info-name">{activeChat.name}</h4>
-                    <p className="group-info-bio">{activeChat.bio || "No group description."}</p>
-                    <span className="group-info-created-by">
-                      Admin: @{activeChat.createdBy?.username || activeChat.createdBy || "Admin"}
-                    </span>
-                  </div>
+                        {isAdminOfGroup && (
+                          <input
+                            type="file"
+                            id="group-info-avatar-input"
+                            style={{ display: "none" }}
+                            accept="image/png, image/jpeg, image/jpg, image/webp"
+                            onChange={handleUpdateGroupAvatar}
+                          />
+                        )}
+                        <h4 className="group-info-name">{activeChat.name}</h4>
+                        <p className="group-info-bio">{activeChat.bio || "No group description."}</p>
+                        <span className="group-info-created-by">
+                          Admin: @{activeChat.createdBy?.username || activeChat.createdBy || "Admin"}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* Members List */}
                   <div className="group-info-members-section">

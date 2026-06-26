@@ -758,6 +758,7 @@ export default function MainLayout({
   // Redesigned navigation items
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+    { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard?tab=feed" },
     { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard?tab=rooms&subtab=explore" },
     { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard?tab=myrooms" },
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },

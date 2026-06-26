@@ -36,6 +36,8 @@ const {
   deleteStory
 } = require("../controllers/storyController");
 
+const upload = require("../middleware/upload");
+
 const router = express.Router();
 
 // Follow actions
@@ -66,7 +68,7 @@ router.get("/notifications", auth_protect, getNotifications);
 router.post("/notifications/read", auth_protect, markNotificationsRead);
 
 // Posts
-router.post("/posts", auth_protect, createPost);
+router.post("/posts", auth_protect, upload.single("image"), createPost);
 router.get("/posts", auth_protect, getPosts);
 router.delete("/posts/:id", auth_protect, deletePost);
 router.post("/posts/:id/like", auth_protect, toggleLikePost);
