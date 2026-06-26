@@ -9,6 +9,8 @@ const path = require("path");
 exports.getConversations = async (req, res) => {
   try {
     const myId = req.user._id;
+    const currentUser = await User.findById(myId);
+    const blockedList = (currentUser?.blockedUsers || []).map(id => String(id));
     const io = req.app.get("io");
 
     // Get direct messages
@@ -20,8 +22,8 @@ exports.getConversations = async (req, res) => {
       groupChat: { $exists: false }
     })
     .sort({ createdAt: -1 })
-    .populate("sender", "username avatar bio")
-    .populate("recipient", "username avatar bio");
+    .populate("sender", "username avatar bio blockedUsers")
+    .populate("recipient", "username avatar bio blockedUsers");
 
     const conversationsMap = {};
     messages.forEach(msg => {
@@ -30,6 +32,10 @@ exports.getConversations = async (req, res) => {
       const otherUserId = String(otherUser._id);
       if (!conversationsMap[otherUserId]) {
         const userRoom = io?.sockets?.adapter?.rooms?.get(otherUserId);
+        const isBlocked = blockedList.includes(otherUserId);
+        const otherBlockedList = (otherUser.blockedUsers || []).map(id => String(id));
+        const hasBlockedMe = otherBlockedList.includes(String(myId));
+
         conversationsMap[otherUserId] = {
           _id: otherUserId,
           isGroup: false,
@@ -38,7 +44,9 @@ exports.getConversations = async (req, res) => {
             username: otherUser.username,
             avatar: otherUser.avatar,
             bio: otherUser.bio,
-            isOnline: !!(userRoom && userRoom.size > 0)
+            isOnline: !!(userRoom && userRoom.size > 0),
+            isBlocked,
+            hasBlockedMe
           },
           lastMessage: {
             text: msg.message,
@@ -74,7 +82,8 @@ exports.getConversations = async (req, res) => {
           avatar: group.avatar,
           bio: group.bio,
           members: group.members,
-          isGroup: true
+          isGroup: true,
+          createdBy: group.createdBy
         },
         lastMessage: lastMsg ? {
           text: lastMsg.message,
@@ -208,6 +217,26 @@ exports.sendDirectMessage = async (req, res) => {
       });
     }
 
+    // Check if either user is blocked (1-to-1 DMs only)
+    const targetUser = await User.findById(recipientId);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: "Recipient user not found" });
+    }
+
+    const currentUser = await User.findById(myId);
+
+    const isBlockedByTarget = (targetUser.blockedUsers || []).map(id => String(id)).includes(String(myId));
+    const isBlockingTarget = (currentUser.blockedUsers || []).map(id => String(id)).includes(String(recipientId));
+
+    if (isBlockedByTarget || isBlockingTarget) {
+      return res.status(403).json({
+        success: false,
+        message: isBlockingTarget 
+          ? "You have blocked this user. Unblock them to send messages."
+          : "You cannot message this user because they have blocked you."
+      });
+    }
+
     const newMessage = await DirectMessage.create({
       sender: myId,
       recipient: recipientId,
@@ -254,6 +283,29 @@ exports.sendDirectMessageAttachment = async (req, res) => {
         success: false,
         message: "No attachment file provided"
       });
+    }
+
+    const group = await GroupChat.findById(recipientId);
+
+    if (!group) {
+      const targetUser = await User.findById(recipientId);
+      if (!targetUser) {
+        return res.status(404).json({ success: false, message: "Recipient user not found" });
+      }
+
+      const currentUser = await User.findById(myId);
+
+      const isBlockedByTarget = (targetUser.blockedUsers || []).map(id => String(id)).includes(String(myId));
+      const isBlockingTarget = (currentUser.blockedUsers || []).map(id => String(id)).includes(String(recipientId));
+
+      if (isBlockedByTarget || isBlockingTarget) {
+        return res.status(403).json({
+          success: false,
+          message: isBlockingTarget 
+            ? "You have blocked this user. Unblock them to send attachments."
+            : "You cannot message this user because they have blocked you."
+        });
+      }
     }
 
     const originalName = req.file.originalname;
@@ -306,7 +358,6 @@ exports.sendDirectMessageAttachment = async (req, res) => {
       fileUrl = uploadResult.secure_url;
     }
 
-    const group = await GroupChat.findById(recipientId);
     let populated;
 
     if (group) {
@@ -549,5 +600,75 @@ exports.createGroupChat = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+// Block a user
+exports.blockUser = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { userId } = req.params;
+
+    if (String(myId) === String(userId)) {
+      return res.status(400).json({ success: false, message: "You cannot block yourself" });
+    }
+
+    await User.findByIdAndUpdate(myId, {
+      $addToSet: { blockedUsers: userId }
+    });
+
+    res.status(200).json({ success: true, message: "User blocked successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Unblock a user
+exports.unblockUser = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { userId } = req.params;
+
+    await User.findByIdAndUpdate(myId, {
+      $pull: { blockedUsers: userId }
+    });
+
+    res.status(200).json({ success: true, message: "User unblocked successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete a group chat
+exports.deleteGroupChat = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { groupId } = req.params;
+
+    const group = await GroupChat.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
+
+    // Verify creator ownership
+    if (group.createdBy.toString() !== myId.toString()) {
+      return res.status(403).json({ success: false, message: "Only the group creator can delete this group" });
+    }
+
+    // Delete group direct messages
+    await DirectMessage.deleteMany({ groupChat: groupId });
+
+    // Delete group chat itself
+    await GroupChat.findByIdAndDelete(groupId);
+
+    // Broadcast socket event to group members
+    const io = req.app.get("io");
+    if (io) {
+      io.to(String(groupId)).emit("group:deleted", { groupId });
+    }
+
+    res.status(200).json({ success: true, message: "Group deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

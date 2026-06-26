@@ -141,39 +141,54 @@ const socketHandler = (io) => {
     });
 
     // Typing indicators for direct messaging
-    socket.on("dm:typing", ({ recipientId }) => {
+    socket.on("dm:typing", ({ recipientId, senderInfo }) => {
       if (!recipientId || !socket.userId) return;
-      io.to(String(recipientId)).emit("dm:typing", { senderId: socket.userId });
+      socket.to(String(recipientId)).emit("dm:typing", { senderId: socket.userId, senderInfo });
     });
 
     socket.on("dm:stop-typing", ({ recipientId }) => {
       if (!recipientId || !socket.userId) return;
-      io.to(String(recipientId)).emit("dm:stop-typing", { senderId: socket.userId });
+      socket.to(String(recipientId)).emit("dm:stop-typing", { senderId: socket.userId });
     });
 
     // Calling events for direct messaging
-    socket.on("dm:call:invite", ({ recipientId, type, callerInfo }) => {
+    socket.on("dm:call:invite", ({ recipientId, type, callerInfo, group }) => {
       if (!recipientId) return;
-      io.to(String(recipientId)).emit("dm:call:invite", {
+      socket.to(String(recipientId)).emit("dm:call:invite", {
         callerId: socket.userId,
+        callerSocketId: socket.id,
         callerInfo,
-        type
+        type,
+        group
       });
     });
 
-    socket.on("dm:call:accept", ({ callerId }) => {
-      if (!callerId) return;
-      io.to(String(callerId)).emit("dm:call:accept");
+    socket.on("dm:call:accept", ({ callerId, accepterInfo, groupId }) => {
+      if (groupId) {
+        io.to(String(groupId)).emit("dm:call:accept", { accepterInfo, groupId, accepterSocketId: socket.id });
+      } else if (callerId) {
+        io.to(String(callerId)).emit("dm:call:accept", { accepterInfo, accepterSocketId: socket.id });
+      }
     });
 
-    socket.on("dm:call:decline", ({ callerId }) => {
+    socket.on("dm:call:decline", ({ callerId, declinerInfo }) => {
       if (!callerId) return;
-      io.to(String(callerId)).emit("dm:call:decline");
+      io.to(String(callerId)).emit("dm:call:decline", { declinerInfo });
     });
 
     socket.on("dm:call:end", ({ partnerId }) => {
       if (!partnerId) return;
       io.to(String(partnerId)).emit("dm:call:end");
+    });
+
+    socket.on("dm:call:leave", ({ groupId, userId, username }) => {
+      if (!groupId) return;
+      socket.to(String(groupId)).emit("dm:call:leave", { userId, username });
+    });
+
+    socket.on("dm:call:sync", ({ groupId, connectedMembers }) => {
+      if (!groupId) return;
+      socket.to(String(groupId)).emit("dm:call:sync", { connectedMembers });
     });
 
     // ======================

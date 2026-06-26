@@ -59,3 +59,18 @@ export const createGroupChat = async (formData) => {
   });
   return response.data;
 };
+
+export const blockUser = async (userId) => {
+  const response = await API.post(`/block/${userId}`, {}, getHeaders());
+  return response.data;
+};
+
+export const unblockUser = async (userId) => {
+  const response = await API.post(`/unblock/${userId}`, {}, getHeaders());
+  return response.data;
+};
+
+export const deleteGroupChat = async (groupId) => {
+  const response = await API.delete(`/group/${groupId}`, getHeaders());
+  return response.data;
+};

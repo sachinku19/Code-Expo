@@ -12,10 +12,63 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
+function RemoteVideoFeed({ remoteFeed }) {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (videoRef.current && remoteFeed.stream) {
+      videoRef.current.srcObject = remoteFeed.stream;
+    }
+  }, [remoteFeed.stream]);
+
+  return (
+    <div className="video-box remote-video animate-fade-in">
+      {remoteFeed.isCameraOff ? (
+        <div className="local-video-placeholder">
+          <User size={32} />
+          <span>Camera Off</span>
+        </div>
+      ) : (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          className="remote-video-element"
+        />
+      )}
+      {remoteFeed.isMuted && (
+        <div className="peer-mute-indicator" title="Microphone muted">
+          <MicOff size={12} />
+        </div>
+      )}
+      <span className="video-label">@{remoteFeed.username}</span>
+    </div>
+  );
+}
+
+function RemoteAudioFeed({ remoteFeed }) {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (audioRef.current && remoteFeed.stream) {
+      audioRef.current.srcObject = remoteFeed.stream;
+    }
+  }, [remoteFeed.stream]);
+
+  return (
+    <audio
+      ref={audioRef}
+      autoPlay
+      style={{ display: "none" }}
+    />
+  );
+}
+
 export default function CallOverlay() {
   const {
     activeCall,
     localStream,
+    remoteStreams,
     isMuted,
     isVideoOff,
     callTheme,
@@ -33,6 +86,11 @@ export default function CallOverlay() {
   } = useCall();
 
   const localVideoRef = useRef(null);
+
+  const remoteStreamsArray = Object.keys(remoteStreams || {}).map((socketId) => ({
+    socketId,
+    ...remoteStreams[socketId]
+  }));
 
   // Hook up local video stream
   useEffect(() => {
@@ -71,7 +129,9 @@ export default function CallOverlay() {
             </div>
           ) : (
             <div className="mini-call-info">
-              <span className="mini-partner-name">@{activeCall.partner.username}</span>
+              <span className="mini-partner-name">
+                {activeCall.partner.isGroup ? activeCall.partner.name : `@${activeCall.partner.username}`}
+              </span>
             </div>
           )}
           
@@ -116,18 +176,25 @@ export default function CallOverlay() {
                 <div className="pulsing-avatar-ring animating"></div>
                 <div className="pulsing-avatar large">
                   {activeCall.partner.avatar ? (
-                    <img src={activeCall.partner.avatar} alt={activeCall.partner.username} />
+                    <img src={activeCall.partner.avatar} alt={activeCall.partner.isGroup ? activeCall.partner.name : activeCall.partner.username} />
                   ) : (
                     <div className="user-avatar-placeholder">
-                      {activeCall.partner.username.charAt(0).toUpperCase()}
+                      {(activeCall.partner.isGroup ? activeCall.partner.name : activeCall.partner.username).charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
               </div>
-              <h3 className="call-partner-name">{activeCall.partner.username}</h3>
+              <h3 className="call-partner-name">
+                {activeCall.partner.isGroup ? activeCall.partner.name : activeCall.partner.username}
+              </h3>
               <span className="call-status">
                 Incoming {activeCall.type === "video" ? "Video" : "Voice"} Call...
               </span>
+              {activeCall.partner.isGroup && activeCall.caller && (
+                <div className="call-initiator-info">
+                  Started by @{activeCall.caller.username}
+                </div>
+              )}
             </div>
             
             <div className="call-control-panel incoming-actions">
@@ -155,29 +222,19 @@ export default function CallOverlay() {
             <div className="call-streams-board">
               {activeCall.type === "video" ? (
                 <div className="video-streams-container">
-                  {/* Remote (Simulated) */}
-                  <div className="video-box remote-video animate-fade-in">
-                    {activeCall.status === "connected" ? (
-                      <div className="simulated-feed">
-                        <div className="neon-scanning-line"></div>
-                        <div className="pulsing-avatar large">
-                          {activeCall.partner.avatar ? (
-                            <img src={activeCall.partner.avatar} alt={activeCall.partner.username} />
-                          ) : (
-                            <div className="user-avatar-placeholder">
-                              {activeCall.partner.username.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                        <span className="feed-status-text">Connected with {activeCall.partner.username}</span>
-                      </div>
-                    ) : (
-                      <div className="simulated-placeholder">
-                        <div className="spinner-glow"></div>
-                        <span className="calling-text">Calling {activeCall.partner.username}...</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Remote (Real feeds or Simulated calling) */}
+                  {remoteStreamsArray.length === 0 ? (
+                    <div className="video-box remote-video simulated-placeholder">
+                      <div className="spinner-glow"></div>
+                      <span className="calling-text">
+                        {activeCall.partner.isGroup ? `Calling group members of ${activeCall.partner.name}...` : `Calling @${activeCall.partner.username}...`}
+                      </span>
+                    </div>
+                  ) : (
+                    remoteStreamsArray.map((feed) => (
+                      <RemoteVideoFeed key={feed.socketId} remoteFeed={feed} />
+                    ))
+                  )}
 
                   {/* Local (Real Stream) */}
                   <div className="video-box local-video">
@@ -195,25 +252,56 @@ export default function CallOverlay() {
               ) : (
                 /* Audio Call Layout */
                 <div className="audio-stream-container">
+                  {/* Play remote audio feeds */}
+                  {remoteStreamsArray.map((feed) => (
+                    <RemoteAudioFeed key={feed.socketId} remoteFeed={feed} />
+                  ))}
                   <div className="audio-avatar-wrapper">
                     <div className={`pulsing-avatar-ring ${activeCall.status === "connected" ? "animating" : ""}`}></div>
                     <div className="pulsing-avatar large">
                       {activeCall.partner.avatar ? (
-                        <img src={activeCall.partner.avatar} alt={activeCall.partner.username} />
+                        <img src={activeCall.partner.avatar} alt={activeCall.partner.isGroup ? activeCall.partner.name : activeCall.partner.username} />
                       ) : (
                         <div className="user-avatar-placeholder">
-                          {activeCall.partner.username.charAt(0).toUpperCase()}
+                          {(activeCall.partner.isGroup ? activeCall.partner.name : activeCall.partner.username).charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
                   </div>
-                  <h3 className="call-partner-name">{activeCall.partner.username}</h3>
+                  <h3 className="call-partner-name">
+                    {activeCall.partner.isGroup ? activeCall.partner.name : activeCall.partner.username}
+                  </h3>
                   <span className="call-status">
-                    {activeCall.status === "calling" ? "Calling..." : `Connected (${formatTime(callDuration)})`}
+                    {activeCall.status === "calling" ? (
+                      activeCall.partner.isGroup ? "Calling group..." : "Calling..."
+                    ) : (
+                      `Connected (${formatTime(callDuration)})`
+                    )}
                   </span>
                 </div>
               )}
             </div>
+
+            {activeCall.partner.isGroup && activeCall.status === "connected" && (
+              <div className="call-connected-members">
+                <span className="members-title">In call:</span>
+                <div className="members-list">
+                  {activeCall.caller && (
+                    <span className="member-badge host">
+                      👑 @{activeCall.caller.username}
+                    </span>
+                  )}
+                  {activeCall.connectedMembers && activeCall.connectedMembers
+                    .filter(m => String(m._id) !== String(activeCall.caller?._id))
+                    .map((member) => (
+                      <span key={member._id} className="member-badge">
+                        @{member.username}
+                      </span>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
 
             <div className="call-control-panel">
               <button

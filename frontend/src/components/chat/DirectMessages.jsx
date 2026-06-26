@@ -7,12 +7,15 @@ import {
   getChatHistory,
   sendDirectMessage,
   sendDirectMessageAttachment,
-  deleteDirectMessage
+  deleteDirectMessage,
+  blockUser,
+  unblockUser,
+  deleteGroupChat
 } from "../../services/directMessageService";
 import {
   Send, User, MessageSquare, Search, Plus, ArrowLeft,
   Phone, Video, FileText, Download, X,
-  Check, CheckCheck, Trash2, Image, Code2, Sliders, MoreVertical, Info, Users
+  Check, CheckCheck, Trash2, Image, Code2, Sliders, MoreVertical, Info, Users, Ban
 } from "lucide-react";
 import { useCall } from "../../context/CallContext";
 import "./DirectMessages.css";
@@ -75,7 +78,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
   // Typing indicator states
   const [isTyping, setIsTyping] = useState(false); 
-  const [partnerTyping, setPartnerTyping] = useState(false); 
+  const [partnerTyping, setPartnerTyping] = useState(null); // null or { username, avatar }
 
   // Refs
   const chatEndRef = useRef(null);
@@ -92,8 +95,40 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
   const activeChatId = activeChat?._id || activeChat?.id;
 
+  const [showChatMenu, setShowChatMenu] = useState(false);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!showChatMenu) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest(".chat-header-actions")) {
+        setShowChatMenu(false);
+      }
+    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => {
+      document.removeEventListener("click", handleOutsideClick);
+    };
+  }, [showChatMenu]);
+
+  // Compute block status reactively
+  const isChatBlocked = useMemo(() => {
+    if (!activeChat || activeChat.isGroup) return false;
+    if (activeChat.isBlocked) return true;
+    const conv = conversations.find(c => !c.isGroup && String(c.user?._id || c.user?.id) === String(activeChat._id));
+    return !!conv?.user?.isBlocked;
+  }, [activeChat, conversations]);
+
+  const hasChatBlockedMe = useMemo(() => {
+    if (!activeChat || activeChat.isGroup) return false;
+    if (activeChat.hasBlockedMe) return true;
+    const conv = conversations.find(c => !c.isGroup && String(c.user?._id || c.user?.id) === String(activeChat._id));
+    return !!conv?.user?.hasBlockedMe;
+  }, [activeChat, conversations]);
+
   useEffect(() => {
     activeChatRef.current = activeChat;
+    setShowChatMenu(false); // Reset menu when switching chats
   }, [activeChat]);
 
   useEffect(() => {
@@ -229,21 +264,21 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           if (prev.some((m) => m._id === msg._id)) return prev;
           return [...prev, msg];
         });
-        setPartnerTyping(false);
+        setPartnerTyping(null);
       }
       fetchConversations();
     };
 
-    const handlePartnerTyping = ({ senderId }) => {
+    const handlePartnerTyping = ({ senderId, senderInfo }) => {
       const activeChatVal = activeChatRef.current;
       const currentUserIdVal = currentUserIdRef.current;
       if (activeChatVal) {
         if (activeChatVal.isGroup) {
           if (String(senderId) !== String(currentUserIdVal)) {
-            setPartnerTyping(true);
+            setPartnerTyping(senderInfo || { username: "Someone", avatar: "" });
           }
         } else if (String(senderId) === String(activeChatVal._id)) {
-          setPartnerTyping(true);
+          setPartnerTyping(senderInfo || { username: activeChatVal.username, avatar: activeChatVal.avatar });
         }
       }
     };
@@ -254,10 +289,10 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       if (activeChatVal) {
         if (activeChatVal.isGroup) {
           if (String(senderId) !== String(currentUserIdVal)) {
-            setPartnerTyping(false);
+            setPartnerTyping(null);
           }
         } else if (String(senderId) === String(activeChatVal._id)) {
-          setPartnerTyping(false);
+          setPartnerTyping(null);
         }
       }
     };
@@ -321,6 +356,15 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       });
     };
 
+    const handleGroupDeleted = ({ groupId }) => {
+      const activeChatVal = activeChatRef.current;
+      if (activeChatVal && activeChatVal.isGroup && String(activeChatVal._id) === String(groupId)) {
+        setActiveChat(null);
+        alert("This group has been deleted by the creator.");
+      }
+      fetchConversations();
+    };
+
     socket.on("dm:receive", handleReceiveMessage);
     socket.on("dm:typing", handlePartnerTyping);
     socket.on("dm:stop-typing", handlePartnerStopTyping);
@@ -328,6 +372,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     socket.on("dm:read", handleReceiveReadReceipt);
     socket.on("user:status", handleUserStatusChange);
     socket.on("group:created", handleGroupCreated);
+    socket.on("group:deleted", handleGroupDeleted);
 
     return () => {
       socket.off("dm:receive", handleReceiveMessage);
@@ -337,6 +382,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       socket.off("dm:read", handleReceiveReadReceipt);
       socket.off("user:status", handleUserStatusChange);
       socket.off("group:created", handleGroupCreated);
+      socket.off("group:deleted", handleGroupDeleted);
     };
   }, []);
 
@@ -348,7 +394,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     }
 
     loadHistory(activeChatId);
-    setPartnerTyping(false);
+    setPartnerTyping(null);
   }, [activeChatId]);
 
   // Auto-scroll chat history
@@ -420,6 +466,57 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     }
   };
 
+  const handleToggleBlock = async (userId, currentlyBlocked) => {
+    try {
+      if (currentlyBlocked) {
+        await unblockUser(userId);
+      } else {
+        const confirmBlock = window.confirm(`Are you sure you want to block @${activeChat.username || activeChat.name}? You will not receive messages or calls from them.`);
+        if (!confirmBlock) return;
+        await blockUser(userId);
+      }
+      
+      // Update activeChat
+      setActiveChat(prev => {
+        if (prev && String(prev._id) === String(userId)) {
+          return { ...prev, isBlocked: !currentlyBlocked };
+        }
+        return prev;
+      });
+
+      // Update conversations list
+      setConversations(prev => prev.map(c => {
+        if (!c.isGroup && String(c.user?._id || c.user?.id) === String(userId)) {
+          return {
+            ...c,
+            user: { ...c.user, isBlocked: !currentlyBlocked }
+          };
+        }
+        return c;
+      }));
+      
+      setShowChatMenu(false);
+    } catch (err) {
+      console.error("Error toggling block:", err);
+      alert("Failed to update block status. Please try again.");
+    }
+  };
+
+  const handleDeleteGroup = async (groupId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this group? All message history will be permanently deleted.");
+    if (!confirmDelete) return;
+
+    try {
+      await deleteGroupChat(groupId);
+      setActiveChat(null);
+      fetchConversations();
+      setShowChatMenu(false);
+    } catch (err) {
+      console.error("Error deleting group:", err);
+      alert("Failed to delete group. Only the group creator can delete it.");
+    }
+  };
+
   // Handle send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -480,7 +577,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
     if (!isTyping) {
       setIsTyping(true);
-      socket.emit("dm:typing", { recipientId: activeChat._id });
+      socket.emit("dm:typing", {
+        recipientId: activeChat._id,
+        senderInfo: {
+          username: user?.username || "Someone",
+          avatar: user?.avatar || ""
+        }
+      });
     }
 
     if (typingTimeoutRef.current) {
@@ -938,25 +1041,81 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                 </div>
               </div>
               
-              <div className="chat-header-actions">
+              <div className="chat-header-actions" style={{ position: "relative" }}>
                 <button
                   type="button"
                   className="header-action-btn"
-                  onClick={() => !activeChat.isGroup && handleStartCall("audio", activeChat)}
-                  title={activeChat.isGroup ? "Audio Call Unavailable" : `Start Audio Call with ${activeChat.username}`}
-                  disabled={!!activeCall || activeChat.isGroup}
+                  onClick={() => handleStartCall("audio", activeChat)}
+                  title={activeChat.isGroup ? `Start Group Audio Call in ${activeChat.name}` : `Start Audio Call with ${activeChat.username}`}
+                  disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
                 >
                   <Phone size={18} />
                 </button>
                 <button
                   type="button"
                   className="header-action-btn"
-                  onClick={() => !activeChat.isGroup && handleStartCall("video", activeChat)}
-                  title={activeChat.isGroup ? "Video Call Unavailable" : `Start Video Call with ${activeChat.username}`}
-                  disabled={!!activeCall || activeChat.isGroup}
+                  onClick={() => handleStartCall("video", activeChat)}
+                  title={activeChat.isGroup ? `Start Group Video Call in ${activeChat.name}` : `Start Video Call with ${activeChat.username}`}
+                  disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
                 >
                   <Video size={18} />
                 </button>
+                <button
+                  type="button"
+                  className={`header-action-btn options-menu-btn ${showChatMenu ? "active" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowChatMenu(!showChatMenu);
+                  }}
+                  title="Chat Options"
+                >
+                  <MoreVertical size={18} />
+                </button>
+
+                {showChatMenu && (
+                  <div className="chat-options-dropdown animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                    {activeChat.isGroup ? (
+                      <>
+                        <div className="dropdown-info-item">
+                          <Users size={14} />
+                          <span>{activeChat.members?.length || 0} Members</span>
+                        </div>
+                        {activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId)) && (
+                          <button
+                            type="button"
+                            className="dropdown-action-item danger"
+                            onClick={() => handleDeleteGroup(activeChat._id)}
+                          >
+                            <Trash2 size={14} />
+                            <span>Delete Group</span>
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="dropdown-action-item"
+                          onClick={() => {
+                            if (onViewProfile) onViewProfile(activeChat._id);
+                            setShowChatMenu(false);
+                          }}
+                        >
+                          <User size={14} />
+                          <span>View Profile</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`dropdown-action-item ${isChatBlocked ? "success" : "danger"}`}
+                          onClick={() => handleToggleBlock(activeChat._id, isChatBlocked)}
+                        >
+                          <Ban size={14} />
+                          <span>{isChatBlocked ? "Unblock User" : "Block User"}</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1080,20 +1239,25 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     });
                   })()}
                   {partnerTyping && (
-                    <div className="message-bubble-wrapper received">
+                    <div className="message-bubble-wrapper received typing-wrapper-row">
                       <div className="bubble-avatar-container">
-                        {activeChat.avatar ? (
-                          <img src={activeChat.avatar} alt={activeChat.username} className="bubble-partner-avatar" />
+                        {partnerTyping.avatar ? (
+                          <img src={partnerTyping.avatar} alt={partnerTyping.username} className="bubble-partner-avatar" />
                         ) : (
                           <div className="bubble-partner-avatar-placeholder">
-                            {(activeChat.username || activeChat.name || "U").charAt(0).toUpperCase()}
+                            {(partnerTyping.username || "U").charAt(0).toUpperCase()}
                           </div>
                         )}
                       </div>
-                      <div className="message-bubble typing-bubble">
-                        <div className="typing-dot" />
-                        <div className="typing-dot" />
-                        <div className="typing-dot" />
+                      <div className="typing-content-box">
+                        {activeChat.isGroup && (
+                          <span className="typing-user-label">@{partnerTyping.username} is typing</span>
+                        )}
+                        <div className="message-bubble typing-bubble">
+                          <div className="typing-dot" />
+                          <div className="typing-dot" />
+                          <div className="typing-dot" />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1102,84 +1266,103 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               )}
             </div>
 
-            {/* Chat input box */}
-            <div className="chat-input-container animate-fade-in">
-              {attachment && (
-                <div className="attachment-preview-panel animate-slide-up">
-                  <div className="preview-info">
-                    <img src={attachment.previewUrl} alt="Preview" className="preview-thumb" />
-                    <div className="preview-details">
-                      <span className="preview-name">{attachment.file.name}</span>
-                      <span className="preview-size">{(attachment.file.size / 1024).toFixed(1)} KB</span>
+            {/* Chat input box or Blocked banner */}
+            {isChatBlocked ? (
+              <div className="chat-blocked-banner animate-fade-in">
+                <Ban size={18} className="blocked-banner-icon" />
+                <span className="blocked-banner-text">You have blocked this user.</span>
+                <button
+                  type="button"
+                  className="unblock-banner-btn"
+                  onClick={() => handleToggleBlock(activeChat._id, true)}
+                >
+                  Unblock
+                </button>
+              </div>
+            ) : hasChatBlockedMe ? (
+              <div className="chat-blocked-banner animate-fade-in">
+                <Ban size={18} className="blocked-banner-icon" />
+                <span className="blocked-banner-text">You cannot send messages or start calls with this user.</span>
+              </div>
+            ) : (
+              <div className="chat-input-container animate-fade-in">
+                {attachment && (
+                  <div className="attachment-preview-panel animate-slide-up">
+                    <div className="preview-info">
+                      <img src={attachment.previewUrl} alt="Preview" className="preview-thumb" />
+                      <div className="preview-details">
+                        <span className="preview-name">{attachment.file.name}</span>
+                        <span className="preview-size">{(attachment.file.size / 1024).toFixed(1)} KB</span>
+                      </div>
                     </div>
+                    <button type="button" className="remove-preview-btn" onClick={handleRemoveAttachment}>
+                      <X size={16} />
+                    </button>
                   </div>
-                  <button type="button" className="remove-preview-btn" onClick={handleRemoveAttachment}>
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
+                )}
 
-              {/* Redesigned Premium Chat Input Card */}
-              <div className="chat-input-card">
-                <textarea
-                  ref={inputRef}
-                  placeholder="Type your message..."
-                  value={newMessageText}
-                  onChange={handleInputChange}
-                  className="chat-textarea-input"
-                  disabled={isSending}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
-                  }}
-                />
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  accept="image/png, image/jpeg, image/jpg, image/webp"
-                  style={{ display: "none" }}
-                />
-                <div className="chat-input-actions-bar">
-                  <div className="chat-input-left-actions">
+                {/* Redesigned Premium Chat Input Card */}
+                <div className="chat-input-card">
+                  <textarea
+                    ref={inputRef}
+                    placeholder="Type your message..."
+                    value={newMessageText}
+                    onChange={handleInputChange}
+                    className="chat-textarea-input"
+                    disabled={isSending}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
+                  />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                    style={{ display: "none" }}
+                  />
+                  <div className="chat-input-actions-bar">
+                    <div className="chat-input-left-actions">
+                      <button
+                        type="button"
+                        className="chat-action-icon-btn"
+                        onClick={handleSendImageClick}
+                        title="Send Image File"
+                        disabled={isSending}
+                      >
+                        <Image size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        className="chat-action-icon-btn"
+                        onClick={() => setShowCodeModal(true)}
+                        title="Send Code Block"
+                        disabled={isSending}
+                      >
+                        <Code2 size={18} />
+                      </button>
+                    </div>
                     <button
-                      type="button"
-                      className="chat-action-icon-btn"
-                      onClick={handleSendImageClick}
-                      title="Send Image File"
-                      disabled={isSending}
+                      type="submit"
+                      className="chat-send-purple-btn"
+                      onClick={handleSendMessage}
+                      disabled={(!newMessageText.trim() && !attachment) || isSending}
                     >
-                      <Image size={18} />
-                    </button>
-                    <button
-                      type="button"
-                      className="chat-action-icon-btn"
-                      onClick={() => setShowCodeModal(true)}
-                      title="Send Code Block"
-                      disabled={isSending}
-                    >
-                      <Code2 size={18} />
+                      {isSending ? (
+                        <div className="loading-spinner-tiny animate-spin" />
+                      ) : (
+                        <>
+                          <Send size={14} className="send-icon-margin" /> Send
+                        </>
+                      )}
                     </button>
                   </div>
-                  <button
-                    type="submit"
-                    className="chat-send-purple-btn"
-                    onClick={handleSendMessage}
-                    disabled={(!newMessageText.trim() && !attachment) || isSending}
-                  >
-                    {isSending ? (
-                      <div className="loading-spinner-tiny animate-spin" />
-                    ) : (
-                      <>
-                        <Send size={14} className="send-icon-margin" /> Send
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
-            </div>
+            )}
           </>
         ) : (
           <div className="dm-empty-state">
