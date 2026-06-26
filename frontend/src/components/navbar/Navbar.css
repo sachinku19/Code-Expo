@@ -34,7 +34,7 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-weight: 800;
   font-size: 1.35rem;
   color: var(--text-primary);

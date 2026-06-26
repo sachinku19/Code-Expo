@@ -1705,7 +1705,16 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                         
                         return (
                           <div key={member._id} className="group-member-row">
-                            <div className="member-row-left">
+                            <div 
+                              className={`member-row-left ${onViewProfile ? "clickable" : ""}`}
+                              onClick={() => {
+                                if (onViewProfile) {
+                                  onViewProfile(member._id);
+                                }
+                              }}
+                              style={{ cursor: onViewProfile ? "pointer" : "default" }}
+                              title={onViewProfile ? `View @${member.username}'s profile` : ""}
+                            >
                               <div className="member-row-avatar-box">
                                 {member.avatar ? (
                                   <img src={member.avatar} alt={member.username} className="member-row-avatar" />

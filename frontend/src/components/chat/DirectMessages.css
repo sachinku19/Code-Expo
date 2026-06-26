@@ -4413,6 +4413,16 @@
   min-width: 0;
 }
 
+.member-row-left.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.member-row-left.clickable:hover .member-row-username {
+  color: var(--ce-primary, #a855f7);
+  text-decoration: underline;
+}
+
 .member-row-avatar-box {
   position: relative;
   width: 34px;

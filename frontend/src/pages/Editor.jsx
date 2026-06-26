@@ -4169,7 +4169,7 @@ function Editor() {
                       <div className="welcome-inner">
                         <div className="welcome-header">
                           <div className="welcome-logo">
-                            <Code2 size={40} className="logo-spark" />
+                            <img src="/logo.png" alt="Logo" style={{ width: 40, height: 40, objectFit: "contain" }} />
                           </div>
                           <h1 className="welcome-title">CodeExpo Workspace</h1>
                           <p className="welcome-subtitle">A professional collaborative editor sandboxed in Docker</p>

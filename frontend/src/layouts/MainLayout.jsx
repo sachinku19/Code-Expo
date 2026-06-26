@@ -836,7 +836,7 @@ export default function MainLayout({
           </button>
 
           <div className="topnav-brand-container" onClick={() => handleConfirmNavigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginRight: "16px" }}>
-            <Logo size={22} showText={true} />
+            <Logo size={28} showText={true} />
           </div>
 
 
