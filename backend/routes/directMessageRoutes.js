@@ -12,7 +12,9 @@ const {
   createGroupChat,
   blockUser,
   unblockUser,
-  deleteGroupChat
+  deleteGroupChat,
+  addGroupMember,
+  removeGroupMember
 } = require("../controllers/directMessageControllers");
 
 const router = express.Router();
@@ -75,6 +77,8 @@ router.delete("/delete/:messageId", auth_protect, deleteDirectMessage);
 router.put("/edit/:messageId", auth_protect, editDirectMessage);
 
 router.delete("/group/:groupId", auth_protect, deleteGroupChat);
+router.post("/group/:groupId/members/add", auth_protect, addGroupMember);
+router.post("/group/:groupId/members/remove", auth_protect, removeGroupMember);
 router.post("/block/:userId", auth_protect, blockUser);
 router.post("/unblock/:userId", auth_protect, unblockUser);
 

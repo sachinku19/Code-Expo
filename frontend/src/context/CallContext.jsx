@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+/* eslint-disable react-refresh/only-export-components, react-hooks/set-state-in-effect */
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useAuth } from "./AuthContext";
 import socket from "../socket/socket";
+import { sendDirectMessage } from "../services/directMessageService";
 
 const CallContext = createContext(null);
 
@@ -24,10 +26,34 @@ export function CallProvider({ children }) {
   const callConnectTimeoutRef = useRef(null);
   const peerConnectionsRef = useRef({});
   const activeCallRef = useRef(null);
+  const callStartTimeRef = useRef(null);
 
   useEffect(() => {
     activeCallRef.current = activeCall;
   }, [activeCall]);
+
+  const saveCallLog = async (status, finalDuration = 0) => {
+    try {
+      const activeCallVal = activeCallRef.current;
+      if (!activeCallVal) return;
+      const isCaller = activeCallVal.caller?._id === currentUserId;
+      if (!isCaller) return;
+
+      const recipientId = activeCallVal.partner._id || activeCallVal.partner.id;
+      const callType = activeCallVal.type;
+
+      const payload = {
+        callType,
+        status,
+        duration: finalDuration
+      };
+
+      await sendDirectMessage(recipientId, JSON.stringify(payload), "call");
+      console.log("Logged call history successfully:", payload);
+    } catch (err) {
+      console.error("Error saving call history message:", err);
+    }
+  };
 
   // Call duration counter
   useEffect(() => {
@@ -37,7 +63,7 @@ export function CallProvider({ children }) {
         setCallDuration((prev) => prev + 1);
       }, 1000);
     } else {
-      setCallDuration(0);
+      setCallDuration((prev) => (prev !== 0 ? 0 : prev));
     }
     return () => {
       if (timer) clearInterval(timer);
@@ -240,7 +266,7 @@ export function CallProvider({ children }) {
       connectedMembers: []
     });
 
-    const stream = await startLocalStream(type);
+    await startLocalStream(type);
 
     socket.emit("dm:call:invite", {
       recipientId: partnerUser._id || partnerUser.id,
@@ -259,7 +285,7 @@ export function CallProvider({ children }) {
     if (!activeCall) return;
 
     setIsCallMinimized(false);
-    const stream = await startLocalStream(activeCall.type);
+    await startLocalStream(activeCall.type);
 
     const callerId = activeCall.caller?._id || activeCall.partner._id || activeCall.partner.id;
     const isGroup = activeCall.partner.isGroup;
@@ -273,6 +299,8 @@ export function CallProvider({ children }) {
         username: user?.username
       }
     });
+
+    callStartTimeRef.current = Date.now();
 
     setActiveCall((prev) => {
       if (!prev) return null;
@@ -302,6 +330,16 @@ export function CallProvider({ children }) {
 
     const isGroupCall = activeCall.partner.isGroup;
     const isCaller = activeCall.caller?._id === currentUserId;
+
+    // Calculate duration
+    const duration = callStartTimeRef.current ? Math.floor((Date.now() - callStartTimeRef.current) / 1000) : 0;
+    callStartTimeRef.current = null;
+
+    if (activeCall.status === "calling") {
+      saveCallLog("missed");
+    } else if (activeCall.status === "connected") {
+      saveCallLog("completed", duration);
+    }
 
     if (!isGroupCall || isCaller) {
       socket.emit("dm:call:end", { partnerId: activeCall.partner._id || activeCall.partner.id });
@@ -346,6 +384,9 @@ export function CallProvider({ children }) {
 
     const handleCallAccepted = ({ accepterInfo, groupId, accepterSocketId }) => {
       console.log("WebRTC: handleCallAccepted from", accepterInfo?.username, "socket:", accepterSocketId);
+      
+      callStartTimeRef.current = Date.now();
+
       setActiveCall((prev) => {
         if (!prev) return null;
         
@@ -402,6 +443,7 @@ export function CallProvider({ children }) {
         console.log(`${declinerInfo?.username || "A user"} declined the group call.`);
         return;
       }
+      saveCallLog("declined");
       stopLocalStream();
       cleanUpAllCallConnections();
       setActiveCall(null);
@@ -409,12 +451,24 @@ export function CallProvider({ children }) {
     };
 
     const handleCallEnded = () => {
+      const duration = callStartTimeRef.current ? Math.floor((Date.now() - callStartTimeRef.current) / 1000) : 0;
+      callStartTimeRef.current = null;
+
+      const currentCall = activeCallRef.current;
+      if (currentCall) {
+        if (currentCall.status === "calling") {
+          saveCallLog("missed");
+        } else if (currentCall.status === "connected") {
+          saveCallLog("completed", duration);
+        }
+      }
+
       stopLocalStream();
       cleanUpAllCallConnections();
       setActiveCall(null);
     };
 
-    const handleCallLeft = ({ userId, username }) => {
+    const handleCallLeft = ({ userId }) => {
       console.log("WebRTC: handleCallLeft from userId:", userId);
       
       setRemoteStreams((prev) => {

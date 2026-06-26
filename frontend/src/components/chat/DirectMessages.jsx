@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "../../context/AuthContext";
 import socket from "../../socket/socket";
@@ -10,11 +11,13 @@ import {
   deleteDirectMessage,
   blockUser,
   unblockUser,
-  deleteGroupChat
+  deleteGroupChat,
+  addGroupMember,
+  removeGroupMember
 } from "../../services/directMessageService";
 import {
   Send, User, MessageSquare, Search, Plus, ArrowLeft,
-  Phone, Video, FileText, Download, X,
+  Phone, Video, X, ArrowUpRight, ArrowDownLeft,
   Check, CheckCheck, Trash2, Image, Code2, Sliders, MoreVertical, Info, Users, Ban
 } from "lucide-react";
 import { useCall } from "../../context/CallContext";
@@ -37,6 +40,58 @@ const formatChatDate = (dateString) => {
       year: "numeric"
     });
   }
+};
+
+const renderCallHistory = (msg, currentUserId) => {
+  const isMe = String(msg.sender?._id || msg.sender) === String(currentUserId);
+  let callDetails = { callType: "audio", status: "completed", duration: 0 };
+  try {
+    callDetails = JSON.parse(msg.message);
+  } catch {
+    if (msg.message && msg.message.toLowerCase().includes("video")) {
+      callDetails.callType = "video";
+    }
+  }
+
+  const { callType, status, duration } = callDetails;
+  const isOutgoing = isMe;
+  let statusText;
+  const isMissed = status === "missed" || status === "declined";
+
+  if (isMissed) {
+    statusText = isOutgoing ? "No answer" : (status === "declined" ? "Declined" : "Missed call");
+  } else {
+    const mins = Math.floor(duration / 60);
+    const secs = duration % 60;
+    const durStr = duration > 0 ? ` (${mins}:${secs.toString().padStart(2, "0")})` : "";
+    statusText = (isOutgoing ? "Outgoing" : "Incoming") + durStr;
+  }
+
+  const isVideo = callType === "video";
+  const isIncomingMissed = isMissed && !isOutgoing;
+
+  return (
+    <div className={`call-history-bubble-inner ${isIncomingMissed ? "missed" : ""}`}>
+      <div className="call-history-left">
+        <div className={`call-history-icon-circle ${isIncomingMissed ? "missed" : "completed"}`}>
+          {isVideo ? <Video size={16} /> : <Phone size={16} />}
+        </div>
+      </div>
+      <div className="call-history-center">
+        <span className="call-history-title">{isVideo ? "Video Call" : "Voice Call"}</span>
+        <span className="call-history-status-row">
+          <span className="call-history-arrow">
+            {isOutgoing ? (
+              <ArrowUpRight size={14} className={isMissed ? "arrow-missed" : "arrow-completed"} />
+            ) : (
+              <ArrowDownLeft size={14} className={isMissed ? "arrow-missed" : "arrow-completed"} />
+            )}
+          </span>
+          <span className="call-history-status-text">{statusText}</span>
+        </span>
+      </div>
+    </div>
+  );
 };
 
 export default function DirectMessages({ preselectedUser, onChatLoaded, onViewProfile }) {
@@ -78,12 +133,17 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
   // Typing indicator states
   const [isTyping, setIsTyping] = useState(false); 
-  const [partnerTyping, setPartnerTyping] = useState(null); // null or { username, avatar }
+  const [partnerTypers, setPartnerTypers] = useState([]); // array of { userId, username, avatar }
 
   // Refs
   const chatEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const typingTimeoutsRef = useRef({});
   const inputRef = useRef(null);
+  const chatHistoryCacheRef = useRef({});
+  const prevChatIdRef = useRef(null);
+  const prevMessagesCountRef = useRef(0);
+  const prevTypersCountRef = useRef(0);
 
   // Attachment states
   const [attachment, setAttachment] = useState(null); 
@@ -96,6 +156,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const activeChatId = activeChat?._id || activeChat?.id;
 
   const [showChatMenu, setShowChatMenu] = useState(false);
+  const [showGroupInfoPanel, setShowGroupInfoPanel] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -128,7 +190,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
   useEffect(() => {
     activeChatRef.current = activeChat;
-    setShowChatMenu(false); // Reset menu when switching chats
+    setShowChatMenu((prev) => (prev ? false : prev));
+    setShowGroupInfoPanel((prev) => (prev ? false : prev));
+    setPartnerTypers((prev) => (prev.length > 0 ? [] : prev));
+    
+    // Clear all typing timeouts
+    Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
+    typingTimeoutsRef.current = {};
   }, [activeChat]);
 
   useEffect(() => {
@@ -138,6 +206,29 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   useEffect(() => {
     preselectedUserRef.current = preselectedUser;
   }, [preselectedUser]);
+
+  // Load candidates for adding members
+  useEffect(() => {
+    if (showAddMemberModal && currentUserId) {
+      const loadCandidates = async () => {
+        try {
+          const [followersRes, followingRes] = await Promise.all([
+            getFollowers(currentUserId).catch(() => ({ success: false, followers: [] })),
+            getFollowing(currentUserId).catch(() => ({ success: false, following: [] }))
+          ]);
+
+          const merged = {};
+          (followersRes.followers || []).forEach(f => { if (f) merged[f._id] = f; });
+          (followingRes.following || []).forEach(f => { if (f) merged[f._id] = f; });
+
+          setCandidates(Object.values(merged));
+        } catch (err) {
+          console.error("Error loading add-member candidates:", err);
+        }
+      };
+      loadCandidates();
+    }
+  }, [showAddMemberModal, currentUserId]);
 
   // Global calling context
   const {
@@ -157,7 +248,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   // Debounced search for users in system
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setSearchResults([]);
+      setSearchResults((prev) => (prev.length > 0 ? [] : prev));
       return;
     }
 
@@ -189,7 +280,14 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   // Handle preselected chat partner redirected from a profile card
   useEffect(() => {
     if (preselectedUser) {
-      setActiveChat(preselectedUser);
+      setActiveChat((prevActive) => {
+        const prevId = prevActive?._id || prevActive?.id;
+        const newId = preselectedUser._id || preselectedUser.id;
+        if (prevId !== newId) {
+          return preselectedUser;
+        }
+        return prevActive;
+      });
       setConversations((prev) => {
         const exists = prev.some((c) => String(c.user?._id || c.user?.id) === String(preselectedUser._id));
         if (exists) return prev;
@@ -213,27 +311,25 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   }, [preselectedUser, onChatLoaded]);
 
   // Fetch active conversations
-  const fetchConversations = async (showLoader = false) => {
+  async function fetchConversations(showLoader = false) {
     try {
       if (showLoader) {
         setLoadingConversations(true);
       }
       const res = await getConversations();
       if (res.success) {
-        setConversations((prev) => {
-          let list = res.conversations || [];
-          const activeChatVal = activeChatRef.current;
-          
-          if (activeChatVal) {
-            list = list.map((c) => {
-              const target = c.isGroup ? c.group : c.user;
-              return String(target?._id || target?.id) === String(activeChatVal._id)
-                ? { ...c, unreadCount: 0, lastMessage: c.lastMessage ? { ...c.lastMessage, isRead: true } : null }
-                : c;
-            });
-          }
-          return list;
-        });
+        let list = res.conversations || [];
+        const activeChatVal = activeChatRef.current;
+        
+        if (activeChatVal) {
+          list = list.map((c) => {
+            const target = c.isGroup ? c.group : c.user;
+            return String(target?._id || target?.id) === String(activeChatVal._id)
+              ? { ...c, unreadCount: 0, lastMessage: c.lastMessage ? { ...c.lastMessage, isRead: true } : null }
+              : c;
+          });
+        }
+        setConversations(list);
         window.dispatchEvent(new CustomEvent("ce-unread-messages-update"));
       }
     } catch (err) {
@@ -241,7 +337,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     } finally {
       setLoadingConversations(false);
     }
-  };
+  }
 
   // Socket listeners for real-time messages, typing, and presence updates
   useEffect(() => {
@@ -262,9 +358,20 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
         setMessages((prev) => {
           if (prev.some((m) => m._id === msg._id)) return prev;
-          return [...prev, msg];
+          const next = [...prev, msg];
+          if (activeChatVal) {
+            const key = activeChatVal._id || activeChatVal.id;
+            chatHistoryCacheRef.current[key] = next;
+          }
+          return next;
         });
-        setPartnerTyping(null);
+
+        const senderId = msg.sender?._id || msg.sender;
+        setPartnerTypers((prev) => prev.filter((t) => String(t.userId) !== String(senderId)));
+        if (typingTimeoutsRef.current[senderId]) {
+          clearTimeout(typingTimeoutsRef.current[senderId]);
+          delete typingTimeoutsRef.current[senderId];
+        }
       }
       fetchConversations();
     };
@@ -272,33 +379,61 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     const handlePartnerTyping = ({ senderId, senderInfo }) => {
       const activeChatVal = activeChatRef.current;
       const currentUserIdVal = currentUserIdRef.current;
-      if (activeChatVal) {
-        if (activeChatVal.isGroup) {
-          if (String(senderId) !== String(currentUserIdVal)) {
-            setPartnerTyping(senderInfo || { username: "Someone", avatar: "" });
-          }
-        } else if (String(senderId) === String(activeChatVal._id)) {
-          setPartnerTyping(senderInfo || { username: activeChatVal.username, avatar: activeChatVal.avatar });
+      if (!activeChatVal || String(senderId) === String(currentUserIdVal)) return;
+
+      const isFromActiveChat = activeChatVal.isGroup
+        ? activeChatVal.members?.some((m) => String(m._id) === String(senderId))
+        : String(senderId) === String(activeChatVal._id);
+
+      if (isFromActiveChat) {
+        // Clear any existing timeout
+        if (typingTimeoutsRef.current[senderId]) {
+          clearTimeout(typingTimeoutsRef.current[senderId]);
         }
+
+        // Set a timeout to clean up typing state if they stop sending updates
+        typingTimeoutsRef.current[senderId] = setTimeout(() => {
+          setPartnerTypers((prev) => prev.filter((t) => String(t.userId) !== String(senderId)));
+          delete typingTimeoutsRef.current[senderId];
+        }, 6000);
+
+        setPartnerTypers((prev) => {
+          const exists = prev.some((t) => String(t.userId) === String(senderId));
+          if (exists) return prev;
+          
+          const defaultUsername = activeChatVal.isGroup ? "Someone" : (activeChatVal.username || activeChatVal.name);
+          const defaultAvatar = activeChatVal.isGroup ? "" : (activeChatVal.avatar || "");
+          
+          return [
+            ...prev,
+            {
+              userId: senderId,
+              username: senderInfo?.username || defaultUsername,
+              avatar: senderInfo?.avatar || defaultAvatar
+            }
+          ];
+        });
       }
     };
 
     const handlePartnerStopTyping = ({ senderId }) => {
-      const activeChatVal = activeChatRef.current;
-      const currentUserIdVal = currentUserIdRef.current;
-      if (activeChatVal) {
-        if (activeChatVal.isGroup) {
-          if (String(senderId) !== String(currentUserIdVal)) {
-            setPartnerTyping(null);
-          }
-        } else if (String(senderId) === String(activeChatVal._id)) {
-          setPartnerTyping(null);
-        }
+      if (typingTimeoutsRef.current[senderId]) {
+        clearTimeout(typingTimeoutsRef.current[senderId]);
+        delete typingTimeoutsRef.current[senderId];
       }
+      setPartnerTypers((prev) => prev.filter((t) => String(t.userId) !== String(senderId)));
     };
 
     const handleReceiveDelete = ({ messageId }) => {
-      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+      setMessages((prev) => {
+        const next = prev.filter((m) => m._id !== messageId);
+        const activeChatVal = activeChatRef.current;
+        if (activeChatVal) {
+          const key = activeChatVal._id || activeChatVal.id;
+          chatHistoryCacheRef.current[key] = next;
+        }
+        return next;
+      });
       fetchConversations();
     };
 
@@ -310,13 +445,18 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         String(readerId) === String(activeChatVal._id) &&
         String(senderId) === String(currentUserIdVal)
       ) {
-        setMessages((prev) =>
-          prev.map((m) =>
+        setMessages((prev) => {
+          const next = prev.map((m) =>
             String(m.sender?._id || m.sender) === String(currentUserIdVal)
               ? { ...m, isRead: true }
               : m
-          )
-        );
+          );
+          if (activeChatVal) {
+            const key = activeChatVal._id || activeChatVal.id;
+            chatHistoryCacheRef.current[key] = next;
+          }
+          return next;
+        });
       }
     };
 
@@ -365,6 +505,27 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       fetchConversations();
     };
 
+    const handleMemberAdded = ({ groupId, group }) => {
+      const activeChatVal = activeChatRef.current;
+      if (activeChatVal && activeChatVal.isGroup && String(activeChatVal._id) === String(groupId)) {
+        setActiveChat(group);
+      }
+      fetchConversations();
+    };
+
+    const handleMemberRemoved = ({ groupId, userId, group }) => {
+      const activeChatVal = activeChatRef.current;
+      if (activeChatVal && activeChatVal.isGroup && String(activeChatVal._id) === String(groupId)) {
+        if (String(userId) === String(currentUserIdRef.current)) {
+          setActiveChat(null);
+          alert("You have been removed from this group by the admin.");
+        } else {
+          setActiveChat(group);
+        }
+      }
+      fetchConversations();
+    };
+
     socket.on("dm:receive", handleReceiveMessage);
     socket.on("dm:typing", handlePartnerTyping);
     socket.on("dm:stop-typing", handlePartnerStopTyping);
@@ -373,6 +534,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     socket.on("user:status", handleUserStatusChange);
     socket.on("group:created", handleGroupCreated);
     socket.on("group:deleted", handleGroupDeleted);
+    socket.on("group:member-added", handleMemberAdded);
+    socket.on("group:member-removed", handleMemberRemoved);
 
     return () => {
       socket.off("dm:receive", handleReceiveMessage);
@@ -383,32 +546,67 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       socket.off("user:status", handleUserStatusChange);
       socket.off("group:created", handleGroupCreated);
       socket.off("group:deleted", handleGroupDeleted);
+      socket.off("group:member-added", handleMemberAdded);
+      socket.off("group:member-removed", handleMemberRemoved);
+
+      // Clear all active typing timeouts
+      Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
     };
   }, []);
 
   // Load chat history when active chat changes (using activeChatId primitive to fix reload loops)
   useEffect(() => {
     if (!activeChatId) {
-      setMessages([]);
+      setMessages((prev) => (prev.length > 0 ? [] : prev));
       return;
     }
 
     loadHistory(activeChatId);
-    setPartnerTyping(null);
+    setPartnerTypers((prev) => (prev.length > 0 ? [] : prev));
   }, [activeChatId]);
 
-  // Auto-scroll chat history
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, partnerTyping]);
+  // Helper to scroll messages board to bottom programmatically
+  const scrollToBottom = (behavior = "smooth") => {
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior });
+    }, 50);
+  };
 
-  // Load chat history
-  const loadHistory = async (userId) => {
-    try {
+  // Auto-scroll chat history using refined logic for instant vs smooth scroll
+  useEffect(() => {
+    if (activeChatId) {
+      if (prevChatIdRef.current !== activeChatId || prevMessagesCountRef.current === 0) {
+        scrollToBottom("auto");
+        prevChatIdRef.current = activeChatId;
+      } else if (
+        messages.length > prevMessagesCountRef.current ||
+        partnerTypers.length > prevTypersCountRef.current
+      ) {
+        scrollToBottom("smooth");
+      }
+      prevMessagesCountRef.current = messages.length;
+      prevTypersCountRef.current = partnerTypers.length;
+    } else {
+      prevChatIdRef.current = null;
+      prevMessagesCountRef.current = 0;
+      prevTypersCountRef.current = 0;
+    }
+  }, [messages, partnerTypers.length, activeChatId]);
+
+  // Load chat history (Stale-While-Revalidate Caching pattern)
+  async function loadHistory(userId) {
+    const hasCache = !!chatHistoryCacheRef.current[userId];
+    if (hasCache) {
+      setMessages(chatHistoryCacheRef.current[userId]);
+    } else {
       setLoadingHistory(true);
+    }
+    try {
       const res = await getChatHistory(userId);
       if (res.success) {
-        setMessages(res.messages || []);
+        const fetchedMsgs = res.messages || [];
+        chatHistoryCacheRef.current[userId] = fetchedMsgs;
+        setMessages(fetchedMsgs);
         window.dispatchEvent(new CustomEvent("ce-unread-messages-update"));
         fetchConversations();
       }
@@ -417,7 +615,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     } finally {
       setLoadingHistory(false);
     }
-  };
+  }
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -459,7 +657,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     if (!window.confirm("Are you sure you want to delete this message?")) return;
     try {
       await deleteDirectMessage(messageId);
-      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+      setMessages((prev) => {
+        const next = prev.filter((m) => m._id !== messageId);
+        if (activeChatId) {
+          chatHistoryCacheRef.current[activeChatId] = next;
+        }
+        return next;
+      });
       fetchConversations();
     } catch (err) {
       console.error("Error deleting message:", err);
@@ -517,6 +721,50 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     }
   };
 
+  const handleAddMemberSubmit = async (targetUserId) => {
+    try {
+      const res = await addGroupMember(activeChat._id, targetUserId);
+      if (res.success) {
+        setActiveChat(res.group);
+        setConversations(prev => prev.map(c => {
+          if (c.isGroup && String(c.group?._id) === String(activeChat._id)) {
+            return { ...c, group: res.group };
+          }
+          return c;
+        }));
+        setShowAddMemberModal(false);
+      }
+    } catch (err) {
+      console.error("Error adding group member:", err);
+      alert(err.response?.data?.message || "Failed to add member. Please try again.");
+    }
+  };
+
+  const handleRemoveMemberSubmit = async (targetUserId, username) => {
+    const isSelf = String(targetUserId) === String(currentUserId);
+    const confirmMsg = isSelf 
+      ? "Are you sure you want to leave this group?" 
+      : `Are you sure you want to remove @${username} from the group?`;
+      
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await removeGroupMember(activeChat._id, targetUserId);
+      if (res.success) {
+        if (isSelf) {
+          setActiveChat(null);
+          setShowGroupInfoPanel(false);
+        } else {
+          setActiveChat(res.group);
+        }
+        fetchConversations();
+      }
+    } catch (err) {
+      console.error("Error removing group member:", err);
+      alert(err.response?.data?.message || "Failed to remove member. Please try again.");
+    }
+  };
+
   // Handle send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -548,7 +796,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         if (res.success) {
           setMessages((prev) => {
             if (prev.some((m) => m._id === res.message._id)) return prev;
-            return [...prev, res.message];
+            const next = [...prev, res.message];
+            if (activeChat) {
+              const key = activeChat._id || activeChat.id;
+              chatHistoryCacheRef.current[key] = next;
+            }
+            return next;
           });
           handleRemoveAttachment();
           fetchConversations();
@@ -558,7 +811,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         if (res.success) {
           setMessages((prev) => {
             if (prev.some((m) => m._id === res.message._id)) return prev;
-            return [...prev, res.message];
+            const next = [...prev, res.message];
+            if (activeChat) {
+              const key = activeChat._id || activeChat.id;
+              chatHistoryCacheRef.current[key] = next;
+            }
+            return next;
           });
           fetchConversations();
         }
@@ -720,10 +978,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     setSearchQuery("");
   };
 
-  // Filter candidates list based on search
-  const filteredCandidates = candidates.filter(candidate =>
-    candidate.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
 
   const handleOpenCreateGroup = async () => {
     setShowCreateGroupModal(true);
@@ -1010,9 +1265,15 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               
               <div 
                 className="header-user-info active-chat-header-clickable"
-                onClick={() => onViewProfile && !activeChat.isGroup && onViewProfile(activeChat._id)}
-                style={{ cursor: onViewProfile && !activeChat.isGroup ? "pointer" : "default" }}
-                title={activeChat.isGroup ? "" : `View @${activeChat.username || activeChat.name}'s profile`}
+                onClick={() => {
+                  if (activeChat.isGroup) {
+                    setShowGroupInfoPanel(!showGroupInfoPanel);
+                  } else if (onViewProfile) {
+                    onViewProfile(activeChat._id);
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+                title={activeChat.isGroup ? "View Group Info" : `View @${activeChat.username || activeChat.name}'s profile`}
               >
                 <div className="avatar-wrapper">
                   {activeChat.isGroup ? (
@@ -1076,10 +1337,17 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                   <div className="chat-options-dropdown animate-fade-in" onClick={(e) => e.stopPropagation()}>
                     {activeChat.isGroup ? (
                       <>
-                        <div className="dropdown-info-item">
-                          <Users size={14} />
-                          <span>{activeChat.members?.length || 0} Members</span>
-                        </div>
+                        <button
+                          type="button"
+                          className="dropdown-action-item"
+                          onClick={() => {
+                            setShowGroupInfoPanel(true);
+                            setShowChatMenu(false);
+                          }}
+                        >
+                          <Info size={14} />
+                          <span>Group Info</span>
+                        </button>
                         {activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId)) && (
                           <button
                             type="button"
@@ -1178,45 +1446,16 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                 </div>
                               )}
                               
-                              <div className="message-bubble">
+                              <div className={`message-bubble ${msg.fileType === 'call' ? 'call-history-bubble' : ''}`}>
                                 {activeChat.isGroup && !isMe && (
                                   <div className="group-message-sender-name">
                                     {msg.sender?.username || "Developer"}
                                   </div>
                                 )}
 
-                                {msg.fileUrl && (
-                                  <div className="message-attachment-container">
-                                    <div className="message-attachment">
-                                      <img
-                                        src={msg.fileUrl}
-                                        alt={msg.fileName || "Image attachment"}
-                                        className="dm-message-image"
-                                        onClick={() => window.open(msg.fileUrl, "_blank")}
-                                        title="Click to view image"
-                                      />
-                                    </div>
-                                    
-                                    {msg.fileUrl && !msg.message && (
-                                      <span className="attachment-meta-overlay">
-                                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        {isMe && (
-                                          <span className="tick-container">
-                                            {msg.isRead ? (
-                                              <CheckCheck size={12} className="read-tick" />
-                                            ) : (
-                                              <Check size={12} className="sent-tick" />
-                                            )}
-                                          </span>
-                                        )}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                {msg.message && (
-                                  <div className="message-text">
-                                    {renderMessageText(msg.message)}
+                                {msg.fileType === 'call' ? (
+                                  <div className="message-call-history-container">
+                                    {renderCallHistory(msg, currentUserId)}
                                     <span className="message-meta-inline">
                                       {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                       {isMe && (
@@ -1230,6 +1469,55 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                       )}
                                     </span>
                                   </div>
+                                ) : (
+                                  <>
+                                    {msg.fileUrl && (
+                                      <div className="message-attachment-container">
+                                        <div className="message-attachment">
+                                          <img
+                                            src={msg.fileUrl}
+                                            alt={msg.fileName || "Image attachment"}
+                                            className="dm-message-image"
+                                            onClick={() => window.open(msg.fileUrl, "_blank")}
+                                            title="Click to view image"
+                                          />
+                                        </div>
+                                        
+                                        {msg.fileUrl && !msg.message && (
+                                          <span className="attachment-meta-overlay">
+                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {isMe && (
+                                              <span className="tick-container">
+                                                {msg.isRead ? (
+                                                  <CheckCheck size={12} className="read-tick" />
+                                                ) : (
+                                                  <Check size={12} className="sent-tick" />
+                                                )}
+                                              </span>
+                                            )}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    {msg.message && (
+                                      <div className="message-text">
+                                        {renderMessageText(msg.message)}
+                                        <span className="message-meta-inline">
+                                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          {isMe && (
+                                            <span className="tick-container">
+                                              {msg.isRead ? (
+                                                <CheckCheck size={12} className="read-tick" />
+                                              ) : (
+                                                <Check size={12} className="sent-tick" />
+                                              )}
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -1238,20 +1526,20 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                       );
                     });
                   })()}
-                  {partnerTyping && (
-                    <div className="message-bubble-wrapper received typing-wrapper-row">
+                  {partnerTypers.map((typer) => (
+                    <div key={typer.userId} className="message-bubble-wrapper received typing-wrapper-row">
                       <div className="bubble-avatar-container">
-                        {partnerTyping.avatar ? (
-                          <img src={partnerTyping.avatar} alt={partnerTyping.username} className="bubble-partner-avatar" />
+                        {typer.avatar ? (
+                          <img src={typer.avatar} alt={typer.username} className="bubble-partner-avatar" />
                         ) : (
                           <div className="bubble-partner-avatar-placeholder">
-                            {(partnerTyping.username || "U").charAt(0).toUpperCase()}
+                            {(typer.username || "U").charAt(0).toUpperCase()}
                           </div>
                         )}
                       </div>
                       <div className="typing-content-box">
                         {activeChat.isGroup && (
-                          <span className="typing-user-label">@{partnerTyping.username} is typing</span>
+                          <span className="typing-user-label">@{typer.username} is typing</span>
                         )}
                         <div className="message-bubble typing-bubble">
                           <div className="typing-dot" />
@@ -1260,7 +1548,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                         </div>
                       </div>
                     </div>
-                  )}
+                  ))}
                   <div ref={chatEndRef} />
                 </>
               )}
@@ -1359,6 +1647,168 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                         </>
                       )}
                     </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SLIDING GROUP INFO PANEL */}
+            {showGroupInfoPanel && activeChat.isGroup && (
+              <div className="group-info-panel animate-slide-left" onClick={(e) => e.stopPropagation()}>
+                <div className="group-info-header">
+                  <h3>Group Info</h3>
+                  <button type="button" className="close-panel-btn" onClick={() => setShowGroupInfoPanel(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="group-info-scroll-container">
+                  {/* Avatar & Meta */}
+                  <div className="group-info-meta-card">
+                    <div className="group-info-avatar-box">
+                      {activeChat.avatar ? (
+                        <img src={activeChat.avatar} alt={activeChat.name} className="group-info-avatar" />
+                      ) : (
+                        <div className="group-info-avatar-placeholder">
+                          <Users size={32} />
+                        </div>
+                      )}
+                    </div>
+                    <h4 className="group-info-name">{activeChat.name}</h4>
+                    <p className="group-info-bio">{activeChat.bio || "No group description."}</p>
+                    <span className="group-info-created-by">
+                      Admin: @{activeChat.createdBy?.username || activeChat.createdBy || "Admin"}
+                    </span>
+                  </div>
+
+                  {/* Members List */}
+                  <div className="group-info-members-section">
+                    <div className="members-section-header">
+                      <h4>Group Members ({activeChat.members?.length || 0})</h4>
+                      {activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId)) && (
+                        <button
+                          type="button"
+                          className="add-member-trigger-btn"
+                          onClick={() => setShowAddMemberModal(true)}
+                          title="Add Member"
+                        >
+                          <Plus size={14} /> Add
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="group-members-list">
+                      {activeChat.members && activeChat.members.map((member) => {
+                        const isCreator = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(member._id));
+                        const isAdminOfGroup = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId));
+                        const isMe = String(member._id) === String(currentUserId);
+                        
+                        return (
+                          <div key={member._id} className="group-member-row">
+                            <div className="member-row-left">
+                              <div className="member-row-avatar-box">
+                                {member.avatar ? (
+                                  <img src={member.avatar} alt={member.username} className="member-row-avatar" />
+                                ) : (
+                                  <div className="member-row-avatar-placeholder">
+                                    {member.username.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                {member.isOnline && <span className="member-row-online-badge" />}
+                              </div>
+                              <div className="member-row-details">
+                                <span className="member-row-username">
+                                  {member.username} {isMe && "(You)"}
+                                </span>
+                                <span className="member-row-bio">{member.bio || "Developer"}</span>
+                              </div>
+                            </div>
+                            <div className="member-row-right">
+                              {isCreator ? (
+                                <span className="member-admin-badge">Admin</span>
+                              ) : (
+                                isAdminOfGroup && (
+                                  <button
+                                    type="button"
+                                    className="member-row-remove-btn"
+                                    onClick={() => handleRemoveMemberSubmit(member._id, member.username)}
+                                    title={`Remove @${member.username}`}
+                                  >
+                                    Remove
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="group-info-footer">
+                  {activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId)) ? (
+                    <button
+                      type="button"
+                      className="group-info-danger-btn"
+                      onClick={() => handleDeleteGroup(activeChat._id)}
+                    >
+                      <Trash2 size={14} /> Delete Group
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="group-info-danger-btn"
+                      onClick={() => handleRemoveMemberSubmit(currentUserId, user?.username)}
+                    >
+                      <ArrowLeft size={14} /> Leave Group
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ADD MEMBER MODAL */}
+            {showAddMemberModal && (
+              <div className="new-chat-modal-overlay add-member-modal-zindex">
+                <div className="new-chat-card glass-panel add-member-card">
+                  <div className="modal-header">
+                    <h3>Add Group Member</h3>
+                    <button type="button" className="close-modal-btn" onClick={() => setShowAddMemberModal(false)}>×</button>
+                  </div>
+
+                  <div className="candidates-list">
+                    {candidates
+                      .filter(c => !activeChat.members?.some(m => String(m._id) === String(c._id)))
+                      .map((candidate) => (
+                        <div
+                          key={candidate._id}
+                          className="candidate-item"
+                          onClick={() => handleAddMemberSubmit(candidate._id)}
+                        >
+                          {candidate.avatar ? (
+                            <img src={candidate.avatar} alt={candidate.username} className="candidate-avatar" />
+                          ) : (
+                            <div className="candidate-avatar-placeholder">
+                              {candidate.username.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="candidate-info">
+                            <span className="cand-name">{candidate.username}</span>
+                            <span className="cand-bio">{candidate.bio || "Developer"}</span>
+                          </div>
+                          <button type="button" className="add-member-row-btn">
+                            <Plus size={12} /> Add
+                          </button>
+                        </div>
+                      ))
+                    }
+                    {candidates.filter(c => !activeChat.members?.some(m => String(m._id) === String(c._id))).length === 0 && (
+                      <div className="candidates-empty">
+                        <User size={24} style={{ opacity: 0.3, marginBottom: "8px" }} />
+                        <span>All your connections are already members of this group</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

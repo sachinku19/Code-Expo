@@ -65,7 +65,9 @@ exports.getConversations = async (req, res) => {
     });
 
     // Get group chats
-    const myGroups = await GroupChat.find({ members: myId });
+    const myGroups = await GroupChat.find({ members: myId })
+      .populate("members", "username avatar bio isOnline")
+      .populate("createdBy", "username avatar");
     const groupConversations = [];
 
     for (const group of myGroups) {
@@ -185,12 +187,12 @@ exports.getChatHistory = async (req, res) => {
 exports.sendDirectMessage = async (req, res) => {
   try {
     const myId = req.user._id;
-    const { recipientId, message } = req.body;
+    const { recipientId, message, fileType, fileUrl, fileName } = req.body;
 
-    if (!recipientId || !message) {
+    if (!recipientId || (!message && !fileType)) {
       return res.status(400).json({
         success: false,
-        message: "Recipient ID and message text are required"
+        message: "Recipient ID and message text (or fileType) are required"
       });
     }
 
@@ -200,7 +202,10 @@ exports.sendDirectMessage = async (req, res) => {
       const newMessage = await DirectMessage.create({
         sender: myId,
         groupChat: recipientId,
-        message
+        message: message || "",
+        fileType,
+        fileUrl,
+        fileName
       });
 
       const populated = await DirectMessage.findById(newMessage._id)
@@ -240,7 +245,10 @@ exports.sendDirectMessage = async (req, res) => {
     const newMessage = await DirectMessage.create({
       sender: myId,
       recipient: recipientId,
-      message
+      message: message || "",
+      fileType,
+      fileUrl,
+      fileName
     });
 
     const populated = await DirectMessage.findById(newMessage._id)
@@ -668,6 +676,112 @@ exports.deleteGroupChat = async (req, res) => {
     }
 
     res.status(200).json({ success: true, message: "Group deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Add a member to a group chat
+exports.addGroupMember = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { groupId } = req.params;
+    const { userId } = req.body;
+
+    const group = await GroupChat.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
+
+    // Only creator (admin) can add members
+    if (group.createdBy.toString() !== myId.toString()) {
+      return res.status(403).json({ success: false, message: "Only the group creator/admin can add members" });
+    }
+
+    // Check if user is already a member
+    if (group.members.map(id => id.toString()).includes(userId.toString())) {
+      return res.status(400).json({ success: false, message: "User is already a member of this group" });
+    }
+
+    // Add user
+    group.members.push(userId);
+    await group.save();
+
+    // Populate updated group details
+    const populatedGroup = await GroupChat.findById(groupId)
+      .populate("members", "username avatar bio isOnline")
+      .populate("createdBy", "username avatar");
+
+    const io = req.app.get("io");
+    if (io) {
+      // Broadcast to existing group members that a user joined
+      io.to(String(groupId)).emit("group:member-added", { groupId, member: { _id: userId }, group: populatedGroup });
+      // Tell the specific user they were added to the group
+      io.to(String(userId)).emit("group:created", populatedGroup);
+    }
+
+    res.status(200).json({ success: true, group: populatedGroup });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Remove a member from a group chat (or leave group)
+exports.removeGroupMember = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { groupId } = req.params;
+    const { userId } = req.body;
+
+    const group = await GroupChat.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
+
+    const isCreator = group.createdBy.toString() === myId.toString();
+    const isRemovingSelf = userId.toString() === myId.toString();
+
+    // Requesters can only remove others if they are the admin (creator).
+    // Or users can remove themselves (leave).
+    if (!isCreator && !isRemovingSelf) {
+      return res.status(403).json({ success: false, message: "Only the admin can remove members, or you can leave by removing yourself" });
+    }
+
+    // Pull from members list
+    group.members = group.members.filter(id => id.toString() !== userId.toString());
+
+    // If no members are left, or if creator leaves and group is empty, delete the group
+    if (group.members.length === 0) {
+      await require("../models/DirectMessage").deleteMany({ groupChat: groupId });
+      await GroupChat.findByIdAndDelete(groupId);
+      
+      const io = req.app.get("io");
+      if (io) {
+        io.to(String(groupId)).emit("group:deleted", { groupId });
+      }
+      return res.status(200).json({ success: true, message: "Group empty and deleted successfully" });
+    }
+
+    // If the creator leaves, re-assign creator to the next member
+    if (group.createdBy.toString() === userId.toString()) {
+      group.createdBy = group.members[0];
+    }
+
+    await group.save();
+
+    const populatedGroup = await GroupChat.findById(groupId)
+      .populate("members", "username avatar bio isOnline")
+      .populate("createdBy", "username avatar");
+
+    const io = req.app.get("io");
+    if (io) {
+      // Notify group members that a user was removed
+      io.to(String(groupId)).emit("group:member-removed", { groupId, userId, group: populatedGroup });
+      // Notify the removed user specifically that they were kicked/removed
+      io.to(String(userId)).emit("group:deleted", { groupId });
+    }
+
+    res.status(200).json({ success: true, group: populatedGroup });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

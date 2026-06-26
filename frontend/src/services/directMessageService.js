@@ -23,8 +23,8 @@ export const getChatHistory = async (userId) => {
   return response.data;
 };
 
-export const sendDirectMessage = async (recipientId, message) => {
-  const response = await API.post("/send", { recipientId, message }, getHeaders());
+export const sendDirectMessage = async (recipientId, message, fileType, fileUrl, fileName) => {
+  const response = await API.post("/send", { recipientId, message, fileType, fileUrl, fileName }, getHeaders());
   return response.data;
 };
 
@@ -72,5 +72,15 @@ export const unblockUser = async (userId) => {
 
 export const deleteGroupChat = async (groupId) => {
   const response = await API.delete(`/group/${groupId}`, getHeaders());
+  return response.data;
+};
+
+export const addGroupMember = async (groupId, userId) => {
+  const response = await API.post(`/group/${groupId}/members/add`, { userId }, getHeaders());
+  return response.data;
+};
+
+export const removeGroupMember = async (groupId, userId) => {
+  const response = await API.post(`/group/${groupId}/members/remove`, { userId }, getHeaders());
   return response.data;
 };

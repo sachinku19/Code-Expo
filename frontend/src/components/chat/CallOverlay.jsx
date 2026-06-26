@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useCall } from "../../context/CallContext";
 import {
   Phone, PhoneOff, Mic, MicOff, Video, VideoOff,
