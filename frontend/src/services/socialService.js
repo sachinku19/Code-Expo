@@ -110,6 +110,11 @@ export const getPosts = async (page = 1, limit = 10) => {
   return response.data;
 };
 
+export const getPostById = async (postId) => {
+  const response = await API.get(`/posts/${postId}`, getHeaders());
+  return response.data;
+};
+
 export const toggleLikePost = async (postId) => {
   const response = await API.post(`/posts/${postId}/like`, {}, getHeaders());
   return response.data;

@@ -233,9 +233,27 @@ const deletePost = async (req, res) => {
   }
 };
 
+const getPostById = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const post = await Post.findById(postId)
+      .populate("author", "username email avatar title developerLevel status reputationScore")
+      .lean();
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post not found" });
+    }
+
+    res.status(200).json({ success: true, post });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createPost,
   getPosts,
+  getPostById,
   toggleLikePost,
   addComment,
   deletePost

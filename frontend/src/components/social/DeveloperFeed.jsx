@@ -23,6 +23,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const [isDeletingPost, setIsDeletingPost] = useState(false); // Spinner state for deleting post
   const [likedUsersListModal, setLikedUsersListModal] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [openSharePostId, setOpenSharePostId] = useState(null);
 
   // Composer Refined upgrades
   const [isComposerOpen, setIsComposerOpen] = useState(false);
@@ -1153,16 +1154,37 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       >
                         <Bookmark size={14} fill={isBookmarked ? "#3b82f6" : "none"} />
                       </button>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/post/${post._id}`);
-                          addToast("Link copied to clipboard!", "success");
-                        }}
-                        className="reaction-button-trigger"
-                        title="Share link"
-                      >
-                        <Share2 size={14} />
-                      </button>
+                      <div style={{ position: "relative" }}>
+                        <button
+                          onClick={() => setOpenSharePostId(openSharePostId === post._id ? null : post._id)}
+                          className="reaction-button-trigger"
+                          title="Share link"
+                        >
+                          <Share2 size={14} />
+                        </button>
+                        {openSharePostId === post._id && (
+                          <div className="share-dropdown-menu">
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/post/${post._id}`);
+                                addToast("Link copied to clipboard!", "success");
+                                setOpenSharePostId(null);
+                              }}
+                              style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}
+                            >
+                              📋 Copy Link
+                            </button>
+                            <a 
+                              href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out this post on CodeExpo: " + window.location.origin + "/post/" + post._id)}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              onClick={() => setOpenSharePostId(null)}
+                            >
+                              💬 WhatsApp
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 

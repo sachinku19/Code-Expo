@@ -28,7 +28,7 @@ import {
   Users, Clock, Terminal, Activity, FolderGit, Check, X, ShieldAlert, UserMinus,
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, Code,
-  Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar,
+  Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
   Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image
 } from "lucide-react";
 import {
@@ -834,6 +834,29 @@ function Dashboard() {
   }, [selectedPostModal]);
 
   const [modalActiveImageIdx, setModalActiveImageIdx] = useState(0);
+  const [modalShareOpen, setModalShareOpen] = useState(false);
+
+  const handleClosePostModal = () => {
+    setSelectedPostModal(null);
+    setModalShareOpen(false);
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.has("post")) {
+      searchParams.delete("post");
+      const newSearch = searchParams.toString();
+      navigate(newSearch ? `${location.pathname}?${newSearch}` : location.pathname, { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const postId = searchParams.get("post");
+    if (postId && allFeedPosts.length > 0) {
+      const matchedPost = allFeedPosts.find(p => p._id === postId);
+      if (matchedPost) {
+        setSelectedPostModal(matchedPost);
+      }
+    }
+  }, [location.search, allFeedPosts]);
 
   useEffect(() => {
     setModalActiveImageIdx(0);
@@ -6843,7 +6866,14 @@ function Dashboard() {
                                         onClick={() => setSelectedPostModal(post)}
                                       >
                                         {hasImage ? (
-                                          <img src={postImages[0]} alt="Post grid preview" className="insta-post-image" />
+                                          <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                                            <img src={postImages[0]} alt="Post grid preview" className="insta-post-image" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                            {postImages.length > 1 && (
+                                              <div className="insta-post-multiphoto-badge">
+                                                <Copy size={12} color="#fff" />
+                                              </div>
+                                            )}
+                                          </div>
                                         ) : (
                                           <div className="insta-post-text-fallback">
                                             <p className="insta-post-fallback-text">{post.content}</p>
@@ -6888,7 +6918,14 @@ function Dashboard() {
                                           onClick={() => setSelectedPostModal(post)}
                                         >
                                           {hasImage ? (
-                                            <img src={postImages[0]} alt="Post grid preview" className="insta-post-image" />
+                                            <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                                              <img src={postImages[0]} alt="Post grid preview" className="insta-post-image" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                              {postImages.length > 1 && (
+                                                <div className="insta-post-multiphoto-badge">
+                                                  <Copy size={12} color="#fff" />
+                                                </div>
+                                              )}
+                                            </div>
                                           ) : (
                                             <div className="insta-post-text-fallback">
                                               <p className="insta-post-fallback-text">{post.content}</p>
@@ -8393,7 +8430,7 @@ function Dashboard() {
           const hasImage = postImages.length > 0;
 
           return createPortal(
-            <div className="ce-modal-overlay" onClick={() => setSelectedPostModal(null)} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div className="ce-modal-overlay" onClick={handleClosePostModal} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -8413,14 +8450,52 @@ function Dashboard() {
                   boxShadow: "0 24px 60px rgba(0,0,0,0.5)"
                 }}
               >
-                {/* Left Column: Image (only if attachments exist) */}
+                {/* Left Column: Image Carousel (only if attachments exist) */}
                 {hasImage && (
-                  <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <img 
-                      src={postImages[0]} 
-                      alt="Post media view" 
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-                    />
+                  <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                    <div style={{ display: "flex", height: "100%", width: "100%", transition: "transform 0.3s ease", transform: `translateX(-${modalActiveImageIdx * 100}%)` }}>
+                      {postImages.map((src, i) => (
+                        <img 
+                          key={i} 
+                          src={src} 
+                          alt={`Post media view ${i}`} 
+                          style={{ width: "100%", height: "100%", flexShrink: 0, objectFit: "cover" }} 
+                        />
+                      ))}
+                    </div>
+                    {/* Carousel Arrow Controls */}
+                    {postImages.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setModalActiveImageIdx(prev => (prev - 1 + postImages.length) % postImages.length)}
+                          style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <button
+                          onClick={() => setModalActiveImageIdx(prev => (prev + 1) % postImages.length)}
+                          style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+
+                        {/* Carousel Dots indicators */}
+                        <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", zIndex: 5 }}>
+                          {postImages.map((_, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "50%",
+                                background: modalActiveImageIdx === i ? "#fff" : "rgba(255,255,255,0.4)",
+                                transition: "background 0.2s"
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -8444,7 +8519,7 @@ function Dashboard() {
                     </div>
                   </div>
                   <button 
-                    onClick={() => setSelectedPostModal(null)} 
+                    onClick={handleClosePostModal} 
                     style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
                     <X size={18} />
@@ -8533,7 +8608,7 @@ function Dashboard() {
                                     cursor: "pointer"
                                   }}
                                   onClick={() => {
-                                    setSelectedPostModal(null);
+                                    handleClosePostModal();
                                     u._id && handleViewUserProfile(u._id);
                                   }}
                                   title={`@${u.username}`}
@@ -8552,7 +8627,7 @@ function Dashboard() {
                             <button
                               type="button"
                               onClick={() => {
-                                setSelectedPostModal(null);
+                                handleClosePostModal();
                                 setLikedUsersListModal(resolvedLikers);
                               }}
                               style={{ background: "none", border: "none", color: "var(--ce-primary)", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, padding: 0 }}
@@ -8586,6 +8661,39 @@ function Dashboard() {
                       >
                         <Bookmark size={18} fill={savedPostIds.has(selectedPostModal._id) ? "#3b82f6" : "none"} />
                       </button>
+
+                      {/* Share link button */}
+                      <div style={{ position: "relative" }}>
+                        <button
+                          onClick={() => setModalShareOpen(!modalShareOpen)}
+                          style={{ background: "none", border: "none", color: "var(--ce-text)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
+                          title="Share link"
+                        >
+                          <Share2 size={18} />
+                        </button>
+                        {modalShareOpen && (
+                          <div className="share-dropdown-menu">
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/post/${selectedPostModal._id}`);
+                                addToast("Link copied to clipboard!", "success");
+                                setModalShareOpen(false);
+                              }}
+                              style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}
+                            >
+                              📋 Copy Link
+                            </button>
+                            <a 
+                              href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out this post on CodeExpo: " + window.location.origin + "/post/" + selectedPostModal._id)}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              onClick={() => setModalShareOpen(false)}
+                            >
+                              💬 WhatsApp
+                            </a>
+                          </div>
+                        )}
+                      </div>
 
                       <span style={{ fontSize: "0.75rem", color: "var(--ce-text-muted)" }}>
                         {new Date(selectedPostModal.createdAt).toLocaleDateString()}

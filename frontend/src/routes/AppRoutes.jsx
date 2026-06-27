@@ -10,6 +10,7 @@ const Dashboard = lazy(() => import("../pages/Dashboard"));
 const Editor = lazy(() => import("../pages/Editor"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
 const ResetPassword = lazy(() => import("../pages/ResetPassword"));
+const PublicPostView = lazy(() => import("../pages/PublicPostView"));
 
 // Protected routes
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -105,6 +106,7 @@ const AppRoutes = () => {
                 <Route path="/register" element={<Auth mode="register" />} />
                 <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
                 <Route path="/user/:userId" element={<UserProfileRedirect />} />
+                <Route path="/post/:postId" element={<PublicPostView />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
