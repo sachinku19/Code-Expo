@@ -81,6 +81,12 @@ const roomSchema=new mongoose.Schema({
             username: String,
             timestamp: { type: Date, default: Date.now }
         }
+    ],
+    likes: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        }
     ]
 },{timestamps:true});
 

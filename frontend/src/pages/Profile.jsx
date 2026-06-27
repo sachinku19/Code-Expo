@@ -172,9 +172,6 @@ const Profile = () => {
   };
 
   const handleFollowToggle = async (candidateId) => {
-    if (pendingFollowsRef.current.has(candidateId)) return;
-    pendingFollowsRef.current.add(candidateId);
-
     const prevProfileUser = profileUser ? { ...profileUser } : null;
     const prevFollowersList = [...followersList];
     const prevFollowingList = [...followingList];
@@ -209,7 +206,6 @@ const Profile = () => {
       const res = await toggleFollowUser(candidateId);
       if (res.success) {
         addToast(res.message, "success");
-        // Silent background sync
         const [followingRes, profileRes] = await Promise.all([
           getFollowing(profileUser._id).catch(() => ({ success: false, following: [] })),
           getUserProfile().catch(() => ({ success: false }))
@@ -225,19 +221,16 @@ const Profile = () => {
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
-      // Rollback on failure
       if (prevProfileUser) setProfileUser(prevProfileUser);
       setFollowersList(prevFollowersList);
       setFollowingList(prevFollowingList);
       if (prevAuthUser) setAuthUser(prevAuthUser);
-    } finally {
-      pendingFollowsRef.current.delete(candidateId);
     }
   };
 
   const handleLikeRoom = async (roomId) => {
-    if (pendingLikesRef.current.has(roomId)) return;
-    pendingLikesRef.current.add(roomId);
+    const currentUser = authUser;
+    if (!currentUser) return;
 
     setAnimatingLikes(prev => ({ ...prev, [roomId]: true }));
     setTimeout(() => {
@@ -248,6 +241,7 @@ const Profile = () => {
     const prevHistoryRooms = [...historyRooms];
     const prevSavedRooms = [...savedRooms];
     const wasLiked = isRoomLiked(roomId);
+    const isAdd = !wasLiked;
 
     // Optimistically toggle like state
     if (wasLiked) {
@@ -257,29 +251,43 @@ const Profile = () => {
         savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
         likedRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
       if (matchedRoom) {
-        setLikedRooms(prev => [...prev, { ...matchedRoom, likesCount: (matchedRoom.likesCount || 0) + 1 }]);
+        const updatedMatched = { 
+          ...matchedRoom, 
+          likesCount: (matchedRoom.likesCount || 0) + 1,
+          likedBy: [...(matchedRoom.likedBy || []), currentUser]
+        };
+        setLikedRooms(prev => [...prev, updatedMatched]);
       }
     }
 
-    const updateLikesCount = (roomsArray) =>
-      roomsArray.map(r => {
+    const toggleRoomInArray = (roomsArray) => {
+      if (!roomsArray) return roomsArray;
+      return roomsArray.map(r => {
         if (r && (r.roomId === roomId || r._id === roomId)) {
+          const alreadyLiked = (r.likedBy || []).some(u => String(u._id || u) === String(currentUser.id || currentUser._id));
+          let updatedLikedBy = r.likedBy || [];
+          if (isAdd) {
+            if (!alreadyLiked) updatedLikedBy = [...updatedLikedBy, currentUser];
+          } else {
+            updatedLikedBy = updatedLikedBy.filter(u => String(u._id || u) !== String(currentUser.id || currentUser._id));
+          }
           return {
             ...r,
-            likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
+            likesCount: updatedLikedBy.length,
+            likedBy: updatedLikedBy
           };
         }
         return r;
       });
+    };
 
-    setHistoryRooms(prev => updateLikesCount(prev));
-    setSavedRooms(prev => updateLikesCount(prev));
+    setHistoryRooms(prev => toggleRoomInArray(prev));
+    setSavedRooms(prev => toggleRoomInArray(prev));
 
     try {
       const res = await toggleLikeRoom(roomId);
       if (res.success) {
         addToast(res.message, "success");
-        // Silent background sync
         const likedRes = await getLikedRooms().catch(() => ({ success: false, rooms: [] }));
         if (likedRes.success) setLikedRooms(likedRes.rooms || []);
       } else {
@@ -287,12 +295,9 @@ const Profile = () => {
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
-      // Rollback on failure
       setLikedRooms(prevLikedRooms);
       setHistoryRooms(prevHistoryRooms);
       setSavedRooms(prevSavedRooms);
-    } finally {
-      pendingLikesRef.current.delete(roomId);
     }
   };
 

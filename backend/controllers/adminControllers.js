@@ -8,6 +8,10 @@ const RoomLike = require("../models/RoomLike");
 const Notification = require("../models/Notification");
 const Follow = require("../models/Follow");
 const WorkspaceItem = require("../models/WorkspaceItem");
+const Post = require("../models/Post");
+const DirectMessage = require("../models/DirectMessage");
+const GroupChat = require("../models/GroupChat");
+const MediaService = require("../services/MediaService");
 
 // Helper to sanitize/format user responses
 const formatUser = (user) => ({
@@ -201,6 +205,12 @@ const deleteUser = async (req, res) => {
       await Room.deleteOne({ _id: room._id });
     }
 
+    // Pull deleted user from Room likes
+    await Room.updateMany({}, { $pull: { likes: userId } });
+
+    // Pull deleted user from User followers & following arrays
+    await User.updateMany({}, { $pull: { followers: userId, following: userId } });
+
     // 2. Remove user from participants list in other rooms
     await Room.updateMany(
       { "participants.user": userId },
@@ -219,6 +229,37 @@ const deleteUser = async (req, res) => {
     await Notification.deleteMany({
       $or: [{ sender: userId }, { receiver: userId }]
     });
+
+    // Cascade cleanup of all user-related media files from Cloudinary/uploads
+    if (user.avatarMetadata || user.avatar) {
+      await MediaService.deleteMedia(user.avatarMetadata || user.avatar).catch(console.error);
+    }
+    if (user.coverBannerMetadata || user.coverBanner) {
+      await MediaService.deleteMedia(user.coverBannerMetadata || user.coverBanner).catch(console.error);
+    }
+
+    const userPosts = await Post.find({ author: userId });
+    for (const post of userPosts) {
+      if (post.imageMetadata || post.image) {
+        await MediaService.deleteMedia(post.imageMetadata || post.image).catch(console.error);
+      }
+    }
+    await Post.deleteMany({ author: userId });
+
+    const userDMs = await DirectMessage.find({ sender: userId });
+    for (const dm of userDMs) {
+      if (dm.fileMetadata || dm.fileUrl) {
+        await MediaService.deleteMedia(dm.fileMetadata || dm.fileUrl).catch(console.error);
+      }
+    }
+
+    const userGroups = await GroupChat.find({ createdBy: userId });
+    for (const g of userGroups) {
+      if (g.avatarMetadata || g.avatar) {
+        await MediaService.deleteMedia(g.avatarMetadata || g.avatar).catch(console.error);
+      }
+    }
+    await GroupChat.deleteMany({ createdBy: userId });
 
     // 4. Delete the User record
     await User.findByIdAndDelete(userId);

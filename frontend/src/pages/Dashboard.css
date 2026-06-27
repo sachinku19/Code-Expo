@@ -1928,25 +1928,27 @@
 
 @media (min-width: 993px) {
   .profile-section-container {
-    height: calc(100vh - 104px);
-    overflow: hidden;
+    height: auto;
+    overflow: visible;
   }
 
   .github-profile-layout {
-    align-items: stretch;
-    height: 100%;
-    overflow: hidden;
+    align-items: start;
+    height: auto;
+    overflow: visible;
   }
 
   .profile-sidebar-card {
-    height: 100%;
-    overflow-y: auto;
+    height: auto;
+    overflow-y: visible;
+    position: sticky;
+    top: 20px;
   }
 
   .profile-main-body {
-    height: 100%;
-    overflow-y: auto;
-    padding-right: 8px;
+    height: auto;
+    overflow-y: visible;
+    padding-right: 0;
   }
 }
 
@@ -3845,9 +3847,9 @@
   bottom: 4px;
   left: 4px;
   width: calc(50% - 4px);
-  background-color: var(--ce-surface);
+  background: var(--ce-primary) !important;
   border-radius: 9999px;
-  box-shadow: var(--ce-card-shadow);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
   transition: transform var(--transition-smooth);
   z-index: 1;
 }
@@ -3873,8 +3875,8 @@
 }
 
 .ce-pill-btn.active {
-  color: var(--ce-primary);
-  text-shadow: 0 0 8px var(--ce-primary-glow);
+  color: #ffffff !important;
+  text-shadow: none;
 }
 
 .ce-pill-btn:hover:not(.active) {
@@ -9673,6 +9675,8 @@ tier-badge.master {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .profile-section-card {

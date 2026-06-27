@@ -1,9 +1,9 @@
 const DirectMessage = require("../models/DirectMessage");
 const User = require("../models/User");
 const GroupChat = require("../models/GroupChat");
-const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 const path = require("path");
+const MediaService = require("../services/MediaService");
 
 // 1. Get list of active conversations (one-to-one and group chats merged)
 exports.getConversations = async (req, res) => {
@@ -275,6 +275,7 @@ exports.sendDirectMessage = async (req, res) => {
 
 // 4. Send direct message attachment (strictly images only)
 exports.sendDirectMessageAttachment = async (req, res) => {
+  let uploadedMedia = null;
   try {
     const myId = req.user._id;
     const { recipientId, message } = req.body;
@@ -330,50 +331,27 @@ exports.sendDirectMessageAttachment = async (req, res) => {
     const fileType = "image";
 
     let fileUrl = "";
-    const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
-                                   process.env.CLOUDINARY_API_KEY &&
-                                   process.env.CLOUDINARY_API_SECRET;
+    // Validate file type and size (max 10MB)
+    MediaService.validateFile(req.file, { maxSize: 10 * 1024 * 1024 });
 
-    if (!isCloudinaryConfigured) {
-      // Local fallback
-      const uploadsDir = path.join(__dirname, "../uploads");
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const filename = `dm-${Date.now()}-${sanitizedName}`;
-      const filePath = path.join(uploadsDir, filename);
-      fs.writeFileSync(filePath, req.file.buffer);
-      fileUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
-    } else {
-      // Upload directly to Cloudinary
-      const uploadToCloudinary = (fileBuffer) => {
-        return new Promise((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            {
-              folder: "codeexpo_attachments",
-              resource_type: "image"
-            },
-            (error, result) => {
-              if (error) return reject(error);
-              resolve(result);
-            }
-          );
-          uploadStream.end(fileBuffer);
-        });
-      };
-      const uploadResult = await uploadToCloudinary(req.file.buffer);
-      fileUrl = uploadResult.secure_url;
-    }
+    uploadedMedia = await MediaService.uploadMedia(
+      req.file.buffer,
+      originalName,
+      "codeexpo_attachments",
+      { req }
+    );
+    fileUrl = uploadedMedia.url;
 
     let populated;
+    let newMessage;
 
     if (group) {
-      const newMessage = await DirectMessage.create({
+      newMessage = await DirectMessage.create({
         sender: myId,
         groupChat: recipientId,
         message: message || "",
         fileUrl,
+        fileMetadata: uploadedMedia,
         fileType,
         fileName: originalName
       });
@@ -386,11 +364,12 @@ exports.sendDirectMessageAttachment = async (req, res) => {
         io.to(String(recipientId)).emit("dm:receive", populated);
       }
     } else {
-      const newMessage = await DirectMessage.create({
+      newMessage = await DirectMessage.create({
         sender: myId,
         recipient: recipientId,
         message: message || "",
         fileUrl,
+        fileMetadata: uploadedMedia,
         fileType,
         fileName: originalName
       });
@@ -515,6 +494,7 @@ exports.editDirectMessage = async (req, res) => {
 
 // 7. Create group chat channel
 exports.createGroupChat = async (req, res) => {
+  let uploadedMedia = null;
   try {
     const myId = req.user._id;
     const { name, bio, members } = req.body;
@@ -540,52 +520,32 @@ exports.createGroupChat = async (req, res) => {
 
     let avatarUrl = "";
     if (req.file) {
-      const originalName = req.file.originalname;
-      const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
-                                     process.env.CLOUDINARY_API_KEY &&
-                                     process.env.CLOUDINARY_API_SECRET;
+      // Validate banner file size and types (max 5MB)
+      MediaService.validateFile(req.file, { maxSize: 5 * 1024 * 1024 });
 
-      if (!isCloudinaryConfigured) {
-        // Local fallback
-        const uploadsDir = path.join(__dirname, "../uploads");
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const filename = `group-${Date.now()}-${sanitizedName}`;
-        const filePath = path.join(uploadsDir, filename);
-        fs.writeFileSync(filePath, req.file.buffer);
-        avatarUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
-      } else {
-        // Upload directly to Cloudinary
-        const uploadToCloudinary = (fileBuffer) => {
-          return new Promise((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-              {
-                folder: "codeexpo_groups",
-                resource_type: "image"
-              },
-              (error, result) => {
-                if (error) return reject(error);
-                resolve(result);
-              }
-            );
-            uploadStream.end(fileBuffer);
-          });
-        };
-        const uploadResult = await uploadToCloudinary(req.file.buffer);
-        avatarUrl = uploadResult.secure_url;
-      }
+      uploadedMedia = await MediaService.uploadMedia(
+        req.file.buffer,
+        req.file.originalname,
+        "codeexpo_groups",
+        { req }
+      );
+      avatarUrl = uploadedMedia.url;
     }
 
     const newGroup = await GroupChat.create({
       name: name.trim(),
       bio: bio || "",
       avatar: avatarUrl || "",
+      avatarMetadata: uploadedMedia,
       members: memberIds,
       createdBy: myId,
       isGroup: true
     });
+
+    // Clean up local temp file if Multer ever writes to disk
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
 
     const populatedGroup = await GroupChat.findById(newGroup._id)
       .populate("members", "username avatar bio")
@@ -604,6 +564,16 @@ exports.createGroupChat = async (req, res) => {
       group: populatedGroup
     });
   } catch (error) {
+    // Rollback uploaded file if DB save fails
+    if (uploadedMedia) {
+      await MediaService.deleteMedia(uploadedMedia).catch((e) => {
+        console.error("Rollback failed for group avatar:", e.message);
+      });
+    }
+    // Clean up local temp file on error
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
     res.status(500).json({
       success: false,
       message: error.message
@@ -663,7 +633,20 @@ exports.deleteGroupChat = async (req, res) => {
       return res.status(403).json({ success: false, message: "Only the group creator can delete this group" });
     }
 
-    // Delete group direct messages
+    // Clean up group avatar from storage
+    if (group.avatarMetadata) {
+      await MediaService.deleteMedia(group.avatarMetadata).catch((err) => {
+        console.error("Failed to delete group avatar from storage:", err.message);
+      });
+    }
+
+    // Delete group direct messages and their attachments
+    const dms = await DirectMessage.find({ groupChat: groupId });
+    for (const dm of dms) {
+      if (dm.fileMetadata) {
+        await MediaService.deleteMedia(dm.fileMetadata).catch(console.error);
+      }
+    }
     await DirectMessage.deleteMany({ groupChat: groupId });
 
     // Delete group chat itself
@@ -752,6 +735,9 @@ exports.removeGroupMember = async (req, res) => {
 
     // If no members are left, or if creator leaves and group is empty, delete the group
     if (group.members.length === 0) {
+      // Clean up avatar
+      if (group.avatarMetadata) await MediaService.deleteMedia(group.avatarMetadata).catch(console.error);
+      
       await require("../models/DirectMessage").deleteMany({ groupChat: groupId });
       await GroupChat.findByIdAndDelete(groupId);
       
@@ -788,6 +774,7 @@ exports.removeGroupMember = async (req, res) => {
 };
 
 exports.updateGroupChat = async (req, res) => {
+  let uploadedMedia = null;
   try {
     const myId = req.user._id;
     const { groupId } = req.params;
@@ -817,47 +804,27 @@ exports.updateGroupChat = async (req, res) => {
     }
 
     if (req.file) {
-      const originalName = req.file.originalname;
-      const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
-                                     process.env.CLOUDINARY_API_KEY &&
-                                     process.env.CLOUDINARY_API_SECRET;
+      // Validate banner file size and types (max 5MB)
+      MediaService.validateFile(req.file, { maxSize: 5 * 1024 * 1024 });
 
-      let avatarUrl = "";
-      if (!isCloudinaryConfigured) {
-        // Local fallback
-        const uploadsDir = path.join(__dirname, "../uploads");
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const filename = `group-${Date.now()}-${sanitizedName}`;
-        const filePath = path.join(uploadsDir, filename);
-        fs.writeFileSync(filePath, req.file.buffer);
-        avatarUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
-      } else {
-        // Upload directly to Cloudinary
-        const uploadToCloudinary = (fileBuffer) => {
-          return new Promise((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-              {
-                folder: "codeexpo_groups",
-                resource_type: "image"
-              },
-              (error, result) => {
-                if (error) return reject(error);
-                resolve(result);
-              }
-            );
-            uploadStream.end(fileBuffer);
-          });
-        };
-        const uploadResult = await uploadToCloudinary(req.file.buffer);
-        avatarUrl = uploadResult.secure_url;
-      }
-      group.avatar = avatarUrl;
+      const oldMedia = group.avatarMetadata;
+      uploadedMedia = await MediaService.replaceMedia(
+        oldMedia,
+        req.file.buffer,
+        req.file.originalname,
+        "codeexpo_groups",
+        { req }
+      );
+      group.avatar = uploadedMedia.url;
+      group.avatarMetadata = uploadedMedia;
     }
 
     await group.save();
+
+    // Clean up local temp file if Multer ever writes to disk
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
 
     const populatedGroup = await GroupChat.findById(groupId)
       .populate("members", "username avatar bio isOnline")
@@ -876,6 +843,16 @@ exports.updateGroupChat = async (req, res) => {
       group: populatedGroup
     });
   } catch (error) {
+    // Rollback uploaded file if DB save fails
+    if (uploadedMedia) {
+      await MediaService.deleteMedia(uploadedMedia).catch((e) => {
+        console.error("Rollback failed for group avatar update:", e.message);
+      });
+    }
+    // Clean up local temp file on error
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
     res.status(500).json({
       success: false,
       message: error.message

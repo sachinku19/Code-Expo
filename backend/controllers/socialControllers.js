@@ -17,28 +17,35 @@ const toggleFollowUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "You cannot follow yourself" });
     }
 
-    const targetUser = await User.findById(targetUserId).select("username").lean();
+    const targetUser = await User.findById(targetUserId);
     if (!targetUser) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const existingFollow = await Follow.findOne({ follower: currentUserId, following: targetUserId });
+    const currentUser = await User.findById(currentUserId);
+    const isFollowing = currentUser.following ? currentUser.following.some(id => String(id) === String(targetUserId)) : false;
     const io = req.app.get("io");
 
-    if (existingFollow) {
-      await Follow.deleteOne({ _id: existingFollow._id });
-
-      const [currentUser, updatedTargetUser] = await Promise.all([
-        User.findByIdAndUpdate(currentUserId, { $inc: { followingCount: -1 } }, { new: true, select: "followingCount" }),
-        User.findByIdAndUpdate(targetUserId, { $inc: { followersCount: -1 } }, { new: true, select: "followersCount" })
+    if (isFollowing) {
+      const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+        User.findByIdAndUpdate(
+          currentUserId,
+          { $pull: { following: targetUserId }, $inc: { followingCount: -1 } },
+          { new: true }
+        ).populate("following", "username email avatar bio followersCount followingCount coverBanner"),
+        User.findByIdAndUpdate(
+          targetUserId,
+          { $pull: { followers: currentUserId }, $inc: { followersCount: -1 } },
+          { new: true }
+        ).populate("followers", "username email avatar bio followersCount followingCount coverBanner")
       ]);
 
-      const followingCount = currentUser?.followingCount || 0;
+      const followingCount = updatedCurrentUser?.followingCount || 0;
       const followersCount = updatedTargetUser?.followersCount || 0;
 
       if (io) {
-        io.to(String(currentUserId)).emit("user:follow-update", { targetUserId, isFollowing: false, followingCount });
-        io.to(String(targetUserId)).emit("user:followers-update", { followerId: currentUserId, isFollowing: false, followersCount });
+        io.to(String(currentUserId)).emit("user:follow-update", { targetUserId, isFollowing: false, followingCount, targetUser: updatedTargetUser });
+        io.to(String(targetUserId)).emit("user:followers-update", { followerId: currentUserId, isFollowing: false, followersCount, followerUser: updatedCurrentUser });
         
         io.to(String(currentUserId)).emit("follow-success", { targetUserId, isFollowing: false, followingCount });
         io.to(String(targetUserId)).emit("new-follower", { followerId: currentUserId, isFollowing: false, followersCount });
@@ -51,19 +58,25 @@ const toggleFollowUser = async (req, res) => {
         message: `Unfollowed ${targetUser.username}`
       });
     } else {
-      await Follow.create({ follower: currentUserId, following: targetUserId });
-
-      const [currentUser, updatedTargetUser] = await Promise.all([
-        User.findByIdAndUpdate(currentUserId, { $inc: { followingCount: 1 } }, { new: true, select: "followingCount" }),
-        User.findByIdAndUpdate(targetUserId, { $inc: { followersCount: 1 } }, { new: true, select: "followersCount" })
+      const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+        User.findByIdAndUpdate(
+          currentUserId,
+          { $addToSet: { following: targetUserId }, $inc: { followingCount: 1 } },
+          { new: true }
+        ).populate("following", "username email avatar bio followersCount followingCount coverBanner"),
+        User.findByIdAndUpdate(
+          targetUserId,
+          { $addToSet: { followers: currentUserId }, $inc: { followersCount: 1 } },
+          { new: true }
+        ).populate("followers", "username email avatar bio followersCount followingCount coverBanner")
       ]);
 
-      const followingCount = currentUser?.followingCount || 0;
+      const followingCount = updatedCurrentUser?.followingCount || 0;
       const followersCount = updatedTargetUser?.followersCount || 0;
 
       if (io) {
-        io.to(String(currentUserId)).emit("user:follow-update", { targetUserId, isFollowing: true, followingCount });
-        io.to(String(targetUserId)).emit("user:followers-update", { followerId: currentUserId, isFollowing: true, followersCount });
+        io.to(String(currentUserId)).emit("user:follow-update", { targetUserId, isFollowing: true, followingCount, targetUser: updatedTargetUser });
+        io.to(String(targetUserId)).emit("user:followers-update", { followerId: currentUserId, isFollowing: true, followersCount, followerUser: updatedCurrentUser });
         
         io.to(String(currentUserId)).emit("follow-success", { targetUserId, isFollowing: true, followingCount });
         io.to(String(targetUserId)).emit("new-follower", { followerId: currentUserId, isFollowing: true, followersCount });
@@ -94,25 +107,27 @@ const removeFollower = async (req, res) => {
     const targetUserId = req.params.id;
     const currentUserId = req.user._id;
 
-    const followRelation = await Follow.findOne({ follower: targetUserId, following: currentUserId }).lean();
-    if (!followRelation) {
-      return res.status(404).json({ success: false, message: "Follower relation not found" });
-    }
-
     const io = req.app.get("io");
 
-    const [, targetUser, currentUser] = await Promise.all([
-      Follow.deleteOne({ _id: followRelation._id }),
-      User.findByIdAndUpdate(targetUserId, { $inc: { followingCount: -1 } }, { new: true, select: "followingCount" }),
-      User.findByIdAndUpdate(currentUserId, { $inc: { followersCount: -1 } }, { new: true, select: "followersCount" })
+    const [updatedTargetUser, updatedCurrentUser] = await Promise.all([
+      User.findByIdAndUpdate(
+        targetUserId,
+        { $pull: { following: currentUserId }, $inc: { followingCount: -1 } },
+        { new: true }
+      ).populate("following", "username email avatar bio followersCount followingCount coverBanner"),
+      User.findByIdAndUpdate(
+        currentUserId,
+        { $pull: { followers: targetUserId }, $inc: { followersCount: -1 } },
+        { new: true }
+      ).populate("followers", "username email avatar bio followersCount followingCount coverBanner")
     ]);
 
-    const followingCount = targetUser?.followingCount || 0;
-    const followersCount = currentUser?.followersCount || 0;
+    const followingCount = updatedTargetUser?.followingCount || 0;
+    const followersCount = updatedCurrentUser?.followersCount || 0;
 
     if (io) {
-      io.to(String(targetUserId)).emit("user:follow-update", { targetUserId: currentUserId, isFollowing: false, followingCount });
-      io.to(String(currentUserId)).emit("user:followers-update", { followerId: targetUserId, isFollowing: false, followersCount });
+      io.to(String(targetUserId)).emit("user:follow-update", { targetUserId: currentUserId, isFollowing: false, followingCount, targetUser: updatedCurrentUser });
+      io.to(String(currentUserId)).emit("user:followers-update", { followerId: targetUserId, isFollowing: false, followersCount, followerUser: updatedTargetUser });
     }
 
     res.status(200).json({
@@ -128,14 +143,13 @@ const removeFollower = async (req, res) => {
 const getFollowers = async (req, res) => {
   try {
     const userId = req.params.id;
-    const followers = await Follow.find({ following: userId })
-      .populate("follower", "username email avatar bio followersCount followingCount coverBanner")
-      .sort({ createdAt: -1 })
+    const user = await User.findById(userId)
+      .populate("followers", "username email avatar bio followersCount followingCount coverBanner")
       .lean();
 
     res.status(200).json({
       success: true,
-      followers: followers.map(f => f.follower).filter(Boolean)
+      followers: user.followers || []
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -146,20 +160,18 @@ const getFollowers = async (req, res) => {
 const getFollowing = async (req, res) => {
   try {
     const userId = req.params.id;
-    const following = await Follow.find({ follower: userId })
+    const user = await User.findById(userId)
       .populate("following", "username email avatar bio followersCount followingCount coverBanner")
-      .sort({ createdAt: -1 })
       .lean();
 
     const io = req.app.get("io");
+    const followingList = user.following || [];
 
-    const followingWithOnline = following.map(f => {
-      if (!f.following) return null;
-      const uObj = f.following;
+    const followingWithOnline = followingList.map(uObj => {
       const userRoom = io?.sockets?.adapter?.rooms?.get(String(uObj._id));
       uObj.isOnline = !!(userRoom && userRoom.size > 0);
       return uObj;
-    }).filter(Boolean);
+    });
 
     res.status(200).json({
       success: true,
@@ -181,62 +193,40 @@ const toggleLikeRoom = async (req, res) => {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
 
-    const existingLike = await RoomLike.findOne({ user: userId, room: room._id });
+    const isLiked = room.likes ? room.likes.some(id => String(id) === String(userId)) : false;
+    const updateQuery = isLiked 
+      ? { $pull: { likes: userId } } 
+      : { $addToSet: { likes: userId } };
+
     const io = req.app.get("io");
 
-    if (existingLike) {
-      await RoomLike.deleteOne({ _id: existingLike._id });
-      const likesCount = await RoomLike.countDocuments({ room: room._id });
+    const updatedRoom = await Room.findByIdAndUpdate(
+      room._id, 
+      updateQuery, 
+      { new: true }
+    ).populate("likes", "username avatar email bio");
 
-      if (io) {
-        io.emit("room:like-update", { roomId, likesCount });
-        io.to(String(userId)).emit("room:my-likes-update", { roomId, isLiked: false });
-      }
+    const likesCount = updatedRoom.likes ? updatedRoom.likes.length : 0;
+    const likedBy = updatedRoom.likes || [];
 
-      return res.status(200).json({
-        success: true,
-        isLiked: false,
-        message: "Room unliked"
-      });
-    } else {
-      try {
-        await RoomLike.create({ user: userId, room: room._id });
-      } catch (error) {
-        if (error.code === 11000) {
-          const likesCount = await RoomLike.countDocuments({ room: room._id });
-          if (io) {
-            io.emit("room:like-update", { roomId, likesCount });
-            io.to(String(userId)).emit("room:my-likes-update", { roomId, isLiked: true });
-          }
-          return res.status(200).json({
-            success: true,
-            isLiked: true,
-            message: "Room liked"
-          });
-        }
-        throw error;
-      }
+    if (io) {
+      io.emit("room:like-update", { roomId, likesCount, likedBy });
+      io.to(String(userId)).emit("room:my-likes-update", { roomId, isLiked: !isLiked });
+    }
 
-      const likesCount = await RoomLike.countDocuments({ room: room._id });
-      if (io) {
-        io.emit("room:like-update", { roomId, likesCount });
-        io.to(String(userId)).emit("room:my-likes-update", { roomId, isLiked: true });
-      }
-
-      // Notify owner
+    if (!isLiked) {
       if (String(room.createdBy) !== String(userId)) {
         createAndSendNotification(room.createdBy, userId, "LIKE", "ROOMS", room._id, io);
       }
-
-      // Log activity
       logActivity(userId, req.user.username, room._id, room.title, "liked room");
-
-      return res.status(200).json({
-        success: true,
-        isLiked: true,
-        message: "Room liked"
-      });
     }
+
+    return res.status(200).json({
+      success: true,
+      isLiked: !isLiked,
+      likes: updatedRoom.likes,
+      message: isLiked ? "Room unliked" : "Room liked"
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -340,8 +330,8 @@ const getDeveloperSuggestions = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const followingRelations = await Follow.find({ follower: userId }).lean();
-    const followingIds = followingRelations.map(f => String(f.following));
+    const currentUser = await User.findById(userId).select("following programmingLanguages").lean();
+    const followingIds = (currentUser.following || []).map(id => String(id));
     const excludedIds = new Set([...followingIds, String(userId)]);
 
     const users = await User.find({ _id: { $nin: Array.from(excludedIds) } })
@@ -349,17 +339,18 @@ const getDeveloperSuggestions = async (req, res) => {
       .limit(100)
       .lean();
 
-    const currentUser = await User.findById(userId).select("programmingLanguages").lean();
     const currentUserLangs = new Set(currentUser?.programmingLanguages || []);
 
-    // 2nd degree follow checks (mutual connections)
-    const secondDegreeRelations = await Follow.find({ follower: { $in: followingIds } }).lean();
+    const followedUsers = await User.find({ _id: { $in: followingIds } }).select("following").lean();
     const mutualCandidates = {};
-    secondDegreeRelations.forEach(rel => {
-      const id = String(rel.following);
-      if (!excludedIds.has(id)) {
-        mutualCandidates[id] = (mutualCandidates[id] || 0) + 1;
-      }
+    followedUsers.forEach(fUser => {
+      const fFollowing = fUser.following || [];
+      fFollowing.forEach(id => {
+        const idStr = String(id);
+        if (!excludedIds.has(idStr)) {
+          mutualCandidates[idStr] = (mutualCandidates[idStr] || 0) + 1;
+        }
+      });
     });
 
     const scoredSuggestions = [];
@@ -415,62 +406,29 @@ const getTrendingRooms = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
 
-    const likedRoomsAgg = await RoomLike.aggregate([
-      { $group: { _id: "$room", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
+    const trendingRooms = await Room.aggregate([
+      {
+        $addFields: {
+          likesCount: { $size: { $ifNull: ["$likes", []] } }
+        }
+      },
+      { $sort: { likesCount: -1, lastActivity: -1 } },
       { $limit: limit }
     ]);
 
-    const roomIds = likedRoomsAgg.map(item => item._id);
-    const rooms = await Room.find({ _id: { $in: roomIds } })
-      .populate("createdBy", "username avatar")
-      .select("title roomId createdBy language lastActivity");
+    const populatedTrendingRooms = await Room.populate(trendingRooms, [
+      { path: "createdBy", select: "username avatar" },
+      { path: "likes", select: "username avatar email bio" }
+    ]);
 
-    const roomLikesMap = {};
-    likedRoomsAgg.forEach(item => {
-      roomLikesMap[String(item._id)] = item.count;
-    });
-
-    // Map rooms preserving the aggregate's sorted order of roomIds
-    let trendingRooms = roomIds
-      .map(id => {
-        const room = rooms.find(r => String(r._id) === String(id));
-        if (!room) return null;
-        return {
-          ...room.toObject(),
-          likesCount: roomLikesMap[String(id)] || 0
-        };
-      })
-      .filter(Boolean);
-
-    if (trendingRooms.length < limit) {
-      const fillLimit = limit - trendingRooms.length;
-      const activeRooms = await Room.find({ _id: { $nin: roomIds } })
-        .populate("createdBy", "username avatar")
-        .sort({ lastActivity: -1 })
-        .limit(fillLimit);
-
-      activeRooms.forEach(room => {
-        trendingRooms.push({
-          ...room.toObject(),
-          likesCount: 0
-        });
-      });
-    }
-
-    // Sort final trendingRooms list to guarantee strict ordering
-    trendingRooms.sort((a, b) => {
-      const likesDiff = (b.likesCount || 0) - (a.likesCount || 0);
-      if (likesDiff !== 0) return likesDiff;
-
-      const dateB = b.lastActivity ? new Date(b.lastActivity) : new Date(0);
-      const dateA = a.lastActivity ? new Date(a.lastActivity) : new Date(0);
-      return dateB - dateA;
-    });
+    const roomsResult = populatedTrendingRooms.map(room => ({
+      ...room,
+      likedBy: room.likes || []
+    }));
 
     res.status(200).json({
       success: true,
-      rooms: trendingRooms
+      rooms: roomsResult
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -483,27 +441,21 @@ const getRoomSocialStats = async (req, res) => {
     const roomId = req.params.id;
     const userId = req.user._id;
 
-    const dbRoom = await Room.findOne({ roomId });
+    const dbRoom = await Room.findOne({ roomId }).populate("likes", "username avatar email bio");
     if (!dbRoom) {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
 
-    const likesCount = await RoomLike.countDocuments({ room: dbRoom._id });
-    const isLiked = await RoomLike.exists({ user: userId, room: dbRoom._id });
+    const likesCount = dbRoom.likes ? dbRoom.likes.length : 0;
+    const isLiked = dbRoom.likes ? dbRoom.likes.some(id => String(id._id || id) === String(userId)) : false;
     const isBookmarked = await Bookmark.exists({ user: userId, room: dbRoom._id });
-
-    // Fetch details of users who liked this room
-    const roomLikes = await RoomLike.find({ room: dbRoom._id })
-      .populate("user", "username avatar email bio")
-      .sort({ createdAt: -1 });
-
-    const likedBy = roomLikes.map(like => like.user).filter(Boolean);
+    const likedBy = dbRoom.likes || [];
 
     res.status(200).json({
       success: true,
       likesCount,
-      isLiked: !!isLiked,
-      isBookmarked: !!isBookmarked,
+      isLiked,
+      isBookmarked,
       likedBy
     });
   } catch (error) {
@@ -514,25 +466,16 @@ const getRoomSocialStats = async (req, res) => {
 const getLikedRooms = async (req, res) => {
   try {
     const userId = req.user._id;
-    const likes = await RoomLike.find({ user: userId })
-      .populate({
-        path: "room",
-        populate: { path: "createdBy", select: "username avatar" }
-      });
+    const rooms = await Room.find({ likes: userId })
+      .populate("createdBy", "username avatar")
+      .populate("likes", "username avatar email bio")
+      .lean();
 
-    const rooms = likes.map(l => l.room).filter(Boolean);
-    const roomsWithLikesCount = await Promise.all(
-      rooms.map(async (room) => {
-        const likesCount = await RoomLike.countDocuments({ room: room._id });
-        const roomLikes = await RoomLike.find({ room: room._id }).populate("user", "username avatar email").select("user");
-        const likedBy = roomLikes.map(l => l.user).filter(Boolean);
-        return {
-          ...room.toObject(),
-          likesCount,
-          likedBy
-        };
-      })
-    );
+    const roomsWithLikesCount = rooms.map(room => ({
+      ...room,
+      likesCount: room.likes ? room.likes.length : 0,
+      likedBy: room.likes || []
+    }));
 
     res.status(200).json({
       success: true,
@@ -549,22 +492,21 @@ const getBookmarkedRooms = async (req, res) => {
     const bookmarks = await Bookmark.find({ user: userId })
       .populate({
         path: "room",
-        populate: { path: "createdBy", select: "username avatar" }
+        populate: [
+          { path: "createdBy", select: "username avatar" },
+          { path: "likes", select: "username avatar email bio" }
+        ]
       });
 
     const rooms = bookmarks.map(b => b.room).filter(Boolean);
-    const roomsWithLikesCount = await Promise.all(
-      rooms.map(async (room) => {
-        const likesCount = await RoomLike.countDocuments({ room: room._id });
-        const roomLikes = await RoomLike.find({ room: room._id }).populate("user", "username avatar email").select("user");
-        const likedBy = roomLikes.map(l => l.user).filter(Boolean);
-        return {
-          ...room.toObject(),
-          likesCount,
-          likedBy
-        };
-      })
-    );
+    const roomsWithLikesCount = rooms.map(room => {
+      const roomObj = room.toObject ? room.toObject() : room;
+      return {
+        ...roomObj,
+        likesCount: room.likes ? room.likes.length : 0,
+        likedBy: room.likes || []
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -602,16 +544,10 @@ const getUserPublicProfile = async (req, res) => {
     const targetUserId = req.params.id;
     const currentUserId = req.user._id;
 
-    const [targetUser, followersCount, followingCount, isFollowing, rawRooms, likes, activitiesList] = await Promise.all([
-      User.findById(targetUserId).select("username email avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner"),
-      Follow.countDocuments({ following: targetUserId }),
-      Follow.countDocuments({ follower: targetUserId }),
-      Follow.exists({ follower: currentUserId, following: targetUserId }),
-      Room.find({ createdBy: targetUserId, isPrivate: false }).populate("createdBy", "username avatar").sort({ createdAt: -1 }),
-      RoomLike.find({ user: targetUserId }).populate({
-        path: "room",
-        populate: { path: "createdBy", select: "username avatar" }
-      }),
+    const [targetUser, rawRooms, rawLikedRooms, activitiesList] = await Promise.all([
+      User.findById(targetUserId).select("username email avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner followers following"),
+      Room.find({ createdBy: targetUserId, isPrivate: false }).populate("createdBy", "username avatar").populate("likes", "username avatar email bio").sort({ createdAt: -1 }),
+      Room.find({ likes: targetUserId, isPrivate: false }).populate("createdBy", "username avatar").populate("likes", "username avatar email bio").sort({ createdAt: -1 }),
       Activity.find({ user: targetUserId, activityType: { $ne: "VIEW_PROFILE" } })
     ]);
 
@@ -634,6 +570,10 @@ const getUserPublicProfile = async (req, res) => {
       ]).catch(err => console.error("Error updating profile view stats:", err));
     }
 
+    const followersCount = targetUser.followers ? targetUser.followers.length : 0;
+    const followingCount = targetUser.following ? targetUser.following.length : 0;
+    const isFollowing = targetUser.followers ? targetUser.followers.some(id => String(id) === String(currentUserId)) : false;
+
     if (targetUser.followersCount !== followersCount || targetUser.followingCount !== followingCount) {
       await User.updateOne(
         { _id: targetUserId },
@@ -643,34 +583,24 @@ const getUserPublicProfile = async (req, res) => {
       targetUser.followingCount = followingCount;
     }
 
-    const rawLikedRooms = likes.map(l => l.room).filter(Boolean).filter(r => !r.isPrivate);
-
     // Calculate likesCount for target user's rooms and liked rooms
-    const rooms = await Promise.all(
-      rawRooms.map(async (room) => {
-        const likesCount = await RoomLike.countDocuments({ room: room._id });
-        const roomLikes = await RoomLike.find({ room: room._id }).populate("user", "username avatar email").select("user");
-        const likedBy = roomLikes.map(l => l.user).filter(Boolean);
-        return {
-          ...room.toObject(),
-          likesCount,
-          likedBy
-        };
-      })
-    );
+    const rooms = rawRooms.map(room => {
+      const roomObj = room.toObject ? room.toObject() : room;
+      return {
+        ...roomObj,
+        likesCount: room.likes ? room.likes.length : 0,
+        likedBy: room.likes || []
+      };
+    });
 
-    const likedRooms = await Promise.all(
-      rawLikedRooms.map(async (room) => {
-        const likesCount = await RoomLike.countDocuments({ room: room._id });
-        const roomLikes = await RoomLike.find({ room: room._id }).populate("user", "username avatar email").select("user");
-        const likedBy = roomLikes.map(l => l.user).filter(Boolean);
-        return {
-          ...room.toObject(),
-          likesCount,
-          likedBy
-        };
-      })
-    );
+    const likedRooms = rawLikedRooms.map(room => {
+      const roomObj = room.toObject ? room.toObject() : room;
+      return {
+        ...roomObj,
+        likesCount: room.likes ? room.likes.length : 0,
+        likedBy: room.likes || []
+      };
+    });
 
     // Calculate contribution stats & heatmap for target user
 

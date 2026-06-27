@@ -1,10 +1,11 @@
 const Ad = require("../models/Ad");
-const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 const path = require("path");
+const MediaService = require("../services/MediaService");
 
 // 1. Create Ad (Admin only)
 const createAd = async (req, res) => {
+  let uploadedMedia = null;
   try {
     const { title, redirectUrl, format } = req.body;
     if (!title) {
@@ -14,45 +15,21 @@ const createAd = async (req, res) => {
       return res.status(400).json({ success: false, message: "Ad banner image is required." });
     }
 
-    let imageUrl = "";
-    const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
-                                   process.env.CLOUDINARY_API_KEY &&
-                                   process.env.CLOUDINARY_API_SECRET;
+    // Validate ad file size and type (max 5MB)
+    MediaService.validateFile(req.file, { maxSize: 5 * 1024 * 1024 });
 
-    if (!isCloudinaryConfigured) {
-      // Local fallback
-      const uploadsDir = path.join(__dirname, "../uploads");
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      const filename = `ad-${Date.now()}-${req.file.originalname}`;
-      const filePath = path.join(uploadsDir, filename);
-      fs.writeFileSync(filePath, req.file.buffer);
-      imageUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
-    } else {
-      // Upload directly to Cloudinary
-      const uploadToCloudinary = (fileBuffer) => {
-        return new Promise((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            {
-              folder: "codeexpo_ads",
-              resource_type: "image"
-            },
-            (error, result) => {
-              if (error) return reject(error);
-              resolve(result);
-            }
-          );
-          uploadStream.end(fileBuffer);
-        });
-      };
-      const uploadResult = await uploadToCloudinary(req.file.buffer);
-      imageUrl = uploadResult.secure_url;
-    }
+    // Upload banner
+    uploadedMedia = await MediaService.uploadMedia(
+      req.file.buffer,
+      req.file.originalname,
+      "codeexpo_ads",
+      { req }
+    );
 
     const ad = new Ad({
       title,
-      imageUrl,
+      imageUrl: uploadedMedia.url,
+      imageMetadata: uploadedMedia,
       redirectUrl: redirectUrl || "",
       format: format || "SIDEBAR",
       createdBy: req.user._id
@@ -66,12 +43,27 @@ const createAd = async (req, res) => {
       io.emit("ad:created", ad);
     }
 
+    // Clean up local temp file if Multer ever writes to disk
+    if (req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
     res.status(201).json({
       success: true,
       message: "Advertisement created and uploaded successfully.",
       ad
     });
   } catch (error) {
+    // Rollback uploaded media if DB save fails
+    if (uploadedMedia) {
+      await MediaService.deleteMedia(uploadedMedia).catch((e) => {
+        console.error("Rollback failed for uploaded ad media:", e.message);
+      });
+    }
+    // Clean up local temp file on error
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
     res.status(500).json({ success: false, message: error.message || "Failed to create ad." });
   }
 };
@@ -124,32 +116,11 @@ const deleteAd = async (req, res) => {
       return res.status(404).json({ success: false, message: "Ad not found." });
     }
 
-    // Clean up file if local
-    if (ad.imageUrl && ad.imageUrl.includes("/uploads/")) {
-      const filename = ad.imageUrl.split("/uploads/")[1];
-      const filePath = path.join(__dirname, "../uploads", filename);
-      if (fs.existsSync(filePath)) {
-        try {
-          fs.unlinkSync(filePath);
-        } catch (unlinkErr) {
-          console.error("Failed to delete local ad file:", unlinkErr.message);
-        }
-      }
-    } else if (ad.imageUrl && ad.imageUrl.includes("cloudinary.com")) {
-      // Clean up Cloudinary asset
-      const parts = ad.imageUrl.split("/upload/");
-      if (parts.length >= 2) {
-        const pathAfterUpload = parts[1];
-        const pathParts = pathAfterUpload.split("/");
-        const startIndex = pathParts[0].startsWith("v") ? 1 : 0;
-        const filenameWithExtension = pathParts.slice(startIndex).join("/");
-        const publicId = filenameWithExtension.substring(0, filenameWithExtension.lastIndexOf("."));
-        try {
-          await cloudinary.uploader.destroy(publicId);
-        } catch (cloudErr) {
-          console.error("Failed to delete Cloudinary ad file:", cloudErr.message);
-        }
-      }
+    // Clean up banner image via MediaService
+    if (ad.imageMetadata || ad.imageUrl) {
+      await MediaService.deleteMedia(ad.imageMetadata || ad.imageUrl).catch((err) => {
+        console.error("Failed to delete ad banner from storage:", err.message);
+      });
     }
 
     await Ad.findByIdAndDelete(adId);

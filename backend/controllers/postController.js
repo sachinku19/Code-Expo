@@ -1,11 +1,12 @@
 const path = require("path");
 const fs = require("fs");
-const cloudinary = require("../config/cloudinary");
+const MediaService = require("../services/MediaService");
 const Post = require("../models/Post");
 const User = require("../models/User");
 
 // Create a post
 const createPost = async (req, res) => {
+  const uploadedMedias = [];
   try {
     const { text, techStack, image } = req.body;
     if (!text) {
@@ -29,48 +30,53 @@ const createPost = async (req, res) => {
     }
 
     let imageUrl = "";
-    if (req.file) {
-      const originalName = req.file.originalname;
-      const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
-                                     process.env.CLOUDINARY_API_KEY &&
-                                     process.env.CLOUDINARY_API_SECRET;
+    let imageMetadata = null;
+    const images = [];
+    const imagesMetadata = [];
 
-      if (!isCloudinaryConfigured) {
-        const uploadsDir = path.join(__dirname, "../uploads");
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const filename = `post-${Date.now()}-${sanitizedName}`;
-        const filePath = path.join(uploadsDir, filename);
-        fs.writeFileSync(filePath, req.file.buffer);
-        imageUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
-      } else {
-        const uploadToCloudinary = (fileBuffer) => {
-          return new Promise((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-              {
-                folder: "codeexpo_posts",
-                resource_type: "image"
-              },
-              (error, result) => {
-                if (error) return reject(error);
-                resolve(result);
-              }
-            );
-            uploadStream.end(fileBuffer);
-          });
-        };
-        const uploadResult = await uploadToCloudinary(req.file.buffer);
-        imageUrl = uploadResult.secure_url;
+    // Support multiple uploaded images
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        MediaService.validateFile(file, { maxSize: 10 * 1024 * 1024 });
+        const media = await MediaService.uploadMedia(
+          file.buffer,
+          file.originalname,
+          "codeexpo_posts",
+          { req }
+        );
+        uploadedMedias.push(media);
+        images.push(media.url);
+        imagesMetadata.push(media);
       }
+      
+      if (images.length > 0) {
+        imageUrl = images[0];
+        imageMetadata = imagesMetadata[0];
+      }
+    } else if (req.file) {
+      // Support single image upload
+      MediaService.validateFile(req.file, { maxSize: 10 * 1024 * 1024 });
+      const media = await MediaService.uploadMedia(
+        req.file.buffer,
+        req.file.originalname,
+        "codeexpo_posts",
+        { req }
+      );
+      uploadedMedias.push(media);
+      imageUrl = media.url;
+      imageMetadata = media;
+      images.push(media.url);
+      imagesMetadata.push(media);
     }
 
     const newPost = await Post.create({
       author: req.user._id,
       text,
       techStack: finalTechStack,
-      image: imageUrl || image || ""
+      image: imageUrl || image || "",
+      imageMetadata,
+      images,
+      imagesMetadata
     });
 
     const populatedPost = await Post.findById(newPost._id)
@@ -80,8 +86,37 @@ const createPost = async (req, res) => {
     // Increment user contribution score for activity
     await User.findByIdAndUpdate(req.user._id, { $inc: { contributionScore: 5 } });
 
+    // Clean up local temp files if Multer ever writes to disk
+    if (req.files && Array.isArray(req.files)) {
+      req.files.forEach(file => {
+        if (file.path && fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+    }
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
     res.status(201).json({ success: true, post: populatedPost });
   } catch (error) {
+    // Rollback uploaded files if DB save failed
+    if (uploadedMedias.length > 0) {
+      await MediaService.deleteMultipleMedia(uploadedMedias).catch((e) => {
+        console.error("Rollback failed for uploaded post media array:", e.message);
+      });
+    }
+    // Clean up local temp files on error
+    if (req.files && Array.isArray(req.files)) {
+      req.files.forEach(file => {
+        if (file.path && fs.existsSync(file.path)) {
+          try { fs.unlinkSync(file.path); } catch (e) {}
+        }
+      });
+    }
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -178,6 +213,17 @@ const deletePost = async (req, res) => {
     // Only post author or admin can delete
     if (String(post.author) !== String(req.user._id) && req.user.role !== "admin") {
       return res.status(403).json({ success: false, message: "Unauthorized action" });
+    }
+
+    // Delete post images via MediaService
+    if (post.imagesMetadata && post.imagesMetadata.length > 0) {
+      await MediaService.deleteMultipleMedia(post.imagesMetadata).catch((e) => {
+        console.error("Failed to delete post images array from storage:", e.message);
+      });
+    } else if (post.imageMetadata || post.image) {
+      await MediaService.deleteMedia(post.imageMetadata || post.image).catch((e) => {
+        console.error("Failed to delete post image from storage:", e.message);
+      });
     }
 
     await Post.deleteOne({ _id: postId });

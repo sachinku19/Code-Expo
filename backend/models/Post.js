@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const MediaSchema = require("./Media");
 
 const postSchema = new mongoose.Schema({
   author: {
@@ -18,6 +19,18 @@ const postSchema = new mongoose.Schema({
   image: {
     type: String,
     default: ""
+  },
+  imageMetadata: {
+    type: MediaSchema,
+    default: null
+  },
+  images: {
+    type: [String],
+    default: []
+  },
+  imagesMetadata: {
+    type: [MediaSchema],
+    default: []
   },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,

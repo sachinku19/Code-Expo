@@ -782,9 +782,9 @@
   bottom: 4px;
   left: 4px;
   width: calc(50% - 4px);
-  background-color: #ffffff;
+  background: var(--ce-primary, #0b57d0) !important;
   border-radius: 9999px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
   transition: transform var(--transition-smooth, 0.35s cubic-bezier(0.2, 0, 0, 1));
   z-index: 1;
 }
@@ -796,7 +796,7 @@
   padding: 10px 24px;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #5f6368;
+  color: var(--ce-text-muted, #5f6368);
   cursor: pointer;
   border-radius: 9999px;
   white-space: nowrap;
@@ -810,11 +810,11 @@
 }
 
 .ce-pill-btn.active {
-  color: #0b57d0;
+  color: #ffffff !important;
 }
 
 .ce-pill-btn:hover:not(.active) {
-  color: #202124;
+  color: var(--ce-text-h, #202124);
 }
 
 /* Dark Mode Switcher Overrides */
@@ -824,8 +824,7 @@
 }
 
 .dark .ce-pill-bg-slide {
-  background-color: #333333;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: var(--ce-primary, #0b57d0) !important;
 }
 
 .dark .ce-pill-btn {
@@ -833,7 +832,7 @@
 }
 
 .dark .ce-pill-btn.active {
-  color: #ffa116;
+  color: #ffffff !important;
 }
 
 .dark .ce-pill-btn:hover:not(.active) {

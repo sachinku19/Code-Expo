@@ -258,17 +258,16 @@ const getUserRoomsHistory = async (req, res) => {
         })
             .populate("createdBy", "username email avatar")
             .populate("participants.user", "username email avatar")
+            .populate("likes", "username email avatar")
             .sort({ updatedAt: -1 });
 
         const socketHandler = require("../sockets/socketHandler");
         const roomUsers = socketHandler.roomUsers || {};
-        const RoomLike = require("../models/RoomLike");
 
-        const roomsWithCount = await Promise.all(rooms.map(async (room) => {
+        const roomsWithCount = rooms.map((room) => {
             const activeUsers = roomUsers[room.roomId] || [];
-            const likesCount = await RoomLike.countDocuments({ room: room._id });
-            const roomLikes = await RoomLike.find({ room: room._id }).populate("user", "username avatar email").select("user");
-            const likedBy = roomLikes.map(l => l.user).filter(Boolean);
+            const likesCount = room.likes ? room.likes.length : 0;
+            const likedBy = room.likes || [];
             return {
                 ...room.toObject(),
                 activeUsersCount: activeUsers.length,
@@ -276,7 +275,7 @@ const getUserRoomsHistory = async (req, res) => {
                 likesCount,
                 likedBy
             };
-        }));
+        });
 
         res.status(200).json({
             success: true,
@@ -303,7 +302,8 @@ const getLiveRooms = async (req, res) => {
             roomId: { $in: liveRoomIds }
         })
             .populate("createdBy", "username email avatar")
-            .populate("participants.user", "username email avatar");
+            .populate("participants.user", "username email avatar")
+            .populate("likes", "username email avatar");
 
         const filteredRooms = rooms.filter(room => {
             if (!room.isPrivate) return true;
@@ -312,17 +312,18 @@ const getLiveRooms = async (req, res) => {
             return isOwner || isParticipant;
         });
 
-        const RoomLike = require("../models/RoomLike");
-        const roomsWithCount = await Promise.all(filteredRooms.map(async (room) => {
+        const roomsWithCount = filteredRooms.map((room) => {
             const activeUsers = roomUsers[room.roomId] || [];
-            const likesCount = await RoomLike.countDocuments({ room: room._id });
+            const likesCount = room.likes ? room.likes.length : 0;
+            const likedBy = room.likes || [];
             return {
                 ...room.toObject(),
                 activeUsersCount: activeUsers.length,
                 activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
-                likesCount
+                likesCount,
+                likedBy
             };
-        }));
+        });
 
         res.status(200).json({
             success: true,
@@ -347,23 +348,25 @@ const getRecentRooms = async (req, res) => {
         })
             .populate("createdBy", "username email avatar")
             .populate("participants.user", "username email avatar")
+            .populate("likes", "username email avatar")
             .sort({ lastActivity: -1 })
             .limit(10);
 
         const socketHandler = require("../sockets/socketHandler");
         const roomUsers = socketHandler.roomUsers || {};
-        const RoomLike = require("../models/RoomLike");
 
-        const roomsWithCount = await Promise.all(rooms.map(async (room) => {
+        const roomsWithCount = rooms.map((room) => {
             const activeUsers = roomUsers[room.roomId] || [];
-            const likesCount = await RoomLike.countDocuments({ room: room._id });
+            const likesCount = room.likes ? room.likes.length : 0;
+            const likedBy = room.likes || [];
             return {
                 ...room.toObject(),
                 activeUsersCount: activeUsers.length,
                 activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
-                likesCount
+                likesCount,
+                likedBy
             };
-        }));
+        });
 
         res.status(200).json({
             success: true,
@@ -593,18 +596,21 @@ const getAllPublicRooms = async (req, res) => {
         const rooms = await Room.find({ isPrivate: false })
             .populate("createdBy", "username email avatar")
             .populate("participants.user", "username email avatar")
+            .populate("likes", "username email avatar")
             .sort({ createdAt: -1 });
 
-        const roomsWithCount = await Promise.all(rooms.map(async (room) => {
+        const roomsWithCount = rooms.map((room) => {
             const activeUsers = roomUsers[room.roomId] || [];
-            const likesCount = await RoomLike.countDocuments({ room: room._id });
+            const likesCount = room.likes ? room.likes.length : 0;
+            const likedBy = room.likes || [];
             return {
                 ...room.toObject(),
                 activeUsersCount: activeUsers.length,
                 activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
-                likesCount
+                likesCount,
+                likedBy
             };
-        }));
+        });
 
         res.status(200).json({
             success: true,

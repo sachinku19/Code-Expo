@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const MediaSchema = require("./Media");
 
 const directMessageSchema = new mongoose.Schema({
   sender: {
@@ -22,6 +23,10 @@ const directMessageSchema = new mongoose.Schema({
   },
   fileUrl: {
     type: String
+  },
+  fileMetadata: {
+    type: MediaSchema,
+    default: null
   },
   fileType: {
     type: String

@@ -140,6 +140,16 @@ export const deleteStory = async (storyId) => {
   return response.data;
 };
 
+export const toggleLikeStory = async (storyId) => {
+  const response = await API.post(`/stories/${storyId}/like`, {}, getHeaders());
+  return response.data;
+};
+
+export const addCommentStory = async (storyId, text) => {
+  const response = await API.post(`/stories/${storyId}/comment`, { text }, getHeaders());
+  return response.data;
+};
+
 export const updateStatus = async (status) => {
   const response = await API.post("/status", { status }, getHeaders());
   return response.data;

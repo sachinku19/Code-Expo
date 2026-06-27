@@ -1,4 +1,5 @@
 const mongoose=require("mongoose");
+const MediaSchema = require("./Media");
 
 const userSchema=new mongoose.Schema({
 
@@ -34,6 +35,10 @@ const userSchema=new mongoose.Schema({
     avatar:{
         type:String,
         default:""
+    },
+    avatarMetadata:{
+        type: MediaSchema,
+        default: null
     },
     role:{
         type:String,
@@ -137,6 +142,10 @@ const userSchema=new mongoose.Schema({
         type: String,
         default: ""
     },
+    coverBannerMetadata: {
+        type: MediaSchema,
+        default: null
+    },
     experience: {
         type: String,
         default: ""
@@ -160,6 +169,14 @@ const userSchema=new mongoose.Schema({
     blockedUsers:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:"User"
+    }],
+    followers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    }],
+    following: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
     }],
     resetPasswordToken:String,
     resetPasswordExpire:Date

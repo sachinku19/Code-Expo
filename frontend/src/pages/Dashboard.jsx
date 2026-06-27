@@ -27,9 +27,9 @@ import {
   Sun, Moon, Sparkles, Globe, Lock, Settings as SettingsIcon,
   Users, Clock, Terminal, Activity, FolderGit, Check, X, ShieldAlert, UserMinus,
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
-  Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronDown, Code,
+  Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar,
-  Megaphone, Wrench, Award, Compass, MessageSquare
+  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -47,7 +47,10 @@ import {
   getLikedRooms,
   getBookmarkedRooms,
   getUserPublicProfile,
-  getLeaderboard
+  getLeaderboard,
+  getPosts,
+  toggleLikePost,
+  addCommentPost
 } from "../services/socialService";
 import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBanner, deleteCoverBanner } from "../services/userService";
 import "./Dashboard.css";
@@ -57,6 +60,7 @@ import DirectMessages from "../components/chat/DirectMessages";
 import StoriesSystem from "../components/social/StoriesSystem";
 import DeveloperFeed from "../components/social/DeveloperFeed";
 import NetworkSidebar from "../components/social/NetworkSidebar";
+import LeftSidebar from "../components/social/LeftSidebar";
 import NetworkAnalytics from "../components/social/NetworkAnalytics";
 import UserProfileModal from "../components/social/UserProfileModal";
 const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
@@ -528,7 +532,7 @@ const getBadgeStyle = (title) => {
 const renderLanguageLogo = (lang, title) => {
   let l = String(lang || "").toLowerCase().trim();
   const t = String(title || "").toLowerCase();
-  
+
   if (!l) {
     if (t.includes("cpp") || t.includes("c++")) l = "cpp";
     else if (t.includes("python") || t.includes("py-") || t.includes("-py") || t.includes("api")) l = "python";
@@ -554,7 +558,7 @@ const renderLanguageLogo = (lang, title) => {
       </svg>
     );
   }
-  
+
   if (l === "python") {
     return (
       <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" title="Python">
@@ -751,6 +755,135 @@ function Dashboard() {
   const [targetFollowersList, setTargetFollowersList] = useState([]);
   const [targetFollowingList, setTargetFollowingList] = useState([]);
   const [loadingModalData, setLoadingModalData] = useState(false);
+  const [profilePosts, setProfilePosts] = useState([]);
+  const [isProfilePostsLoading, setIsProfilePostsLoading] = useState(false);
+
+  const fetchProfilePosts = useCallback(async (targetUserId) => {
+    if (!targetUserId) return;
+    setIsProfilePostsLoading(true);
+    try {
+      const res = await getPosts(1, 100);
+      if (res && res.success && res.posts) {
+        const filtered = res.posts.filter(post => {
+          const authorId = post.author?._id || post.author;
+          return String(authorId) === String(targetUserId);
+        });
+        setProfilePosts(filtered);
+      }
+    } catch (e) {
+      console.error("Error fetching profile posts:", e);
+    } finally {
+      setIsProfilePostsLoading(false);
+    }
+  }, []);
+
+  const resolveLikedUser = useCallback((likeUserId) => {
+    if (!likeUserId) return null;
+    const targetId = typeof likeUserId === "object" ? likeUserId._id || likeUserId.id : likeUserId;
+    if (user && (String(targetId) === String(user.id) || String(targetId) === String(user._id))) {
+      return {
+        _id: targetId,
+        username: user.username,
+        avatar: user.avatar,
+        title: user.title || "Developer"
+      };
+    }
+    const foundInSuggestions = suggestions.find(s => String(s._id || s.id) === String(targetId));
+    if (foundInSuggestions) return foundInSuggestions;
+
+    const foundInFollowers = followersList.find(f => String(f._id || f.id) === String(targetId));
+    if (foundInFollowers) return foundInFollowers;
+    
+    const foundInFollowing = followingList.find(f => String(f._id || f.id) === String(targetId));
+    if (foundInFollowing) return foundInFollowing;
+
+    const suffix = typeof targetId === "string" ? targetId.slice(-4) : "dev";
+    return {
+      _id: targetId,
+      username: `dev_${suffix}`,
+      avatar: null,
+      title: "Software Engineer"
+    };
+  }, [user, suggestions, followersList, followingList]);
+
+  const [likedUsersListModal, setLikedUsersListModal] = useState(null);
+  const [selectedPostModal, setSelectedPostModal] = useState(null);
+  const [savedPostIds, setSavedPostIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem("codeexpo_bookmarked_post_ids");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const [allFeedPosts, setAllFeedPosts] = useState([]);
+
+  useEffect(() => {
+    const fetchAllPosts = async () => {
+      try {
+        const res = await getPosts(1, 100);
+        if (res?.success && res.posts) {
+          setAllFeedPosts(res.posts);
+        }
+      } catch (err) {
+        console.error("Error fetching all posts:", err);
+      }
+    };
+    fetchAllPosts();
+  }, [selectedPostModal]);
+
+  const [modalActiveImageIdx, setModalActiveImageIdx] = useState(0);
+
+  useEffect(() => {
+    setModalActiveImageIdx(0);
+  }, [selectedPostModal]);
+
+  const [modalCommentText, setModalCommentText] = useState("");
+
+  const handleLikePostInModal = async () => {
+    if (!selectedPostModal) return;
+    try {
+      await toggleLikePost(selectedPostModal._id);
+      const res = await getPosts(1, 100);
+      if (res?.success) {
+        const found = res.posts.find(p => p._id === selectedPostModal._id);
+        if (found) {
+          setSelectedPostModal(found);
+        }
+        const filtered = res.posts.filter(post => {
+          const authorId = post.author?._id || post.author;
+          return String(authorId) === String(viewingUserProfile?._id || user?.id || user?._id);
+        });
+        setProfilePosts(filtered);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddCommentInModal = async (e) => {
+    e.preventDefault();
+    if (!selectedPostModal || !modalCommentText.trim()) return;
+    try {
+      await addCommentPost(selectedPostModal._id, modalCommentText);
+      setModalCommentText("");
+      const res = await getPosts(1, 100);
+      if (res?.success) {
+        const found = res.posts.find(p => p._id === selectedPostModal._id);
+        if (found) {
+          setSelectedPostModal(found);
+        }
+        const filtered = res.posts.filter(post => {
+          const authorId = post.author?._id || post.author;
+          return String(authorId) === String(viewingUserProfile?._id || user?.id || user?._id);
+        });
+        setProfilePosts(filtered);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const [animatingLikes, setAnimatingLikes] = useState({});
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -958,7 +1091,7 @@ function Dashboard() {
   const passwordStrength = useMemo(() => {
     if (!newPassword) return { score: 0, label: "None", color: "transparent", percent: 0 };
     if (newPassword.length < 6) return { score: 1, label: "Too Short (Min 6 chars)", color: "#ef4444", percent: 25 };
-    
+
     let score = 0;
     if (/[a-z]/.test(newPassword)) score++;
     if (/[A-Z]/.test(newPassword)) score++;
@@ -1212,8 +1345,8 @@ function Dashboard() {
 
   const prefetchEditor = () => {
     try {
-      import("./Editor").catch(() => {});
-    } catch (e) {}
+      import("./Editor").catch(() => { });
+    } catch (e) { }
   };
 
   const triggerGateAndNavigate = (targetRoomId) => {
@@ -1241,6 +1374,7 @@ function Dashboard() {
           if (isOwnProfile) {
             setViewingUserProfile(null);
             setViewingUserStats(null);
+            fetchProfilePosts(user.id || user._id);
             navigate("/dashboard?tab=profile", { replace: true });
           } else if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId))) {
             handleViewUserProfile(userId);
@@ -1248,6 +1382,9 @@ function Dashboard() {
         } else {
           setViewingUserProfile(null);
           setViewingUserStats(null);
+          if (user) {
+            fetchProfilePosts(user.id || user._id);
+          }
         }
       } else {
         setViewingUserProfile(null);
@@ -1258,7 +1395,7 @@ function Dashboard() {
       setViewingUserProfile(null);
       setViewingUserStats(null);
     }
-  }, [location, user]);
+  }, [location.search, user?.id, user?._id]);
 
   // Admin redirect logic
   useEffect(() => {
@@ -1496,18 +1633,18 @@ function Dashboard() {
       if (res.success && res.suggestions) {
         setSuggestions(prev => {
           const currentIds = new Set(prev.map(s => String(s._id || s)));
-          const newSuggestion = res.suggestions.find(s => 
-            !currentIds.has(String(s._id || s)) && 
+          const newSuggestion = res.suggestions.find(s =>
+            !currentIds.has(String(s._id || s)) &&
             String(s._id || s) !== String(followedId)
           );
-          
+
           let next = prev;
           if (newSuggestion) {
             next = [...prev, newSuggestion];
           } else if (prev.length < 5) {
             const missingCount = 5 - prev.length;
-            const itemsToAdd = res.suggestions.filter(s => 
-              !currentIds.has(String(s._id || s)) && 
+            const itemsToAdd = res.suggestions.filter(s =>
+              !currentIds.has(String(s._id || s)) &&
               String(s._id || s) !== String(followedId)
             ).slice(0, missingCount);
             next = [...prev, ...itemsToAdd];
@@ -1522,9 +1659,6 @@ function Dashboard() {
   }, []);
 
   const handleFollowToggle = useCallback(async (candidateId) => {
-    if (pendingFollowsRef.current.has(candidateId)) return;
-    pendingFollowsRef.current.add(candidateId);
-
     // Keep copies of original states for potential rollback
     const prevFollowingList = [...followingList];
     const prevOnlineFollows = [...onlineFollows];
@@ -1648,8 +1782,6 @@ function Dashboard() {
       localStorage.setItem("ce_cache_suggestions", JSON.stringify(prevSuggestions));
       localStorage.setItem("ce_cache_followersList", JSON.stringify(prevFollowersList));
       if (prevUser) localStorage.setItem("user", JSON.stringify(prevUser));
-    } finally {
-      pendingFollowsRef.current.delete(candidateId);
     }
   }, [user, setUser, followingList, onlineFollows, suggestions, followersList, viewingUserProfile, addToast, fetchAndAppendSuggestion]);
 
@@ -1681,8 +1813,8 @@ function Dashboard() {
   };
 
   const handleLikeRoom = async (roomId) => {
-    if (pendingLikesRef.current.has(roomId)) return;
-    pendingLikesRef.current.add(roomId);
+    const currentUser = user;
+    if (!currentUser) return;
 
     setAnimatingLikes(prev => ({ ...prev, [roomId]: true }));
     setTimeout(() => {
@@ -1700,6 +1832,7 @@ function Dashboard() {
     const prevSavedRooms = [...savedRooms];
 
     const wasLiked = isRoomLiked(roomId);
+    const isAdd = !wasLiked;
 
     // Optimistically update likedRooms list
     if (wasLiked) {
@@ -1713,30 +1846,44 @@ function Dashboard() {
         savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
         viewingUserRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
       if (matchedRoom) {
-        setLikedRooms(prev => [...prev, { ...matchedRoom, likesCount: (matchedRoom.likesCount || 0) + 1 }]);
+        const updatedMatched = {
+          ...matchedRoom,
+          likesCount: (matchedRoom.likesCount || 0) + 1,
+          likedBy: [...(matchedRoom.likedBy || []), currentUser]
+        };
+        setLikedRooms(prev => [...prev, updatedMatched]);
       }
     }
 
-    // Helper map updater
-    const updateLikesCount = (roomsArray) =>
-      roomsArray.map(r => {
+    const toggleRoomInArray = (roomsArray) => {
+      if (!roomsArray) return roomsArray;
+      return roomsArray.map(r => {
         if (r && (r.roomId === roomId || r._id === roomId)) {
+          const alreadyLiked = (r.likedBy || []).some(u => String(u._id || u) === String(currentUser.id || currentUser._id));
+          let updatedLikedBy = r.likedBy || [];
+          if (isAdd) {
+            if (!alreadyLiked) updatedLikedBy = [...updatedLikedBy, currentUser];
+          } else {
+            updatedLikedBy = updatedLikedBy.filter(u => String(u._id || u) !== String(currentUser.id || currentUser._id));
+          }
           return {
             ...r,
-            likesCount: Math.max(0, (r.likesCount || 0) + (wasLiked ? -1 : 1))
+            likesCount: updatedLikedBy.length,
+            likedBy: updatedLikedBy
           };
         }
         return r;
       });
+    };
 
-    // Optimistically update counts on all relevant lists
-    setTrendingRooms(prev => updateLikesCount(prev));
-    setHistoryRooms(prev => updateLikesCount(prev));
-    setPublicRooms(prev => updateLikesCount(prev));
-    setLiveRooms(prev => updateLikesCount(prev));
-    setRecentRooms(prev => updateLikesCount(prev));
-    setViewingUserRooms(prev => updateLikesCount(prev));
-    setSavedRooms(prev => updateLikesCount(prev));
+    // Optimistically update counts and avatars on all lists
+    setTrendingRooms(prev => toggleRoomInArray(prev));
+    setHistoryRooms(prev => toggleRoomInArray(prev));
+    setPublicRooms(prev => toggleRoomInArray(prev));
+    setLiveRooms(prev => toggleRoomInArray(prev));
+    setRecentRooms(prev => toggleRoomInArray(prev));
+    setViewingUserRooms(prev => toggleRoomInArray(prev));
+    setSavedRooms(prev => toggleRoomInArray(prev));
 
     if (viewingUserProfile) {
       if (wasLiked) {
@@ -1750,7 +1897,12 @@ function Dashboard() {
           savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
           viewingUserRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
         if (matchedRoom) {
-          setViewingUserLikedRooms(prev => [...prev, { ...matchedRoom, likesCount: (matchedRoom.likesCount || 0) + 1 }]);
+          const updatedMatched = {
+            ...matchedRoom,
+            likesCount: (matchedRoom.likesCount || 0) + 1,
+            likedBy: [...(matchedRoom.likedBy || []), currentUser]
+          };
+          setViewingUserLikedRooms(prev => [...prev, updatedMatched]);
         }
       }
     }
@@ -1758,8 +1910,6 @@ function Dashboard() {
     try {
       const res = await toggleLikeRoom(roomId);
       if (res.success) {
-        addToast(res.message, "success");
-        // Refetch notifications silently in the background
         const notifRes = await getNotifications(1, 10).catch(() => ({ success: false, notifications: [], unreadCount: 0 }));
         if (notifRes.success) {
           setNotificationsList(notifRes.notifications || []);
@@ -1772,7 +1922,6 @@ function Dashboard() {
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
-      // Rollback on failure
       setLikedRooms(prevLikedRooms);
       setTrendingRooms(prevTrendingRooms);
       setHistoryRooms(prevHistoryRooms);
@@ -1782,8 +1931,6 @@ function Dashboard() {
       setRecentRooms(prevRecentRooms);
       setViewingUserRooms(prevViewingUserRooms);
       setSavedRooms(prevSavedRooms);
-    } finally {
-      pendingLikesRef.current.delete(roomId);
     }
   };
 
@@ -1910,6 +2057,7 @@ function Dashboard() {
       setViewingUserStats(null);
       setActiveSection("profile");
       setProfileTab("rooms");
+      fetchProfilePosts(user.id || user._id);
       navigate("/dashboard?tab=profile");
       return;
     }
@@ -1939,6 +2087,7 @@ function Dashboard() {
         setViewingUserRooms(res.rooms || []);
         setViewingUserLikedRooms(res.likedRooms || []);
         setViewingUserStats(res.stats || null);
+        fetchProfilePosts(targetUserId);
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
@@ -2251,9 +2400,9 @@ function Dashboard() {
       setActiveAds(prev => prev.filter(a => a._id !== adId));
     };
 
-    const handleRoomLikeUpdate = ({ roomId, likesCount }) => {
+    const handleRoomLikeUpdate = ({ roomId, likesCount, likedBy }) => {
       const updateLikes = (roomsArray) =>
-        roomsArray.map(r => (r && (r.roomId === roomId || r._id === roomId) ? { ...r, likesCount } : r));
+        roomsArray.map(r => (r && (r.roomId === roomId || r._id === roomId) ? { ...r, likesCount, likedBy } : r));
 
       setTrendingRooms(prev => updateLikes(prev));
       setHistoryRooms(prev => updateLikes(prev));
@@ -2265,22 +2414,29 @@ function Dashboard() {
       setViewingUserLikedRooms(prev => updateLikes(prev));
     };
 
-    const handleRoomMyLikesUpdate = () => {
-      fetchSocialDashboardData();
+    const handleRoomMyLikesUpdate = async () => {
+      try {
+        const res = await getLikedRooms();
+        if (res.success) {
+          setLikedRooms(res.rooms || []);
+        }
+      } catch (err) {
+        console.error("Error updating my likes:", err);
+      }
     };
 
     const handleRoomBookmarkUpdate = () => {
       fetchSocialDashboardData();
     };
 
-    const handleUserFollowUpdate = ({ targetUserId, isFollowing, followingCount }) => {
+    const handleUserFollowUpdate = ({ targetUserId, isFollowing, followingCount, targetUser }) => {
       if (followingCount !== undefined) {
         setUser(prev => prev ? { ...prev, followingCount } : null);
       }
       setSuggestions(prev => prev.map(s => {
         if (String(s._id || s) === String(targetUserId)) {
-          return { 
-            ...s, 
+          return {
+            ...s,
             isFollowing,
             followersCount: isFollowing ? (s.followersCount || 0) + 1 : Math.max(0, (s.followersCount || 1) - 1)
           };
@@ -2290,27 +2446,41 @@ function Dashboard() {
       if (isFollowing) {
         setFollowingList(prev => {
           if (prev.some(f => String(f._id || f) === String(targetUserId))) return prev;
-          const candidate = suggestions.find(s => String(s._id || s) === String(targetUserId)) || { _id: targetUserId, username: "Developer" };
-          return [...prev, { ...candidate, isFollowing: true }];
+          const candidate = targetUser || suggestions.find(s => String(s._id || s) === String(targetUserId)) || { _id: targetUserId, username: "Developer" };
+          const next = [...prev, { ...candidate, isFollowing: true }];
+          localStorage.setItem("ce_cache_followingList", JSON.stringify(next));
+          return next;
         });
       } else {
-        setFollowingList(prev => prev.filter(f => String(f._id || f) !== String(targetUserId)));
-        setOnlineFollows(prev => prev.filter(f => String(f._id || f) !== String(targetUserId)));
+        setFollowingList(prev => {
+          const next = prev.filter(f => String(f._id || f) !== String(targetUserId));
+          localStorage.setItem("ce_cache_followingList", JSON.stringify(next));
+          return next;
+        });
+        setOnlineFollows(prev => {
+          const next = prev.filter(f => String(f._id || f) !== String(targetUserId));
+          localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(next));
+          return next;
+        });
       }
     };
 
-    const handleUserFollowersUpdate = ({ followerId, isFollowing, followersCount }) => {
+    const handleUserFollowersUpdate = ({ followerId, isFollowing, followersCount, followerUser }) => {
       if (followersCount !== undefined) {
         setUser(prev => prev ? { ...prev, followersCount } : null);
       }
-      const currentUserId = user?.id || user?._id;
-      if (currentUserId) {
-        getFollowers(currentUserId).then(res => {
-          if (res.success) {
-            setFollowersList(res.followers || []);
-            localStorage.setItem("ce_cache_followersList", JSON.stringify(res.followers || []));
+      if (followerUser) {
+        setFollowersList(prev => {
+          let next;
+          if (isFollowing) {
+            if (prev.some(f => String(f._id || f) === String(followerId))) return prev;
+            next = [...prev, followerUser];
+          } else {
+            next = prev.filter(f => String(f._id || f) !== String(followerId));
           }
-        }).catch(err => console.error("Error updating followers list:", err));
+          localStorage.setItem("ce_cache_followersList", JSON.stringify(next));
+          return next;
+        });
       }
     };
 
@@ -2333,15 +2503,6 @@ function Dashboard() {
           localStorage.setItem("user", JSON.stringify(next));
           return next;
         });
-      }
-      const currentUserId = user?.id || user?._id;
-      if (currentUserId) {
-        getFollowers(currentUserId).then(res => {
-          if (res.success) {
-            setFollowersList(res.followers || []);
-            localStorage.setItem("ce_cache_followersList", JSON.stringify(res.followers || []));
-          }
-        }).catch(err => console.error("Error syncing followers list:", err));
       }
     };
 
@@ -3117,772 +3278,906 @@ function Dashboard() {
       clearNotifications={handleMarkAllNotificationsRead}
       onSearchSelect={handleSearchSelect}
     >
-      <div className="ce-dashboard-container">
+      <div className={`ce-dashboard-container ${activeSection === "feed" ? "feed-layout-active" : ""}`}>
         <AnimatePresence mode="wait">
-        {activeSection === "dashboard" && (
-          <motion.div
-            key="dashboard"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="dashboard-home-section">
-            {/* SYSTEM ANNOUNCEMENTS BROADCAST FEED */}
-            {activeAnnouncements.filter(ann => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
-              <div className="ce-announcements-banner-wrapper">
-                {activeAnnouncements
-                  .filter(ann => !dismissedAnnouncements.includes(ann._id))
-                  .map((ann) => (
-                    <div key={ann._id} className={`ce-announcement-card severity-${ann.severity.toLowerCase()}`}>
-                      <div className="announcement-content-row">
-                        <div className="announcement-icon-box">
-                          {ann.severity === "WARNING" && <Wrench size={16} />}
-                          {ann.severity === "CRITICAL" && <ShieldAlert size={16} />}
-                          {ann.severity === "SUCCESS" && <Sparkles size={16} />}
-                          {ann.severity === "INFO" && <Megaphone size={16} />}
-                        </div>
-                        <div className="announcement-text-box">
-                          <h5 className="announcement-title">
-                            <span className="announcement-badge-type">{ann.type}</span>
-                            {ann.title}
-                          </h5>
-                          <p className="announcement-body">{ann.content}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDismissAnnouncement(ann._id)}
-                          className="btn-announcement-dismiss"
-                          aria-label="Dismiss Announcement"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-
-            <div className="dashboard-grid-layout">
-
-              {/* STATS SUMMARY GRID */}
-              {isLoadingDashboard && stats.totalCreated === 0 && stats.totalJoined === 0 ? (
-                <StatsSkeleton />
-              ) : (
-                <div className="ce-stats-grid">
-
-                  {/* Card 1: Developer Rank Gamification */}
-                  <div className="compact-stat-card gamification-card">
-                    <div className={`stat-card-icon-wrapper rank-icon-wrapper ${rank.badgeClass}`}>
-                      <Trophy size={18} />
-                    </div>
-                    <div className="stat-card-info gamification-info">
-                      <span className="stat-card-label">Developer Tier</span>
-                      <span className="stat-card-val rank-title-text" style={{ color: rank.color }}>
-                        {rank.title}
-                      </span>
-
-                      <div className="tier-progress-container">
-                        <div className="tier-progress-track">
-                          <div className="tier-progress-bar" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
-                        </div>
-                        <span className="tier-progress-label">
-                          {stats.totalPoints || 0} XP • {rank.nextLimit === Infinity ? "Max Level" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next`}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Rooms Created Breakdown */}
-                  <div className="compact-stat-card created-rooms-card">
-                    <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                      <FolderGit size={18} />
-                    </div>
-                    <div className="stat-card-info">
-                      <span className="stat-card-label">Rooms Created</span>
-                      <span className="stat-card-val">{stats.totalCreated}</span>
-                      <div className="sub-breakdown-row">
-                        <span className="sub-badge public-badge">
-                          <Globe size={10} /> {stats.publicCreatedCount} Public
-                        </span>
-                        <span className="sub-badge private-badge">
-                          <Lock size={10} /> {stats.privateCreatedCount} Private
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Joined Workspaces */}
-                  <div className="compact-stat-card joined-rooms-card">
-                    <div className="stat-card-icon-wrapper green-theme-wrapper">
-                      <Users size={18} />
-                    </div>
-                    <div className="stat-card-info">
-                      <span className="stat-card-label">Rooms Joined</span>
-                      <span className="stat-card-val">{stats.totalJoined}</span>
-                      <span className="stat-card-subtitle">From starting</span>
-                    </div>
-                  </div>
-
-                  {/* Card 4: Compiler Executions */}
-                  <div className="compact-stat-card executions-card">
-                    <div className="stat-card-icon-wrapper purple-theme-wrapper">
-                      <Activity size={18} />
-                    </div>
-                    <div className="stat-card-info">
-                      <span className="stat-card-label">Code Runs</span>
-                      <span className="stat-card-val">{stats.executions.toLocaleString()}</span>
-                      <span className="stat-card-subtitle">{formatCodingTime(stats.codingHours, stats.codingMinutes)}</span>
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* TWO COLUMN GRID */}
-              <div className="ce-dashboard-columns">
-
-                {/* LEFT COLUMN */}
-                <div className="ce-column-left">
-
-                  {/* ACTIVE ROOMS */}
-                  <section className="ce-dashboard-section">
-                    <div className="section-header">
-                      <span className="live-indicator-dot"></span>
-                      <h3 className="section-title">Active Rooms</h3>
-                    </div>
-
-                    {isLoadingDashboard && liveRooms.length === 0 ? (
-                      <div style={{ padding: "10px" }}>
-                        <RoomGridSkeleton count={2} />
-                      </div>
-                    ) : liveRooms.length === 0 ? (
-                      <div className="empty-state-card">
-                        <Terminal size={18} className="empty-state-icon" />
-                        <p>No active rooms currently online.</p>
-                      </div>
-                    ) : (
-                      (() => {
-                        const myActive = liveRooms.filter(room => {
-                          const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                          const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
-                          return isOwner || isParticipant;
-                        });
-
-                        const otherActive = liveRooms.filter(room => {
-                          const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                          const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
-                          return !(isOwner || isParticipant);
-                        });
-
-                        return (
-                          <div className="active-rooms-wrapper">
-                            {/* Segmented Pill Switcher with Round Sliding Background */}
-                            <div className="ce-pill-switcher-container">
-                              <div className="ce-pill-switcher">
-                                <div
-                                  className="ce-pill-bg-slide"
-                                  style={{
-                                    transform: activeRoomsTab === "my-active" ? "translateX(0)" : "translateX(100%)"
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  className={`ce-pill-btn ${activeRoomsTab === "my-active" ? "active" : ""}`}
-                                  onClick={() => setActiveRoomsTab("my-active")}
-                                >
-                                  My Active ({myActive.length})
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`ce-pill-btn ${activeRoomsTab === "other-active" ? "active" : ""}`}
-                                  onClick={() => setActiveRoomsTab("other-active")}
-                                >
-                                  Other Active ({otherActive.length})
-                                </button>
-                              </div>
+          {activeSection === "dashboard" && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="dashboard-home-section">
+                {/* SYSTEM ANNOUNCEMENTS BROADCAST FEED */}
+                {activeAnnouncements.filter(ann => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
+                  <div className="ce-announcements-banner-wrapper">
+                    {activeAnnouncements
+                      .filter(ann => !dismissedAnnouncements.includes(ann._id))
+                      .map((ann) => (
+                        <div key={ann._id} className={`ce-announcement-card severity-${ann.severity.toLowerCase()}`}>
+                          <div className="announcement-content-row">
+                            <div className="announcement-icon-box">
+                              {ann.severity === "WARNING" && <Wrench size={16} />}
+                              {ann.severity === "CRITICAL" && <ShieldAlert size={16} />}
+                              {ann.severity === "SUCCESS" && <Sparkles size={16} />}
+                              {ann.severity === "INFO" && <Megaphone size={16} />}
                             </div>
-
-                            {/* Tab Contents */}
-                            {activeRoomsTab === "my-active" && (
-                              <div className="active-rooms-tab-pane">
-                                {myActive.length === 0 ? (
-                                  <div className="empty-state-card compact">
-                                    <p>No active workspaces of yours.</p>
-                                  </div>
-                                ) : (
-                                  <div className="rooms-grid-explore">
-                                    {myActive.map(room => renderRoomCard(room))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {activeRoomsTab === "other-active" && (
-                              <div className="active-rooms-tab-pane">
-                                {otherActive.length === 0 ? (
-                                  <div className="empty-state-card compact">
-                                    <p>No other active workspaces online.</p>
-                                  </div>
-                                ) : (
-                                  <div className="rooms-grid-explore">
-                                    {otherActive.map(room => renderRoomCard(room))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                            <div className="announcement-text-box">
+                              <h5 className="announcement-title">
+                                <span className="announcement-badge-type">{ann.type}</span>
+                                {ann.title}
+                              </h5>
+                              <p className="announcement-body">{ann.content}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDismissAnnouncement(ann._id)}
+                              className="btn-announcement-dismiss"
+                              aria-label="Dismiss Announcement"
+                            >
+                              <X size={14} />
+                            </button>
                           </div>
-                        );
-                      })()
-                    )}
-                  </section>
+                        </div>
+                      ))}
+                  </div>
+                )}
 
-                  {/* SPLIT FEED AND RECENT JOINED ROOMS GRID */}
-                  <div className="ce-dashboard-split-grid">
-                    
-                    {/* LEFT SECTION: DEVELOPER ACTIVITY FEED */}
-                    <section className="ce-dashboard-section social-feed-section" style={{ marginBottom: 0 }}>
-                      <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <Activity size={16} className="brand-logo" />
-                          <h3 className="section-title">Developer Activity Feed</h3>
+                <div className="dashboard-grid-layout">
+
+                  {/* STATS SUMMARY GRID */}
+                  {isLoadingDashboard && stats.totalCreated === 0 && stats.totalJoined === 0 ? (
+                    <StatsSkeleton />
+                  ) : (
+                    <div className="ce-stats-grid">
+
+                      {/* Card 1: Developer Rank Gamification */}
+                      <div className="compact-stat-card gamification-card">
+                        <div className={`stat-card-icon-wrapper rank-icon-wrapper ${rank.badgeClass}`}>
+                          <Trophy size={18} />
+                        </div>
+                        <div className="stat-card-info gamification-info">
+                          <span className="stat-card-label">Developer Tier</span>
+                          <span className="stat-card-val rank-title-text" style={{ color: rank.color }}>
+                            {rank.title}
+                          </span>
+
+                          <div className="tier-progress-container">
+                            <div className="tier-progress-track">
+                              <div className="tier-progress-bar" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
+                            </div>
+                            <span className="tier-progress-label">
+                              {stats.totalPoints || 0} XP • {rank.nextLimit === Infinity ? "Max Level" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next`}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      {isLoadingDashboard && feedActivities.length === 0 ? (
-                        <ActivityFeedSkeleton count={3} />
-                      ) : feedActivities.length === 0 ? (
-                        <div className="empty-state-card">
-                          <p>No activity logs recorded. Follow other developers to see their updates here!</p>
+                      {/* Card 2: Rooms Created Breakdown */}
+                      <div className="compact-stat-card created-rooms-card">
+                        <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                          <FolderGit size={18} />
                         </div>
-                      ) : (
-                        <div className="social-activities-list">
-                          {feedActivities.slice(0, visibleFeedCount).map(act => (
-                            <div key={act._id} className="social-activity-card">
-                              <div className="social-activity-header">
-                                <div className="social-activity-actor-info">
-                                  <div className="actor-avatar" style={{ background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
-                                    {act.user?.avatar ? (
-                                      <img src={act.user.avatar} alt={act.user?.username} />
+                        <div className="stat-card-info">
+                          <span className="stat-card-label">Rooms Created</span>
+                          <span className="stat-card-val">{stats.totalCreated}</span>
+                          <div className="sub-breakdown-row">
+                            <span className="sub-badge public-badge">
+                              <Globe size={10} /> {stats.publicCreatedCount} Public
+                            </span>
+                            <span className="sub-badge private-badge">
+                              <Lock size={10} /> {stats.privateCreatedCount} Private
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 3: Joined Workspaces */}
+                      <div className="compact-stat-card joined-rooms-card">
+                        <div className="stat-card-icon-wrapper green-theme-wrapper">
+                          <Users size={18} />
+                        </div>
+                        <div className="stat-card-info">
+                          <span className="stat-card-label">Rooms Joined</span>
+                          <span className="stat-card-val">{stats.totalJoined}</span>
+                          <span className="stat-card-subtitle">From starting</span>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Compiler Executions */}
+                      <div className="compact-stat-card executions-card">
+                        <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                          <Activity size={18} />
+                        </div>
+                        <div className="stat-card-info">
+                          <span className="stat-card-label">Code Runs</span>
+                          <span className="stat-card-val">{stats.executions.toLocaleString()}</span>
+                          <span className="stat-card-subtitle">{formatCodingTime(stats.codingHours, stats.codingMinutes)}</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* TWO COLUMN GRID */}
+                  <div className="ce-dashboard-columns">
+
+                    {/* LEFT COLUMN */}
+                    <div className="ce-column-left">
+
+                      {/* ACTIVE ROOMS */}
+                      <section className="ce-dashboard-section">
+                        <div className="section-header">
+                          <span className="live-indicator-dot"></span>
+                          <h3 className="section-title">Active Rooms</h3>
+                        </div>
+
+                        {isLoadingDashboard && liveRooms.length === 0 ? (
+                          <div style={{ padding: "10px" }}>
+                            <RoomGridSkeleton count={2} />
+                          </div>
+                        ) : liveRooms.length === 0 ? (
+                          <div className="empty-state-card">
+                            <Terminal size={18} className="empty-state-icon" />
+                            <p>No active rooms currently online.</p>
+                          </div>
+                        ) : (
+                          (() => {
+                            const myActive = liveRooms.filter(room => {
+                              const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+                              const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
+                              return isOwner || isParticipant;
+                            });
+
+                            const otherActive = liveRooms.filter(room => {
+                              const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+                              const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
+                              return !(isOwner || isParticipant);
+                            });
+
+                            return (
+                              <div className="active-rooms-wrapper">
+                                {/* Segmented Pill Switcher with Round Sliding Background */}
+                                <div className="ce-pill-switcher-container">
+                                  <div className="ce-pill-switcher">
+                                    <div
+                                      className="ce-pill-bg-slide"
+                                      style={{
+                                        transform: activeRoomsTab === "my-active" ? "translateX(0)" : "translateX(100%)"
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      className={`ce-pill-btn ${activeRoomsTab === "my-active" ? "active" : ""}`}
+                                      onClick={() => setActiveRoomsTab("my-active")}
+                                    >
+                                      My Active ({myActive.length})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`ce-pill-btn ${activeRoomsTab === "other-active" ? "active" : ""}`}
+                                      onClick={() => setActiveRoomsTab("other-active")}
+                                    >
+                                      Other Active ({otherActive.length})
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Tab Contents */}
+                                {activeRoomsTab === "my-active" && (
+                                  <div className="active-rooms-tab-pane">
+                                    {myActive.length === 0 ? (
+                                      <div className="empty-state-card compact">
+                                        <p>No active workspaces of yours.</p>
+                                      </div>
                                     ) : (
-                                      <span>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
+                                      <div className="rooms-grid-explore">
+                                        {myActive.map(room => renderRoomCard(room))}
+                                      </div>
                                     )}
                                   </div>
-                                  <div className="actor-meta">
-                                    <span className="actor-username">
-                                      <strong>{act.user?.username || "Someone"}</strong>
-                                    </span>
-                                    <span className="activity-action-text">
-                                      {act.action} {act.roomTitle ? (
-                                        <strong className="clickable-room" onClick={() => act.room?.roomId && handleJoinRoomDirect(act.room.roomId)}>
-                                          {act.roomTitle}
-                                        </strong>
-                                      ) : act.targetUser ? (
-                                        <strong className="activity-target-user">{act.targetUser.username}</strong>
-                                      ) : ""}
+                                )}
+
+                                {activeRoomsTab === "other-active" && (
+                                  <div className="active-rooms-tab-pane">
+                                    {otherActive.length === 0 ? (
+                                      <div className="empty-state-card compact">
+                                        <p>No other active workspaces online.</p>
+                                      </div>
+                                    ) : (
+                                      <div className="rooms-grid-explore">
+                                        {otherActive.map(room => renderRoomCard(room))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        )}
+                      </section>
+
+                      {/* SPLIT FEED AND RECENT JOINED ROOMS GRID */}
+                      <div className="ce-dashboard-split-grid">
+
+                        {/* LEFT SECTION: DEVELOPER ACTIVITY FEED */}
+                        <section className="ce-dashboard-section social-feed-section" style={{ marginBottom: 0 }}>
+                          <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <Activity size={16} className="brand-logo" />
+                              <h3 className="section-title">Developer Activity Feed</h3>
+                            </div>
+                          </div>
+
+                          {isLoadingDashboard && feedActivities.length === 0 ? (
+                            <ActivityFeedSkeleton count={3} />
+                          ) : feedActivities.length === 0 ? (
+                            <div className="empty-state-card">
+                              <p>No activity logs recorded. Follow other developers to see their updates here!</p>
+                            </div>
+                          ) : (
+                            <div className="social-activities-list">
+                              {feedActivities.slice(0, visibleFeedCount).map(act => (
+                                <div key={act._id} className="social-activity-card">
+                                  <div className="social-activity-header">
+                                    <div className="social-activity-actor-info">
+                                      <div className="actor-avatar" style={{ background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
+                                        {act.user?.avatar ? (
+                                          <img src={act.user.avatar} alt={act.user?.username} />
+                                        ) : (
+                                          <span>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
+                                        )}
+                                      </div>
+                                      <div className="actor-meta">
+                                        <span className="actor-username">
+                                          <strong>{act.user?.username || "Someone"}</strong>
+                                        </span>
+                                        <span className="activity-action-text">
+                                          {act.action} {act.roomTitle ? (
+                                            <strong className="clickable-room" onClick={() => act.room?.roomId && handleJoinRoomDirect(act.room.roomId)}>
+                                              {act.roomTitle}
+                                            </strong>
+                                          ) : act.targetUser ? (
+                                            <strong className="activity-target-user">{act.targetUser.username}</strong>
+                                          ) : ""}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <span className="activity-timestamp">
+                                      {formatLastActive(act.timestamp)}
                                     </span>
                                   </div>
                                 </div>
-                                <span className="activity-timestamp">
-                                  {formatLastActive(act.timestamp)}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                              ))}
 
-                          {(visibleFeedCount < feedActivities.length || feedPage < feedTotalPages) && (
-                            <button
-                              onClick={handleLoadMoreFeedClick}
-                              className="feed-load-more-btn"
-                              disabled={feedLoading}
-                            >
-                              {feedLoading ? "Loading..." : "Load More Activity"}
-                            </button>
+                              {(visibleFeedCount < feedActivities.length || feedPage < feedTotalPages) && (
+                                <button
+                                  onClick={handleLoadMoreFeedClick}
+                                  className="feed-load-more-btn"
+                                  disabled={feedLoading}
+                                >
+                                  {feedLoading ? "Loading..." : "Load More Activity"}
+                                </button>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
-                    </section>
+                        </section>
 
-                    {/* RIGHT SECTION: RECENT JOINED ROOMS */}
-                    <section className="ce-dashboard-section recent-joined-section" style={{ marginBottom: 0 }}>
-                      <div className="section-header">
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <Users size={16} className="brand-logo" style={{ color: "var(--ce-success)" }} />
-                          <h3 className="section-title">Recent Joined Rooms</h3>
-                        </div>
-                      </div>
-
-                      {isLoadingDashboard && historyRooms.length === 0 ? (
-                        <ActivityFeedSkeleton count={3} />
-                      ) : (() => {
-                        const joinedRooms = historyRooms.filter(room => {
-                          const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                          return !isOwner;
-                        });
-
-                        if (joinedRooms.length === 0) {
-                          return (
-                            <div className="empty-state-card" style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                              <Terminal size={18} className="empty-state-icon" />
-                              <p>No recently joined rooms. Join rooms from the Explore tab or via room code!</p>
+                        {/* RIGHT SECTION: RECENT JOINED ROOMS */}
+                        <section className="ce-dashboard-section recent-joined-section" style={{ marginBottom: 0 }}>
+                          <div className="section-header">
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <Users size={16} className="brand-logo" style={{ color: "var(--ce-success)" }} />
+                              <h3 className="section-title">Recent Joined Rooms</h3>
                             </div>
-                          );
-                        }
+                          </div>
 
-                        return (
-                          <div className="recent-joined-list">
-                            {joinedRooms.slice(0, visibleJoinedRooms).map(room => {
-                              const activeCount = room.activeUsersCount || 0;
-                              const isOnline = activeCount > 0;
-                              const langClass = (room.language || "javascript").toLowerCase();
+                          {isLoadingDashboard && historyRooms.length === 0 ? (
+                            <ActivityFeedSkeleton count={3} />
+                          ) : (() => {
+                            const joinedRooms = historyRooms.filter(room => {
+                              const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+                              return !isOwner;
+                            });
+
+                            if (joinedRooms.length === 0) {
+                              return (
+                                <div className="empty-state-card" style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                                  <Terminal size={18} className="empty-state-icon" />
+                                  <p>No recently joined rooms. Join rooms from the Explore tab or via room code!</p>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="recent-joined-list">
+                                {joinedRooms.slice(0, visibleJoinedRooms).map(room => {
+                                  const activeCount = room.activeUsersCount || 0;
+                                  const isOnline = activeCount > 0;
+                                  const langClass = (room.language || "javascript").toLowerCase();
+                                  return (
+                                    <div
+                                      key={room._id}
+                                      className="recent-joined-card"
+                                      onClick={() => handleJoinRoomDirect(room.roomId)}
+                                      onMouseEnter={prefetchEditor}
+                                    >
+                                      <div className="joined-card-top-content">
+                                        <div className="joined-card-logo-area">
+                                          {renderLanguageLogo(room.language, room.title)}
+                                        </div>
+                                        <div className="joined-card-info-area">
+                                          <h4 className="joined-room-title" title={room.title}>{room.title}</h4>
+                                          <span className="joined-room-owner">
+                                            Owner: <strong>@{room.createdBy?.username || "Developer"}</strong>
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="joined-card-footer-layout">
+                                        <span className={`joined-status ${isOnline ? "online" : "offline"}`}>
+                                          <span className={`status-dot-mini ${isOnline ? "active" : "offline"}`} />
+                                          {isOnline ? `${activeCount} Active` : "Offline"}
+                                        </span>
+                                        <button
+                                          className="joined-enter-btn"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleJoinRoomDirect(room.roomId);
+                                          }}
+                                        >
+                                          Enter
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {joinedRooms.length > visibleJoinedRooms && (
+                                  <button
+                                    onClick={() => setVisibleJoinedRooms(prev => prev + 4)}
+                                    className="feed-load-more-btn"
+                                    style={{ marginTop: "14px" }}
+                                  >
+                                    Load More Rooms
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </section>
+
+                      </div>
+                    </div>
+
+                    {/* RIGHT COLUMN */}
+                    <div className="ce-column-right">
+
+
+                      {/* PENDING JOIN REQUESTS */}
+                      {joinRequests.length > 0 && (
+                        <section className="ce-dashboard-section" style={{ borderColor: "var(--ce-warning)" }}>
+                          <div className="section-header">
+                            <ShieldAlert size={14} className="warning-theme-color" />
+                            <h3 className="section-title">Pending Access Requests</h3>
+                          </div>
+                          <div className="join-requests-grid">
+                            {joinRequests.map(req => (
+                              <div key={req.requestId} className="join-request-card">
+                                <div className="request-user-info">
+                                  <div className="req-user-avatar" style={{ backgroundColor: req.user?.avatar ? "transparent" : getAvatarColor(req.username) }}>
+                                    {req.user?.avatar ? (
+                                      <img src={req.user.avatar} alt={req.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                    ) : (
+                                      req.username.charAt(0).toUpperCase()
+                                    )}
+                                  </div>
+                                  <div className="req-details">
+                                    <strong>{req.username}</strong>
+                                    <span>wants to join <b>{req.roomTitle}</b></span>
+                                  </div>
+                                </div>
+                                <div className="request-actions">
+                                  <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "accept")} className="accept-btn">
+                                    Accept
+                                  </button>
+                                  <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "reject")} className="reject-btn">
+                                    Reject
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {/* ONLINE FOLLOWS */}
+                      <section className="ce-dashboard-section">
+                        <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span className="live-indicator-dot" style={{ position: "relative", top: 0 }} /> Online Follows ({onlineFollows.length})
+                        </h3>
+                        {isLoadingDashboard && onlineFollows.length === 0 ? (
+                          <UserListSkeleton count={3} />
+                        ) : onlineFollows.length === 0 ? (
+                          <div className="empty-state-card compact">
+                            <p>No followed developers online.</p>
+                          </div>
+                        ) : (
+                          <div className="online-follows-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {onlineFollows.map(f => (
+                              <div key={f._id} className="online-follow-item" onClick={() => handleViewUserProfile(f._id)}>
+                                <div className="follow-avatar-wrapper" style={{ position: "relative", width: "28px", height: "28px" }}>
+                                  {f.avatar ? (
+                                    <img src={f.avatar} alt={f.username} className="follow-avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                  ) : (
+                                    <div className="follow-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(f.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
+                                      {f.username.charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
+                                </div>
+                                <div className="follow-info" style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+                                  <span className="follow-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.username}</span>
+                                  <span className="follow-bio" style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.bio || "No bio yet"}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+
+                      {/* PEOPLE YOU MAY KNOW */}
+                      <section className="ce-dashboard-section">
+                        <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Sparkles size={14} style={{ color: "var(--ce-accent)" }} /> People You May Know
+                        </h3>
+                        {isLoadingDashboard && suggestions.length === 0 ? (
+                          <UserListSkeleton count={3} showButton={true} />
+                        ) : suggestions.length === 0 ? (
+                          <div className="empty-state-card compact">
+                            <p>No suggestions available.</p>
+                          </div>
+                        ) : (
+                          <div className="suggestions-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {suggestions.map(s => (
+                              <div key={s._id} className="suggestion-item">
+                                <div onClick={() => handleViewUserProfile(s._id)} style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, cursor: "pointer", minWidth: 0 }}>
+                                  <div className="suggestion-avatar" style={{ width: "28px", height: "28px", flexShrink: 0, position: "relative" }}>
+                                    {s.avatar ? (
+                                      <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                    ) : (
+                                      <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
+                                        {s.username.charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
+                                    {s.isOnline && (
+                                      <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
+                                    )}
+                                  </div>
+                                  <div className="suggestion-details" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                                    <span className="suggestion-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.username}</span>
+                                    <span className="suggestion-reason" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                      {s.mutualCount > 0 ? `${s.mutualCount} mutual connection${s.mutualCount > 1 ? "s" : ""}` : s.programmingLanguages?.length > 0 ? `Tags: ${s.programmingLanguages.slice(0, 2).join(", ")}` : "Recommended"}
+                                    </span>
+                                  </div>
+                                </div>
+                                <button
+                                  className={`suggestion-follow-btn ${followingList.some(f => String(f._id || f) === String(s._id)) ? "following" : ""}`}
+                                  onClick={() => handleFollowToggle(s._id)}
+                                >
+                                  {followingList.some(f => String(f._id || f) === String(s._id)) ? (
+                                    <>
+                                      <Check size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Following
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Plus size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Follow
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+
+                      {/* TRENDING ROOMS */}
+                      <section className="ce-dashboard-section">
+                        <h3 className="section-title">
+                          <Activity size={14} /> Trending Rooms
+                        </h3>
+                        {isLoadingDashboard && trendingRooms.length === 0 ? (
+                          <TrendingListSkeleton count={2} />
+                        ) : trendingRooms.length === 0 ? (
+                          <div className="empty-state-card compact">
+                            <p>No trending rooms.</p>
+                          </div>
+                        ) : (
+                          <div className="trending-rooms-list">
+                            {trendingRooms.map((room, index) => {
+                              const rank = index + 1;
+                              const creatorName = room.createdBy?.username || "Developer";
+                              const creatorAvatar = room.createdBy?.avatar;
+                              const lang = (room.language || "javascript").toLowerCase();
+
+                              let rankIcon = <Flame size={12} />;
+                              if (rank === 1) rankIcon = <Trophy size={12} className="text-gold" />;
+                              else if (rank === 2) rankIcon = <Flame size={12} className="text-orange" />;
+
                               return (
                                 <div
                                   key={room._id}
-                                  className="recent-joined-card"
+                                  className={`trending-room-card rank-${rank}`}
                                   onClick={() => handleJoinRoomDirect(room.roomId)}
-                                  onMouseEnter={prefetchEditor}
                                 >
-                                  <div className="joined-card-top-content">
-                                    <div className="joined-card-logo-area">
-                                      {renderLanguageLogo(room.language, room.title)}
+                                  <div className="trending-card-top">
+                                    <div className="trending-creator-info">
+                                      <div
+                                        className="trending-creator-avatar"
+                                        style={{
+                                          backgroundColor: creatorAvatar ? "transparent" : getAvatarColor(creatorName)
+                                        }}
+                                      >
+                                        {creatorAvatar ? (
+                                          <img src={creatorAvatar} alt={creatorName} />
+                                        ) : (
+                                          creatorName.charAt(0).toUpperCase()
+                                        )}
+                                      </div>
+                                      <span className="trending-creator-name">@{creatorName}</span>
                                     </div>
-                                    <div className="joined-card-info-area">
-                                      <h4 className="joined-room-title" title={room.title}>{room.title}</h4>
-                                      <span className="joined-room-owner">
-                                        Owner: <strong>@{room.createdBy?.username || "Developer"}</strong>
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="joined-card-footer-layout">
-                                    <span className={`joined-status ${isOnline ? "online" : "offline"}`}>
-                                      <span className={`status-dot-mini ${isOnline ? "active" : "offline"}`} />
-                                      {isOnline ? `${activeCount} Active` : "Offline"}
+                                    <span className={`trending-rank-badge rank-${rank}`}>
+                                      {rankIcon}
+                                      <span>#{rank}</span>
                                     </span>
+                                  </div>
+
+                                  <h4 className="trending-card-title">
+                                    {room.title}
+                                  </h4>
+
+                                  <div className="trending-card-bottom">
+                                    <div className="trending-meta-left">
+                                      <span className={`trending-lang-tag lang-${lang}`}>
+                                        <Code size={11} />
+                                        <span>{room.language || "JavaScript"}</span>
+                                      </span>
+                                      {room.lastActivity && (
+                                        <span className="trending-time-ago" title="Last Active">
+                                          <Clock size={11} />
+                                          <span>{formatLastActive(room.lastActivity)}</span>
+                                        </span>
+                                      )}
+                                    </div>
+
                                     <button
-                                      className="joined-enter-btn"
+                                      type="button"
+                                      className={`room-trending-like-btn ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleJoinRoomDirect(room.roomId);
+                                        handleLikeRoom(room.roomId);
                                       }}
+                                      title={isRoomLiked(room.roomId) ? "Unlike Room" : "Like Room"}
                                     >
-                                      Enter
+                                      <Heart
+                                        size={12}
+                                        fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                      />
+                                      <span className="like-count-text">{room.likesCount || 0}</span>
                                     </button>
                                   </div>
                                 </div>
                               );
                             })}
-                            {joinedRooms.length > visibleJoinedRooms && (
-                              <button
-                                onClick={() => setVisibleJoinedRooms(prev => prev + 4)}
-                                className="feed-load-more-btn"
-                                style={{ marginTop: "14px" }}
-                              >
-                                Load More Rooms
-                              </button>
+                          </div>
+                        )}
+                      </section>
+
+                      {/* SPONSORED PROMOTIONS */}
+                      {(sidebarAds.length > 0 || (isLoadingDashboard && activeAds.length === 0)) && (
+                        <section className="ce-dashboard-section sponsored-ads-section">
+                          <h3 className="section-title text-warning" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <Sparkles size={14} style={{ color: "var(--ce-warning)" }} /> Sponsored Promotions
+                          </h3>
+                          <div className="sponsored-ads-container" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            {isLoadingDashboard && activeAds.length === 0 ? (
+                              <AdSkeleton />
+                            ) : (
+                              sidebarAds.map(ad => (
+                                <a
+                                  key={ad._id}
+                                  href={ad.redirectUrl || undefined}
+                                  target={ad.redirectUrl ? "_blank" : undefined}
+                                  rel="noopener noreferrer"
+                                  className="sponsored-ad-card"
+                                  style={{ color: "inherit" }}
+                                >
+                                  <div className="sponsored-ad-image-wrapper">
+                                    <img
+                                      src={ad.imageUrl}
+                                      alt={ad.title}
+                                      className="sponsored-ad-image"
+                                      loading="lazy"
+                                      style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        transition: "transform 0.5s ease"
+                                      }}
+                                    />
+                                    <span className="sponsored-tag" style={{
+                                      position: "absolute",
+                                      top: "8px",
+                                      right: "8px",
+                                      background: "rgba(0, 0, 0, 0.75)",
+                                      color: "var(--ce-warning)",
+                                      fontSize: "0.58rem",
+                                      fontWeight: "800",
+                                      padding: "2px 6px",
+                                      borderRadius: "4px",
+                                      border: "1px solid rgba(255, 215, 0, 0.3)",
+                                      letterSpacing: "1px"
+                                    }}>
+                                      SPONSORED
+                                    </span>
+                                  </div>
+                                  <div className="sponsored-ad-details" style={{ padding: "10px 12px" }}>
+                                    <h4 className="sponsored-ad-title" style={{ fontSize: "0.82rem", fontWeight: "600", color: "var(--ce-text)", margin: "0 0 4px 0", lineHeight: "1.3" }}>
+                                      {ad.title}
+                                    </h4>
+                                    {ad.redirectUrl && (
+                                      <span className="sponsored-ad-link" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                                        {ad.redirectUrl.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]} ↗
+                                      </span>
+                                    )}
+                                  </div>
+                                </a>
+                              ))
                             )}
                           </div>
-                        );
-                      })()}
-                    </section>
-
+                        </section>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          {/* MY ROOMS SECTION */}
+          {activeSection === "myrooms" && (
+            <motion.div
+              key="myrooms"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="myrooms-section-container">
+                {/* Stats Cards Grid for My Rooms */}
+                <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                      <FolderGit size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Total Workspaces</span>
+                      <span className="stat-card-val">
+                        {historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper green-theme-wrapper">
+                      <Activity size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Active Now</span>
+                      <span className="stat-card-val">
+                        {historyRooms.filter(r => {
+                          const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
+                          const isLive = liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0);
+                          return isCreated && isLive;
+                        }).length}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                      <Globe size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Public Access</span>
+                      <span className="stat-card-val">
+                        {historyRooms.filter(r => {
+                          const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
+                          return isCreated && !r.isPrivate;
+                        }).length}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior">
+                      <Lock size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Private / Secure</span>
+                      <span className="stat-card-val">
+                        {historyRooms.filter(r => {
+                          const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
+                          return isCreated && r.isPrivate;
+                        }).length}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN */}
-                <div className="ce-column-right">
+                <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <FolderGit size={18} className="brand-logo" />
+                    <h3 className="section-title">My Created Rooms & Workspaces</h3>
+                  </div>
+                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                    <div className="section-search-container">
+                      <Search size={13} className="section-search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search by ID or title..."
+                        value={myRoomsTabSearch}
+                        onChange={(e) => setMyRoomsTabSearch(e.target.value)}
+                        className="section-search-input"
+                      />
+                    </div>
+                  </div>
+                </div>
 
+                {(() => {
+                  const owned = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
+                  const filteredOwned = owned.filter(room => {
+                    const term = myRoomsTabSearch.toLowerCase();
+                    return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                  });
 
-                  {/* PENDING JOIN REQUESTS */}
-                  {joinRequests.length > 0 && (
-                    <section className="ce-dashboard-section" style={{ borderColor: "var(--ce-warning)" }}>
-                      <div className="section-header">
-                        <ShieldAlert size={14} className="warning-theme-color" />
-                        <h3 className="section-title">Pending Access Requests</h3>
+                  if (owned.length === 0) {
+                    return (
+                      <div className="empty-state-card" style={{ padding: "48px 24px" }}>
+                        <Folder size={32} className="empty-state-icon" style={{ color: "var(--ce-primary)", marginBottom: "16px" }} />
+                        <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No workspaces found</h3>
+                        <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Launch your first collaborative coding workspace right now!</p>
+                        <button
+                          className="room-enter-btn-action"
+                          style={{ margin: "0 auto" }}
+                          onClick={() => {
+                            setFormData({ title: "", language: "javascript", isPrivate: false });
+                            setShowQuickCreateModal(true);
+                          }}
+                        >
+                          <Plus size={14} /> Create Room
+                        </button>
                       </div>
-                      <div className="join-requests-grid">
-                        {joinRequests.map(req => (
-                          <div key={req.requestId} className="join-request-card">
-                            <div className="request-user-info">
-                              <div className="req-user-avatar" style={{ backgroundColor: req.user?.avatar ? "transparent" : getAvatarColor(req.username) }}>
-                                {req.user?.avatar ? (
-                                  <img src={req.user.avatar} alt={req.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                                ) : (
-                                  req.username.charAt(0).toUpperCase()
-                                )}
-                              </div>
-                              <div className="req-details">
-                                <strong>{req.username}</strong>
-                                <span>wants to join <b>{req.roomTitle}</b></span>
-                              </div>
-                            </div>
-                            <div className="request-actions">
-                              <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "accept")} className="accept-btn">
-                                Accept
-                              </button>
-                              <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "reject")} className="reject-btn">
-                                Reject
-                              </button>
-                            </div>
+                    );
+                  }
+
+                  if (filteredOwned.length === 0) {
+                    return (
+                      <div className="empty-state-card" style={{ padding: "32px" }}>
+                        <Search size={24} className="empty-state-icon" />
+                        <p>No owned rooms match search term "{myRoomsTabSearch}".</p>
+                      </div>
+                    );
+                  }
+
+                  // Split into Active and Offline
+                  const activeRoomsList = filteredOwned.filter(room => {
+                    const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                    return roomFromLive && (roomFromLive.activeUsersCount || 0) > 0;
+                  });
+
+                  const offlineRoomsList = filteredOwned.filter(room => {
+                    const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                    return !roomFromLive || (roomFromLive.activeUsersCount || 0) === 0;
+                  });
+
+                  return (
+                    <div className="dashboard-split-layout">
+                      <div className="split-column">
+                        <h4 className="split-column-title">
+                          <span className="live-indicator-dot" />
+                          Active Rooms ({activeRoomsList.length})
+                        </h4>
+                        {activeRoomsList.length === 0 ? (
+                          <div className="empty-state-card compact">
+                            <p>No active rooms match your search.</p>
                           </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {/* ONLINE FOLLOWS */}
-                  <section className="ce-dashboard-section">
-                    <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span className="live-indicator-dot" style={{ position: "relative", top: 0 }} /> Online Follows ({onlineFollows.length})
-                    </h3>
-                    {isLoadingDashboard && onlineFollows.length === 0 ? (
-                      <UserListSkeleton count={3} />
-                    ) : onlineFollows.length === 0 ? (
-                      <div className="empty-state-card compact">
-                        <p>No followed developers online.</p>
-                      </div>
-                    ) : (
-                      <div className="online-follows-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        {onlineFollows.map(f => (
-                          <div key={f._id} className="online-follow-item" onClick={() => handleViewUserProfile(f._id)}>
-                            <div className="follow-avatar-wrapper" style={{ position: "relative", width: "28px", height: "28px" }}>
-                              {f.avatar ? (
-                                <img src={f.avatar} alt={f.username} className="follow-avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                              ) : (
-                                <div className="follow-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(f.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                  {f.username.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
-                            </div>
-                            <div className="follow-info" style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-                              <span className="follow-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.username}</span>
-                              <span className="follow-bio" style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.bio || "No bio yet"}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-
-                  {/* PEOPLE YOU MAY KNOW */}
-                  <section className="ce-dashboard-section">
-                    <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Sparkles size={14} style={{ color: "var(--ce-accent)" }} /> People You May Know
-                    </h3>
-                    {isLoadingDashboard && suggestions.length === 0 ? (
-                      <UserListSkeleton count={3} showButton={true} />
-                    ) : suggestions.length === 0 ? (
-                      <div className="empty-state-card compact">
-                        <p>No suggestions available.</p>
-                      </div>
-                    ) : (
-                      <div className="suggestions-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        {suggestions.map(s => (
-                          <div key={s._id} className="suggestion-item">
-                            <div onClick={() => handleViewUserProfile(s._id)} style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, cursor: "pointer", minWidth: 0 }}>
-                              <div className="suggestion-avatar" style={{ width: "28px", height: "28px", flexShrink: 0, position: "relative" }}>
-                                {s.avatar ? (
-                                  <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                                ) : (
-                                  <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                    {s.username.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                                {s.isOnline && (
-                                  <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
-                                )}
-                              </div>
-                              <div className="suggestion-details" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                                <span className="suggestion-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.username}</span>
-                                <span className="suggestion-reason" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                  {s.mutualCount > 0 ? `${s.mutualCount} mutual connection${s.mutualCount > 1 ? "s" : ""}` : s.programmingLanguages?.length > 0 ? `Tags: ${s.programmingLanguages.slice(0, 2).join(", ")}` : "Recommended"}
-                                </span>
-                              </div>
-                            </div>
-                            <button
-                              className={`suggestion-follow-btn ${followingList.some(f => String(f._id || f) === String(s._id)) ? "following" : ""}`}
-                              onClick={() => handleFollowToggle(s._id)}
-                            >
-                              {followingList.some(f => String(f._id || f) === String(s._id)) ? (
-                                <>
-                                  <Check size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Following
-                                </>
-                              ) : (
-                                <>
-                                  <Plus size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Follow
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-
-                  {/* TRENDING ROOMS */}
-                  <section className="ce-dashboard-section">
-                    <h3 className="section-title">
-                      <Activity size={14} /> Trending Rooms
-                    </h3>
-                    {isLoadingDashboard && trendingRooms.length === 0 ? (
-                      <TrendingListSkeleton count={2} />
-                    ) : trendingRooms.length === 0 ? (
-                      <div className="empty-state-card compact">
-                        <p>No trending rooms.</p>
-                      </div>
-                    ) : (
-                      <div className="trending-rooms-list">
-                        {trendingRooms.map((room, index) => {
-                          const rank = index + 1;
-                          const creatorName = room.createdBy?.username || "Developer";
-                          const creatorAvatar = room.createdBy?.avatar;
-                          const lang = (room.language || "javascript").toLowerCase();
-
-                          let rankIcon = <Flame size={12} />;
-                          if (rank === 1) rankIcon = <Trophy size={12} className="text-gold" />;
-                          else if (rank === 2) rankIcon = <Flame size={12} className="text-orange" />;
-
-                          return (
-                            <div
-                              key={room._id}
-                              className={`trending-room-card rank-${rank}`}
-                              onClick={() => handleJoinRoomDirect(room.roomId)}
-                            >
-                              <div className="trending-card-top">
-                                <div className="trending-creator-info">
-                                  <div
-                                    className="trending-creator-avatar"
-                                    style={{
-                                      backgroundColor: creatorAvatar ? "transparent" : getAvatarColor(creatorName)
-                                    }}
-                                  >
-                                    {creatorAvatar ? (
-                                      <img src={creatorAvatar} alt={creatorName} />
-                                    ) : (
-                                      creatorName.charAt(0).toUpperCase()
-                                    )}
-                                  </div>
-                                  <span className="trending-creator-name">@{creatorName}</span>
-                                </div>
-                                <span className={`trending-rank-badge rank-${rank}`}>
-                                  {rankIcon}
-                                  <span>#{rank}</span>
-                                </span>
-                              </div>
-
-                              <h4 className="trending-card-title">
-                                {room.title}
-                              </h4>
-
-                              <div className="trending-card-bottom">
-                                <div className="trending-meta-left">
-                                  <span className={`trending-lang-tag lang-${lang}`}>
-                                    <Code size={11} />
-                                    <span>{room.language || "JavaScript"}</span>
-                                  </span>
-                                  {room.lastActivity && (
-                                    <span className="trending-time-ago" title="Last Active">
-                                      <Clock size={11} />
-                                      <span>{formatLastActive(room.lastActivity)}</span>
-                                    </span>
-                                  )}
-                                </div>
-
-                                <button
-                                  type="button"
-                                  className={`room-trending-like-btn ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleLikeRoom(room.roomId);
-                                  }}
-                                  title={isRoomLiked(room.roomId) ? "Unlike Room" : "Like Room"}
-                                >
-                                  <Heart
-                                    size={12}
-                                    fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                  />
-                                  <span className="like-count-text">{room.likesCount || 0}</span>
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
-
-                  {/* SPONSORED PROMOTIONS */}
-                  {(sidebarAds.length > 0 || (isLoadingDashboard && activeAds.length === 0)) && (
-                    <section className="ce-dashboard-section sponsored-ads-section">
-                      <h3 className="section-title text-warning" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                        <Sparkles size={14} style={{ color: "var(--ce-warning)" }} /> Sponsored Promotions
-                      </h3>
-                      <div className="sponsored-ads-container" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {isLoadingDashboard && activeAds.length === 0 ? (
-                          <AdSkeleton />
                         ) : (
-                          sidebarAds.map(ad => (
-                            <a
-                              key={ad._id}
-                              href={ad.redirectUrl || undefined}
-                              target={ad.redirectUrl ? "_blank" : undefined}
-                              rel="noopener noreferrer"
-                              className="sponsored-ad-card"
-                              style={{ color: "inherit" }}
-                            >
-                              <div className="sponsored-ad-image-wrapper">
-                                <img
-                                  src={ad.imageUrl}
-                                  alt={ad.title}
-                                  className="sponsored-ad-image"
-                                  loading="lazy"
-                                  style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                    transition: "transform 0.5s ease"
-                                  }}
-                                />
-                                <span className="sponsored-tag" style={{
-                                  position: "absolute",
-                                  top: "8px",
-                                  right: "8px",
-                                  background: "rgba(0, 0, 0, 0.75)",
-                                  color: "var(--ce-warning)",
-                                  fontSize: "0.58rem",
-                                  fontWeight: "800",
-                                  padding: "2px 6px",
-                                  borderRadius: "4px",
-                                  border: "1px solid rgba(255, 215, 0, 0.3)",
-                                  letterSpacing: "1px"
-                                }}>
-                                  SPONSORED
-                                </span>
-                              </div>
-                              <div className="sponsored-ad-details" style={{ padding: "10px 12px" }}>
-                                <h4 className="sponsored-ad-title" style={{ fontSize: "0.82rem", fontWeight: "600", color: "var(--ce-text)", margin: "0 0 4px 0", lineHeight: "1.3" }}>
-                                  {ad.title}
-                                </h4>
-                                {ad.redirectUrl && (
-                                  <span className="sponsored-ad-link" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                                    {ad.redirectUrl.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]} ↗
-                                  </span>
-                                )}
-                              </div>
-                            </a>
-                          ))
+                          <div className="split-column-cards-list">
+                            {activeRoomsList.map(room => {
+                              const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
+                              return renderRoomCard(liveRoomObj || room);
+                            })}
+                          </div>
                         )}
                       </div>
-                    </section>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          </motion.div>
-        )}
-        {/* MY ROOMS SECTION */}
-        {activeSection === "myrooms" && (
-          <motion.div
-            key="myrooms"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="myrooms-section-container">
-            {/* Stats Cards Grid for My Rooms */}
-            <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                  <FolderGit size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Total Workspaces</span>
-                  <span className="stat-card-val">
-                    {historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length}
-                  </span>
-                </div>
-              </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper green-theme-wrapper">
-                  <Activity size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Active Now</span>
-                  <span className="stat-card-val">
-                    {historyRooms.filter(r => {
-                      const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
-                      const isLive = liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0);
-                      return isCreated && isLive;
-                    }).length}
-                  </span>
-                </div>
-              </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper purple-theme-wrapper">
-                  <Globe size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Public Access</span>
-                  <span className="stat-card-val">
-                    {historyRooms.filter(r => {
-                      const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
-                      return isCreated && !r.isPrivate;
-                    }).length}
-                  </span>
-                </div>
-              </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior">
-                  <Lock size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Private / Secure</span>
-                  <span className="stat-card-val">
-                    {historyRooms.filter(r => {
-                      const isCreated = r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id;
-                      return isCreated && r.isPrivate;
-                    }).length}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <FolderGit size={18} className="brand-logo" />
-                <h3 className="section-title">My Created Rooms & Workspaces</h3>
+                      <div className="split-column">
+                        <h4 className="split-column-title">
+                          <span className="offline-indicator-dot" />
+                          Offline Rooms ({offlineRoomsList.length})
+                        </h4>
+                        {offlineRoomsList.length === 0 ? (
+                          <div className="empty-state-card compact">
+                            <p>No offline rooms match your search.</p>
+                          </div>
+                        ) : (
+                          <div className="split-column-cards-list">
+                            {offlineRoomsList.map(room => renderRoomCard(room))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                <div className="section-search-container">
-                  <Search size={13} className="section-search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search by ID or title..."
-                    value={myRoomsTabSearch}
-                    onChange={(e) => setMyRoomsTabSearch(e.target.value)}
-                    className="section-search-input"
-                  />
+            </motion.div>
+          )}
+
+          {/* LIVE ROOMS SECTION */}
+          {activeSection === "liverooms" && (
+            <motion.div
+              key="liverooms"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="liverooms-section-container">
+                {/* Stats Header for Live Rooms */}
+                <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                      <Activity size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Active Live Rooms</span>
+                      <span className="stat-card-val">{liveRooms.length}</span>
+                    </div>
+                  </div>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper green-theme-wrapper">
+                      <Users size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Active Developers Online</span>
+                      <span className="stat-card-val">
+                        {liveRooms.reduce((acc, r) => acc + (r.activeUsersCount || 0), 0)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {(() => {
-              const owned = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
-              const filteredOwned = owned.filter(room => {
-                const term = myRoomsTabSearch.toLowerCase();
-                return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
-              });
+                <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span className="live-indicator-dot" />
+                    <h3 className="section-title">Global Live Coding Workspaces</h3>
+                  </div>
+                  <div className="section-search-container">
+                    <Search size={13} className="section-search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Search live rooms..."
+                      value={publicRoomsSearch}
+                      onChange={(e) => setPublicRoomsSearch(e.target.value)}
+                      className="section-search-input"
+                    />
+                  </div>
+                </div>
 
-              if (owned.length === 0) {
-                return (
+                {liveRooms.length === 0 ? (
                   <div className="empty-state-card" style={{ padding: "48px 24px" }}>
-                    <Folder size={32} className="empty-state-icon" style={{ color: "var(--ce-primary)", marginBottom: "16px" }} />
-                    <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No workspaces found</h3>
-                    <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Launch your first collaborative coding workspace right now!</p>
+                    <Activity size={32} className="empty-state-icon" style={{ color: "var(--ce-success)", marginBottom: "16px" }} />
+                    <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No active workspaces</h3>
+                    <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Nobody is hosting a live room. Launch yours to go live!</p>
                     <button
                       className="room-enter-btn-action"
                       style={{ margin: "0 auto" }}
@@ -3894,3462 +4189,3489 @@ function Dashboard() {
                       <Plus size={14} /> Create Room
                     </button>
                   </div>
-                );
-              }
+                ) : (() => {
+                  const filteredLive = liveRooms.filter(room => {
+                    const term = publicRoomsSearch.toLowerCase();
+                    return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                  });
 
-              if (filteredOwned.length === 0) {
-                return (
-                  <div className="empty-state-card" style={{ padding: "32px" }}>
-                    <Search size={24} className="empty-state-icon" />
-                    <p>No owned rooms match search term "{myRoomsTabSearch}".</p>
-                  </div>
-                );
-              }
-
-              // Split into Active and Offline
-              const activeRoomsList = filteredOwned.filter(room => {
-                const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
-                return roomFromLive && (roomFromLive.activeUsersCount || 0) > 0;
-              });
-
-              const offlineRoomsList = filteredOwned.filter(room => {
-                const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
-                return !roomFromLive || (roomFromLive.activeUsersCount || 0) === 0;
-              });
-
-              return (
-                <div className="dashboard-split-layout">
-                  <div className="split-column">
-                    <h4 className="split-column-title">
-                      <span className="live-indicator-dot" />
-                      Active Rooms ({activeRoomsList.length})
-                    </h4>
-                    {activeRoomsList.length === 0 ? (
-                      <div className="empty-state-card compact">
-                        <p>No active rooms match your search.</p>
+                  if (filteredLive.length === 0) {
+                    return (
+                      <div className="empty-state-card" style={{ padding: "32px" }}>
+                        <Search size={24} className="empty-state-icon" />
+                        <p>No active live rooms match search term "{publicRoomsSearch}".</p>
                       </div>
-                    ) : (
-                      <div className="split-column-cards-list">
-                        {activeRoomsList.map(room => {
-                          const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
-                          return renderRoomCard(liveRoomObj || room);
-                        })}
-                      </div>
-                    )}
-                  </div>
+                    );
+                  }
 
-                  <div className="split-column">
-                    <h4 className="split-column-title">
-                      <span className="offline-indicator-dot" />
-                      Offline Rooms ({offlineRoomsList.length})
-                    </h4>
-                    {offlineRoomsList.length === 0 ? (
-                      <div className="empty-state-card compact">
-                        <p>No offline rooms match your search.</p>
-                      </div>
-                    ) : (
-                      <div className="split-column-cards-list">
-                        {offlineRoomsList.map(room => renderRoomCard(room))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-          </motion.div>
-        )}
-
-        {/* LIVE ROOMS SECTION */}
-        {activeSection === "liverooms" && (
-          <motion.div
-            key="liverooms"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="liverooms-section-container">
-            {/* Stats Header for Live Rooms */}
-            <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                  <Activity size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Active Live Rooms</span>
-                  <span className="stat-card-val">{liveRooms.length}</span>
-                </div>
+                  return (
+                    <div className="rooms-grid-explore">
+                      {filteredLive.map(room => renderRoomCard(room))}
+                    </div>
+                  );
+                })()}
               </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper green-theme-wrapper">
-                  <Users size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Active Developers Online</span>
-                  <span className="stat-card-val">
-                    {liveRooms.reduce((acc, r) => acc + (r.activeUsersCount || 0), 0)}
-                  </span>
-                </div>
-              </div>
-            </div>
+            </motion.div>
+          )}
 
-            <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span className="live-indicator-dot" />
-                <h3 className="section-title">Global Live Coding Workspaces</h3>
-              </div>
-              <div className="section-search-container">
-                <Search size={13} className="section-search-icon" />
-                <input
-                  type="text"
-                  placeholder="Search live rooms..."
-                  value={publicRoomsSearch}
-                  onChange={(e) => setPublicRoomsSearch(e.target.value)}
-                  className="section-search-input"
-                />
-              </div>
-            </div>
-
-            {liveRooms.length === 0 ? (
-              <div className="empty-state-card" style={{ padding: "48px 24px" }}>
-                <Activity size={32} className="empty-state-icon" style={{ color: "var(--ce-success)", marginBottom: "16px" }} />
-                <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No active workspaces</h3>
-                <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Nobody is hosting a live room. Launch yours to go live!</p>
-                <button
-                  className="room-enter-btn-action"
-                  style={{ margin: "0 auto" }}
-                  onClick={() => {
-                    setFormData({ title: "", language: "javascript", isPrivate: false });
-                    setShowQuickCreateModal(true);
-                  }}
-                >
-                  <Plus size={14} /> Create Room
-                </button>
-              </div>
-            ) : (() => {
-              const filteredLive = liveRooms.filter(room => {
-                const term = publicRoomsSearch.toLowerCase();
-                return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
-              });
-
-              if (filteredLive.length === 0) {
-                return (
-                  <div className="empty-state-card" style={{ padding: "32px" }}>
-                    <Search size={24} className="empty-state-icon" />
-                    <p>No active live rooms match search term "{publicRoomsSearch}".</p>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="rooms-grid-explore">
-                  {filteredLive.map(room => renderRoomCard(room))}
-                </div>
-              );
-            })()}
-          </div>
-          </motion.div>
-        )}
-
-        {/* BOOKMARKS SECTION */}
-        {activeSection === "bookmarks" && (
-          <motion.div
-            key="bookmarks"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="bookmarks-section-container">
-            {/* Stats Cards Grid for Bookmarks */}
-            <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                  <Bookmark size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Total Bookmarked</span>
-                  <span className="stat-card-val">{savedRooms.length}</span>
-                </div>
-              </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper green-theme-wrapper">
-                  <Activity size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Active Now</span>
-                  <span className="stat-card-val">
-                    {savedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}
-                  </span>
-                </div>
-              </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper purple-theme-wrapper">
-                  <Globe size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Public Access</span>
-                  <span className="stat-card-val">{savedRooms.filter(r => !r.isPrivate).length}</span>
-                </div>
-              </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior">
-                  <Lock size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Private Rooms</span>
-                  <span className="stat-card-val">{savedRooms.filter(r => r.isPrivate).length}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Bookmark size={18} className="brand-logo" style={{ color: "var(--ce-accent)" }} />
-                <h3 className="section-title">My Bookmarked Rooms</h3>
-              </div>
-              <div className="section-search-container">
-                <Search size={13} className="section-search-icon" />
-                <input
-                  type="text"
-                  placeholder="Search bookmarks..."
-                  value={bookmarkSearch}
-                  onChange={(e) => setBookmarkSearch(e.target.value)}
-                  className="section-search-input"
-                />
-              </div>
-            </div>
-
-            {savedRooms.length === 0 ? (
-              <div className="empty-state-card" style={{ padding: "48px 24px" }}>
-                <Bookmark size={32} className="empty-state-icon" style={{ color: "var(--ce-accent)", marginBottom: "16px" }} />
-                <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No bookmarks found</h3>
-                <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>You haven't bookmarked any spaces yet. Explore public rooms to save them here!</p>
-                <button
-                  className="room-enter-btn-action"
-                  style={{ margin: "0 auto" }}
-                  onClick={() => navigate("/dashboard?tab=rooms&subtab=explore")}
-                >
-                  <Globe size={14} /> Explore Rooms
-                </button>
-              </div>
-            ) : (() => {
-              const filteredBookmarks = savedRooms.filter(room => {
-                const term = bookmarkSearch.toLowerCase();
-                return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
-              });
-
-              if (filteredBookmarks.length === 0) {
-                return (
-                  <div className="empty-state-card" style={{ padding: "32px" }}>
-                    <Search size={24} className="empty-state-icon" />
-                    <p>No bookmarked rooms match search term "{bookmarkSearch}".</p>
-                  </div>
-                );
-              }
-
-              // Split into Active and Offline
-              const activeBookmarksList = filteredBookmarks.filter(room => {
-                const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
-                return roomFromLive && (roomFromLive.activeUsersCount || 0) > 0;
-              });
-
-              const offlineBookmarksList = filteredBookmarks.filter(room => {
-                const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
-                return !roomFromLive || (roomFromLive.activeUsersCount || 0) === 0;
-              });
-
-              return (
-                <div className="dashboard-split-layout">
-                  <div className="split-column">
-                    <h4 className="split-column-title">
-                      <span className="live-indicator-dot" />
-                      Active Rooms ({activeBookmarksList.length})
-                    </h4>
-                    {activeBookmarksList.length === 0 ? (
-                      <div className="empty-state-card compact">
-                        <p>No active bookmarked rooms.</p>
-                      </div>
-                    ) : (
-                      <div className="split-column-cards-list">
-                        {activeBookmarksList.map(room => {
-                          const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
-                          return renderRoomCard(liveRoomObj || room);
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="split-column">
-                    <h4 className="split-column-title">
-                      <span className="offline-indicator-dot" />
-                      Offline Rooms ({offlineBookmarksList.length})
-                    </h4>
-                    {offlineBookmarksList.length === 0 ? (
-                      <div className="empty-state-card compact">
-                        <p>No offline bookmarked rooms.</p>
-                      </div>
-                    ) : (
-                      <div className="split-column-cards-list">
-                        {offlineBookmarksList.map(room => renderRoomCard(room))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-          </motion.div>
-        )}
-
-        {/* NETWORK FEED SECTION */}
-        {activeSection === "feed" && (
-          <motion.div
-            key="feed"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            className="feed-section-container"
-            style={{ width: "100%" }}
-          >
-            <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
-              <div className="network-left-column" style={{ flex: "1 1 70%", minWidth: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
-                <StoriesSystem user={user} addToast={addToast} />
-                <DeveloperFeed user={user} addToast={addToast} />
-              </div>
-              <div className="network-right-column" style={{ flex: "0 0 30%", minWidth: "280px" }}>
-                <NetworkSidebar 
-                  suggestions={suggestions} 
-                  onlineFollows={onlineFollows} 
-                  handleFollowToggle={handleFollowToggle}
-                  handleViewUserProfile={handleViewUserProfile}
-                  setPreselectedChatPartner={setPreselectedChatPartner}
-                  navigate={navigate}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* FOLLOWING SECTION */}
-        {activeSection === "following" && (
-          <motion.div
-            key="following"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            className="following-section-container"
-          >
-            {/* V2 Sub-navigation tabs */}
-            <div className="social-v2-tabs-nav">
-              <button 
-                onClick={() => setSocialSubTab("explore")} 
-                className={`social-v2-tab-btn ${socialSubTab === "explore" ? "active" : ""}`}
-              >
-                Explore Developers
-              </button>
-              <button 
-                onClick={() => setSocialSubTab("analytics")} 
-                className={`social-v2-tab-btn ${socialSubTab === "analytics" ? "active" : ""}`}
-              >
-                Analytics
-              </button>
-            </div>
-
-            <AnimatePresence mode="wait">
-
-              {socialSubTab === "analytics" && (
-                <motion.div
-                  key="analytics"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.18 }}
-                  style={{ width: "100%" }}
-                >
-                  <NetworkAnalytics addToast={addToast} />
-                </motion.div>
-              )}
-
-              {socialSubTab === "explore" && (
-                <motion.div
-                  key="explore"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.18 }}
-                  style={{ width: "100%" }}
-                >
-                  <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
-
-              {/* 70% Left Column */}
-              <div className="network-left-column" style={{ flex: "0 0 70%", minWidth: 0 }}>
-
-                {/* Stats row on top of left column */}
-                <div className="ce-stats-grid" style={{ marginBottom: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px", width: "100%" }}>
-                  <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
-                    <div className="stat-card-icon-wrapper blue-theme-wrapper" style={{ width: "32px", height: "32px" }}>
-                      <UserCheck size={14} />
+          {/* BOOKMARKS SECTION */}
+          {activeSection === "bookmarks" && (
+            <motion.div
+              key="bookmarks"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="bookmarks-section-container">
+                {/* Stats Cards Grid for Bookmarks */}
+                <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                      <Bookmark size={18} />
                     </div>
                     <div className="stat-card-info">
-                      <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Following</span>
-                      <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>{followingList.length}</span>
+                      <span className="stat-card-label">Total Bookmarked</span>
+                      <span className="stat-card-val">{savedRooms.length}</span>
                     </div>
                   </div>
-                  <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
-                    <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ width: "32px", height: "32px" }}>
-                      <Users size={14} />
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper green-theme-wrapper">
+                      <Activity size={18} />
                     </div>
                     <div className="stat-card-info">
-                      <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Followers</span>
-                      <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>{followersList.length}</span>
-                    </div>
-                  </div>
-                  <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
-                    <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ width: "32px", height: "32px" }}>
-                      <span className="live-indicator-dot" style={{ margin: 0, width: "8px", height: "8px" }} />
-                    </div>
-                    <div className="stat-card-info" style={{ marginLeft: "6px" }}>
-                      <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Online</span>
-                      <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>
-                        {followingList.filter(f => f.isOnline === true || f.isOnline === "true").length}
+                      <span className="stat-card-label">Active Now</span>
+                      <span className="stat-card-val">
+                        {savedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}
                       </span>
+                    </div>
+                  </div>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                      <Globe size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Public Access</span>
+                      <span className="stat-card-val">{savedRooms.filter(r => !r.isPrivate).length}</span>
+                    </div>
+                  </div>
+                  <div className="compact-stat-card">
+                    <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior">
+                      <Lock size={18} />
+                    </div>
+                    <div className="stat-card-info">
+                      <span className="stat-card-label">Private Rooms</span>
+                      <span className="stat-card-val">{savedRooms.filter(r => r.isPrivate).length}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <UserCheck size={18} className="brand-logo" style={{ color: "var(--ce-primary)" }} />
-                    <h3 className="section-title">Developer Network</h3>
-                    {isFollowingLoading && (
-                      <span className="btn-spinner" style={{ marginLeft: "4px" }} />
-                    )}
-                    <AnimatePresence>
-                      {followingSearch && (
-                        <motion.span
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          className="network-search-count-badge"
-                        >
-                          {filteredFollowing.length} match{filteredFollowing.length !== 1 ? 'es' : ''}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
+                    <Bookmark size={18} className="brand-logo" style={{ color: "var(--ce-accent)" }} />
+                    <h3 className="section-title">My Bookmarked Rooms</h3>
                   </div>
-                  <div className="network-search-group">
-                    <div className="network-search-input-wrapper">
-                      <Search size={14} className="network-search-icon" />
-                      <input
-                        ref={followingSearchInputRef}
-                        type="text"
-                        placeholder="Search developers by name or bio..."
-                        value={followingSearch}
-                        onChange={(e) => {
-                          setFollowingSearch(e.target.value);
-                          setVisibleFollowingCount(6);
-                        }}
-                        className="network-search-input"
-                      />
-                      <AnimatePresence>
-                        {followingSearch && (
-                          <motion.button
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            type="button"
-                            className="network-clear-btn"
-                            onClick={() => {
-                              setFollowingSearch("");
-                              setVisibleFollowingCount(6);
-                              followingSearchInputRef.current?.focus();
-                            }}
-                            aria-label="Clear search"
-                          >
-                            <X size={14} />
-                          </motion.button>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                  <div className="section-search-container">
+                    <Search size={13} className="section-search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Search bookmarks..."
+                      value={bookmarkSearch}
+                      onChange={(e) => setBookmarkSearch(e.target.value)}
+                      className="section-search-input"
+                    />
                   </div>
                 </div>
 
-                {followingList.length === 0 ? (
-                  <div className="empty-state-card" style={{ padding: "40px 24px", marginBottom: "32px" }}>
-                    <Users size={32} className="empty-state-icon" style={{ color: "var(--ce-text-muted)", marginBottom: "16px" }} />
-                    <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>Not following anyone yet</h3>
-                    <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Start building your network! Follow developers from suggestions on the sidebar or the Global Leaderboard.</p>
+                {savedRooms.length === 0 ? (
+                  <div className="empty-state-card" style={{ padding: "48px 24px" }}>
+                    <Bookmark size={32} className="empty-state-icon" style={{ color: "var(--ce-accent)", marginBottom: "16px" }} />
+                    <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No bookmarks found</h3>
+                    <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>You haven't bookmarked any spaces yet. Explore public rooms to save them here!</p>
+                    <button
+                      className="room-enter-btn-action"
+                      style={{ margin: "0 auto" }}
+                      onClick={() => navigate("/dashboard?tab=rooms&subtab=explore")}
+                    >
+                      <Globe size={14} /> Explore Rooms
+                    </button>
                   </div>
                 ) : (() => {
-                  if (filteredFollowing.length === 0) {
+                  const filteredBookmarks = savedRooms.filter(room => {
+                    const term = bookmarkSearch.toLowerCase();
+                    return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                  });
+
+                  if (filteredBookmarks.length === 0) {
                     return (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="empty-state-card search-empty-state"
-                        style={{ padding: "40px 24px", marginBottom: "32px", textAlign: "center" }}
-                      >
-                        <div className="search-empty-icon-wrapper">
-                          <Search size={28} className="empty-state-icon-glow" />
-                        </div>
-                        <h4 style={{ margin: "16px 0 8px 0", color: "var(--ce-text-h)", fontSize: "1rem" }}>No results found</h4>
-                        <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>
-                          We couldn't find any followed developers matching "<strong>{followingSearch}</strong>".
-                        </p>
-                        <button
-                          type="button"
-                          className="network-clear-search-btn"
-                          onClick={() => {
-                            setFollowingSearch("");
-                            setVisibleFollowingCount(6);
-                            followingSearchInputRef.current?.focus();
-                          }}
-                        >
-                          Clear Search
-                        </button>
-                      </motion.div>
+                      <div className="empty-state-card" style={{ padding: "32px" }}>
+                        <Search size={24} className="empty-state-icon" />
+                        <p>No bookmarked rooms match search term "{bookmarkSearch}".</p>
+                      </div>
                     );
                   }
 
+                  // Split into Active and Offline
+                  const activeBookmarksList = filteredBookmarks.filter(room => {
+                    const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                    return roomFromLive && (roomFromLive.activeUsersCount || 0) > 0;
+                  });
+
+                  const offlineBookmarksList = filteredBookmarks.filter(room => {
+                    const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                    return !roomFromLive || (roomFromLive.activeUsersCount || 0) === 0;
+                  });
+
                   return (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                      <motion.div
-                        layout
-                        className="following-developers-grid"
-                        style={{ width: "100%", marginBottom: "24px", position: "relative" }}
-                      >
-                        <AnimatePresence mode="popLayout">
-                          {filteredFollowing.slice(0, visibleFollowingCount).map(dev => {
-                            const isOnline = dev.isOnline === true || dev.isOnline === "true";
-                            const followsYou = followersList.some(f => String(f._id || f) === String(dev._id || dev.id));
+                    <div className="dashboard-split-layout">
+                      <div className="split-column">
+                        <h4 className="split-column-title">
+                          <span className="live-indicator-dot" />
+                          Active Rooms ({activeBookmarksList.length})
+                        </h4>
+                        {activeBookmarksList.length === 0 ? (
+                          <div className="empty-state-card compact">
+                            <p>No active bookmarked rooms.</p>
+                          </div>
+                        ) : (
+                          <div className="split-column-cards-list">
+                            {activeBookmarksList.map(room => {
+                              const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
+                              return renderRoomCard(liveRoomObj || room);
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="split-column">
+                        <h4 className="split-column-title">
+                          <span className="offline-indicator-dot" />
+                          Offline Rooms ({offlineBookmarksList.length})
+                        </h4>
+                        {offlineBookmarksList.length === 0 ? (
+                          <div className="empty-state-card compact">
+                            <p>No offline bookmarked rooms.</p>
+                          </div>
+                        ) : (
+                          <div className="split-column-cards-list">
+                            {offlineBookmarksList.map(room => renderRoomCard(room))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          )}
+
+          {/* NETWORK FEED SECTION */}
+          {activeSection === "feed" && (
+            <motion.div
+              key="feed"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              className="feed-section-container"
+              style={{ width: "100%" }}
+            >
+              <div className="premium-layout-wrapper">
+                <div className="premium-stories-column">
+                  <StoriesSystem user={user} addToast={addToast} vertical={true} />
+                </div>
+                <div className="premium-center-feed">
+                  <DeveloperFeed
+                    user={user}
+                    addToast={addToast}
+                    followingList={followingList}
+                    handleFollowToggle={handleFollowToggle}
+                    onViewProfile={handleViewUserProfile}
+                    suggestions={suggestions}
+                  />
+                </div>
+                <NetworkSidebar
+                  suggestions={suggestions}
+                  onlineFollows={onlineFollows}
+                  handleFollowToggle={handleFollowToggle}
+                  handleViewUserProfile={handleViewUserProfile}
+                  setPreselectedChatPartner={setPreselectedChatPartner}
+                  navigate={navigate}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* FOLLOWING SECTION */}
+          {activeSection === "following" && (
+            <motion.div
+              key="following"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              className="following-section-container"
+            >
+              {/* V2 Sub-navigation tabs */}
+              <div className="social-v2-tabs-nav">
+                <button
+                  onClick={() => setSocialSubTab("explore")}
+                  className={`social-v2-tab-btn ${socialSubTab === "explore" ? "active" : ""}`}
+                >
+                  Explore Developers
+                </button>
+                <button
+                  onClick={() => setSocialSubTab("analytics")}
+                  className={`social-v2-tab-btn ${socialSubTab === "analytics" ? "active" : ""}`}
+                >
+                  Analytics
+                </button>
+              </div>
+
+              <AnimatePresence mode="wait">
+
+                {socialSubTab === "analytics" && (
+                  <motion.div
+                    key="analytics"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.18 }}
+                    style={{ width: "100%" }}
+                  >
+                    <NetworkAnalytics addToast={addToast} />
+                  </motion.div>
+                )}
+
+                {socialSubTab === "explore" && (
+                  <motion.div
+                    key="explore"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.18 }}
+                    style={{ width: "100%" }}
+                  >
+                    <div className="network-split-layout" style={{ display: "flex", gap: "24px", width: "100%", alignItems: "flex-start" }}>
+
+                      {/* 70% Left Column */}
+                      <div className="network-left-column" style={{ flex: "0 0 70%", minWidth: 0 }}>
+
+                        {/* Stats row on top of left column */}
+                        <div className="ce-stats-grid" style={{ marginBottom: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px", width: "100%" }}>
+                          <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
+                            <div className="stat-card-icon-wrapper blue-theme-wrapper" style={{ width: "32px", height: "32px" }}>
+                              <UserCheck size={14} />
+                            </div>
+                            <div className="stat-card-info">
+                              <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Following</span>
+                              <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>{followingList.length}</span>
+                            </div>
+                          </div>
+                          <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
+                            <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ width: "32px", height: "32px" }}>
+                              <Users size={14} />
+                            </div>
+                            <div className="stat-card-info">
+                              <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Followers</span>
+                              <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>{followersList.length}</span>
+                            </div>
+                          </div>
+                          <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
+                            <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ width: "32px", height: "32px" }}>
+                              <span className="live-indicator-dot" style={{ margin: 0, width: "8px", height: "8px" }} />
+                            </div>
+                            <div className="stat-card-info" style={{ marginLeft: "6px" }}>
+                              <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Online</span>
+                              <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>
+                                {followingList.filter(f => f.isOnline === true || f.isOnline === "true").length}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <UserCheck size={18} className="brand-logo" style={{ color: "var(--ce-primary)" }} />
+                            <h3 className="section-title">Developer Network</h3>
+                            {isFollowingLoading && (
+                              <span className="btn-spinner" style={{ marginLeft: "4px" }} />
+                            )}
+                            <AnimatePresence>
+                              {followingSearch && (
+                                <motion.span
+                                  initial={{ opacity: 0, scale: 0.8 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.8 }}
+                                  className="network-search-count-badge"
+                                >
+                                  {filteredFollowing.length} match{filteredFollowing.length !== 1 ? 'es' : ''}
+                                </motion.span>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                          <div className="network-search-group">
+                            <div className="network-search-input-wrapper">
+                              <Search size={14} className="network-search-icon" />
+                              <input
+                                ref={followingSearchInputRef}
+                                type="text"
+                                placeholder="Search developers by name or bio..."
+                                value={followingSearch}
+                                onChange={(e) => {
+                                  setFollowingSearch(e.target.value);
+                                  setVisibleFollowingCount(6);
+                                }}
+                                className="network-search-input"
+                              />
+                              <AnimatePresence>
+                                {followingSearch && (
+                                  <motion.button
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    type="button"
+                                    className="network-clear-btn"
+                                    onClick={() => {
+                                      setFollowingSearch("");
+                                      setVisibleFollowingCount(6);
+                                      followingSearchInputRef.current?.focus();
+                                    }}
+                                    aria-label="Clear search"
+                                  >
+                                    <X size={14} />
+                                  </motion.button>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                        </div>
+
+                        {followingList.length === 0 ? (
+                          <div className="empty-state-card" style={{ padding: "40px 24px", marginBottom: "32px" }}>
+                            <Users size={32} className="empty-state-icon" style={{ color: "var(--ce-text-muted)", marginBottom: "16px" }} />
+                            <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>Not following anyone yet</h3>
+                            <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Start building your network! Follow developers from suggestions on the sidebar or the Global Leaderboard.</p>
+                          </div>
+                        ) : (() => {
+                          if (filteredFollowing.length === 0) {
                             return (
                               <motion.div
-                                layout
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9, y: 15 }}
-                                transition={{ type: "spring", stiffness: 220, damping: 26 }}
-                                key={String(dev._id || dev.id || dev)}
-                                className="developer-card-premium"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="empty-state-card search-empty-state"
+                                style={{ padding: "40px 24px", marginBottom: "32px", textAlign: "center" }}
                               >
-                                <div className="dev-card-banner" style={{ background: dev.coverBanner ? `url(${dev.coverBanner}) center/cover no-repeat` : getBannerGradient(dev.username) }} />
-                                <div className="dev-card-avatar-wrapper">
-                                  {dev.avatar ? (
-                                    <img src={dev.avatar} alt={dev.username} className="dev-card-avatar" />
-                                  ) : (
-                                    <div className="dev-card-avatar-fallback" style={{ backgroundColor: getAvatarColor(dev.username) }}>
-                                      {dev.username.charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                  <span className={`dev-online-status-badge ${isOnline ? "online" : "offline"}`} />
+                                <div className="search-empty-icon-wrapper">
+                                  <Search size={28} className="empty-state-icon-glow" />
                                 </div>
+                                <h4 style={{ margin: "16px 0 8px 0", color: "var(--ce-text-h)", fontSize: "1rem" }}>No results found</h4>
+                                <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>
+                                  We couldn't find any followed developers matching "<strong>{followingSearch}</strong>".
+                                </p>
+                                <button
+                                  type="button"
+                                  className="network-clear-search-btn"
+                                  onClick={() => {
+                                    setFollowingSearch("");
+                                    setVisibleFollowingCount(6);
+                                    followingSearchInputRef.current?.focus();
+                                  }}
+                                >
+                                  Clear Search
+                                </button>
+                              </motion.div>
+                            );
+                          }
 
-                                <div className="dev-card-body">
-                                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
-                                    <h4 className="dev-card-username">@{dev.username}</h4>
-                                    {followsYou && (
-                                      <span className="dev-follows-you-pill">Follows You</span>
-                                    )}
-                                  </div>
-                                  <span className="dev-card-email">{dev.email}</span>
-                                  <p className="dev-card-bio">{dev.bio || "No bio description set yet."}</p>
+                          return (
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+                              <motion.div
+                                layout
+                                className="following-developers-grid"
+                                style={{ width: "100%", marginBottom: "24px", position: "relative" }}
+                              >
+                                <AnimatePresence mode="popLayout">
+                                  {filteredFollowing.slice(0, visibleFollowingCount).map(dev => {
+                                    const isOnline = dev.isOnline === true || dev.isOnline === "true";
+                                    const followsYou = followersList.some(f => String(f._id || f) === String(dev._id || dev.id));
+                                    return (
+                                      <motion.div
+                                        layout
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                                        transition={{ type: "spring", stiffness: 220, damping: 26 }}
+                                        key={String(dev._id || dev.id || dev)}
+                                        className="developer-card-premium"
+                                      >
+                                        <div className="dev-card-banner" style={{ background: dev.coverBanner ? `url(${dev.coverBanner}) center/cover no-repeat` : getBannerGradient(dev.username) }} />
+                                        <div className="dev-card-avatar-wrapper">
+                                          {dev.avatar ? (
+                                            <img src={dev.avatar} alt={dev.username} className="dev-card-avatar" />
+                                          ) : (
+                                            <div className="dev-card-avatar-fallback" style={{ backgroundColor: getAvatarColor(dev.username) }}>
+                                              {dev.username.charAt(0).toUpperCase()}
+                                            </div>
+                                          )}
+                                          <span className={`dev-online-status-badge ${isOnline ? "online" : "offline"}`} />
+                                        </div>
 
-                                  {dev.programmingLanguages && dev.programmingLanguages.length > 0 && (
-                                    <div className="dev-card-langs">
-                                      {dev.programmingLanguages.slice(0, 3).map((lang, i) => (
-                                        <span key={i} className="dev-lang-tag">{lang}</span>
-                                      ))}
-                                      {dev.programmingLanguages.length > 3 && (
-                                        <span className="dev-lang-tag-more">+{dev.programmingLanguages.length - 3}</span>
+                                        <div className="dev-card-body">
+                                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                                            <h4 className="dev-card-username">@{dev.username}</h4>
+                                            {followsYou && (
+                                              <span className="dev-follows-you-pill">Follows You</span>
+                                            )}
+                                          </div>
+                                          <span className="dev-card-email">{dev.email}</span>
+                                          <p className="dev-card-bio">{dev.bio || "No bio description set yet."}</p>
+
+                                          {dev.programmingLanguages && dev.programmingLanguages.length > 0 && (
+                                            <div className="dev-card-langs">
+                                              {dev.programmingLanguages.slice(0, 3).map((lang, i) => (
+                                                <span key={i} className="dev-lang-tag">{lang}</span>
+                                              ))}
+                                              {dev.programmingLanguages.length > 3 && (
+                                                <span className="dev-lang-tag-more">+{dev.programmingLanguages.length - 3}</span>
+                                              )}
+                                            </div>
+                                          )}
+
+                                          <div className="dev-card-stats-row">
+                                            <div className="dev-card-stat">
+                                              <strong>{dev.followersCount || 0}</strong>
+                                              <span>Followers</span>
+                                            </div>
+                                            <div className="dev-card-stat">
+                                              <strong>{dev.followingCount || 0}</strong>
+                                              <span>Following</span>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="dev-card-actions">
+                                          <button
+                                            onClick={() => {
+                                              setPreselectedChatPartner(dev);
+                                              navigate("/dashboard?tab=messages");
+                                            }}
+                                            className="dev-btn-message"
+                                          >
+                                            <MessageSquare size={14} /> Message
+                                          </button>
+                                          <div className="dev-card-secondary-actions">
+                                            <button
+                                              onClick={() => handleViewUserProfile(dev._id || dev.id)}
+                                              className="dev-btn-view-profile"
+                                            >
+                                              Profile
+                                            </button>
+                                            <button
+                                              onClick={() => handleFollowToggle(dev._id || dev.id)}
+                                              className="dev-btn-unfollow"
+                                            >
+                                              Unfollow
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </motion.div>
+                                    );
+                                  })}
+                                </AnimatePresence>
+                              </motion.div>
+
+                              {filteredFollowing.length > visibleFollowingCount && (
+                                <button
+                                  onClick={() => setVisibleFollowingCount(prev => prev + 6)}
+                                  className="network-load-more-btn"
+                                >
+                                  Load More Developers
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* 30% Right Column */}
+                      <div className="network-right-column" style={{ flex: "0 0 30%", display: "flex", flexDirection: "column", gap: "20px", minWidth: "260px" }}>
+
+                        {/* POWERFUL WIDGET 1: Profile Invite Link */}
+                        <div style={{
+                          background: "linear-gradient(135deg, rgba(88, 166, 255, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)",
+                          border: "1px solid rgba(88, 166, 255, 0.15)",
+                          borderRadius: "12px",
+                          padding: "16px",
+                          boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "12px"
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Sparkles size={16} style={{ color: "var(--ce-primary)" }} />
+                            <h4 style={{ margin: 0, fontSize: "0.85rem", fontWeight: "700", color: "var(--ce-text-h)" }}>Network Overview</h4>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                            <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
+                              <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block" }}>Followers</span>
+                              <strong style={{ fontSize: "1.1rem", color: "var(--ce-text-h)" }}>{followersList.length}</strong>
+                            </div>
+                            <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
+                              <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block" }}>Following</span>
+                              <strong style={{ fontSize: "1.1rem", color: "var(--ce-text-h)" }}>{followingList.length}</strong>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            background: "rgba(0,0,0,0.15)",
+                            borderRadius: "8px",
+                            padding: "10px",
+                            border: "1px solid rgba(255,255,255,0.03)"
+                          }}>
+                            <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block", marginBottom: "4px" }}>Share Profile Invite Link</span>
+                            <div style={{ display: "flex", gap: "6px" }}>
+                              <input
+                                type="text"
+                                readOnly
+                                value={`${window.location.origin}/user/${user?.id || user?._id}`}
+                                style={{
+                                  flex: 1,
+                                  background: "rgba(0,0,0,0.2)",
+                                  border: "1px solid var(--ce-border)",
+                                  borderRadius: "4px",
+                                  padding: "4px 8px",
+                                  fontSize: "0.65rem",
+                                  color: "var(--ce-text-muted)",
+                                  textOverflow: "ellipsis"
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  navigator.clipboard.writeText(`${window.location.origin}/user/${user?.id || user?._id}`);
+                                  addToast("Profile invite link copied!", "success");
+                                }}
+                                style={{
+                                  padding: "4px 8px",
+                                  background: "var(--ce-primary)",
+                                  color: "#fff",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  fontSize: "0.65rem",
+                                  fontWeight: "600",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* SUGGESTED DEVELOPERS IN FOLLOWING TAB */}
+                        {suggestions.length > 0 && (
+                          <div className="suggested-developers-section" style={{
+                            background: "rgba(255,255,255,0.01)",
+                            border: "1px solid var(--ce-border)",
+                            borderRadius: "12px",
+                            padding: "16px"
+                          }}>
+                            <div className="section-header" style={{ marginBottom: "16px" }}>
+                              <Compass size={16} className="brand-logo" style={{ color: "var(--ce-warning)" }} />
+                              <h3 className="section-title" style={{ fontSize: "0.85rem" }}>Suggested Developers</h3>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                              {suggestions.slice(0, 5).map(dev => (
+                                <div key={dev._id} className="suggested-dev-card-compact">
+                                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                                    <div className="suggested-avatar-wrapper" style={{ position: "relative" }}>
+                                      {dev.avatar ? (
+                                        <img src={dev.avatar} alt={dev.username} className="suggested-avatar" />
+                                      ) : (
+                                        <div className="suggested-avatar-fallback" style={{ backgroundColor: getAvatarColor(dev.username) }}>
+                                          {dev.username.charAt(0).toUpperCase()}
+                                        </div>
                                       )}
+                                      <span className={`dev-online-status-badge mini ${dev.isOnline === true || dev.isOnline === "true" ? "online" : "offline"}`} />
                                     </div>
-                                  )}
-
-                                  <div className="dev-card-stats-row">
-                                    <div className="dev-card-stat">
-                                      <strong>{dev.followersCount || 0}</strong>
-                                      <span>Followers</span>
-                                    </div>
-                                    <div className="dev-card-stat">
-                                      <strong>{dev.followingCount || 0}</strong>
-                                      <span>Following</span>
+                                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                                      <span className="suggested-username" style={{ fontWeight: 700, color: "var(--ce-text-h)", fontSize: "0.8rem" }}>@{dev.username}</span>
+                                      <span className="suggested-bio" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                        {dev.bio || "Full stack developer"}
+                                      </span>
                                     </div>
                                   </div>
-                                </div>
-
-                                <div className="dev-card-actions">
-                                  <button
-                                    onClick={() => {
-                                      setPreselectedChatPartner(dev);
-                                      navigate("/dashboard?tab=messages");
-                                    }}
-                                    className="dev-btn-message"
-                                  >
-                                    <MessageSquare size={14} /> Message
-                                  </button>
-                                  <div className="dev-card-secondary-actions">
+                                  <div className="suggested-actions" style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
                                     <button
                                       onClick={() => handleViewUserProfile(dev._id || dev.id)}
-                                      className="dev-btn-view-profile"
+                                      className="suggested-btn-profile"
                                     >
                                       Profile
                                     </button>
                                     <button
                                       onClick={() => handleFollowToggle(dev._id || dev.id)}
-                                      className="dev-btn-unfollow"
+                                      className="suggested-btn-follow"
                                     >
-                                      Unfollow
+                                      + Follow
                                     </button>
                                   </div>
                                 </div>
-                              </motion.div>
-                            );
-                          })}
-                        </AnimatePresence>
-                      </motion.div>
-
-                      {filteredFollowing.length > visibleFollowingCount && (
-                        <button
-                          onClick={() => setVisibleFollowingCount(prev => prev + 6)}
-                          className="network-load-more-btn"
-                        >
-                          Load More Developers
-                        </button>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* 30% Right Column */}
-              <div className="network-right-column" style={{ flex: "0 0 30%", display: "flex", flexDirection: "column", gap: "20px", minWidth: "260px" }}>
-
-                {/* POWERFUL WIDGET 1: Profile Invite Link */}
-                <div style={{
-                  background: "linear-gradient(135deg, rgba(88, 166, 255, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)",
-                  border: "1px solid rgba(88, 166, 255, 0.15)",
-                  borderRadius: "12px",
-                  padding: "16px",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Sparkles size={16} style={{ color: "var(--ce-primary)" }} />
-                    <h4 style={{ margin: 0, fontSize: "0.85rem", fontWeight: "700", color: "var(--ce-text-h)" }}>Network Overview</h4>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                    <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
-                      <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block" }}>Followers</span>
-                      <strong style={{ fontSize: "1.1rem", color: "var(--ce-text-h)" }}>{followersList.length}</strong>
-                    </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
-                      <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block" }}>Following</span>
-                      <strong style={{ fontSize: "1.1rem", color: "var(--ce-text-h)" }}>{followingList.length}</strong>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    background: "rgba(0,0,0,0.15)",
-                    borderRadius: "8px",
-                    padding: "10px",
-                    border: "1px solid rgba(255,255,255,0.03)"
-                  }}>
-                    <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block", marginBottom: "4px" }}>Share Profile Invite Link</span>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <input
-                        type="text"
-                        readOnly
-                        value={`${window.location.origin}/user/${user?.id || user?._id}`}
-                        style={{
-                          flex: 1,
-                          background: "rgba(0,0,0,0.2)",
-                          border: "1px solid var(--ce-border)",
-                          borderRadius: "4px",
-                          padding: "4px 8px",
-                          fontSize: "0.65rem",
-                          color: "var(--ce-text-muted)",
-                          textOverflow: "ellipsis"
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          navigator.clipboard.writeText(`${window.location.origin}/user/${user?.id || user?._id}`);
-                          addToast("Profile invite link copied!", "success");
-                        }}
-                        style={{
-                          padding: "4px 8px",
-                          background: "var(--ce-primary)",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "4px",
-                          fontSize: "0.65rem",
-                          fontWeight: "600",
-                          cursor: "pointer"
-                        }}
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SUGGESTED DEVELOPERS IN FOLLOWING TAB */}
-                {suggestions.length > 0 && (
-                  <div className="suggested-developers-section" style={{
-                    background: "rgba(255,255,255,0.01)",
-                    border: "1px solid var(--ce-border)",
-                    borderRadius: "12px",
-                    padding: "16px"
-                  }}>
-                    <div className="section-header" style={{ marginBottom: "16px" }}>
-                      <Compass size={16} className="brand-logo" style={{ color: "var(--ce-warning)" }} />
-                      <h3 className="section-title" style={{ fontSize: "0.85rem" }}>Suggested Developers</h3>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      {suggestions.slice(0, 5).map(dev => (
-                        <div key={dev._id} className="suggested-dev-card-compact">
-                          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                            <div className="suggested-avatar-wrapper" style={{ position: "relative" }}>
-                              {dev.avatar ? (
-                                <img src={dev.avatar} alt={dev.username} className="suggested-avatar" />
-                              ) : (
-                                <div className="suggested-avatar-fallback" style={{ backgroundColor: getAvatarColor(dev.username) }}>
-                                  {dev.username.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <span className={`dev-online-status-badge mini ${dev.isOnline === true || dev.isOnline === "true" ? "online" : "offline"}`} />
-                            </div>
-                            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                              <span className="suggested-username" style={{ fontWeight: 700, color: "var(--ce-text-h)", fontSize: "0.8rem" }}>@{dev.username}</span>
-                              <span className="suggested-bio" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {dev.bio || "Full stack developer"}
-                              </span>
+                              ))}
                             </div>
                           </div>
-                          <div className="suggested-actions" style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                            <button
-                              onClick={() => handleViewUserProfile(dev._id || dev.id)}
-                              className="suggested-btn-profile"
-                            >
-                              Profile
-                            </button>
-                            <button
-                              onClick={() => handleFollowToggle(dev._id || dev.id)}
-                              className="suggested-btn-follow"
-                            >
-                              + Follow
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
                   </motion.div>
                 )}
-            </AnimatePresence>
+              </AnimatePresence>
 
 
-          </motion.div>
-        )}
+            </motion.div>
+          )}
 
-        {/* LEADERBOARD SECTION */}
-        {activeSection === "leaderboard" && (
-          <motion.div
-            key="leaderboard"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            className="leaderboard-section-container"
-          >
-            {/* Leaderboard Stats Cards */}
-            <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                  <Users size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Platform Developers</span>
-                  <span className="stat-card-val">{leaderboardData.length}</span>
-                </div>
-              </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior" style={{ background: "var(--ce-primary-glow)", color: "var(--ce-primary)" }}>
-                  <Trophy size={18} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Your Global Rank</span>
-                  <span className="stat-card-val">
-                    {(() => {
-                      const myIndex = leaderboardData.findIndex(item => String(item.userId) === String(user?.id || user?._id));
-                      return myIndex !== -1 ? `#${myIndex + 1}` : "N/A";
-                    })()}
-                  </span>
-                </div>
-              </div>
-              <div className="compact-stat-card">
-                <div className="stat-card-icon-wrapper purple-theme-wrapper">
-                  <Flame size={18} style={{ color: "#ff7b00" }} />
-                </div>
-                <div className="stat-card-info">
-                  <span className="stat-card-label">Highest Score</span>
-                  <span className="stat-card-val">
-                    {leaderboardData[0] ? `${leaderboardData[0].xp} XP` : "0 XP"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Podium for top 3 */}
-            {leaderboardData.length > 0 && !leaderboardSearch && leaderboardTab === "global" && (
-              <div className="leaderboard-podium">
-                {/* 2nd Place */}
-                {leaderboardData[1] && (
-                  <div className="podium-item rank-silver" onClick={() => handleViewUserProfile(leaderboardData[1].userId)}>
-                    <div className="podium-avatar-wrapper">
-                      {leaderboardData[1].avatar ? (
-                        <img src={leaderboardData[1].avatar} alt={leaderboardData[1].username} className="podium-avatar" />
-                      ) : (
-                        <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[1].username) }}>
-                          {leaderboardData[1].username.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="podium-badge">2</div>
-                    </div>
-                    <span className="podium-username">@{leaderboardData[1].username}</span>
-                    <span className="podium-title-badge">{leaderboardData[1].title || "Senior Coder"}</span>
-                    <div className="rank-podium height-silver">
-                      <span className="podium-xp">{leaderboardData[1].xp} XP</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* 1st Place */}
-                {leaderboardData[0] && (
-                  <div className="podium-item rank-gold" onClick={() => handleViewUserProfile(leaderboardData[0].userId)}>
-                    <div className="podium-avatar-wrapper">
-                      {leaderboardData[0].avatar ? (
-                        <img src={leaderboardData[0].avatar} alt={leaderboardData[0].username} className="podium-avatar" />
-                      ) : (
-                        <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[0].username) }}>
-                          {leaderboardData[0].username.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="podium-badge"><Trophy size={14} fill="#ffd700" /></div>
-                    </div>
-                    <span className="podium-username">@{leaderboardData[0].username}</span>
-                    <span className="podium-title-badge primary">{leaderboardData[0].title || "Antigravity Architect"}</span>
-                    <div className="rank-podium height-gold">
-                      <span className="podium-xp">{leaderboardData[0].xp} XP</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3rd Place */}
-                {leaderboardData[2] && (
-                  <div className="podium-item rank-bronze" onClick={() => handleViewUserProfile(leaderboardData[2].userId)}>
-                    <div className="podium-avatar-wrapper">
-                      {leaderboardData[2].avatar ? (
-                        <img src={leaderboardData[2].avatar} alt={leaderboardData[2].username} className="podium-avatar" />
-                      ) : (
-                        <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[2].username) }}>
-                          {leaderboardData[2].username.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="podium-badge">3</div>
-                    </div>
-                    <span className="podium-username">@{leaderboardData[2].username}</span>
-                    <span className="podium-title-badge">{leaderboardData[2].title || "Code Artisan"}</span>
-                    <div className="rank-podium height-bronze">
-                      <span className="podium-xp">{leaderboardData[2].xp} XP</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Leaderboard Controls (Tabs and Search) */}
-            <div className="leaderboard-table-controls-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
-              {/* Filter Tabs */}
-              <div className="leaderboard-filter-tabs">
-                <button
-                  onClick={() => setLeaderboardTab("global")}
-                  className={`leaderboard-filter-tab-btn ${leaderboardTab === "global" ? "active" : ""}`}
-                >
-                  Global Leaders
-                </button>
-                <button
-                  onClick={() => setLeaderboardTab("network")}
-                  className={`leaderboard-filter-tab-btn ${leaderboardTab === "network" ? "active" : ""}`}
-                >
-                  My Network
-                </button>
-                <button
-                  onClick={() => setLeaderboardTab("top10")}
-                  className={`leaderboard-filter-tab-btn ${leaderboardTab === "top10" ? "active" : ""}`}
-                >
-                  Top 10 Elite
-                </button>
-              </div>
-
-              {/* Search input */}
-              <div className="section-search-container" style={{ margin: 0 }}>
-                <Search size={13} className="section-search-icon" />
-                <input
-                  type="text"
-                  placeholder="Search developers..."
-                  value={leaderboardSearch}
-                  onChange={(e) => setLeaderboardSearch(e.target.value)}
-                  className="section-search-input"
-                />
-              </div>
-            </div>
-
-            {/* Global Rankings List */}
-            <div className="history-table-wrapper">
-              {isLoadingLeaderboard ? (
-                <div style={{ textAlign: "center", padding: "48px", color: "var(--ce-text-muted)" }}>
-                  <div className="btn-spinner" style={{ margin: "0 auto 12px auto", width: "24px", height: "24px" }}></div>
-                  Synchronizing Leaderboard Rankings...
-                </div>
-              ) : (
-                (() => {
-                  let filteredList = leaderboardData.filter(item =>
-                    item.username.toLowerCase().includes(leaderboardSearch.toLowerCase())
-                  );
-
-                  // Apply tab filters
-                  if (leaderboardTab === "network") {
-                    filteredList = filteredList.filter(item =>
-                      followingList.some(f => String(f._id || f) === String(item.userId)) ||
-                      String(item.userId) === String(user?.id || user?._id)
-                    );
-                  } else if (leaderboardTab === "top10") {
-                    filteredList = filteredList.slice(0, 10);
-                  }
-
-                  if (filteredList.length === 0) {
-                    return (
-                      <div style={{ textAlign: "center", padding: "48px", color: "var(--ce-text-muted)" }}>
-                        No developers found.
-                      </div>
-                    );
-                  }
-
-                  // If search is active or using custom tabs, show everyone in order. Otherwise (global, no search), slice out the podium top 3
-                  const displayList = (leaderboardSearch || leaderboardTab !== "global") ? filteredList : filteredList.slice(3);
-
-                  const getDeveloperTier = (xp) => {
-                    if (xp >= 1000) return { name: "Legendary Arch-Coder", className: "tier-badge legendary" };
-                    if (xp >= 500) return { name: "Elite Architect", className: "tier-badge elite" };
-                    if (xp >= 250) return { name: "Master Engineer", className: "tier-badge master" };
-                    if (xp >= 100) return { name: "Senior Developer", className: "tier-badge senior" };
-                    return { name: "Junior Coder", className: "tier-badge junior" };
-                  };
-
-                  return (
-                    <table className="history-data-table leaderboard-table">
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>Developer</th>
-                          <th>Developer Tier</th>
-                          <th>Coding XP</th>
-                          <th className="text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayList.map((item) => {
-                          const isCurrentUser = String(item.userId) === String(user?.id || user?._id);
-                          const isFollowingUser = followingList.some(f => String(f._id || f) === String(item.userId));
-                          const tier = getDeveloperTier(item.xp);
-
-                          let rankDisplay = `#${item.rank}`;
-                          let rankClass = "";
-                          if (item.rank === 1) {
-                            rankDisplay = "🥇";
-                            rankClass = "rank-medal-1";
-                          } else if (item.rank === 2) {
-                            rankDisplay = "🥈";
-                            rankClass = "rank-medal-2";
-                          } else if (item.rank === 3) {
-                            rankDisplay = "🥉";
-                            rankClass = "rank-medal-3";
-                          }
-
-                          return (
-                            <tr key={item.userId} className={isCurrentUser ? "current-user-row-highlight" : ""}>
-                              <td>
-                                <span className={`leaderboard-rank-number ${rankClass}`}>
-                                  {rankDisplay}
-                                </span>
-                              </td>
-                              <td style={{ cursor: "pointer" }} onClick={() => handleViewUserProfile(item.userId)}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                  {item.avatar ? (
-                                    <img src={item.avatar} alt={item.username} className="user-avatar-small" style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover" }} />
-                                  ) : (
-                                    <div className="user-avatar-small" style={{ width: "28px", height: "28px", borderRadius: "50%", backgroundColor: getAvatarColor(item.username), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                      {item.username.charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                  <div style={{ display: "flex", flexDirection: "column" }}>
-                                    <span style={{ fontWeight: "700", color: "var(--ce-text-h)" }}>{item.username} {isCurrentUser ? "(you)" : ""}</span>
-                                    <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{item.email}</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className={tier.className}>
-                                  {tier.name}
-                                </span>
-                              </td>
-                              <td>
-                                <strong style={{ color: "var(--ce-primary)" }}>{item.xp} XP</strong>
-                              </td>
-                              <td className="text-right">
-                                {isCurrentUser ? (
-                                  <span style={{ fontSize: "0.75rem", color: "var(--ce-primary)", fontWeight: "600" }}>Your Rank</span>
-                                ) : (
-                                  <button
-                                    onClick={() => handleFollowToggle(item.userId)}
-                                    className={`history-resume-btn ${isFollowingUser ? "unfollow" : "follow"}`}
-                                    style={{
-                                      fontSize: "0.72rem",
-                                      padding: "4px 10px",
-                                      background: isFollowingUser ? "var(--ce-surface-card)" : "var(--ce-primary-glow)",
-                                      color: isFollowingUser ? "var(--ce-text-muted)" : "var(--ce-primary)",
-                                      border: "1px solid var(--ce-border)"
-                                    }}
-                                  >
-                                    {isFollowingUser ? "Following" : "+ Follow"}
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  );
-                })()
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ACHIEVEMENTS SECTION */}
-        {activeSection === "achievements" && (() => {
-          const achievementsList = [
-            {
-              id: "creator_pro",
-              title: "Creator Pro",
-              description: "Create 5 or more rooms",
-              icon: FolderGit,
-              color: "#3b82f6",
-              condition: (stats.totalCreated || 0) >= 5,
-              current: stats.totalCreated || 0,
-              target: 5,
-              category: "Development",
-              xpReward: 150,
-              tip: "To complete this achievement, use the 'Create Workspace Room' form in the Rooms tab and initialize 5 separate workspaces."
-            },
-            {
-              id: "team_player",
-              title: "Team Player",
-              description: "Join and collaborate in 3 or more rooms",
-              icon: Users,
-              color: "#10b981",
-              condition: (stats.totalJoined || 0) >= 3,
-              current: stats.totalJoined || 0,
-              target: 3,
-              category: "Collaboration",
-              xpReward: 120,
-              tip: "Browse through active Live Rooms and join at least 3 distinct workspaces hosted by other developers."
-            },
-            {
-              id: "script_master",
-              title: "Script Master",
-              description: "Execute compilation script 10 or more times",
-              icon: Terminal,
-              color: "#f59e0b",
-              condition: (stats.executions || 0) >= 10,
-              current: stats.executions || 0,
-              target: 10,
-              category: "Activity",
-              xpReward: 80,
-              tip: "Open the code editor in any of your workspaces and press the compile/run button 10 times to test your scripts."
-            },
-            {
-              id: "marathoner",
-              title: "Code Marathoner",
-              description: "Log 5 hours of active development time",
-              icon: Clock,
-              color: "#8b5cf6",
-              condition: (stats.codingHours || 0) >= 5,
-              current: stats.codingHours || 0,
-              target: 5,
-              category: "Milestones",
-              xpReward: 200,
-              tip: "Spend a cumulative total of 5 hours active in the workspace code editor collaborating or compiling programs."
-            },
-            {
-              id: "social_coder",
-              title: "Social Coder",
-              description: "Like or Bookmark 5 or more workspaces",
-              icon: Heart,
-              color: "#ec4899",
-              condition: (likedRooms.length + savedRooms.length) >= 5,
-              current: likedRooms.length + savedRooms.length,
-              target: 5,
-              category: "Social",
-              xpReward: 50,
-              tip: "Go to Live Rooms or other developers' shared spaces and like/bookmark at least 5 different workspaces."
-            },
-            {
-              id: "polyglot",
-              title: "Polyglot Developer",
-              description: "Create workspaces in 3 different languages",
-              icon: Code,
-              color: "#06b6d4",
-              condition: new Set(historyRooms.filter(r => r.language).map(r => r.language.toLowerCase())).size >= 3,
-              current: new Set(historyRooms.filter(r => r.language).map(r => r.language.toLowerCase())).size,
-              target: 3,
-              category: "Development",
-              xpReward: 150,
-              tip: "Launch workspaces choosing 3 different languages (e.g. JavaScript, Python, C++) when configuring room creation settings."
-            },
-            {
-              id: "rising_star",
-              title: "Rising Star",
-              description: "Earn 100 or more developer points",
-              icon: Sparkles,
-              color: "#f43f5e",
-              condition: (stats.totalPoints || 0) >= 100,
-              current: stats.totalPoints || 0,
-              target: 100,
-              category: "Milestones",
-              xpReward: 100,
-              tip: "Collect 100 XP points. Points are earned by coding, hosting collaborative sessions, and getting followers."
-            },
-            {
-              id: "elite_architect",
-              title: "Elite Architect",
-              description: "Reach Antigravity Architect tier (400+ points)",
-              icon: Trophy,
-              color: "#e11d48",
-              condition: (stats.totalPoints || 0) >= 400,
-              current: stats.totalPoints || 0,
-              target: 400,
-              category: "Milestones",
-              xpReward: 300,
-              tip: "Gather 400 XP points to earn the most prestigious badge on CodeExpo, proving you are an elite engineering generalist."
-            }
-          ];
-
-          const unlockedCount = achievementsList.filter(a => a.condition).length;
-          const totalCount = achievementsList.length;
-          const radius = 28;
-          const circumference = 2 * Math.PI * radius;
-          const strokeDashoffset = circumference * (1 - (unlockedCount / totalCount));
-
-          const filteredAchievements = achievementsList.filter(ach => {
-            if (achievementFilter === "unlocked") return ach.condition;
-            if (achievementFilter === "locked") return !ach.condition;
-            return true;
-          });
-
-          const containerVariants = {
-            hidden: { opacity: 0 },
-            show: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.05
-              }
-            }
-          };
-
-          const itemVariants = {
-            hidden: { opacity: 0, y: 15, scale: 0.96 },
-            show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 22 } }
-          };
-
-          return (
+          {/* LEADERBOARD SECTION */}
+          {activeSection === "leaderboard" && (
             <motion.div
-              key="achievements"
+              key="leaderboard"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.22, ease: "easeInOut" }}
-              className="achievements-section-container"
+              className="leaderboard-section-container"
             >
-              {/* Upgraded Level & Career Dashboard Banner */}
-              <div className="achievements-dashboard-header">
-                <div className="achievements-dashboard-left">
-                  <div className={`rank-avatar-badge ${rank.badgeClass}`} style={{ color: rank.color, border: `3px solid ${rank.color}` }}>
-                    <Award size={30} />
-                    <span className="rank-badge-glow" style={{ backgroundColor: rank.color }} />
+              {/* Leaderboard Stats Cards */}
+              <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
+                <div className="compact-stat-card">
+                  <div className="stat-card-icon-wrapper blue-theme-wrapper">
+                    <Users size={18} />
                   </div>
-                  <div className="rank-dashboard-details">
-                    <span className="rank-sub-title">Current Development Standing</span>
-                    <h2 className="rank-main-title" style={{ color: rank.color }}>
-                      {rank.title}
-                    </h2>
-                    <div className="rank-progress-bar-container">
-                      <div className="rank-progress-bar-track">
-                        <div className="rank-progress-bar-fill" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
-                      </div>
-                      <div className="rank-progress-labels">
-                        <span><strong>{stats.totalPoints || 0}</strong> XP Total</span>
-                        <span>{rank.nextLimit === Infinity ? "Highest Tier Unlocked" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next level`}</span>
-                      </div>
-                    </div>
+                  <div className="stat-card-info">
+                    <span className="stat-card-label">Platform Developers</span>
+                    <span className="stat-card-val">{leaderboardData.length}</span>
                   </div>
                 </div>
-                <div className="achievements-dashboard-right">
-                  <div className="achievements-circle-widget">
-                    <svg className="progress-ring" width="72" height="72">
-                      <circle className="progress-ring-circle-bg" stroke="var(--ce-border)" strokeWidth="3.5" fill="transparent" r={radius} cx="36" cy="36" />
-                      <circle
-                        className="progress-ring-circle"
-                        stroke={rank.color}
-                        strokeWidth="3.5"
-                        strokeDasharray={`${circumference}`}
-                        strokeDashoffset={`${strokeDashoffset}`}
-                        fill="transparent"
-                        r={radius}
-                        cx="36"
-                        cy="36"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="circle-widget-text">
-                      <span className="unlocked-count"><strong>{unlockedCount}</strong></span>
-                      <span className="total-count">/ {totalCount}</span>
-                    </div>
+                <div className="compact-stat-card">
+                  <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior" style={{ background: "var(--ce-primary-glow)", color: "var(--ce-primary)" }}>
+                    <Trophy size={18} />
                   </div>
-                  <div className="achievements-widget-info">
-                    <h4>Badges Unlocked</h4>
-                    <p>{Math.round((unlockedCount / totalCount) * 100)}% completion of platform goals</p>
+                  <div className="stat-card-info">
+                    <span className="stat-card-label">Your Global Rank</span>
+                    <span className="stat-card-val">
+                      {(() => {
+                        const myIndex = leaderboardData.findIndex(item => String(item.userId) === String(user?.id || user?._id));
+                        return myIndex !== -1 ? `#${myIndex + 1}` : "N/A";
+                      })()}
+                    </span>
+                  </div>
+                </div>
+                <div className="compact-stat-card">
+                  <div className="stat-card-icon-wrapper purple-theme-wrapper">
+                    <Flame size={18} style={{ color: "#ff7b00" }} />
+                  </div>
+                  <div className="stat-card-info">
+                    <span className="stat-card-label">Highest Score</span>
+                    <span className="stat-card-val">
+                      {leaderboardData[0] ? `${leaderboardData[0].xp} XP` : "0 XP"}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Achievements Filter Tabs & Category Legend */}
-              <div className="achievements-filter-row">
-                <div className="achievements-filter-tabs">
-                  <button
-                    className={`ach-filter-tab ${achievementFilter === "all" ? "active" : ""}`}
-                    onClick={() => setAchievementFilter("all")}
-                  >
-                    <span>All Badges</span>
-                    <span className="ach-filter-count">{achievementsList.length}</span>
-                  </button>
-                  <button
-                    className={`ach-filter-tab ${achievementFilter === "unlocked" ? "active" : ""}`}
-                    onClick={() => setAchievementFilter("unlocked")}
-                  >
-                    <span>Unlocked</span>
-                    <span className="ach-filter-count">{achievementsList.filter(a => a.condition).length}</span>
-                  </button>
-                  <button
-                    className={`ach-filter-tab ${achievementFilter === "locked" ? "active" : ""}`}
-                    onClick={() => setAchievementFilter("locked")}
-                  >
-                    <span>In Progress</span>
-                    <span className="ach-filter-count">{achievementsList.filter(a => !a.condition).length}</span>
-                  </button>
-                </div>
-                <div className="ach-category-legend">
-                  <span className="legend-item"><span className="legend-dot milestones" /> Milestones</span>
-                  <span className="legend-item"><span className="legend-dot development" /> Development</span>
-                  <span className="legend-item"><span className="legend-dot collaboration" /> Collaboration</span>
-                  <span className="legend-item"><span className="legend-dot social" /> Social</span>
-                  <span className="legend-item"><span className="legend-dot activity" /> Activity</span>
-                </div>
-              </div>
-
-              {/* Achievements Staggered Grid List */}
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-                className="achievements-grid"
-              >
-                {filteredAchievements.map((ach) => {
-                  const Icon = ach.icon;
-                  const progressVal = Math.min(100, Math.max(0, (ach.current / ach.target) * 100));
-                  const isExpanded = expandedAchievementId === ach.id;
-                  const categoryClass = ach.category ? ach.category.toLowerCase() : "general";
-
-                  return (
-                    <motion.div
-                      variants={itemVariants}
-                      key={ach.id}
-                      onClick={() => setExpandedAchievementId(isExpanded ? null : ach.id)}
-                      className={`achievement-card-detailed ${ach.condition ? "unlocked" : "locked"} cat-${categoryClass} ${isExpanded ? "expanded" : ""}`}
-                      style={{
-                        borderColor: ach.condition ? ach.color : "var(--ce-border)",
-                        "--ach-accent": ach.color
-                      }}
-                    >
-                      {/* Floating XP badge */}
-                      <div className="achievement-xp-badge" style={{ backgroundColor: ach.condition ? ach.color : "var(--ce-border)" }}>
-                        +{ach.xpReward} XP
-                      </div>
-
-                      <div className="achievement-card-main">
-                        <div className="achievement-icon-wrapper" style={{ backgroundColor: ach.condition ? `${ach.color}15` : "var(--ce-hover)", color: ach.condition ? ach.color : "var(--ce-text-muted)" }}>
-                          {ach.condition ? <Icon size={24} /> : <Lock size={20} />}
-                        </div>
-
-                        <div className="achievement-details-col">
-                          <div className="achievement-name-row">
-                            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                              <span className={`achievement-category-pill ${categoryClass}`}>{ach.category}</span>
-                              <h4 className="achievement-title">{ach.title}</h4>
-                            </div>
-                            {ach.condition ? (
-                              <span className="status-pill unlocked">Unlocked</span>
-                            ) : (
-                              <span className="status-pill locked">Locked</span>
-                            )}
+              {/* Podium for top 3 */}
+              {leaderboardData.length > 0 && !leaderboardSearch && leaderboardTab === "global" && (
+                <div className="leaderboard-podium">
+                  {/* 2nd Place */}
+                  {leaderboardData[1] && (
+                    <div className="podium-item rank-silver" onClick={() => handleViewUserProfile(leaderboardData[1].userId)}>
+                      <div className="podium-avatar-wrapper">
+                        {leaderboardData[1].avatar ? (
+                          <img src={leaderboardData[1].avatar} alt={leaderboardData[1].username} className="podium-avatar" />
+                        ) : (
+                          <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[1].username) }}>
+                            {leaderboardData[1].username.charAt(0).toUpperCase()}
                           </div>
-                          <p className="achievement-desc">{ach.description}</p>
-
-                          <div className="achievement-progress-row">
-                            <div className="achievement-progress-bar-track">
-                              <div className="achievement-progress-bar-fill" style={{ width: `${progressVal}%`, backgroundColor: ach.condition ? ach.color : "var(--ce-text-muted)" }} />
-                            </div>
-                            <span className="achievement-progress-text">
-                              {ach.current} / {ach.target}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expandable guide/tips */}
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.22, ease: "easeInOut" }}
-                            className="achievement-expanded-guide"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="guide-divider" />
-                            <div className="guide-content">
-                              <span className="guide-label">How to Unlock:</span>
-                              <p className="guide-text">{ach.tip}</p>
-                            </div>
-                          </motion.div>
                         )}
-                      </AnimatePresence>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            </motion.div>
-          );
-        })()}
-
-        {/* ROOMS & ACTIONS SECTION */}
-        {activeSection === "rooms" && (
-          <motion.div
-            key="rooms"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="rooms-section-container">
-            <div className="rooms-split-layout">
-              {/* Left Side: Actions */}
-              <div className="rooms-actions-sidebar">
-                {/* CREATE WORKSPACE */}
-                <div className="action-form-card">
-                  <div className="form-card-header">
-                    <Plus size={18} className="form-icon" />
-                    <h3>Create Workspace Room</h3>
-                  </div>
-                  <form onSubmit={handleCreateRoom} className="compact-form">
-                    <div className="form-field">
-                      <label>Workspace Title</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. DSA Practice Prep"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        required
-                        disabled={isCreatingRoom}
-                      />
-                    </div>
-
-                    <div className="form-field">
-                      <label>Language</label>
-                      <select
-                        value={formData.language}
-                        onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                        disabled={isCreatingRoom}
-                      >
-                        <option value="javascript">JavaScript</option>
-                        <option value="python">Python</option>
-                        <option value="cpp">C++</option>
-                        <option value="java">Java</option>
-                      </select>
-                    </div>
-
-                    <div className="form-field">
-                      <label>Privacy Type</label>
-                      <select
-                        value={formData.isPrivate}
-                        onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
-                        disabled={isCreatingRoom}
-                      >
-                        <option value="false">Public</option>
-                        <option value="true">Private (Requires Approval)</option>
-                      </select>
-                    </div>
-
-                    <button type="submit" className="form-submit-btn" style={{ marginTop: "6px" }} disabled={isCreatingRoom}>
-                      {isCreatingRoom && <span className="btn-spinner"></span>}
-                      {isCreatingRoom ? "Creating Workspace..." : "Create Room Workspace"}
-                    </button>
-                  </form>
-                </div>
-
-                {/* JOIN WORKSPACE */}
-                <div className="action-form-card">
-                  <div className="form-card-header">
-                    <LogIn size={18} className="form-icon" />
-                    <h3>Join Room Workspace</h3>
-                  </div>
-                  <form onSubmit={handleJoinRoom} className="compact-form">
-                    <div className="form-field">
-                      <label>Workspace Room ID Code</label>
-                      <input
-                        type="text"
-                        placeholder="Enter room hash token"
-                        value={roomId}
-                        onChange={(e) => setRoomId(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <button type="submit" className="form-submit-btn secondary" style={{ marginTop: "6px" }}>
-                      Join Workspace Session
-                    </button>
-                  </form>
-                </div>
-              </div>
-
-              {/* Right Side: Explorer tabs */}
-              <div className="rooms-explorer-content">
-                {/* Segmented Pill Switcher with Round Sliding Background */}
-                <div className="ce-pill-switcher-container">
-                  <div className="ce-pill-switcher" style={{ maxWidth: "720px" }}>
-                    <div
-                      className="ce-pill-bg-slide"
-                      style={{
-                        width: "calc(33.333% - 2px)",
-                        transform: `translateX(${(roomsTab === "public" ? 0 : roomsTab === "myrooms" ? 1 : 2) * 100}%)`
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className={`ce-pill-btn ${roomsTab === "public" ? "active" : ""}`}
-                      onClick={() => setRoomsTab("public")}
-                    >
-                      Explore Public ({publicRooms.length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`ce-pill-btn ${roomsTab === "myrooms" ? "active" : ""}`}
-                      onClick={() => setRoomsTab("myrooms")}
-                    >
-                      My Rooms ({historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`ce-pill-btn ${roomsTab === "requests" ? "active" : ""}`}
-                      onClick={() => setRoomsTab("requests")}
-                    >
-                      My Requests ({mySentRequests.length})
-                    </button>
-                  </div>
-                </div>
-
-
-
-                {roomsTab === "public" && (
-                  <div style={{ marginTop: "8px" }}>
-                    <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <Globe size={16} className="brand-logo" />
-                        <h3 className="section-title">Explore Public Workspaces</h3>
+                        <div className="podium-badge">2</div>
                       </div>
-                      {publicRooms.length > 0 && (
-                        <div className="section-search-container">
-                          <Search size={13} className="section-search-icon" />
-                          <input
-                            type="text"
-                            placeholder="Search public rooms..."
-                            value={publicRoomsSearch}
-                            onChange={(e) => setPublicRoomsSearch(e.target.value)}
-                            className="section-search-input"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {publicRooms.length === 0 ? (
-                      <div className="empty-state-card">
-                        <Globe size={18} className="empty-state-icon" />
-                        <p>No public workspaces found. Be the first to create one!</p>
-                      </div>
-                    ) : (() => {
-                      const filteredPublic = publicRooms.filter(room => {
-                        const term = publicRoomsSearch.toLowerCase();
-                        return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
-                      });
-
-                      if (filteredPublic.length === 0) {
-                        return (
-                          <div className="empty-state-card">
-                            <Search size={18} className="empty-state-icon" />
-                            <p>No public rooms match "{publicRoomsSearch}".</p>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <>
-                          <div className="rooms-grid-explore" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", alignItems: "start" }}>
-                            {filteredPublic
-                              .slice(0, showAllPublicRooms ? undefined : 6)
-                              .map(room => renderRoomCard(room))}
-                          </div>
-                          {filteredPublic.length > 6 && (
-                            <button
-                              onClick={() => setShowAllPublicRooms(!showAllPublicRooms)}
-                              className="split-column-toggle-btn"
-                              style={{ marginTop: "16px" }}
-                            >
-                              <span>{showAllPublicRooms ? "Show Less" : "Show All"}</span>
-                              <ChevronDown size={14} style={{ transform: showAllPublicRooms ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                            </button>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {roomsTab === "myrooms" && (
-                  <div style={{ marginTop: "8px" }}>
-                    <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <FolderGit size={16} className="brand-logo" />
-                        <h3 className="section-title">My Workspaces</h3>
-                      </div>
-                      {historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length > 0 && (
-                        <div className="section-search-container">
-                          <Search size={13} className="section-search-icon" />
-                          <input
-                            type="text"
-                            placeholder="Search your workspaces..."
-                            value={myRoomsTabSearch}
-                            onChange={(e) => setMyRoomsTabSearch(e.target.value)}
-                            className="section-search-input"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {(() => {
-                      const ownedRooms = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
-
-                      if (ownedRooms.length === 0) {
-                        return (
-                          <div className="empty-state-card">
-                            <FolderGit size={18} className="empty-state-icon" />
-                            <p>No owned workspaces found. Create a room on the left to begin!</p>
-                          </div>
-                        );
-                      }
-
-                      const filteredOwned = ownedRooms.filter(room => {
-                        const term = myRoomsTabSearch.toLowerCase();
-                        return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
-                      });
-
-                      if (filteredOwned.length === 0) {
-                        return (
-                          <div className="empty-state-card">
-                            <Search size={18} className="empty-state-icon" />
-                            <p>No owned rooms match "{myRoomsTabSearch}".</p>
-                          </div>
-                        );
-                      }
-
-                      // Split into Active and Offline owned rooms
-                      const activeOwnedTab = filteredOwned.filter(room => {
-                        const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
-                        return roomFromLive && (roomFromLive.activeUsersCount || 0) > 0;
-                      });
-
-                      const offlineOwnedTab = filteredOwned.filter(room => {
-                        const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
-                        return !roomFromLive || (roomFromLive.activeUsersCount || 0) === 0;
-                      });
-
-                      return (
-                        <div className="dashboard-split-layout">
-                          {/* ACTIVE OWNED ROOMS COLUMN */}
-                          <div className="split-column">
-                            <h4 className="split-column-title">
-                              <span className="live-indicator-dot" />
-                              Active Rooms ({activeOwnedTab.length})
-                            </h4>
-                            {activeOwnedTab.length === 0 ? (
-                              <div className="empty-state-card compact">
-                                <p>No active rooms match your search.</p>
-                              </div>
-                            ) : (
-                              <div className="split-column-cards-list">
-                                {activeOwnedTab
-                                  .slice(0, showAllActiveMyRoomsTab ? undefined : 3)
-                                  .map(room => {
-                                    // Match current dynamic count/users from liveRooms if online
-                                    const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
-                                    return renderRoomCard(liveRoomObj || room);
-                                  })}
-                              </div>
-                            )}
-                            {activeOwnedTab.length > 3 && (
-                              <button
-                                onClick={() => setShowAllActiveMyRoomsTab(!showAllActiveMyRoomsTab)}
-                                className="split-column-toggle-btn"
-                                style={{ marginTop: "12px" }}
-                              >
-                                <span>{showAllActiveMyRoomsTab ? "Show Less" : "Show All"}</span>
-                                <ChevronDown size={14} style={{ transform: showAllActiveMyRoomsTab ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                              </button>
-                            )}
-                          </div>
-
-                          {/* OFFLINE OWNED ROOMS COLUMN */}
-                          <div className="split-column">
-                            <h4 className="split-column-title">
-                              <span className="offline-indicator-dot" />
-                              Offline Rooms ({offlineOwnedTab.length})
-                            </h4>
-                            {offlineOwnedTab.length === 0 ? (
-                              <div className="empty-state-card compact">
-                                <p>No offline rooms match your search.</p>
-                              </div>
-                            ) : (
-                              <div className="split-column-cards-list">
-                                {offlineOwnedTab
-                                  .slice(0, showAllOfflineMyRoomsTab ? undefined : 3)
-                                  .map(room => renderRoomCard(room))}
-                              </div>
-                            )}
-                            {offlineOwnedTab.length > 3 && (
-                              <button
-                                onClick={() => setShowAllOfflineMyRoomsTab(!showAllOfflineMyRoomsTab)}
-                                className="split-column-toggle-btn"
-                                style={{ marginTop: "12px" }}
-                              >
-                                <span>{showAllOfflineMyRoomsTab ? "Show Less" : "Show All"}</span>
-                                <ChevronDown size={14} style={{ transform: showAllOfflineMyRoomsTab ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {roomsTab === "requests" && (
-                  <div style={{ marginTop: "8px" }}>
-                    <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: "16px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <Clock size={16} className="brand-logo" />
-                        <h3 className="section-title">My Sent Requests</h3>
+                      <span className="podium-username">@{leaderboardData[1].username}</span>
+                      <span className="podium-title-badge">{leaderboardData[1].title || "Senior Coder"}</span>
+                      <div className="rank-podium height-silver">
+                        <span className="podium-xp">{leaderboardData[1].xp} XP</span>
                       </div>
                     </div>
-
-                    {mySentRequests.length === 0 ? (
-                      <div className="empty-state-card">
-                        <Terminal size={18} className="empty-state-icon" />
-                        <p>You haven't requested to join any private rooms yet.</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {mySentRequests.map((req) => (
-                          <div
-                            key={req.roomId}
-                            className="social-activity-card"
-                            style={{
-                              padding: "16px",
-                              background: "rgba(255, 255, 255, 0.02)",
-                              border: "1px solid var(--ce-border)",
-                              borderRadius: "8px",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              flexWrap: "wrap",
-                              gap: "16px"
-                            }}
-                          >
-                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span className="room-title-text" style={{ fontSize: "0.95rem", fontWeight: "700", color: "var(--ce-text)" }}>
-                                  {req.title}
-                                </span>
-                                <span className="lang-badge" style={{ fontSize: "0.65rem", padding: "2px 6px", background: "rgba(255, 255, 255, 0.05)", borderRadius: "4px", textTransform: "uppercase", color: "var(--ce-text-muted)" }}>
-                                  {req.language}
-                                </span>
-                              </div>
-                              <span style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)" }}>
-                                Created by <strong>{req.createdBy?.username || "Owner"}</strong> ({req.createdBy?.email})
-                              </span>
-                              <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
-                                Requested on {new Date(req.updatedAt || req.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-
-                            <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-                              {req.status === "pending" && (
-                                <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(245, 158, 11, 0.1)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "12px" }}>
-                                  Pending Approval
-                                </span>
-                              )}
-                              {req.status === "rejected" && (
-                                <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "12px" }}>
-                                  Request Rejected
-                                </span>
-                              )}
-                              {req.status === "accepted" && (
-                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                  <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(16, 185, 129, 0.1)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "12px" }}>
-                                    Request Accepted
-                                  </span>
-                                  <button
-                                    onClick={() => proceedJoinRoom(req.roomId)}
-                                    className="ce-btn-primary"
-                                    style={{
-                                      padding: "6px 16px",
-                                      fontSize: "0.78rem",
-                                      fontWeight: "600",
-                                      background: "var(--ce-primary)",
-                                      color: "#fff",
-                                      border: "none",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)"
-                                    }}
-                                  >
-                                    Join Workspace
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          </motion.div>
-        )}
-
-        {/* ROOM HISTORY SECTION */}
-        {activeSection === "history" && (
-          <motion.div
-            key="history"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="history-section-container">
-            <div className="history-table-controls">
-              <div className="search-bar-container">
-                <Search size={14} className="control-search-icon" />
-                <input
-                  type="text"
-                  placeholder="Search rooms..."
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                />
-              </div>
-
-              <div className="filter-controls">
-                <SlidersHorizontal size={14} />
-                <select value={historyFilterLang} onChange={(e) => setHistoryFilterLang(e.target.value)}>
-                  <option value="all">All Languages</option>
-                  <option value="javascript">JavaScript</option>
-                  <option value="python">Python</option>
-                  <option value="cpp">C++</option>
-                  <option value="java">Java</option>
-                </select>
-
-                <select value={historySortBy} onChange={(e) => setHistorySortBy(e.target.value)}>
-                  <option value="recent">Sort by: Recent</option>
-                  <option value="name">Sort by: Name</option>
-                  <option value="created">Sort by: Date Created</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="history-table-wrapper">
-              <table className="history-data-table">
-                <thead>
-                  <tr>
-                    <th>Room Workspace</th>
-                    <th>Language</th>
-                    <th>Participants</th>
-                    <th>Owner</th>
-                    <th>Last Activity</th>
-                    <th className="text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredHistory.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" style={{ textAlign: "center", color: "var(--ce-text-muted)" }}>No rooms match your filter.</td>
-                    </tr>
-                  ) : (
-                    filteredHistory.map(room => {
-                      const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id;
-                      return (
-                        <tr key={room.roomId}>
-                          <td>
-                            <div className="table-room-title">🚀 {room.title}</div>
-                            <div className="table-room-id">{room.roomId}</div>
-                          </td>
-                          <td>
-                            <span className="lang-badge-small">{room.language?.toUpperCase()}</span>
-                          </td>
-                          <td>
-                            <span className="participants-count">{room.participants?.length || 1} online</span>
-                          </td>
-                          <td>
-                            <span className="participants-count">{isOwner ? "You" : room.createdBy?.username || "Collaborator"}</span>
-                          </td>
-                          <td>
-                            {new Date(room.updatedAt).toLocaleDateString()}
-                          </td>
-                          <td className="text-right">
-                            <button
-                              onClick={() => handleJoinRoomDirect(room.roomId)}
-                              className="history-resume-btn"
-                            >
-                              Resume
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          </motion.div>
-        )}
 
-        {/* WHITEBOARDS TAB SECTION */}
-        {activeSection === "whiteboards" && (
-          <motion.div
-            key="whiteboards"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="history-section-container">
-            <div className="section-header" style={{ marginBottom: "16px" }}>
-              <Palette size={16} className="brand-logo" />
-              <h3 className="section-title">Collaborative Whiteboards</h3>
-            </div>
-            <p style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", marginBottom: "16px" }}>
-              Click any workspace below to open directly into collaborative whiteboard canvas mode.
-            </p>
-            <div className="whiteboards-list">
-              {historyRooms.length === 0 ? (
-                <div className="empty-state-card">
-                  <p>No active workspaces found. Create a room first to access the whiteboard canvas.</p>
+                  {/* 1st Place */}
+                  {leaderboardData[0] && (
+                    <div className="podium-item rank-gold" onClick={() => handleViewUserProfile(leaderboardData[0].userId)}>
+                      <div className="podium-avatar-wrapper">
+                        {leaderboardData[0].avatar ? (
+                          <img src={leaderboardData[0].avatar} alt={leaderboardData[0].username} className="podium-avatar" />
+                        ) : (
+                          <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[0].username) }}>
+                            {leaderboardData[0].username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="podium-badge"><Trophy size={14} fill="#ffd700" /></div>
+                      </div>
+                      <span className="podium-username">@{leaderboardData[0].username}</span>
+                      <span className="podium-title-badge primary">{leaderboardData[0].title || "Antigravity Architect"}</span>
+                      <div className="rank-podium height-gold">
+                        <span className="podium-xp">{leaderboardData[0].xp} XP</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3rd Place */}
+                  {leaderboardData[2] && (
+                    <div className="podium-item rank-bronze" onClick={() => handleViewUserProfile(leaderboardData[2].userId)}>
+                      <div className="podium-avatar-wrapper">
+                        {leaderboardData[2].avatar ? (
+                          <img src={leaderboardData[2].avatar} alt={leaderboardData[2].username} className="podium-avatar" />
+                        ) : (
+                          <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[2].username) }}>
+                            {leaderboardData[2].username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="podium-badge">3</div>
+                      </div>
+                      <span className="podium-username">@{leaderboardData[2].username}</span>
+                      <span className="podium-title-badge">{leaderboardData[2].title || "Code Artisan"}</span>
+                      <div className="rank-podium height-bronze">
+                        <span className="podium-xp">{leaderboardData[2].xp} XP</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                historyRooms.map(room => (
-                  <div key={room.roomId} className="whiteboard-item">
-                    <div className="whiteboard-item-left">
-                      <Palette size={16} style={{ color: "var(--ce-primary)" }} />
-                      <div>
-                        <div className="wb-title">{room.title} Whiteboard Canvas</div>
-                        <div className="wb-desc">Associated Room ID: {room.roomId} • {room.language}</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => triggerGateAndNavigate(room.roomId)}
-                      onMouseEnter={prefetchEditor}
-                      className="history-resume-btn"
-                    >
-                      Open Canvas
-                    </button>
-                  </div>
-                ))
               )}
-            </div>
-          </div>
-          </motion.div>
-        )}
 
-        {/* DIRECT MESSAGES SECTION */}
-        {activeSection === "messages" && (
-          <motion.div
-            key="messages"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-            <DirectMessages 
-              preselectedUser={preselectedChatPartner}
-              onChatLoaded={() => setPreselectedChatPartner(null)}
-              onViewProfile={handleViewUserProfile}
-            />
-          </motion.div>
-        )}
-
-        {/* NOTIFICATIONS FEED SECTION */}
-        {activeSection === "notifications" && (
-          <motion.div
-            key="notifications"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="history-section-container">
-            <div className="section-header" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Bell size={16} className="brand-logo" />
-                <h3 className="section-title">System & Social Notifications</h3>
-              </div>
-              {unreadNotificationsCount > 0 && (
-                <button onClick={handleMarkAllNotificationsRead} className="history-resume-btn" style={{ fontSize: "0.75rem", padding: "4px 10px" }}>
-                  Mark all as read
-                </button>
-              )}
-            </div>
-
-            {/* Premium Category Filter Tabs */}
-            <div className="notif-filter-tabs-container" style={{ marginBottom: "20px" }}>
-              <div className="achievements-filter-tabs">
-                <button
-                  className={`ach-filter-tab ${notifFilter === "all" ? "active" : ""}`}
-                  onClick={() => setNotifFilter("all")}
-                >
-                  <span>All</span>
-                  <span className="ach-filter-count">{notificationsList.length}</span>
-                </button>
-                <button
-                  className={`ach-filter-tab ${notifFilter === "unread" ? "active" : ""}`}
-                  onClick={() => setNotifFilter("unread")}
-                >
-                  <span>Unread</span>
-                  <span className="ach-filter-count">{unreadNotificationsCount}</span>
-                </button>
-                <button
-                  className={`ach-filter-tab ${notifFilter === "workspaces" ? "active" : ""}`}
-                  onClick={() => setNotifFilter("workspaces")}
-                >
-                  <span>Workspaces</span>
-                  <span className="ach-filter-count">
-                    {notificationsList.filter(n => ["LIKE", "BOOKMARK", "JOIN"].includes(n.type)).length}
-                  </span>
-                </button>
-                <button
-                  className={`ach-filter-tab ${notifFilter === "social" ? "active" : ""}`}
-                  onClick={() => setNotifFilter("social")}
-                >
-                  <span>Social</span>
-                  <span className="ach-filter-count">
-                    {notificationsList.filter(n => n.type === "FOLLOW").length}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="notifications-list">
-              {/* Render Action Required / Pending Join Requests at the top if All or Workspaces is selected */}
-              {(notifFilter === "all" || notifFilter === "workspaces") && joinRequests.length > 0 && joinRequests.map(req => (
-                <div key={req.requestId} className="notification-item join-request-pending notif-type-join-pending" style={{ borderColor: "var(--ce-warning)", borderLeft: "3px solid var(--ce-warning)" }}>
-                  <div className="notif-left-content">
-                    <div className="notif-category-icon-container">
-                      <ShieldAlert size={16} style={{ color: "var(--ce-warning)" }} />
-                    </div>
-                    <div className="notif-main-info">
-                      <div className="notif-text-message">
-                        <strong>Join Request Approval Pending</strong>
-                      </div>
-                      <div className="notif-desc" style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
-                        <strong>{req.username}</strong> requested to access private room <strong>{req.roomTitle}</strong>.
-                      </div>
-                    </div>
-                  </div>
-                  <div className="notif-right-content" style={{ display: "flex", gap: "8px" }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRespondRequest(req.roomId, req.user?._id || req.user, "accept");
-                      }}
-                      className="history-resume-btn notif-action-btn accept"
-                      style={{
-                        fontSize: "0.72rem",
-                        padding: "4px 10px",
-                        background: "rgba(16, 185, 129, 0.12)",
-                        color: "#10b981",
-                        border: "1px solid rgba(16, 185, 129, 0.3)",
-                        borderRadius: "8px",
-                        cursor: "pointer"
-                      }}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRespondRequest(req.roomId, req.user?._id || req.user, "reject");
-                      }}
-                      className="history-resume-btn notif-action-btn reject"
-                      style={{
-                        fontSize: "0.72rem",
-                        padding: "4px 10px",
-                        background: "rgba(239, 68, 68, 0.12)",
-                        color: "#ef4444",
-                        border: "1px solid rgba(239, 68, 68, 0.3)",
-                        borderRadius: "8px",
-                        cursor: "pointer"
-                      }}
-                    >
-                      Reject
-                    </button>
-                  </div>
+              {/* Leaderboard Controls (Tabs and Search) */}
+              <div className="leaderboard-table-controls-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
+                {/* Filter Tabs */}
+                <div className="leaderboard-filter-tabs">
+                  <button
+                    onClick={() => setLeaderboardTab("global")}
+                    className={`leaderboard-filter-tab-btn ${leaderboardTab === "global" ? "active" : ""}`}
+                  >
+                    Global Leaders
+                  </button>
+                  <button
+                    onClick={() => setLeaderboardTab("network")}
+                    className={`leaderboard-filter-tab-btn ${leaderboardTab === "network" ? "active" : ""}`}
+                  >
+                    My Network
+                  </button>
+                  <button
+                    onClick={() => setLeaderboardTab("top10")}
+                    className={`leaderboard-filter-tab-btn ${leaderboardTab === "top10" ? "active" : ""}`}
+                  >
+                    Top 10 Elite
+                  </button>
                 </div>
-              ))}
 
-              {(() => {
-                const filteredNotifs = notificationsList.filter(notif => {
-                  if (notifFilter === "unread") return !notif.isRead;
-                  if (notifFilter === "social") return notif.category === "SOCIAL" || notif.type === "FOLLOW";
-                  if (notifFilter === "workspaces") return notif.category === "ROOMS" || notif.category === "COLLABORATION" || ["LIKE", "BOOKMARK", "JOIN", "INVITE"].includes(notif.type);
-                  return true;
-                });
+                {/* Search input */}
+                <div className="section-search-container" style={{ margin: 0 }}>
+                  <Search size={13} className="section-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search developers..."
+                    value={leaderboardSearch}
+                    onChange={(e) => setLeaderboardSearch(e.target.value)}
+                    className="section-search-input"
+                  />
+                </div>
+              </div>
 
-                if (filteredNotifs.length === 0) {
-                  return (
-                    <div className="empty-state-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px", textAlign: "center" }}>
-                      <Bell size={28} style={{ color: "var(--ce-text-muted)", marginBottom: "12px" }} />
-                      <h4 style={{ color: "var(--ce-text-h)", margin: "0 0 4px 0", fontSize: "0.95rem" }}>No notifications found</h4>
-                      <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", margin: 0 }}>
-                        {notifFilter === "all"
-                          ? "You have no notifications yet."
-                          : `No ${notifFilter} notifications were found matching your criteria.`}
-                      </p>
-                    </div>
-                  );
-                }
+              {/* Global Rankings List */}
+              <div className="history-table-wrapper">
+                {isLoadingLeaderboard ? (
+                  <div style={{ textAlign: "center", padding: "48px", color: "var(--ce-text-muted)" }}>
+                    <div className="btn-spinner" style={{ margin: "0 auto 12px auto", width: "24px", height: "24px" }}></div>
+                    Synchronizing Leaderboard Rankings...
+                  </div>
+                ) : (
+                  (() => {
+                    let filteredList = leaderboardData.filter(item =>
+                      item.username.toLowerCase().includes(leaderboardSearch.toLowerCase())
+                    );
 
-                return (
-                  <>
-                    {filteredNotifs.map(notif => {
-                      const isRead = notif.isRead;
-                      const senderName = notif.sender?.username || "Someone";
-                      const senderAvatar = notif.sender?.avatar;
-                      const roomTitle = notif.targetRoom?.title || "workspace";
-                      const roomLink = notif.targetRoom?.roomId;
-
-                      let notifIcon = <Bell size={14} />;
-                      let actionText = "";
-                      let typeClass = "notif-type-general";
-
-                      if (notif.type === "FOLLOW") {
-                        notifIcon = <Users size={14} style={{ color: "var(--ce-primary)" }} />;
-                        actionText = "followed you";
-                        typeClass = "notif-type-follow";
-                      } else if (notif.type === "LIKE") {
-                        notifIcon = <Heart size={14} style={{ color: "#ef4444" }} />;
-                        actionText = `liked your room "${roomTitle}"`;
-                        typeClass = "notif-type-like";
-                      } else if (notif.type === "BOOKMARK") {
-                        notifIcon = <Bookmark size={14} style={{ color: "var(--ce-accent)" }} />;
-                        actionText = `bookmarked your room "${roomTitle}"`;
-                        typeClass = "notif-type-bookmark";
-                      } else if (notif.type === "JOIN") {
-                        notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-warning)" }} />;
-                        actionText = `wants to join "${roomTitle}"`;
-                        typeClass = "notif-type-join";
-                      } else if (notif.type === "INVITE") {
-                        notifIcon = <Mail size={14} style={{ color: "var(--ce-primary)" }} />;
-                        actionText = `invited you to join workspace "${roomTitle}"`;
-                        typeClass = "notif-type-invite";
-                      }
-
-                      // Follow status mapping for social notifications
-                      const isFollowingSender = followingList.some(f => String(f._id || f) === String(notif.sender?._id || notif.sender));
-
-                      // Access request lookup
-                      const pendingReq = joinRequests.find(req =>
-                        String(req.roomId) === String(notif.targetRoom?.roomId || notif.targetRoom?._id) &&
-                        String(req.user?._id || req.user) === String(notif.sender?._id)
+                    // Apply tab filters
+                    if (leaderboardTab === "network") {
+                      filteredList = filteredList.filter(item =>
+                        followingList.some(f => String(f._id || f) === String(item.userId)) ||
+                        String(item.userId) === String(user?.id || user?._id)
                       );
+                    } else if (leaderboardTab === "top10") {
+                      filteredList = filteredList.slice(0, 10);
+                    }
 
+                    if (filteredList.length === 0) {
                       return (
-                        <div
-                          key={notif._id}
-                          className={`notification-item ${isRead ? "read" : "unread"} ${typeClass}`}
-                          onClick={() => !isRead && handleMarkOneNotificationRead(notif._id)}
-                        >
-                          <div className="notif-left-content">
-                            <div className="notif-category-icon-container">
-                              {notifIcon}
-                            </div>
-                            <div className="notif-sender-avatar-container" style={{ backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName) }}>
-                              {senderAvatar ? (
-                                <img src={senderAvatar} alt={senderName} className="notif-sender-img" />
-                              ) : (
-                                <span className="notif-sender-initial">{senderName.charAt(0).toUpperCase()}</span>
-                              )}
-                            </div>
-                            <div className="notif-main-info">
-                              <div className="notif-text-message">
-                                <strong>{senderName}</strong> {actionText}
-                              </div>
+                        <div style={{ textAlign: "center", padding: "48px", color: "var(--ce-text-muted)" }}>
+                          No developers found.
+                        </div>
+                      );
+                    }
 
-                              {/* Context-aware inline actions inside the details block */}
-                              {notif.type === "FOLLOW" && (
-                                <div style={{ marginTop: "4px" }}>
-                                  {isFollowingSender ? (
-                                    <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-flex", alignItems: "center", gap: "3px", fontWeight: "600" }}>
-                                      <Check size={11} /> Following
-                                    </span>
+                    // If search is active or using custom tabs, show everyone in order. Otherwise (global, no search), slice out the podium top 3
+                    const displayList = (leaderboardSearch || leaderboardTab !== "global") ? filteredList : filteredList.slice(3);
+
+                    const getDeveloperTier = (xp) => {
+                      if (xp >= 1000) return { name: "Legendary Arch-Coder", className: "tier-badge legendary" };
+                      if (xp >= 500) return { name: "Elite Architect", className: "tier-badge elite" };
+                      if (xp >= 250) return { name: "Master Engineer", className: "tier-badge master" };
+                      if (xp >= 100) return { name: "Senior Developer", className: "tier-badge senior" };
+                      return { name: "Junior Coder", className: "tier-badge junior" };
+                    };
+
+                    return (
+                      <table className="history-data-table leaderboard-table">
+                        <thead>
+                          <tr>
+                            <th>Rank</th>
+                            <th>Developer</th>
+                            <th>Developer Tier</th>
+                            <th>Coding XP</th>
+                            <th className="text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {displayList.map((item) => {
+                            const isCurrentUser = String(item.userId) === String(user?.id || user?._id);
+                            const isFollowingUser = followingList.some(f => String(f._id || f) === String(item.userId));
+                            const tier = getDeveloperTier(item.xp);
+
+                            let rankDisplay = `#${item.rank}`;
+                            let rankClass = "";
+                            if (item.rank === 1) {
+                              rankDisplay = "🥇";
+                              rankClass = "rank-medal-1";
+                            } else if (item.rank === 2) {
+                              rankDisplay = "🥈";
+                              rankClass = "rank-medal-2";
+                            } else if (item.rank === 3) {
+                              rankDisplay = "🥉";
+                              rankClass = "rank-medal-3";
+                            }
+
+                            return (
+                              <tr key={item.userId} className={isCurrentUser ? "current-user-row-highlight" : ""}>
+                                <td>
+                                  <span className={`leaderboard-rank-number ${rankClass}`}>
+                                    {rankDisplay}
+                                  </span>
+                                </td>
+                                <td style={{ cursor: "pointer" }} onClick={() => handleViewUserProfile(item.userId)}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                    {item.avatar ? (
+                                      <img src={item.avatar} alt={item.username} className="user-avatar-small" style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover" }} />
+                                    ) : (
+                                      <div className="user-avatar-small" style={{ width: "28px", height: "28px", borderRadius: "50%", backgroundColor: getAvatarColor(item.username), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
+                                        {item.username.charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div style={{ display: "flex", flexDirection: "column" }}>
+                                      <span style={{ fontWeight: "700", color: "var(--ce-text-h)" }}>{item.username} {isCurrentUser ? "(you)" : ""}</span>
+                                      <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{item.email}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={tier.className}>
+                                    {tier.name}
+                                  </span>
+                                </td>
+                                <td>
+                                  <strong style={{ color: "var(--ce-primary)" }}>{item.xp} XP</strong>
+                                </td>
+                                <td className="text-right">
+                                  {isCurrentUser ? (
+                                    <span style={{ fontSize: "0.75rem", color: "var(--ce-primary)", fontWeight: "600" }}>Your Rank</span>
                                   ) : (
                                     <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleFollowToggle(notif.sender?._id || notif.sender);
-                                      }}
-                                      className="history-resume-btn notif-action-btn follow-back"
+                                      onClick={() => handleFollowToggle(item.userId)}
+                                      className={`history-resume-btn ${isFollowingUser ? "unfollow" : "follow"}`}
                                       style={{
-                                        fontSize: "0.68rem",
-                                        padding: "3px 8px",
-                                        borderRadius: "6px",
-                                        background: "rgba(59, 130, 246, 0.12)",
-                                        color: "var(--ce-primary)",
-                                        border: "1px solid rgba(59, 130, 246, 0.25)",
-                                        cursor: "pointer",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: "3px"
+                                        fontSize: "0.72rem",
+                                        padding: "4px 10px",
+                                        background: isFollowingUser ? "var(--ce-surface-card)" : "var(--ce-primary-glow)",
+                                        color: isFollowingUser ? "var(--ce-text-muted)" : "var(--ce-primary)",
+                                        border: "1px solid var(--ce-border)"
                                       }}
                                     >
-                                      <UserPlus size={10} /> Follow Back
+                                      {isFollowingUser ? "Following" : "+ Follow"}
                                     </button>
                                   )}
-                                </div>
-                              )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    );
+                  })()
+                )}
+              </div>
+            </motion.div>
+          )}
 
-                              {notif.type === "JOIN" && (
-                                <div style={{ marginTop: "4px" }}>
-                                  {pendingReq ? (
-                                    <div style={{ display: "flex", gap: "8px" }}>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleRespondRequest(pendingReq.roomId, pendingReq.user?._id || pendingReq.user, "accept");
-                                        }}
-                                        className="history-resume-btn notif-action-btn accept"
-                                        style={{
-                                          fontSize: "0.68rem",
-                                          padding: "3px 8px",
-                                          borderRadius: "6px",
-                                          background: "rgba(16, 185, 129, 0.12)",
-                                          color: "#10b981",
-                                          border: "1px solid rgba(16, 185, 129, 0.25)",
-                                          cursor: "pointer"
-                                        }}
-                                      >
-                                        Accept
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleRespondRequest(pendingReq.roomId, pendingReq.user?._id || pendingReq.user, "reject");
-                                        }}
-                                        className="history-resume-btn notif-action-btn reject"
-                                        style={{
-                                          fontSize: "0.68rem",
-                                          padding: "3px 8px",
-                                          borderRadius: "6px",
-                                          background: "rgba(239, 68, 68, 0.12)",
-                                          color: "#ef4444",
-                                          border: "1px solid rgba(239, 68, 68, 0.25)",
-                                          cursor: "pointer"
-                                        }}
-                                      >
-                                        Reject
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
-                                      Request processed
+          {/* ACHIEVEMENTS SECTION */}
+          {activeSection === "achievements" && (() => {
+            const achievementsList = [
+              {
+                id: "creator_pro",
+                title: "Creator Pro",
+                description: "Create 5 or more rooms",
+                icon: FolderGit,
+                color: "#3b82f6",
+                condition: (stats.totalCreated || 0) >= 5,
+                current: stats.totalCreated || 0,
+                target: 5,
+                category: "Development",
+                xpReward: 150,
+                tip: "To complete this achievement, use the 'Create Workspace Room' form in the Rooms tab and initialize 5 separate workspaces."
+              },
+              {
+                id: "team_player",
+                title: "Team Player",
+                description: "Join and collaborate in 3 or more rooms",
+                icon: Users,
+                color: "#10b981",
+                condition: (stats.totalJoined || 0) >= 3,
+                current: stats.totalJoined || 0,
+                target: 3,
+                category: "Collaboration",
+                xpReward: 120,
+                tip: "Browse through active Live Rooms and join at least 3 distinct workspaces hosted by other developers."
+              },
+              {
+                id: "script_master",
+                title: "Script Master",
+                description: "Execute compilation script 10 or more times",
+                icon: Terminal,
+                color: "#f59e0b",
+                condition: (stats.executions || 0) >= 10,
+                current: stats.executions || 0,
+                target: 10,
+                category: "Activity",
+                xpReward: 80,
+                tip: "Open the code editor in any of your workspaces and press the compile/run button 10 times to test your scripts."
+              },
+              {
+                id: "marathoner",
+                title: "Code Marathoner",
+                description: "Log 5 hours of active development time",
+                icon: Clock,
+                color: "#8b5cf6",
+                condition: (stats.codingHours || 0) >= 5,
+                current: stats.codingHours || 0,
+                target: 5,
+                category: "Milestones",
+                xpReward: 200,
+                tip: "Spend a cumulative total of 5 hours active in the workspace code editor collaborating or compiling programs."
+              },
+              {
+                id: "social_coder",
+                title: "Social Coder",
+                description: "Like or Bookmark 5 or more workspaces",
+                icon: Heart,
+                color: "#ec4899",
+                condition: (likedRooms.length + savedRooms.length) >= 5,
+                current: likedRooms.length + savedRooms.length,
+                target: 5,
+                category: "Social",
+                xpReward: 50,
+                tip: "Go to Live Rooms or other developers' shared spaces and like/bookmark at least 5 different workspaces."
+              },
+              {
+                id: "polyglot",
+                title: "Polyglot Developer",
+                description: "Create workspaces in 3 different languages",
+                icon: Code,
+                color: "#06b6d4",
+                condition: new Set(historyRooms.filter(r => r.language).map(r => r.language.toLowerCase())).size >= 3,
+                current: new Set(historyRooms.filter(r => r.language).map(r => r.language.toLowerCase())).size,
+                target: 3,
+                category: "Development",
+                xpReward: 150,
+                tip: "Launch workspaces choosing 3 different languages (e.g. JavaScript, Python, C++) when configuring room creation settings."
+              },
+              {
+                id: "rising_star",
+                title: "Rising Star",
+                description: "Earn 100 or more developer points",
+                icon: Sparkles,
+                color: "#f43f5e",
+                condition: (stats.totalPoints || 0) >= 100,
+                current: stats.totalPoints || 0,
+                target: 100,
+                category: "Milestones",
+                xpReward: 100,
+                tip: "Collect 100 XP points. Points are earned by coding, hosting collaborative sessions, and getting followers."
+              },
+              {
+                id: "elite_architect",
+                title: "Elite Architect",
+                description: "Reach Antigravity Architect tier (400+ points)",
+                icon: Trophy,
+                color: "#e11d48",
+                condition: (stats.totalPoints || 0) >= 400,
+                current: stats.totalPoints || 0,
+                target: 400,
+                category: "Milestones",
+                xpReward: 300,
+                tip: "Gather 400 XP points to earn the most prestigious badge on CodeExpo, proving you are an elite engineering generalist."
+              }
+            ];
+
+            const unlockedCount = achievementsList.filter(a => a.condition).length;
+            const totalCount = achievementsList.length;
+            const radius = 28;
+            const circumference = 2 * Math.PI * radius;
+            const strokeDashoffset = circumference * (1 - (unlockedCount / totalCount));
+
+            const filteredAchievements = achievementsList.filter(ach => {
+              if (achievementFilter === "unlocked") return ach.condition;
+              if (achievementFilter === "locked") return !ach.condition;
+              return true;
+            });
+
+            const containerVariants = {
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.05
+                }
+              }
+            };
+
+            const itemVariants = {
+              hidden: { opacity: 0, y: 15, scale: 0.96 },
+              show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 22 } }
+            };
+
+            return (
+              <motion.div
+                key="achievements"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="achievements-section-container"
+              >
+                {/* Upgraded Level & Career Dashboard Banner */}
+                <div className="achievements-dashboard-header">
+                  <div className="achievements-dashboard-left">
+                    <div className={`rank-avatar-badge ${rank.badgeClass}`} style={{ color: rank.color, border: `3px solid ${rank.color}` }}>
+                      <Award size={30} />
+                      <span className="rank-badge-glow" style={{ backgroundColor: rank.color }} />
+                    </div>
+                    <div className="rank-dashboard-details">
+                      <span className="rank-sub-title">Current Development Standing</span>
+                      <h2 className="rank-main-title" style={{ color: rank.color }}>
+                        {rank.title}
+                      </h2>
+                      <div className="rank-progress-bar-container">
+                        <div className="rank-progress-bar-track">
+                          <div className="rank-progress-bar-fill" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
+                        </div>
+                        <div className="rank-progress-labels">
+                          <span><strong>{stats.totalPoints || 0}</strong> XP Total</span>
+                          <span>{rank.nextLimit === Infinity ? "Highest Tier Unlocked" : `${rank.nextLimit - (stats.totalPoints || 0)} XP to next level`}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="achievements-dashboard-right">
+                    <div className="achievements-circle-widget">
+                      <svg className="progress-ring" width="72" height="72">
+                        <circle className="progress-ring-circle-bg" stroke="var(--ce-border)" strokeWidth="3.5" fill="transparent" r={radius} cx="36" cy="36" />
+                        <circle
+                          className="progress-ring-circle"
+                          stroke={rank.color}
+                          strokeWidth="3.5"
+                          strokeDasharray={`${circumference}`}
+                          strokeDashoffset={`${strokeDashoffset}`}
+                          fill="transparent"
+                          r={radius}
+                          cx="36"
+                          cy="36"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="circle-widget-text">
+                        <span className="unlocked-count"><strong>{unlockedCount}</strong></span>
+                        <span className="total-count">/ {totalCount}</span>
+                      </div>
+                    </div>
+                    <div className="achievements-widget-info">
+                      <h4>Badges Unlocked</h4>
+                      <p>{Math.round((unlockedCount / totalCount) * 100)}% completion of platform goals</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Achievements Filter Tabs & Category Legend */}
+                <div className="achievements-filter-row">
+                  <div className="achievements-filter-tabs">
+                    <button
+                      className={`ach-filter-tab ${achievementFilter === "all" ? "active" : ""}`}
+                      onClick={() => setAchievementFilter("all")}
+                    >
+                      <span>All Badges</span>
+                      <span className="ach-filter-count">{achievementsList.length}</span>
+                    </button>
+                    <button
+                      className={`ach-filter-tab ${achievementFilter === "unlocked" ? "active" : ""}`}
+                      onClick={() => setAchievementFilter("unlocked")}
+                    >
+                      <span>Unlocked</span>
+                      <span className="ach-filter-count">{achievementsList.filter(a => a.condition).length}</span>
+                    </button>
+                    <button
+                      className={`ach-filter-tab ${achievementFilter === "locked" ? "active" : ""}`}
+                      onClick={() => setAchievementFilter("locked")}
+                    >
+                      <span>In Progress</span>
+                      <span className="ach-filter-count">{achievementsList.filter(a => !a.condition).length}</span>
+                    </button>
+                  </div>
+                  <div className="ach-category-legend">
+                    <span className="legend-item"><span className="legend-dot milestones" /> Milestones</span>
+                    <span className="legend-item"><span className="legend-dot development" /> Development</span>
+                    <span className="legend-item"><span className="legend-dot collaboration" /> Collaboration</span>
+                    <span className="legend-item"><span className="legend-dot social" /> Social</span>
+                    <span className="legend-item"><span className="legend-dot activity" /> Activity</span>
+                  </div>
+                </div>
+
+                {/* Achievements Staggered Grid List */}
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="achievements-grid"
+                >
+                  {filteredAchievements.map((ach) => {
+                    const Icon = ach.icon;
+                    const progressVal = Math.min(100, Math.max(0, (ach.current / ach.target) * 100));
+                    const isExpanded = expandedAchievementId === ach.id;
+                    const categoryClass = ach.category ? ach.category.toLowerCase() : "general";
+
+                    return (
+                      <motion.div
+                        variants={itemVariants}
+                        key={ach.id}
+                        onClick={() => setExpandedAchievementId(isExpanded ? null : ach.id)}
+                        className={`achievement-card-detailed ${ach.condition ? "unlocked" : "locked"} cat-${categoryClass} ${isExpanded ? "expanded" : ""}`}
+                        style={{
+                          borderColor: ach.condition ? ach.color : "var(--ce-border)",
+                          "--ach-accent": ach.color
+                        }}
+                      >
+                        {/* Floating XP badge */}
+                        <div className="achievement-xp-badge" style={{ backgroundColor: ach.condition ? ach.color : "var(--ce-border)" }}>
+                          +{ach.xpReward} XP
+                        </div>
+
+                        <div className="achievement-card-main">
+                          <div className="achievement-icon-wrapper" style={{ backgroundColor: ach.condition ? `${ach.color}15` : "var(--ce-hover)", color: ach.condition ? ach.color : "var(--ce-text-muted)" }}>
+                            {ach.condition ? <Icon size={24} /> : <Lock size={20} />}
+                          </div>
+
+                          <div className="achievement-details-col">
+                            <div className="achievement-name-row">
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                <span className={`achievement-category-pill ${categoryClass}`}>{ach.category}</span>
+                                <h4 className="achievement-title">{ach.title}</h4>
+                              </div>
+                              {ach.condition ? (
+                                <span className="status-pill unlocked">Unlocked</span>
+                              ) : (
+                                <span className="status-pill locked">Locked</span>
+                              )}
+                            </div>
+                            <p className="achievement-desc">{ach.description}</p>
+
+                            <div className="achievement-progress-row">
+                              <div className="achievement-progress-bar-track">
+                                <div className="achievement-progress-bar-fill" style={{ width: `${progressVal}%`, backgroundColor: ach.condition ? ach.color : "var(--ce-text-muted)" }} />
+                              </div>
+                              <span className="achievement-progress-text">
+                                {ach.current} / {ach.target}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Expandable guide/tips */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.22, ease: "easeInOut" }}
+                              className="achievement-expanded-guide"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="guide-divider" />
+                              <div className="guide-content">
+                                <span className="guide-label">How to Unlock:</span>
+                                <p className="guide-text">{ach.tip}</p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              </motion.div>
+            );
+          })()}
+
+          {/* ROOMS & ACTIONS SECTION */}
+          {activeSection === "rooms" && (
+            <motion.div
+              key="rooms"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="rooms-section-container">
+                <div className="rooms-split-layout">
+                  {/* Left Side: Actions */}
+                  <div className="rooms-actions-sidebar">
+                    {/* CREATE WORKSPACE */}
+                    <div className="action-form-card">
+                      <div className="form-card-header">
+                        <Plus size={18} className="form-icon" />
+                        <h3>Create Workspace Room</h3>
+                      </div>
+                      <form onSubmit={handleCreateRoom} className="compact-form">
+                        <div className="form-field">
+                          <label>Workspace Title</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. DSA Practice Prep"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            required
+                            disabled={isCreatingRoom}
+                          />
+                        </div>
+
+                        <div className="form-field">
+                          <label>Language</label>
+                          <select
+                            value={formData.language}
+                            onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                            disabled={isCreatingRoom}
+                          >
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="cpp">C++</option>
+                            <option value="java">Java</option>
+                          </select>
+                        </div>
+
+                        <div className="form-field">
+                          <label>Privacy Type</label>
+                          <select
+                            value={formData.isPrivate}
+                            onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
+                            disabled={isCreatingRoom}
+                          >
+                            <option value="false">Public</option>
+                            <option value="true">Private (Requires Approval)</option>
+                          </select>
+                        </div>
+
+                        <button type="submit" className="form-submit-btn" style={{ marginTop: "6px" }} disabled={isCreatingRoom}>
+                          {isCreatingRoom && <span className="btn-spinner"></span>}
+                          {isCreatingRoom ? "Creating Workspace..." : "Create Room Workspace"}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* JOIN WORKSPACE */}
+                    <div className="action-form-card">
+                      <div className="form-card-header">
+                        <LogIn size={18} className="form-icon" />
+                        <h3>Join Room Workspace</h3>
+                      </div>
+                      <form onSubmit={handleJoinRoom} className="compact-form">
+                        <div className="form-field">
+                          <label>Workspace Room ID Code</label>
+                          <input
+                            type="text"
+                            placeholder="Enter room hash token"
+                            value={roomId}
+                            onChange={(e) => setRoomId(e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        <button type="submit" className="form-submit-btn secondary" style={{ marginTop: "6px" }}>
+                          Join Workspace Session
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+
+                  {/* Right Side: Explorer tabs */}
+                  <div className="rooms-explorer-content">
+                    {/* Segmented Pill Switcher with Round Sliding Background */}
+                    <div className="ce-pill-switcher-container">
+                      <div className="ce-pill-switcher" style={{ maxWidth: "720px" }}>
+                        <div
+                          className="ce-pill-bg-slide"
+                          style={{
+                            width: "calc(33.333% - 2px)",
+                            transform: `translateX(${(roomsTab === "public" ? 0 : roomsTab === "myrooms" ? 1 : 2) * 100}%)`
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className={`ce-pill-btn ${roomsTab === "public" ? "active" : ""}`}
+                          onClick={() => setRoomsTab("public")}
+                        >
+                          Explore Public ({publicRooms.length})
+                        </button>
+                        <button
+                          type="button"
+                          className={`ce-pill-btn ${roomsTab === "myrooms" ? "active" : ""}`}
+                          onClick={() => setRoomsTab("myrooms")}
+                        >
+                          My Rooms ({historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length})
+                        </button>
+                        <button
+                          type="button"
+                          className={`ce-pill-btn ${roomsTab === "requests" ? "active" : ""}`}
+                          onClick={() => setRoomsTab("requests")}
+                        >
+                          My Requests ({mySentRequests.length})
+                        </button>
+                      </div>
+                    </div>
+
+
+
+                    {roomsTab === "public" && (
+                      <div style={{ marginTop: "8px" }}>
+                        <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Globe size={16} className="brand-logo" />
+                            <h3 className="section-title">Explore Public Workspaces</h3>
+                          </div>
+                          {publicRooms.length > 0 && (
+                            <div className="section-search-container">
+                              <Search size={13} className="section-search-icon" />
+                              <input
+                                type="text"
+                                placeholder="Search public rooms..."
+                                value={publicRoomsSearch}
+                                onChange={(e) => setPublicRoomsSearch(e.target.value)}
+                                className="section-search-input"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {publicRooms.length === 0 ? (
+                          <div className="empty-state-card">
+                            <Globe size={18} className="empty-state-icon" />
+                            <p>No public workspaces found. Be the first to create one!</p>
+                          </div>
+                        ) : (() => {
+                          const filteredPublic = publicRooms.filter(room => {
+                            const term = publicRoomsSearch.toLowerCase();
+                            return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                          });
+
+                          if (filteredPublic.length === 0) {
+                            return (
+                              <div className="empty-state-card">
+                                <Search size={18} className="empty-state-icon" />
+                                <p>No public rooms match "{publicRoomsSearch}".</p>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <>
+                              <div className="rooms-grid-explore" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", alignItems: "start" }}>
+                                {filteredPublic
+                                  .slice(0, showAllPublicRooms ? undefined : 6)
+                                  .map(room => renderRoomCard(room))}
+                              </div>
+                              {filteredPublic.length > 6 && (
+                                <button
+                                  onClick={() => setShowAllPublicRooms(!showAllPublicRooms)}
+                                  className="split-column-toggle-btn"
+                                  style={{ marginTop: "16px" }}
+                                >
+                                  <span>{showAllPublicRooms ? "Show Less" : "Show All"}</span>
+                                  <ChevronDown size={14} style={{ transform: showAllPublicRooms ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {roomsTab === "myrooms" && (
+                      <div style={{ marginTop: "8px" }}>
+                        <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <FolderGit size={16} className="brand-logo" />
+                            <h3 className="section-title">My Workspaces</h3>
+                          </div>
+                          {historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length > 0 && (
+                            <div className="section-search-container">
+                              <Search size={13} className="section-search-icon" />
+                              <input
+                                type="text"
+                                placeholder="Search your workspaces..."
+                                value={myRoomsTabSearch}
+                                onChange={(e) => setMyRoomsTabSearch(e.target.value)}
+                                className="section-search-input"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {(() => {
+                          const ownedRooms = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
+
+                          if (ownedRooms.length === 0) {
+                            return (
+                              <div className="empty-state-card">
+                                <FolderGit size={18} className="empty-state-icon" />
+                                <p>No owned workspaces found. Create a room on the left to begin!</p>
+                              </div>
+                            );
+                          }
+
+                          const filteredOwned = ownedRooms.filter(room => {
+                            const term = myRoomsTabSearch.toLowerCase();
+                            return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                          });
+
+                          if (filteredOwned.length === 0) {
+                            return (
+                              <div className="empty-state-card">
+                                <Search size={18} className="empty-state-icon" />
+                                <p>No owned rooms match "{myRoomsTabSearch}".</p>
+                              </div>
+                            );
+                          }
+
+                          // Split into Active and Offline owned rooms
+                          const activeOwnedTab = filteredOwned.filter(room => {
+                            const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                            return roomFromLive && (roomFromLive.activeUsersCount || 0) > 0;
+                          });
+
+                          const offlineOwnedTab = filteredOwned.filter(room => {
+                            const roomFromLive = liveRooms.find(lr => lr.roomId === room.roomId);
+                            return !roomFromLive || (roomFromLive.activeUsersCount || 0) === 0;
+                          });
+
+                          return (
+                            <div className="dashboard-split-layout">
+                              {/* ACTIVE OWNED ROOMS COLUMN */}
+                              <div className="split-column">
+                                <h4 className="split-column-title">
+                                  <span className="live-indicator-dot" />
+                                  Active Rooms ({activeOwnedTab.length})
+                                </h4>
+                                {activeOwnedTab.length === 0 ? (
+                                  <div className="empty-state-card compact">
+                                    <p>No active rooms match your search.</p>
+                                  </div>
+                                ) : (
+                                  <div className="split-column-cards-list">
+                                    {activeOwnedTab
+                                      .slice(0, showAllActiveMyRoomsTab ? undefined : 3)
+                                      .map(room => {
+                                        // Match current dynamic count/users from liveRooms if online
+                                        const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
+                                        return renderRoomCard(liveRoomObj || room);
+                                      })}
+                                  </div>
+                                )}
+                                {activeOwnedTab.length > 3 && (
+                                  <button
+                                    onClick={() => setShowAllActiveMyRoomsTab(!showAllActiveMyRoomsTab)}
+                                    className="split-column-toggle-btn"
+                                    style={{ marginTop: "12px" }}
+                                  >
+                                    <span>{showAllActiveMyRoomsTab ? "Show Less" : "Show All"}</span>
+                                    <ChevronDown size={14} style={{ transform: showAllActiveMyRoomsTab ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* OFFLINE OWNED ROOMS COLUMN */}
+                              <div className="split-column">
+                                <h4 className="split-column-title">
+                                  <span className="offline-indicator-dot" />
+                                  Offline Rooms ({offlineOwnedTab.length})
+                                </h4>
+                                {offlineOwnedTab.length === 0 ? (
+                                  <div className="empty-state-card compact">
+                                    <p>No offline rooms match your search.</p>
+                                  </div>
+                                ) : (
+                                  <div className="split-column-cards-list">
+                                    {offlineOwnedTab
+                                      .slice(0, showAllOfflineMyRoomsTab ? undefined : 3)
+                                      .map(room => renderRoomCard(room))}
+                                  </div>
+                                )}
+                                {offlineOwnedTab.length > 3 && (
+                                  <button
+                                    onClick={() => setShowAllOfflineMyRoomsTab(!showAllOfflineMyRoomsTab)}
+                                    className="split-column-toggle-btn"
+                                    style={{ marginTop: "12px" }}
+                                  >
+                                    <span>{showAllOfflineMyRoomsTab ? "Show Less" : "Show All"}</span>
+                                    <ChevronDown size={14} style={{ transform: showAllOfflineMyRoomsTab ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {roomsTab === "requests" && (
+                      <div style={{ marginTop: "8px" }}>
+                        <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: "16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Clock size={16} className="brand-logo" />
+                            <h3 className="section-title">My Sent Requests</h3>
+                          </div>
+                        </div>
+
+                        {mySentRequests.length === 0 ? (
+                          <div className="empty-state-card">
+                            <Terminal size={18} className="empty-state-icon" />
+                            <p>You haven't requested to join any private rooms yet.</p>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            {mySentRequests.map((req) => (
+                              <div
+                                key={req.roomId}
+                                className="social-activity-card"
+                                style={{
+                                  padding: "16px",
+                                  background: "rgba(255, 255, 255, 0.02)",
+                                  border: "1px solid var(--ce-border)",
+                                  borderRadius: "8px",
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  flexWrap: "wrap",
+                                  gap: "16px"
+                                }}
+                              >
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span className="room-title-text" style={{ fontSize: "0.95rem", fontWeight: "700", color: "var(--ce-text)" }}>
+                                      {req.title}
+                                    </span>
+                                    <span className="lang-badge" style={{ fontSize: "0.65rem", padding: "2px 6px", background: "rgba(255, 255, 255, 0.05)", borderRadius: "4px", textTransform: "uppercase", color: "var(--ce-text-muted)" }}>
+                                      {req.language}
+                                    </span>
+                                  </div>
+                                  <span style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)" }}>
+                                    Created by <strong>{req.createdBy?.username || "Owner"}</strong> ({req.createdBy?.email})
+                                  </span>
+                                  <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
+                                    Requested on {new Date(req.updatedAt || req.createdAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+                                  {req.status === "pending" && (
+                                    <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(245, 158, 11, 0.1)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "12px" }}>
+                                      Pending Approval
                                     </span>
                                   )}
-                                </div>
-                              )}
-
-                              {notif.type === "INVITE" && (
-                                <div style={{ marginTop: "4px" }}>
-                                  {!notif.isRead ? (
-                                    <div style={{ display: "flex", gap: "8px" }}>
+                                  {req.status === "rejected" && (
+                                    <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "12px" }}>
+                                      Request Rejected
+                                    </span>
+                                  )}
+                                  {req.status === "accepted" && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                      <span style={{ fontSize: "0.75rem", fontWeight: "600", padding: "4px 10px", background: "rgba(16, 185, 129, 0.1)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "12px" }}>
+                                        Request Accepted
+                                      </span>
                                       <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleAcceptInvite(roomLink, notif._id);
-                                        }}
-                                        className="history-resume-btn notif-action-btn accept"
+                                        onClick={() => proceedJoinRoom(req.roomId)}
+                                        className="ce-btn-primary"
                                         style={{
-                                          fontSize: "0.68rem",
-                                          padding: "3px 8px",
+                                          padding: "6px 16px",
+                                          fontSize: "0.78rem",
+                                          fontWeight: "600",
+                                          background: "var(--ce-primary)",
+                                          color: "#fff",
+                                          border: "none",
                                           borderRadius: "6px",
-                                          background: "rgba(16, 185, 129, 0.12)",
-                                          color: "#10b981",
-                                          border: "1px solid rgba(16, 185, 129, 0.25)",
-                                          cursor: "pointer"
+                                          cursor: "pointer",
+                                          boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)"
                                         }}
                                       >
                                         Join Workspace
                                       </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleIgnoreInvite(notif._id);
-                                        }}
-                                        className="history-resume-btn notif-action-btn reject"
-                                        style={{
-                                          fontSize: "0.68rem",
-                                          padding: "3px 8px",
-                                          borderRadius: "6px",
-                                          background: "rgba(239, 68, 68, 0.12)",
-                                          color: "#ef4444",
-                                          border: "1px solid rgba(239, 68, 68, 0.25)",
-                                          cursor: "pointer"
-                                        }}
-                                      >
-                                        Ignore
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
-                                      Invite processed
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="notif-meta-tags" style={{ marginTop: "2px" }}>
-                                <span className="notif-tag-badge">{notif.category}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="notif-right-content">
-                            <span className="notif-time-badge">{formatLastActive(notif.createdAt)}</span>
-                            {roomLink && notif.type !== "JOIN" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  triggerGateAndNavigate(roomLink);
-                                }}
-                                className="history-resume-btn notif-view-btn"
-                              >
-                                View Room
-                              </button>
-                            )}
-                            {!isRead && <span className="notif-unread-dot" />}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {notifPage < notifTotalPages && (
-                      <div className="notif-load-more-container" style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
-                        <button
-                          onClick={handleLoadMoreNotifications}
-                          disabled={notifLoading}
-                          className="notif-load-more-btn"
-                        >
-                          {notifLoading ? "Loading..." : "Load More Notifications"}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-          </motion.div>
-        )}
-
-        {/* PROFILE SECTION */}
-        {activeSection === "profile" && (
-          <motion.div
-            key="profile"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="profile-section-container">
-            {isPublicProfileLoading ? (
-              <div className="profile-loader-container" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "400px", gap: "16px" }}>
-                <div className="modal-roller-spinner">
-                  <div></div><div></div><div></div><div></div>
-                  <div></div><div></div><div></div><div></div>
-                </div>
-                <h4 style={{ color: "var(--ce-text)", fontWeight: "500", letterSpacing: "0.5px" }}>Loading Developer Profile...</h4>
-                <p style={{ color: "var(--ce-text-muted)", fontSize: "0.8rem", marginTop: "-8px" }}>Fetching portfolios, stats, and workspaces</p>
-              </div>
-            ) : (
-              <div className="github-profile-layout">
-
-              {/* Profile Card Header / Sidebar */}
-              <div className="profile-sidebar-card" style={{ padding: 0, overflow: "hidden" }}>
-                
-                {/* Cover Banner */}
-                <div 
-                  className="profile-cover-banner" 
-                  style={{ 
-                    background: (viewingUserProfile ? viewingUserProfile.coverBanner : user?.coverBanner) 
-                      ? `url(${viewingUserProfile ? viewingUserProfile.coverBanner : user.coverBanner}) center/cover no-repeat` 
-                      : "linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(6, 182, 212, 0.4) 100%)",
-                    height: "100px",
-                    width: "100%",
-                    position: "relative",
-                    cursor: !viewingUserProfile ? "pointer" : "default"
-                  }}
-                  onClick={() => {
-                    if (!viewingUserProfile) {
-                      document.getElementById("banner-upload-input").click();
-                    }
-                  }}
-                >
-                  {!viewingUserProfile && (
-                    <div className="banner-edit-overlay" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.2s ease", color: "#fff", fontSize: "0.7rem", fontWeight: "600" }}>
-                      Change Banner
-                    </div>
-                  )}
-                  <style>{`
-                    .profile-cover-banner:hover .banner-edit-overlay {
-                      opacity: 1 !important;
-                    }
-                  `}</style>
-                </div>
-                
-                {!viewingUserProfile && (
-                  <input 
-                    type="file" 
-                    id="banner-upload-input" 
-                    accept="image/*" 
-                    style={{ display: "none" }} 
-                    onChange={handleCoverBannerUpload}
-                  />
-                )}
-
-                {/* Main Card Content Wrapper (with padding) */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: "0 24px 24px 24px" }}>
-                  
-                  {/* Avatar overlapped over the banner */}
-                  <div style={{ marginTop: "-40px", zIndex: 2, position: "relative" }}>
-                    {viewingUserProfile ? (
-                      <div style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: viewingUserProfile.avatar ? "transparent" : getAvatarColor(viewingUserProfile.username), fontSize: "1.8rem", color: "#fff", fontWeight: "600", border: "4px solid var(--ce-surface-card)" }}>
-                        {viewingUserProfile.avatar ? (
-                          <img src={viewingUserProfile.avatar} alt={viewingUserProfile.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        ) : (
-                          viewingUserProfile.username.charAt(0).toUpperCase()
-                        )}
-                      </div>
-                    ) : (
-                      <div style={{ border: "4px solid var(--ce-surface-card)", borderRadius: "50%", background: "var(--ce-surface-card)" }}>
-                        <ProfileAvatar />
-                      </div>
-                    )}
-                  </div>
-
-                  <h2>{viewingUserProfile ? viewingUserProfile.username : user?.username}</h2>
-                  <span className="profile-email">{viewingUserProfile ? viewingUserProfile.email : user?.email}</span>
-                  <span
-                    className="profile-badge"
-                    style={getBadgeStyle(viewingUserProfile ? viewingUserProfile.title : user?.title)}
-                  >
-                    {viewingUserProfile ? viewingUserProfile.title : user?.title || "Developer"}
-                  </span>
-
-                  {/* Followers & Following Statistics Count */}
-                  <div className="profile-stats-bar">
-                    <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowersModal(true); }}>
-                      <strong>{viewingUserProfile ? viewingUserProfile.followersCount : user?.followersCount || 0}</strong>
-                      <span>Followers</span>
-                    </div>
-                    <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowingModal(true); }}>
-                      <strong>{viewingUserProfile ? viewingUserProfile.followingCount : user?.followingCount || 0}</strong>
-                      <span>Following</span>
-                    </div>
-                  </div>
-
-                  {/* Profile Bio Details & Update Form */}
-                  {isEditingProfile && !viewingUserProfile ? (
-                    <div className="profile-edit-form-card" style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", marginTop: "12px" }}>
-                      <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Bio</label>
-                        <textarea
-                          value={bioInput}
-                          onChange={(e) => setBioInput(e.target.value)}
-                          placeholder="Write a bio..."
-                          className="profile-edit-textarea"
-                          style={{ width: "100%", minHeight: "60px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem", resize: "none" }}
-                        />
-                      </div>
-                      <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Languages</label>
-                        <input
-                          type="text"
-                          value={langsInput}
-                          onChange={(e) => setLangsInput(e.target.value)}
-                          placeholder="e.g. JavaScript, Python"
-                          className="profile-edit-input"
-                          style={{ width: "100%", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
-                        />
-                      </div>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <button className="profile-edit-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile} style={{ flex: 1, padding: "6px", background: "var(--ce-primary)", color: "var(--ce-primary-text)", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "600" }}>
-                          {isSavingProfile ? "Saving..." : "Save"}
-                        </button>
-                        <button className="profile-edit-cancel-btn" onClick={() => setIsEditingProfile(false)} style={{ flex: 1, padding: "6px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" }}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ width: "100%" }}>
-                      <p className="profile-bio-text" style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", marginTop: "12px", textAlign: "center", fontStyle: "italic", lineHeight: "1.4" }}>
-                        {viewingUserProfile ? viewingUserProfile.bio || "No bio yet." : user?.bio || "No bio set yet. Click Edit Profile below to tell developers about yourself!"}
-                      </p>
-                      {((viewingUserProfile ? viewingUserProfile.programmingLanguages : user?.programmingLanguages) || []).length > 0 && (
-                        <div className="profile-languages-chips" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "12px", justifyContent: "center" }}>
-                          {(viewingUserProfile ? viewingUserProfile.programmingLanguages : user.programmingLanguages).map(lang => (
-                            <span key={lang} className="lang-chip-badge" style={{ fontSize: "0.62rem", padding: "2px 6px", background: "var(--ce-primary-glow)", color: "var(--ce-primary)", borderRadius: "4px", border: "1px solid var(--ce-border)", fontWeight: "600" }}>
-                              {lang}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {viewingUserProfile ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
-                          {String(viewingUserProfile._id) !== String(user?.id || user?._id) && (
-                            <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                              {followingList.some(f => String(f._id || f) === String(viewingUserProfile._id)) ? (
-                                <button
-                                  className="profile-follow-btn unfollow"
-                                  onClick={() => handleFollowToggle(viewingUserProfile._id)}
-                                  style={{ flex: 1 }}
-                                >
-                                  Unfollow
-                                </button>
-                              ) : (
-                                <button
-                                  className="profile-follow-btn follow"
-                                  onClick={() => handleFollowToggle(viewingUserProfile._id)}
-                                  style={{ flex: 1 }}
-                                >
-                                  Follow
-                                </button>
-                              )}
-                              <button
-                                className="profile-message-btn"
-                                onClick={() => {
-                                  setPreselectedChatPartner({
-                                    _id: viewingUserProfile._id,
-                                    username: viewingUserProfile.username,
-                                    avatar: viewingUserProfile.avatar,
-                                    bio: viewingUserProfile.bio || "Developer"
-                                  });
-                                  navigate("/dashboard?tab=messages");
-                                }}
-                                style={{ flex: 1 }}
-                              >
-                                <MessageSquare size={14} /> Message
-                              </button>
-                            </div>
-                          )}
-                          <button
-                            className="profile-back-btn"
-                            onClick={() => navigate("/dashboard?tab=profile")}
-                            style={{ width: "100%", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                          >
-                            <ArrowLeft size={13} /> Back to My Profile
-                          </button>
-                        </div>
-                      ) : (
-                        <button className="profile-edit-trigger-btn" onClick={startEditingProfile} style={{ width: "100%", marginTop: "16px", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}>
-                          Edit Profile
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Profile Main Content */}
-              <div className="profile-main-body" style={{ display: "flex", flexDirection: "column", gap: "20px", opacity: isLoadingStats ? 0.6 : 1, transition: "opacity 0.22s ease", pointerEvents: isLoadingStats ? "none" : "auto" }}>
-                <ContributionHeatmap
-                  rawHeatmap={viewingUserProfile ? (viewingUserStats?.heatmap || []) : (heatmap || [])}
-                  selectedYear={selectedYear}
-                  onYearChange={viewingUserProfile ? handleTargetYearChange : handleYearChange}
-                  availableYears={viewingUserProfile ? (viewingUserStats?.years || [new Date().getFullYear()]) : ownYears}
-                />
-
-                {/* Achievements Card */}
-                <div className="profile-sec-card">
-                  <h3>Achievements</h3>
-                  <div className="achievements-container">
-                    <div className="achievement-badge-card" title="Created more than 5 rooms">
-                      <Sparkles size={14} className="badge-icon gold" />
-                      <span>Creator Pro</span>
-                    </div>
-                    <div className="achievement-badge-card" title="Collaborated in a room">
-                      <Users size={14} className="badge-icon blue" />
-                      <span>Team Player</span>
-                    </div>
-                    <div className="achievement-badge-card" title="Executed JavaScript code">
-                      <Terminal size={14} className="badge-icon green" />
-                      <span>Script Master</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dynamic Tab Panels for Liked/Saved Rooms, created Rooms & Logs */}
-                <div className="profile-tabs-container">
-                  {/* Segmented Pill Switcher with Round Sliding Background */}
-                  {(() => {
-                    const profileTabsList = [
-                      { id: "rooms", label: viewingUserProfile ? "Rooms" : "My Rooms", count: viewingUserProfile ? viewingUserRooms.length : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length },
-                      { id: "liked", label: "Liked", count: viewingUserProfile ? viewingUserLikedRooms.length : likedRooms.length }
-                    ];
-                    if (!viewingUserProfile) {
-                      profileTabsList.push(
-                        { id: "saved", label: "Saved", count: savedRooms.length },
-                        { id: "activity", label: "Recent Logs", count: null }
-                      );
-                    }
-                    const activeProfileTabIdx = Math.max(0, profileTabsList.findIndex(t => t.id === profileTab));
-                    const profileTabsCount = profileTabsList.length;
-
-                    return (
-                      <div className="ce-pill-switcher-container">
-                        <div className="ce-pill-switcher" style={{ maxWidth: "680px" }}>
-                          <div
-                            className="ce-pill-bg-slide"
-                            style={{
-                              width: `calc(${100 / profileTabsCount}% - ${8 / profileTabsCount}px)`,
-                              transform: `translateX(${activeProfileTabIdx * 100}%)`
-                            }}
-                          />
-                          {profileTabsList.map((tab) => (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              className={`ce-pill-btn ${profileTab === tab.id ? "active" : ""}`}
-                              onClick={() => setProfileTab(tab.id)}
-                            >
-                              {tab.label} {tab.count !== null ? `(${tab.count})` : ""}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="profile-tab-content">
-                    {profileTab === "rooms" && (
-                      <div className="profile-rooms-grid">
-                        {(viewingUserProfile ? viewingUserRooms : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id)).length === 0 ? (
-                          <p className="profile-rooms-empty-text">No rooms created yet.</p>
-                        ) : (
-                          (viewingUserProfile ? viewingUserRooms : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id)).map(room => (
-                            <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
-                              <div className="profile-room-card-header">
-                                <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                                <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
-                              </div>
-                              <p className="profile-room-card-id">ID: {room.roomId}</p>
-                              <div className="profile-room-card-footer">
-                                <div className="profile-room-card-footer-left">
-                                  <span className="profile-room-card-date">{new Date(room.createdAt).toLocaleDateString()}</span>
-                                </div>
-                                <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
-                                  {room.likedBy && room.likedBy.length > 0 && (
-                                    <div className="card-likes-avatars-stack">
-                                      {room.likedBy.slice(0, 3).map((u, i) => (
-                                        <div
-                                          key={i}
-                                          className="avatar-stack-item"
-                                          style={{
-                                            marginLeft: i > 0 ? "-6px" : "0",
-                                            zIndex: 10 - i
-                                          }}
-                                        >
-                                          {u.avatar ? (
-                                            <img src={u.avatar} alt={u.username} />
-                                          ) : (
-                                            <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                              {(u.username || "D").charAt(0).toUpperCase()}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                      {room.likedBy.length > 3 && (
-                                        <span className="avatar-stack-more">
-                                          +{room.likedBy.length - 3}
-                                        </span>
-                                      )}
-                                      <div className="likes-tooltip">
-                                        <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
-                                        <div className="likes-tooltip-list">
-                                          {room.likedBy.map((u, idx) => (
-                                            <div key={idx} className="likes-tooltip-user">
-                                              {u.avatar ? (
-                                                <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
-                                              ) : (
-                                                <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                                  {(u.username || "D").charAt(0).toUpperCase()}
-                                                </div>
-                                              )}
-                                              <span className="likes-tooltip-username">{u.username}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
                                     </div>
                                   )}
-                                  <button
-                                    type="button"
-                                    className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                    onClick={() => handleLikeRoom(room.roomId)}
-                                  >
-                                    <Heart
-                                      size={12}
-                                      fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                    />
-                                    <span className="like-count-text">{room.likesCount || 0}</span>
-                                  </button>
-                                  <button onClick={() => handleBookmarkRoom(room.roomId)} className="profile-room-bookmark-btn"><Bookmark size={12} /></button>
                                 </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                    {profileTab === "liked" && (
-                      <div className="profile-rooms-grid">
-                        {(viewingUserProfile ? viewingUserLikedRooms : likedRooms).length === 0 ? (
-                          <p className="profile-rooms-empty-text">No liked rooms.</p>
-                        ) : (
-                          (viewingUserProfile ? viewingUserLikedRooms : likedRooms).map(room => (
-                            <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
-                              <div className="profile-room-card-header">
-                                <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                                <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
-                              </div>
-                              <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
-                              <div className="profile-room-card-footer">
-                                <div className="profile-room-card-footer-left">
-                                  <span className="profile-room-card-status-text">Liked</span>
-                                </div>
-                                <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
-                                  {room.likedBy && room.likedBy.length > 0 && (
-                                    <div className="card-likes-avatars-stack">
-                                      {room.likedBy.slice(0, 3).map((u, i) => (
-                                        <div
-                                          key={i}
-                                          className="avatar-stack-item"
-                                          style={{
-                                            marginLeft: i > 0 ? "-6px" : "0",
-                                            zIndex: 10 - i
-                                          }}
-                                        >
-                                          {u.avatar ? (
-                                            <img src={u.avatar} alt={u.username} />
-                                          ) : (
-                                            <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                              {(u.username || "D").charAt(0).toUpperCase()}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                      {room.likedBy.length > 3 && (
-                                        <span className="avatar-stack-more">
-                                          +{room.likedBy.length - 3}
-                                        </span>
-                                      )}
-                                      <div className="likes-tooltip">
-                                        <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
-                                        <div className="likes-tooltip-list">
-                                          {room.likedBy.map((u, idx) => (
-                                            <div key={idx} className="likes-tooltip-user">
-                                              {u.avatar ? (
-                                                <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
-                                              ) : (
-                                                <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                                  {(u.username || "D").charAt(0).toUpperCase()}
-                                                </div>
-                                              )}
-                                              <span className="likes-tooltip-username">{u.username}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                  <button
-                                    type="button"
-                                    className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                    onClick={() => handleLikeRoom(room.roomId)}
-                                  >
-                                    <Heart
-                                      size={12}
-                                      fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                    />
-                                    <span className="like-count-text">{room.likesCount || 0}</span>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                    {!viewingUserProfile && profileTab === "saved" && (
-                      <div className="profile-rooms-grid">
-                        {savedRooms.length === 0 ? (
-                          <p className="profile-rooms-empty-text">No bookmarked rooms.</p>
-                        ) : (
-                          savedRooms.map(room => (
-                            <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
-                              <div className="profile-room-card-header">
-                                <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                                <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
-                              </div>
-                              <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
-                              <div className="profile-room-card-footer">
-                                <div className="profile-room-card-footer-left">
-                                  <span className="profile-room-card-status-text">Saved</span>
-                                </div>
-                                <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
-                                  {room.likedBy && room.likedBy.length > 0 && (
-                                    <div className="card-likes-avatars-stack">
-                                      {room.likedBy.slice(0, 3).map((u, i) => (
-                                        <div
-                                          key={i}
-                                          className="avatar-stack-item"
-                                          style={{
-                                            marginLeft: i > 0 ? "-6px" : "0",
-                                            zIndex: 10 - i
-                                          }}
-                                        >
-                                          {u.avatar ? (
-                                            <img src={u.avatar} alt={u.username} />
-                                          ) : (
-                                            <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                              {(u.username || "D").charAt(0).toUpperCase()}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                      {room.likedBy.length > 3 && (
-                                        <span className="avatar-stack-more">
-                                          +{room.likedBy.length - 3}
-                                        </span>
-                                      )}
-                                      <div className="likes-tooltip">
-                                        <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
-                                        <div className="likes-tooltip-list">
-                                          {room.likedBy.map((u, idx) => (
-                                            <div key={idx} className="likes-tooltip-user">
-                                              {u.avatar ? (
-                                                <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
-                                              ) : (
-                                                <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                                  {(u.username || "D").charAt(0).toUpperCase()}
-                                                </div>
-                                              )}
-                                              <span className="likes-tooltip-username">{u.username}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                  <button
-                                    type="button"
-                                    className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                    onClick={() => handleLikeRoom(room.roomId)}
-                                  >
-                                    <Heart
-                                      size={12}
-                                      fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                    />
-                                    <span className="like-count-text">{room.likesCount || 0}</span>
-                                  </button>
-                                  <button onClick={(e) => { e.stopPropagation(); handleBookmarkRoom(room.roomId); }} className="profile-room-bookmark-btn active"><Bookmark size={12} fill="currentColor" /></button>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                    {!viewingUserProfile && profileTab === "activity" && (
-                      <div className="profile-activity-list">
-                        {activities.filter(a => String(a.username) === String(user?.username)).length === 0 ? (
-                          <p className="profile-rooms-empty-text">No recent activity logged.</p>
-                        ) : (
-                          activities.filter(a => String(a.username) === String(user?.username)).slice(0, 10).map(act => (
-                            <div key={act._id} className="profile-activity-item">
-                              <span>You {act.action} room <strong>{act.roomTitle}</strong></span>
-                              <span className="profile-activity-time">{formatLastActive(act.timestamp)}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-          )}
-        </div>
-          </motion.div>
-      )}
-
-
-        {/* SETTINGS SECTION */}
-        {activeSection === "settings" && (
-          <motion.div
-            key="settings"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-          <div className="settings-section-container">
-            <div className="settings-tabbed-layout">
-              <aside className="settings-tabs-sidebar">
-                <button
-                  onClick={() => setSettingsTab("account")}
-                  className={`settings-tab-btn ${settingsTab === "account" ? "active" : ""}`}
-                >
-                  <User size={14} /> Account Details
-                </button>
-                <button
-                  onClick={() => setSettingsTab("appearance")}
-                  className={`settings-tab-btn ${settingsTab === "appearance" ? "active" : ""}`}
-                >
-                  <Laptop size={14} /> Theme & Appearance
-                </button>
-                <button
-                  onClick={() => setSettingsTab("editor")}
-                  className={`settings-tab-btn ${settingsTab === "editor" ? "active" : ""}`}
-                >
-                  <BookOpen size={14} /> Editor Prefs
-                </button>
-                <button
-                  onClick={() => setSettingsTab("notifications")}
-                  className={`settings-tab-btn ${settingsTab === "notifications" ? "active" : ""}`}
-                >
-                  <BellRing size={14} /> Notifications
-                </button>
-                <button
-                  onClick={() => setSettingsTab("security")}
-                  className={`settings-tab-btn ${settingsTab === "security" ? "active" : ""}`}
-                >
-                  <Key size={14} /> Security
-                </button>
-                <button
-                  onClick={() => setSettingsTab("integrations")}
-                  className={`settings-tab-btn ${settingsTab === "integrations" ? "active" : ""}`}
-                >
-                  <FolderGit size={14} /> Integrations & APIs
-                </button>
-              </aside>
-
-              <div className="settings-pane-content">
-                {settingsTab === "account" && (
-                  <div className="settings-pane-form">
-                    <h3>Account Profile</h3>
-                    <p>Manage your account name, email listings, and developer bio.</p>
-                    <div className="settings-form-row">
-                      <div className="settings-form-field flex-1">
-                        <label>Username</label>
-                        <input type="text" value={user?.username || ""} disabled />
-                      </div>
-                      <div className="settings-form-field flex-1">
-                        <label>Email Address</label>
-                        <input type="email" value={user?.email || ""} disabled />
-                      </div>
-                    </div>
-                    <div className="settings-form-field">
-                      <label>Profile Bio</label>
-                      <textarea
-                        placeholder="Tell us about your coding identity..."
-                        value={bioInput}
-                        onChange={(e) => setBioInput(e.target.value)}
-                      />
-                    </div>
-                    <div className="settings-form-field">
-                      <label>Programming Languages</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. JavaScript, Python, C++"
-                        value={langsInput}
-                        onChange={(e) => setLangsInput(e.target.value)}
-                      />
-                    </div>
-                    <button className="settings-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile}>{isSavingProfile ? "Saving..." : "Update Profile"}</button>
-                  </div>
-                )}
-
-                {settingsTab === "appearance" && (
-                  <div className="settings-pane-form">
-                    <h3>Theme & Appearance</h3>
-                    <p>Customize the look and feel of your workspace.</p>
-                    <div className="appearance-themes-grid">
-                      <div
-                        className={`appearance-theme-card ${activeTheme === "dark" ? "active" : ""}`}
-                        onClick={() => handleThemeChange("dark")}
-                      >
-                        <div className="theme-preview dark">
-                          <div className="preview-decor-sidebar" />
-                          <div className="preview-decor-editor">
-                            <div className="decor-line code-blue" style={{ width: "60%" }} />
-                            <div className="decor-line code-purple" style={{ width: "40%" }} />
-                            <div className="decor-line code-yellow" style={{ width: "75%" }} />
-                            <div className="decor-line code-green" style={{ width: "50%" }} />
-                          </div>
-                          <div className="preview-decor-chat" />
-                        </div>
-                        <span>System Dark Mode</span>
-                      </div>
-                      <div
-                        className={`appearance-theme-card ${activeTheme === "light" ? "active" : ""}`}
-                        onClick={() => handleThemeChange("light")}
-                      >
-                        <div className="theme-preview light">
-                          <div className="preview-decor-sidebar" />
-                          <div className="preview-decor-editor">
-                            <div className="decor-line code-blue" style={{ width: "60%" }} />
-                            <div className="decor-line code-purple" style={{ width: "40%" }} />
-                            <div className="decor-line code-yellow" style={{ width: "75%" }} />
-                            <div className="decor-line code-green" style={{ width: "50%" }} />
-                          </div>
-                          <div className="preview-decor-chat" />
-                        </div>
-                        <span>Linear Light Mode</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {settingsTab === "editor" && (
-                  <div className="settings-pane-form">
-                    <h3>Editor & Workspace Settings</h3>
-                    <p>Customize the Monaco code compiler and workspace canvas preferences.</p>
-
-                    <div className="settings-form-row">
-                      <div className="settings-form-field flex-1">
-                        <label>Font Size (px)</label>
-                        <input type="number" value={dashEditorFontSize} onChange={handleEditorFontSizeChange} min="12" max="24" />
-                      </div>
-                      <div className="settings-form-field flex-1">
-                        <label>Tab Size</label>
-                        <select value={dashEditorTabSize} onChange={handleEditorTabSizeChange}>
-                          <option value={2}>2 spaces</option>
-                          <option value={4}>4 spaces</option>
-                          <option value={8}>8 spaces</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="settings-form-row">
-                      <div className="settings-form-field flex-1">
-                        <label>Default Room Language</label>
-                        <select value={dashDefaultLanguage} onChange={handleDefaultLanguageChange}>
-                          <option value="javascript">JavaScript</option>
-                          <option value="python">Python</option>
-                          <option value="cpp">C++</option>
-                          <option value="java">Java</option>
-                        </select>
-                      </div>
-                      <div className="settings-form-field flex-1">
-                        <label>Default Whiteboard Grid</label>
-                        <select value={dashWhiteboardGrid} onChange={handleWhiteboardGridChange}>
-                          <option value="dots">Dots</option>
-                          <option value="lines">Grid Lines</option>
-                          <option value="none">None</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="settings-form-row">
-                      <div className="settings-form-field flex-1">
-                        <label>AI IntelliSense Autocomplete</label>
-                        <select value={dashEditorSuggestions} onChange={handleEditorSuggestionsChange}>
-                          <option value="ai">AI-Powered (Smart Autocomplete) ✨</option>
-                          <option value="standard">Standard Autocomplete</option>
-                          <option value="disabled">Disabled</option>
-                        </select>
-                      </div>
-                      <div className="settings-form-field flex-1">
-                        <label>Auto-Save Frequency</label>
-                        <select value={dashEditorAutoSave} onChange={handleEditorAutoSaveChange}>
-                          <option value="off">Manual Save Only</option>
-                          <option value="5">Every 5 Seconds</option>
-                          <option value="30">Every 30 Seconds</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="settings-toggle-row">
-                      <div className="toggle-info">
-                        <span className="toggle-label">Minimap Preview</span>
-                        <span className="toggle-desc">Show mini outline code map on the right side of the canvas</span>
-                      </div>
-                      <label className="ce-switch">
-                        <input type="checkbox" checked={dashEditorMinimap} onChange={handleEditorMinimapChange} />
-                        <span className="ce-switch-slider" />
-                      </label>
-                    </div>
-
-                    <div className="settings-toggle-row">
-                      <div className="toggle-info">
-                        <span className="toggle-label">Word Wrap</span>
-                        <span className="toggle-desc">Auto-wrap long code lines to fit the viewport boundary</span>
-                      </div>
-                      <label className="ce-switch">
-                        <input type="checkbox" checked={dashEditorWordWrap} onChange={handleEditorWordWrapChange} />
-                        <span className="ce-switch-slider" />
-                      </label>
-                    </div>
-
-                    <div className="settings-toggle-row">
-                      <div className="toggle-info">
-                        <span className="toggle-label">Line Numbers</span>
-                        <span className="toggle-desc">Display line numbers in the editor margin gutter</span>
-                      </div>
-                      <label className="ce-switch">
-                        <input type="checkbox" checked={dashEditorLineNumbers} onChange={handleEditorLineNumbersChange} />
-                        <span className="ce-switch-slider" />
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {settingsTab === "notifications" && (
-                  <div className="settings-pane-form">
-                    <h3>Notification Settings</h3>
-                    <p>Manage when you want to receive real-time dashboard notifications.</p>
-
-                    <div className="settings-toggle-row">
-                      <div className="toggle-info">
-                        <span className="toggle-label">Room Join Request Alerts</span>
-                        <span className="toggle-desc">Get notified immediately when someone requests to join your room</span>
-                      </div>
-                      <label className="ce-switch">
-                        <input type="checkbox" checked={notifApprovalAlerts} onChange={handleApprovalAlertsChange} />
-                        <span className="ce-switch-slider" />
-                      </label>
-                    </div>
-
-                    <div className="settings-toggle-row">
-                      <div className="toggle-info">
-                        <span className="toggle-label">Direct Message Tones</span>
-                        <span className="toggle-desc">Receive popups when other developers ping you in DM chats</span>
-                      </div>
-                      <label className="ce-switch">
-                        <input type="checkbox" checked={notifMentionAlerts} onChange={handleMentionAlertsChange} />
-                        <span className="ce-switch-slider" />
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {settingsTab === "security" && (
-                  <div className="settings-pane-form">
-                    <h3>Security Preferences</h3>
-                    <p>Configure security authorizations and passwords.</p>
-                    <div className="settings-form-field">
-                      <label>Current Password</label>
-                      <input type="password" placeholder="••••••••" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-                    </div>
-                    <div className="settings-form-field">
-                      <label>New Password</label>
-                      <input type="password" placeholder="At least 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                      {newPassword && (
-                        <div className="password-strength-container">
-                          <div className="strength-bar-track">
-                            <div 
-                              className="strength-bar-fill" 
-                              style={{ 
-                                width: `${passwordStrength.percent}%`, 
-                                backgroundColor: passwordStrength.color,
-                                boxShadow: `0 0 10px ${passwordStrength.color}55`
-                              }} 
-                            />
-                          </div>
-                          <span className="strength-label" style={{ color: passwordStrength.color }}>
-                            Strength: <strong>{passwordStrength.label}</strong>
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <button className="settings-save-btn" onClick={handleUpdatePassword}>Change Password</button>
-                  </div>
-                )}
-
-                {settingsTab === "integrations" && (
-                  <div className="settings-pane-form integrations-pane">
-                    <h3>Integrations & API Services</h3>
-                    <p>Connect your account to third-party services and generate personal API tokens for CLI tool access.</p>
-
-                    {/* GitHub Integration Section */}
-                    <div className="integration-card-wrapper">
-                      <div className="integration-card-header">
-                        <div className="integration-service-meta">
-                          <div className="integration-icon-bg github">
-                            <Code size={18} style={{ color: "#fff" }} />
-                          </div>
-                          <div>
-                            <h4>GitHub Integration</h4>
-                            <span className="integration-desc-small">Link repositories, push files, and collaborate.</span>
-                          </div>
-                        </div>
-                        {gitConnectionInfo ? (
-                          <span className="badge-status-new success">Connected</span>
-                        ) : (
-                          <span className="badge-status-new danger">Disconnected</span>
-                        )}
-                      </div>
-
-                      {gitConnectionInfo ? (
-                        <div className="git-connected-container">
-                          <div className="git-user-profile">
-                            <img src={gitConnectionInfo.avatar_url} alt={gitConnectionInfo.login} className="git-avatar" />
-                            <div className="git-user-details">
-                              <strong>{gitConnectionInfo.name}</strong>
-                              <a href={gitConnectionInfo.html_url} target="_blank" rel="noopener noreferrer" className="git-profile-link">
-                                @{gitConnectionInfo.login}
-                              </a>
-                            </div>
-                          </div>
-                          <div className="git-connected-actions">
-                            <div className="settings-form-field flex-1" style={{ maxWidth: "240px" }}>
-                              <label>Default Repo Branch</label>
-                              <div style={{ display: "flex", gap: "8px" }}>
-                                <input
-                                  type="text"
-                                  value={gitDefaultBranch}
-                                  onChange={(e) => setGitDefaultBranch(e.target.value)}
-                                  placeholder="main"
-                                />
-                                <button className="settings-save-btn" onClick={handleSaveGitBranch} style={{ padding: "0 12px" }}>Save</button>
-                              </div>
-                            </div>
-                            <button className="settings-btn-revoke danger" onClick={handleDisconnectGitHub}>
-                              Disconnect GitHub
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <form onSubmit={handleVerifyGitHubToken} className="git-disconnected-form">
-                          <div className="settings-form-field">
-                            <label>GitHub Personal Access Token (PAT)</label>
-                            <div className="input-with-action-wrapper">
-                              <input
-                                type={showGitToken ? "text" : "password"}
-                                placeholder="ghp_..."
-                                value={gitHubToken}
-                                onChange={(e) => setGitHubToken(e.target.value)}
-                              />
-                              <button
-                                type="button"
-                                className="input-action-btn"
-                                onClick={() => setShowGitToken(!showGitToken)}
-                              >
-                                {showGitToken ? <EyeOff size={16} /> : <Eye size={16} />}
-                              </button>
-                            </div>
-                            <span className="field-help-hint">
-                              Create a classic token with `read:user` scope on GitHub settings to sync user stats.
-                            </span>
-                          </div>
-
-                          <div className="settings-form-row">
-                            <div className="settings-form-field flex-1">
-                              <label>Default Branch</label>
-                              <input
-                                type="text"
-                                value={gitDefaultBranch}
-                                onChange={(e) => setGitDefaultBranch(e.target.value)}
-                                placeholder="main"
-                              />
-                            </div>
-                            <div className="settings-form-field flex-1" style={{ justifyContent: "flex-end" }}>
-                              <button
-                                type="submit"
-                                className="settings-save-btn"
-                                disabled={isVerifyingGit}
-                                style={{ width: "100%", alignSelf: "unset" }}
-                              >
-                                {isVerifyingGit ? "Verifying..." : "Verify & Connect"}
-                              </button>
-                            </div>
-                          </div>
-                        </form>
-                      )}
-                    </div>
-
-                    <div className="settings-divider-horizontal" />
-
-                    {/* Personal API Keys Section */}
-                    <div className="integration-card-wrapper api-keys-section">
-                      <h4>Personal Access Keys</h4>
-                      <p className="section-desc-sub text-muted" style={{ marginTop: "-10px", marginBottom: "16px", fontSize: "0.78rem" }}>
-                        Generate secure tokens to interface with the CODE-EXPO command line tools and automated runners.
-                      </p>
-
-                      <div className="generate-api-key-form">
-                        <div className="settings-form-field">
-                          <label>New Key Identifier / Name</label>
-                          <div style={{ display: "flex", gap: "12px" }}>
-                            <input
-                              type="text"
-                              placeholder="e.g. VSCode-Local-Dev"
-                              value={apiKeyName}
-                              onChange={(e) => setApiKeyName(e.target.value)}
-                              style={{ flex: 1 }}
-                            />
-                            <button
-                              type="button"
-                              className="settings-save-btn"
-                              onClick={() => {
-                                handleGenerateApiKey(apiKeyName);
-                                setApiKeyName("");
-                              }}
-                            >
-                              Generate Key
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {newlyGeneratedKey && (
-                        <div className="generated-key-alert success">
-                          <div className="alert-content">
-                            <strong>New API Key Created!</strong>
-                            <p>Copy this key now. For security reasons, it will not be displayed again.</p>
-                            <div className="key-display-copy-row">
-                              <code className="raw-key-code">{newlyGeneratedKey}</code>
-                              <button
-                                className="copy-key-btn"
-                                onClick={(e) => {
-                                  navigator.clipboard.writeText(newlyGeneratedKey);
-                                  addToast("API Key copied to clipboard", "success");
-                                }}
-                              >
-                                <Check size={14} /> Copy
-                              </button>
-                            </div>
-                            <button className="btn-close-alert" onClick={() => setNewlyGeneratedKey(null)}>
-                              I've Copied the Key
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="active-keys-table-container">
-                        <h5>Active Keys</h5>
-                        {apiKeys.length === 0 ? (
-                          <p className="no-active-keys-hint">No active API keys found. Generate one above to get started.</p>
-                        ) : (
-                          <div className="keys-list-container">
-                            {apiKeys.map(key => (
-                              <div key={key.id} className="key-list-row-item">
-                                <div className="key-info-meta">
-                                  <strong className="key-item-name">{key.name}</strong>
-                                  <div className="key-item-details">
-                                    <code className="key-prefix-hint">{key.prefix}</code>
-                                    <span className="dot-divider" />
-                                    <span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
-                                  </div>
-                                </div>
-                                <button
-                                  className="key-revoke-btn"
-                                  title="Revoke Key"
-                                  onClick={() => handleRevokeApiKey(key.id)}
-                                >
-                                  Delete
-                                </button>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ROOM HISTORY SECTION */}
+          {activeSection === "history" && (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="history-section-container">
+                <div className="history-table-controls">
+                  <div className="search-bar-container">
+                    <Search size={14} className="control-search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Search rooms..."
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="filter-controls">
+                    <SlidersHorizontal size={14} />
+                    <select value={historyFilterLang} onChange={(e) => setHistoryFilterLang(e.target.value)}>
+                      <option value="all">All Languages</option>
+                      <option value="javascript">JavaScript</option>
+                      <option value="python">Python</option>
+                      <option value="cpp">C++</option>
+                      <option value="java">Java</option>
+                    </select>
+
+                    <select value={historySortBy} onChange={(e) => setHistorySortBy(e.target.value)}>
+                      <option value="recent">Sort by: Recent</option>
+                      <option value="name">Sort by: Name</option>
+                      <option value="created">Sort by: Date Created</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="history-table-wrapper">
+                  <table className="history-data-table">
+                    <thead>
+                      <tr>
+                        <th>Room Workspace</th>
+                        <th>Language</th>
+                        <th>Participants</th>
+                        <th>Owner</th>
+                        <th>Last Activity</th>
+                        <th className="text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: "center", color: "var(--ce-text-muted)" }}>No rooms match your filter.</td>
+                        </tr>
+                      ) : (
+                        filteredHistory.map(room => {
+                          const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id;
+                          return (
+                            <tr key={room.roomId}>
+                              <td>
+                                <div className="table-room-title">🚀 {room.title}</div>
+                                <div className="table-room-id">{room.roomId}</div>
+                              </td>
+                              <td>
+                                <span className="lang-badge-small">{room.language?.toUpperCase()}</span>
+                              </td>
+                              <td>
+                                <span className="participants-count">{room.participants?.length || 1} online</span>
+                              </td>
+                              <td>
+                                <span className="participants-count">{isOwner ? "You" : room.createdBy?.username || "Collaborator"}</span>
+                              </td>
+                              <td>
+                                {new Date(room.updatedAt).toLocaleDateString()}
+                              </td>
+                              <td className="text-right">
+                                <button
+                                  onClick={() => handleJoinRoomDirect(room.roomId)}
+                                  className="history-resume-btn"
+                                >
+                                  Resume
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* WHITEBOARDS TAB SECTION */}
+          {activeSection === "whiteboards" && (
+            <motion.div
+              key="whiteboards"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="history-section-container">
+                <div className="section-header" style={{ marginBottom: "16px" }}>
+                  <Palette size={16} className="brand-logo" />
+                  <h3 className="section-title">Collaborative Whiteboards</h3>
+                </div>
+                <p style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", marginBottom: "16px" }}>
+                  Click any workspace below to open directly into collaborative whiteboard canvas mode.
+                </p>
+                <div className="whiteboards-list">
+                  {historyRooms.length === 0 ? (
+                    <div className="empty-state-card">
+                      <p>No active workspaces found. Create a room first to access the whiteboard canvas.</p>
+                    </div>
+                  ) : (
+                    historyRooms.map(room => (
+                      <div key={room.roomId} className="whiteboard-item">
+                        <div className="whiteboard-item-left">
+                          <Palette size={16} style={{ color: "var(--ce-primary)" }} />
+                          <div>
+                            <div className="wb-title">{room.title} Whiteboard Canvas</div>
+                            <div className="wb-desc">Associated Room ID: {room.roomId} • {room.language}</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => triggerGateAndNavigate(room.roomId)}
+                          onMouseEnter={prefetchEditor}
+                          className="history-resume-btn"
+                        >
+                          Open Canvas
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* DIRECT MESSAGES SECTION */}
+          {activeSection === "messages" && (
+            <motion.div
+              key="messages"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <DirectMessages
+                preselectedUser={preselectedChatPartner}
+                onChatLoaded={() => setPreselectedChatPartner(null)}
+                onViewProfile={handleViewUserProfile}
+              />
+            </motion.div>
+          )}
+
+          {/* NOTIFICATIONS FEED SECTION */}
+          {activeSection === "notifications" && (
+            <motion.div
+              key="notifications"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="history-section-container">
+                <div className="section-header" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Bell size={16} className="brand-logo" />
+                    <h3 className="section-title">System & Social Notifications</h3>
+                  </div>
+                  {unreadNotificationsCount > 0 && (
+                    <button onClick={handleMarkAllNotificationsRead} className="history-resume-btn" style={{ fontSize: "0.75rem", padding: "4px 10px" }}>
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+
+                {/* Premium Category Filter Tabs */}
+                <div className="notif-filter-tabs-container" style={{ marginBottom: "20px" }}>
+                  <div className="achievements-filter-tabs">
+                    <button
+                      className={`ach-filter-tab ${notifFilter === "all" ? "active" : ""}`}
+                      onClick={() => setNotifFilter("all")}
+                    >
+                      <span>All</span>
+                      <span className="ach-filter-count">{notificationsList.length}</span>
+                    </button>
+                    <button
+                      className={`ach-filter-tab ${notifFilter === "unread" ? "active" : ""}`}
+                      onClick={() => setNotifFilter("unread")}
+                    >
+                      <span>Unread</span>
+                      <span className="ach-filter-count">{unreadNotificationsCount}</span>
+                    </button>
+                    <button
+                      className={`ach-filter-tab ${notifFilter === "workspaces" ? "active" : ""}`}
+                      onClick={() => setNotifFilter("workspaces")}
+                    >
+                      <span>Workspaces</span>
+                      <span className="ach-filter-count">
+                        {notificationsList.filter(n => ["LIKE", "BOOKMARK", "JOIN"].includes(n.type)).length}
+                      </span>
+                    </button>
+                    <button
+                      className={`ach-filter-tab ${notifFilter === "social" ? "active" : ""}`}
+                      onClick={() => setNotifFilter("social")}
+                    >
+                      <span>Social</span>
+                      <span className="ach-filter-count">
+                        {notificationsList.filter(n => n.type === "FOLLOW").length}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="notifications-list">
+                  {/* Render Action Required / Pending Join Requests at the top if All or Workspaces is selected */}
+                  {(notifFilter === "all" || notifFilter === "workspaces") && joinRequests.length > 0 && joinRequests.map(req => (
+                    <div key={req.requestId} className="notification-item join-request-pending notif-type-join-pending" style={{ borderColor: "var(--ce-warning)", borderLeft: "3px solid var(--ce-warning)" }}>
+                      <div className="notif-left-content">
+                        <div className="notif-category-icon-container">
+                          <ShieldAlert size={16} style={{ color: "var(--ce-warning)" }} />
+                        </div>
+                        <div className="notif-main-info">
+                          <div className="notif-text-message">
+                            <strong>Join Request Approval Pending</strong>
+                          </div>
+                          <div className="notif-desc" style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
+                            <strong>{req.username}</strong> requested to access private room <strong>{req.roomTitle}</strong>.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="notif-right-content" style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRespondRequest(req.roomId, req.user?._id || req.user, "accept");
+                          }}
+                          className="history-resume-btn notif-action-btn accept"
+                          style={{
+                            fontSize: "0.72rem",
+                            padding: "4px 10px",
+                            background: "rgba(16, 185, 129, 0.12)",
+                            color: "#10b981",
+                            border: "1px solid rgba(16, 185, 129, 0.3)",
+                            borderRadius: "8px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRespondRequest(req.roomId, req.user?._id || req.user, "reject");
+                          }}
+                          className="history-resume-btn notif-action-btn reject"
+                          style={{
+                            fontSize: "0.72rem",
+                            padding: "4px 10px",
+                            background: "rgba(239, 68, 68, 0.12)",
+                            color: "#ef4444",
+                            border: "1px solid rgba(239, 68, 68, 0.3)",
+                            borderRadius: "8px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {(() => {
+                    const filteredNotifs = notificationsList.filter(notif => {
+                      if (notifFilter === "unread") return !notif.isRead;
+                      if (notifFilter === "social") return notif.category === "SOCIAL" || notif.type === "FOLLOW";
+                      if (notifFilter === "workspaces") return notif.category === "ROOMS" || notif.category === "COLLABORATION" || ["LIKE", "BOOKMARK", "JOIN", "INVITE"].includes(notif.type);
+                      return true;
+                    });
+
+                    if (filteredNotifs.length === 0) {
+                      return (
+                        <div className="empty-state-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px", textAlign: "center" }}>
+                          <Bell size={28} style={{ color: "var(--ce-text-muted)", marginBottom: "12px" }} />
+                          <h4 style={{ color: "var(--ce-text-h)", margin: "0 0 4px 0", fontSize: "0.95rem" }}>No notifications found</h4>
+                          <p style={{ color: "var(--ce-text-muted)", fontSize: "0.82rem", margin: 0 }}>
+                            {notifFilter === "all"
+                              ? "You have no notifications yet."
+                              : `No ${notifFilter} notifications were found matching your criteria.`}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {filteredNotifs.map(notif => {
+                          const isRead = notif.isRead;
+                          const senderName = notif.sender?.username || "Someone";
+                          const senderAvatar = notif.sender?.avatar;
+                          const roomTitle = notif.targetRoom?.title || "workspace";
+                          const roomLink = notif.targetRoom?.roomId;
+
+                          let notifIcon = <Bell size={14} />;
+                          let actionText = "";
+                          let typeClass = "notif-type-general";
+
+                          if (notif.type === "FOLLOW") {
+                            notifIcon = <Users size={14} style={{ color: "var(--ce-primary)" }} />;
+                            actionText = "followed you";
+                            typeClass = "notif-type-follow";
+                          } else if (notif.type === "LIKE") {
+                            notifIcon = <Heart size={14} style={{ color: "#ef4444" }} />;
+                            actionText = `liked your room "${roomTitle}"`;
+                            typeClass = "notif-type-like";
+                          } else if (notif.type === "BOOKMARK") {
+                            notifIcon = <Bookmark size={14} style={{ color: "var(--ce-accent)" }} />;
+                            actionText = `bookmarked your room "${roomTitle}"`;
+                            typeClass = "notif-type-bookmark";
+                          } else if (notif.type === "JOIN") {
+                            notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-warning)" }} />;
+                            actionText = `wants to join "${roomTitle}"`;
+                            typeClass = "notif-type-join";
+                          } else if (notif.type === "INVITE") {
+                            notifIcon = <Mail size={14} style={{ color: "var(--ce-primary)" }} />;
+                            actionText = `invited you to join workspace "${roomTitle}"`;
+                            typeClass = "notif-type-invite";
+                          }
+
+                          // Follow status mapping for social notifications
+                          const isFollowingSender = followingList.some(f => String(f._id || f) === String(notif.sender?._id || notif.sender));
+
+                          // Access request lookup
+                          const pendingReq = joinRequests.find(req =>
+                            String(req.roomId) === String(notif.targetRoom?.roomId || notif.targetRoom?._id) &&
+                            String(req.user?._id || req.user) === String(notif.sender?._id)
+                          );
+
+                          return (
+                            <div
+                              key={notif._id}
+                              className={`notification-item ${isRead ? "read" : "unread"} ${typeClass}`}
+                              onClick={() => !isRead && handleMarkOneNotificationRead(notif._id)}
+                            >
+                              <div className="notif-left-content">
+                                <div className="notif-category-icon-container">
+                                  {notifIcon}
+                                </div>
+                                <div className="notif-sender-avatar-container" style={{ backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName) }}>
+                                  {senderAvatar ? (
+                                    <img src={senderAvatar} alt={senderName} className="notif-sender-img" />
+                                  ) : (
+                                    <span className="notif-sender-initial">{senderName.charAt(0).toUpperCase()}</span>
+                                  )}
+                                </div>
+                                <div className="notif-main-info">
+                                  <div className="notif-text-message">
+                                    <strong>{senderName}</strong> {actionText}
+                                  </div>
+
+                                  {/* Context-aware inline actions inside the details block */}
+                                  {notif.type === "FOLLOW" && (
+                                    <div style={{ marginTop: "4px" }}>
+                                      {isFollowingSender ? (
+                                        <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-primary)", display: "inline-flex", alignItems: "center", gap: "3px", fontWeight: "600" }}>
+                                          <Check size={11} /> Following
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleFollowToggle(notif.sender?._id || notif.sender);
+                                          }}
+                                          className="history-resume-btn notif-action-btn follow-back"
+                                          style={{
+                                            fontSize: "0.68rem",
+                                            padding: "3px 8px",
+                                            borderRadius: "6px",
+                                            background: "rgba(59, 130, 246, 0.12)",
+                                            color: "var(--ce-primary)",
+                                            border: "1px solid rgba(59, 130, 246, 0.25)",
+                                            cursor: "pointer",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "3px"
+                                          }}
+                                        >
+                                          <UserPlus size={10} /> Follow Back
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {notif.type === "JOIN" && (
+                                    <div style={{ marginTop: "4px" }}>
+                                      {pendingReq ? (
+                                        <div style={{ display: "flex", gap: "8px" }}>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRespondRequest(pendingReq.roomId, pendingReq.user?._id || pendingReq.user, "accept");
+                                            }}
+                                            className="history-resume-btn notif-action-btn accept"
+                                            style={{
+                                              fontSize: "0.68rem",
+                                              padding: "3px 8px",
+                                              borderRadius: "6px",
+                                              background: "rgba(16, 185, 129, 0.12)",
+                                              color: "#10b981",
+                                              border: "1px solid rgba(16, 185, 129, 0.25)",
+                                              cursor: "pointer"
+                                            }}
+                                          >
+                                            Accept
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRespondRequest(pendingReq.roomId, pendingReq.user?._id || pendingReq.user, "reject");
+                                            }}
+                                            className="history-resume-btn notif-action-btn reject"
+                                            style={{
+                                              fontSize: "0.68rem",
+                                              padding: "3px 8px",
+                                              borderRadius: "6px",
+                                              background: "rgba(239, 68, 68, 0.12)",
+                                              color: "#ef4444",
+                                              border: "1px solid rgba(239, 68, 68, 0.25)",
+                                              cursor: "pointer"
+                                            }}
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
+                                          Request processed
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {notif.type === "INVITE" && (
+                                    <div style={{ marginTop: "4px" }}>
+                                      {!notif.isRead ? (
+                                        <div style={{ display: "flex", gap: "8px" }}>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleAcceptInvite(roomLink, notif._id);
+                                            }}
+                                            className="history-resume-btn notif-action-btn accept"
+                                            style={{
+                                              fontSize: "0.68rem",
+                                              padding: "3px 8px",
+                                              borderRadius: "6px",
+                                              background: "rgba(16, 185, 129, 0.12)",
+                                              color: "#10b981",
+                                              border: "1px solid rgba(16, 185, 129, 0.25)",
+                                              cursor: "pointer"
+                                            }}
+                                          >
+                                            Join Workspace
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleIgnoreInvite(notif._id);
+                                            }}
+                                            className="history-resume-btn notif-action-btn reject"
+                                            style={{
+                                              fontSize: "0.68rem",
+                                              padding: "3px 8px",
+                                              borderRadius: "6px",
+                                              background: "rgba(239, 68, 68, 0.12)",
+                                              color: "#ef4444",
+                                              border: "1px solid rgba(239, 68, 68, 0.25)",
+                                              cursor: "pointer"
+                                            }}
+                                          >
+                                            Ignore
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
+                                          Invite processed
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <div className="notif-meta-tags" style={{ marginTop: "2px" }}>
+                                    <span className="notif-tag-badge">{notif.category}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="notif-right-content">
+                                <span className="notif-time-badge">{formatLastActive(notif.createdAt)}</span>
+                                {roomLink && notif.type !== "JOIN" && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      triggerGateAndNavigate(roomLink);
+                                    }}
+                                    className="history-resume-btn notif-view-btn"
+                                  >
+                                    View Room
+                                  </button>
+                                )}
+                                {!isRead && <span className="notif-unread-dot" />}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {notifPage < notifTotalPages && (
+                          <div className="notif-load-more-container" style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+                            <button
+                              onClick={handleLoadMoreNotifications}
+                              disabled={notifLoading}
+                              className="notif-load-more-btn"
+                            >
+                              {notifLoading ? "Loading..." : "Load More Notifications"}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* PROFILE SECTION */}
+          {activeSection === "profile" && (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="profile-section-container">
+                {isPublicProfileLoading ? (
+                  <div className="profile-loader-container" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "400px", gap: "16px" }}>
+                    <div className="modal-roller-spinner">
+                      <div></div><div></div><div></div><div></div>
+                      <div></div><div></div><div></div><div></div>
+                    </div>
+                    <h4 style={{ color: "var(--ce-text)", fontWeight: "500", letterSpacing: "0.5px" }}>Loading Developer Profile...</h4>
+                    <p style={{ color: "var(--ce-text-muted)", fontSize: "0.8rem", marginTop: "-8px" }}>Fetching portfolios, stats, and workspaces</p>
+                  </div>
+                ) : (
+                  <div className="github-profile-layout">
+
+                    {/* Profile Card Header / Sidebar */}
+                    <div className="profile-sidebar-card" style={{ padding: 0, overflow: "hidden" }}>
+
+                      {/* Cover Banner */}
+                      <div
+                        className="profile-cover-banner"
+                        style={{
+                          background: (viewingUserProfile ? viewingUserProfile.coverBanner : user?.coverBanner)
+                            ? `url(${viewingUserProfile ? viewingUserProfile.coverBanner : user.coverBanner}) center/cover no-repeat`
+                            : "linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(6, 182, 212, 0.4) 100%)",
+                          height: "100px",
+                          width: "100%",
+                          position: "relative",
+                          cursor: !viewingUserProfile ? "pointer" : "default"
+                        }}
+                        onClick={() => {
+                          if (!viewingUserProfile) {
+                            document.getElementById("banner-upload-input").click();
+                          }
+                        }}
+                      >
+                        {!viewingUserProfile && (
+                          <div className="banner-edit-overlay" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.2s ease", color: "#fff", fontSize: "0.7rem", fontWeight: "600" }}>
+                            Change Banner
+                          </div>
+                        )}
+                        <style>{`
+                    .profile-cover-banner:hover .banner-edit-overlay {
+                      opacity: 1 !important;
+                    }
+                  `}</style>
+                      </div>
+
+                      {!viewingUserProfile && (
+                        <input
+                          type="file"
+                          id="banner-upload-input"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={handleCoverBannerUpload}
+                        />
+                      )}
+
+                      {/* Main Card Content Wrapper (with padding) */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: "0 24px 24px 24px" }}>
+
+                        {/* Avatar overlapped over the banner */}
+                        <div style={{ marginTop: "-40px", zIndex: 2, position: "relative" }}>
+                          {viewingUserProfile ? (
+                            <div style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: viewingUserProfile.avatar ? "transparent" : getAvatarColor(viewingUserProfile.username), fontSize: "1.8rem", color: "#fff", fontWeight: "600", border: "4px solid var(--ce-surface-card)" }}>
+                              {viewingUserProfile.avatar ? (
+                                <img src={viewingUserProfile.avatar} alt={viewingUserProfile.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              ) : (
+                                viewingUserProfile.username.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ border: "4px solid var(--ce-surface-card)", borderRadius: "50%", background: "var(--ce-surface-card)" }}>
+                              <ProfileAvatar />
+                            </div>
+                          )}
+                        </div>
+
+                        <h2>{viewingUserProfile ? viewingUserProfile.username : user?.username}</h2>
+                        <span className="profile-email">{viewingUserProfile ? viewingUserProfile.email : user?.email}</span>
+                        <span
+                          className="profile-badge"
+                          style={getBadgeStyle(viewingUserProfile ? viewingUserProfile.title : user?.title)}
+                        >
+                          {viewingUserProfile ? viewingUserProfile.title : user?.title || "Developer"}
+                        </span>
+
+                        {/* Followers & Following Statistics Count */}
+                        <div className="profile-stats-bar">
+                          <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowersModal(true); }}>
+                            <strong>{viewingUserProfile ? viewingUserProfile.followersCount : user?.followersCount || 0}</strong>
+                            <span>Followers</span>
+                          </div>
+                          <div className="profile-stat-item" onClick={() => { setLoadingModalData(true); setShowFollowingModal(true); }}>
+                            <strong>{viewingUserProfile ? viewingUserProfile.followingCount : user?.followingCount || 0}</strong>
+                            <span>Following</span>
+                          </div>
+                        </div>
+
+                        {/* Profile Bio Details & Update Form */}
+                        {isEditingProfile && !viewingUserProfile ? (
+                          <div className="profile-edit-form-card" style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", marginTop: "12px" }}>
+                            <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Bio</label>
+                              <textarea
+                                value={bioInput}
+                                onChange={(e) => setBioInput(e.target.value)}
+                                placeholder="Write a bio..."
+                                className="profile-edit-textarea"
+                                style={{ width: "100%", minHeight: "60px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem", resize: "none" }}
+                              />
+                            </div>
+                            <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Languages</label>
+                              <input
+                                type="text"
+                                value={langsInput}
+                                onChange={(e) => setLangsInput(e.target.value)}
+                                placeholder="e.g. JavaScript, Python"
+                                className="profile-edit-input"
+                                style={{ width: "100%", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button className="profile-edit-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile} style={{ flex: 1, padding: "6px", background: "var(--ce-primary)", color: "var(--ce-primary-text)", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "600" }}>
+                                {isSavingProfile ? "Saving..." : "Save"}
+                              </button>
+                              <button className="profile-edit-cancel-btn" onClick={() => setIsEditingProfile(false)} style={{ flex: 1, padding: "6px", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" }}>
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ width: "100%" }}>
+                            <p className="profile-bio-text" style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", marginTop: "12px", textAlign: "center", fontStyle: "italic", lineHeight: "1.4" }}>
+                              {viewingUserProfile ? viewingUserProfile.bio || "No bio yet." : user?.bio || "No bio set yet. Click Edit Profile below to tell developers about yourself!"}
+                            </p>
+                            {((viewingUserProfile ? viewingUserProfile.programmingLanguages : user?.programmingLanguages) || []).length > 0 && (
+                              <div className="profile-languages-chips" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "12px", justifyContent: "center" }}>
+                                {(viewingUserProfile ? viewingUserProfile.programmingLanguages : user.programmingLanguages).map(lang => (
+                                  <span key={lang} className="lang-chip-badge" style={{ fontSize: "0.62rem", padding: "2px 6px", background: "var(--ce-primary-glow)", color: "var(--ce-primary)", borderRadius: "4px", border: "1px solid var(--ce-border)", fontWeight: "600" }}>
+                                    {lang}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {viewingUserProfile ? (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
+                                {String(viewingUserProfile._id) !== String(user?.id || user?._id) && (
+                                  <div style={{ display: "flex", gap: "8px", width: "100%" }}>
+                                    {followingList.some(f => String(f._id || f) === String(viewingUserProfile._id)) ? (
+                                      <button
+                                        className="profile-follow-btn unfollow"
+                                        onClick={() => handleFollowToggle(viewingUserProfile._id)}
+                                        style={{ flex: 1 }}
+                                      >
+                                        Unfollow
+                                      </button>
+                                    ) : (
+                                      <button
+                                        className="profile-follow-btn follow"
+                                        onClick={() => handleFollowToggle(viewingUserProfile._id)}
+                                        style={{ flex: 1 }}
+                                      >
+                                        Follow
+                                      </button>
+                                    )}
+                                    <button
+                                      className="profile-message-btn"
+                                      onClick={() => {
+                                        setPreselectedChatPartner({
+                                          _id: viewingUserProfile._id,
+                                          username: viewingUserProfile.username,
+                                          avatar: viewingUserProfile.avatar,
+                                          bio: viewingUserProfile.bio || "Developer"
+                                        });
+                                        navigate("/dashboard?tab=messages");
+                                      }}
+                                      style={{ flex: 1 }}
+                                    >
+                                      <MessageSquare size={14} /> Message
+                                    </button>
+                                  </div>
+                                )}
+                                <button
+                                  className="profile-back-btn"
+                                  onClick={() => navigate("/dashboard?tab=profile")}
+                                  style={{ width: "100%", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                                >
+                                  <ArrowLeft size={13} /> Back to My Profile
+                                </button>
+                              </div>
+                            ) : (
+                              <button className="profile-edit-trigger-btn" onClick={startEditingProfile} style={{ width: "100%", marginTop: "16px", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", transition: "all 0.2s" }}>
+                                Edit Profile
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="settings-divider-horizontal" />
+                    {/* Profile Main Content */}
+                    <div className="profile-main-body" style={{ display: "flex", flexDirection: "column", gap: "20px", opacity: isLoadingStats ? 0.6 : 1, transition: "opacity 0.22s ease", pointerEvents: isLoadingStats ? "none" : "auto" }}>
+                      <ContributionHeatmap
+                        rawHeatmap={viewingUserProfile ? (viewingUserStats?.heatmap || []) : (heatmap || [])}
+                        selectedYear={selectedYear}
+                        onYearChange={viewingUserProfile ? handleTargetYearChange : handleYearChange}
+                        availableYears={viewingUserProfile ? (viewingUserStats?.years || [new Date().getFullYear()]) : ownYears}
+                      />
 
-                    {/* Code-Expo CLI Connection Center */}
-                    <div className="integration-card-wrapper cli-integration-card">
-                      <div className="cli-header-row">
-                        <Terminal size={18} className="cli-icon-neon" />
-                        <div>
-                          <h4>CODE-EXPO Command Line Interface (CLI)</h4>
-                          <span className="integration-desc-small" style={{ display: "block", marginTop: "2px" }}>
-                            Synchronize local folders, run compilers, and connect your terminal environment directly to workspaces.
-                          </span>
+
+
+                      {/* Dynamic Tab Panels for Liked/Saved Rooms, created Rooms & Logs */}
+                      <div className="profile-tabs-container">
+                        <div className="profile-switchers-row" style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "20px" }}>
+                          
+                          {/* Switcher 1: Rooms Hub */}
+                          <div style={{ flex: "1 1 300px", minWidth: "280px" }}>
+                            <h4 style={{ fontSize: "0.82rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "1px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                              💻 Rooms Hub
+                            </h4>
+                            {(() => {
+                              const roomsTabs = [
+                                { id: "rooms", label: viewingUserProfile ? "Rooms" : "My Rooms", count: viewingUserProfile ? viewingUserRooms.length : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length },
+                                { id: "liked", label: "Liked", count: viewingUserProfile ? viewingUserLikedRooms.length : likedRooms.length }
+                              ];
+                              if (!viewingUserProfile) {
+                                roomsTabs.push({ id: "saved", label: "Saved", count: savedRooms.length });
+                              }
+                              const isActive = roomsTabs.some(t => t.id === profileTab);
+                              const activeIdx = Math.max(0, roomsTabs.findIndex(t => t.id === profileTab));
+                              const tabWidth = 100 / roomsTabs.length;
+
+                              const getTabIcon = (id) => {
+                                switch (id) {
+                                  case "rooms": return <LayoutGrid size={14} style={{ marginRight: "6px" }} />;
+                                  case "liked": return <Heart size={14} style={{ marginRight: "6px" }} />;
+                                  case "saved": return <Bookmark size={14} style={{ marginRight: "6px" }} />;
+                                  default: return null;
+                                }
+                              };
+
+                              return (
+                                <div className="ce-pill-switcher-container" style={{ margin: 0, padding: 0, width: "100%" }}>
+                                  <div className="ce-pill-switcher" style={{ width: "100%" }}>
+                                    {isActive && (
+                                      <div
+                                        className="ce-pill-bg-slide"
+                                        style={{
+                                          width: `calc(${tabWidth}% - ${8 / roomsTabs.length}px)`,
+                                          transform: `translateX(${activeIdx * 100}%)`,
+                                          background: "var(--ce-primary)"
+                                        }}
+                                      />
+                                    )}
+                                    {roomsTabs.map((tab) => (
+                                      <button
+                                        key={tab.id}
+                                        type="button"
+                                        className={`ce-pill-btn ${profileTab === tab.id ? "active" : ""}`}
+                                        onClick={() => setProfileTab(tab.id)}
+                                        style={{ flex: 1, textAlign: "center" }}
+                                      >
+                                        {getTabIcon(tab.id)} {tab.label} {tab.count !== null ? `(${tab.count})` : ""}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          {/* Switcher 2: Feed Activity */}
+                          <div style={{ flex: "1 1 300px", minWidth: "280px" }}>
+                            <h4 style={{ fontSize: "0.82rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "1px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                              📣 Feed & Social
+                            </h4>
+                            {(() => {
+                              const feedTabs = [
+                                { id: "posts", label: "Posts", count: profilePosts.length }
+                              ];
+                              if (!viewingUserProfile) {
+                                const savedPostsCount = allFeedPosts.filter(post => savedPostIds.has(post._id)).length;
+                                feedTabs.push(
+                                  { id: "saved_posts", label: "Saved Posts", count: savedPostsCount },
+                                  { id: "activity", label: "Logs", count: null }
+                                );
+                              }
+                              const isActive = feedTabs.some(t => t.id === profileTab);
+                              const activeIdx = Math.max(0, feedTabs.findIndex(t => t.id === profileTab));
+                              const tabWidth = 100 / feedTabs.length;
+
+                              const getTabIcon = (id) => {
+                                switch (id) {
+                                  case "posts": return <Image size={14} style={{ marginRight: "6px" }} />;
+                                  case "saved_posts": return <Bookmark size={14} style={{ marginRight: "6px" }} />;
+                                  case "activity": return <Activity size={14} style={{ marginRight: "6px" }} />;
+                                  default: return null;
+                                }
+                              };
+
+                              return (
+                                <div className="ce-pill-switcher-container" style={{ margin: 0, padding: 0, width: "100%" }}>
+                                  <div className="ce-pill-switcher" style={{ width: "100%" }}>
+                                    {isActive && (
+                                      <div
+                                        className="ce-pill-bg-slide"
+                                        style={{
+                                          width: `calc(${tabWidth}% - ${8 / feedTabs.length}px)`,
+                                          transform: `translateX(${activeIdx * 100}%)`,
+                                          background: "var(--ce-primary)"
+                                        }}
+                                      />
+                                    )}
+                                    {feedTabs.map((tab) => (
+                                      <button
+                                        key={tab.id}
+                                        type="button"
+                                        className={`ce-pill-btn ${profileTab === tab.id ? "active" : ""}`}
+                                        onClick={() => setProfileTab(tab.id)}
+                                        style={{ flex: 1, textAlign: "center" }}
+                                      >
+                                        {getTabIcon(tab.id)} {tab.label} {tab.count !== null ? `(${tab.count})` : ""}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                        </div>
+
+                        <div className="profile-tab-content">
+                          {profileTab === "rooms" && (
+                            <div className="profile-rooms-grid">
+                              {(viewingUserProfile ? viewingUserRooms : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id)).length === 0 ? (
+                                <p className="profile-rooms-empty-text">No rooms created yet.</p>
+                              ) : (
+                                (viewingUserProfile ? viewingUserRooms : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id)).map(room => (
+                                  <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                                    <div className="profile-room-card-header">
+                                      <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                      <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                    </div>
+                                    <p className="profile-room-card-id">ID: {room.roomId}</p>
+                                    <div className="profile-room-card-footer">
+                                      <div className="profile-room-card-footer-left">
+                                        <span className="profile-room-card-date">{new Date(room.createdAt).toLocaleDateString()}</span>
+                                      </div>
+                                      <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
+                                        {room.likedBy && room.likedBy.length > 0 && (
+                                          <div className="card-likes-avatars-stack">
+                                            {room.likedBy.slice(0, 3).map((u, i) => (
+                                              <div
+                                                key={i}
+                                                className="avatar-stack-item"
+                                                style={{
+                                                  marginLeft: i > 0 ? "-6px" : "0",
+                                                  zIndex: 10 - i
+                                                }}
+                                              >
+                                                {u.avatar ? (
+                                                  <img src={u.avatar} alt={u.username} />
+                                                ) : (
+                                                  <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                    {(u.username || "D").charAt(0).toUpperCase()}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                            {room.likedBy.length > 3 && (
+                                              <span className="avatar-stack-more">
+                                                +{room.likedBy.length - 3}
+                                              </span>
+                                            )}
+                                            <div className="likes-tooltip">
+                                              <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                              <div className="likes-tooltip-list">
+                                                {room.likedBy.map((u, idx) => (
+                                                  <div key={idx} className="likes-tooltip-user">
+                                                    {u.avatar ? (
+                                                      <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                                    ) : (
+                                                      <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                        {(u.username || "D").charAt(0).toUpperCase()}
+                                                      </div>
+                                                    )}
+                                                    <span className="likes-tooltip-username">{u.username}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                          onClick={() => handleLikeRoom(room.roomId)}
+                                        >
+                                          <Heart
+                                            size={12}
+                                            fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                          />
+                                          <span className="like-count-text">{room.likesCount || 0}</span>
+                                        </button>
+                                        <button onClick={() => handleBookmarkRoom(room.roomId)} className="profile-room-bookmark-btn"><Bookmark size={12} /></button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {profileTab === "posts" && (
+                            <div style={{ width: "100%" }}>
+                              {isProfilePostsLoading ? (
+                                <p className="profile-rooms-empty-text">Loading posts...</p>
+                              ) : profilePosts.length === 0 ? (
+                                <p className="profile-rooms-empty-text">No posts shared yet.</p>
+                              ) : (
+                                <div className="insta-posts-grid">
+                                  {profilePosts.map(post => {
+                                    const currentUserId = user?.id || user?._id;
+                                    const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
+                                    const hasImage = postImages.length > 0;
+
+                                    return (
+                                      <div 
+                                        key={post._id} 
+                                        className="insta-post-item"
+                                        onClick={() => setSelectedPostModal(post)}
+                                      >
+                                        {hasImage ? (
+                                          <img src={postImages[0]} alt="Post grid preview" className="insta-post-image" />
+                                        ) : (
+                                          <div className="insta-post-text-fallback">
+                                            <p className="insta-post-fallback-text">{post.content}</p>
+                                            <span className="insta-post-fallback-footer">📝 Text Update</span>
+                                          </div>
+                                        )}
+
+                                        {/* Hover Overlay showing Stats (Instagram style) */}
+                                        <div className="insta-post-hover-overlay">
+                                          <span className="insta-overlay-stat">
+                                            <Heart size={16} fill="#fff" color="#fff" /> {post.likes?.length || 0}
+                                          </span>
+                                          <span className="insta-overlay-stat">
+                                            <MessageSquare size={16} fill="#fff" color="#fff" /> {post.comments?.length || 0}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {profileTab === "saved_posts" && (
+                            <div style={{ width: "100%" }}>
+                              {(() => {
+                                const savedPostsList = allFeedPosts.filter(post => savedPostIds.has(post._id));
+                                if (savedPostsList.length === 0) {
+                                  return <p className="profile-rooms-empty-text">No saved posts yet.</p>;
+                                }
+                                return (
+                                  <div className="insta-posts-grid">
+                                    {savedPostsList.map(post => {
+                                      const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
+                                      const hasImage = postImages.length > 0;
+
+                                      return (
+                                        <div 
+                                          key={post._id} 
+                                          className="insta-post-item"
+                                          onClick={() => setSelectedPostModal(post)}
+                                        >
+                                          {hasImage ? (
+                                            <img src={postImages[0]} alt="Post grid preview" className="insta-post-image" />
+                                          ) : (
+                                            <div className="insta-post-text-fallback">
+                                              <p className="insta-post-fallback-text">{post.content}</p>
+                                              <span className="insta-post-fallback-footer">📝 Text Update</span>
+                                            </div>
+                                          )}
+
+                                          <div className="insta-post-hover-overlay">
+                                            <span className="insta-overlay-stat">
+                                              <Heart size={16} fill="#fff" color="#fff" /> {post.likes?.length || 0}
+                                            </span>
+                                            <span className="insta-overlay-stat">
+                                              <MessageSquare size={16} fill="#fff" color="#fff" /> {post.comments?.length || 0}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+
+
+                          {profileTab === "liked" && (
+                            <div className="profile-rooms-grid">
+                              {(viewingUserProfile ? viewingUserLikedRooms : likedRooms).length === 0 ? (
+                                <p className="profile-rooms-empty-text">No liked rooms.</p>
+                              ) : (
+                                (viewingUserProfile ? viewingUserLikedRooms : likedRooms).map(room => (
+                                  <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                                    <div className="profile-room-card-header">
+                                      <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                      <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                    </div>
+                                    <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
+                                    <div className="profile-room-card-footer">
+                                      <div className="profile-room-card-footer-left">
+                                        <span className="profile-room-card-status-text">Liked</span>
+                                      </div>
+                                      <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
+                                        {room.likedBy && room.likedBy.length > 0 && (
+                                          <div className="card-likes-avatars-stack">
+                                            {room.likedBy.slice(0, 3).map((u, i) => (
+                                              <div
+                                                key={i}
+                                                className="avatar-stack-item"
+                                                style={{
+                                                  marginLeft: i > 0 ? "-6px" : "0",
+                                                  zIndex: 10 - i
+                                                }}
+                                              >
+                                                {u.avatar ? (
+                                                  <img src={u.avatar} alt={u.username} />
+                                                ) : (
+                                                  <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                    {(u.username || "D").charAt(0).toUpperCase()}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                            {room.likedBy.length > 3 && (
+                                              <span className="avatar-stack-more">
+                                                +{room.likedBy.length - 3}
+                                              </span>
+                                            )}
+                                            <div className="likes-tooltip">
+                                              <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                              <div className="likes-tooltip-list">
+                                                {room.likedBy.map((u, idx) => (
+                                                  <div key={idx} className="likes-tooltip-user">
+                                                    {u.avatar ? (
+                                                      <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                                    ) : (
+                                                      <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                        {(u.username || "D").charAt(0).toUpperCase()}
+                                                      </div>
+                                                    )}
+                                                    <span className="likes-tooltip-username">{u.username}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                          onClick={() => handleLikeRoom(room.roomId)}
+                                        >
+                                          <Heart
+                                            size={12}
+                                            fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                          />
+                                          <span className="like-count-text">{room.likesCount || 0}</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {!viewingUserProfile && profileTab === "saved" && (
+                            <div className="profile-rooms-grid">
+                              {savedRooms.length === 0 ? (
+                                <p className="profile-rooms-empty-text">No bookmarked rooms.</p>
+                              ) : (
+                                savedRooms.map(room => (
+                                  <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                                    <div className="profile-room-card-header">
+                                      <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                      <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                    </div>
+                                    <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
+                                    <div className="profile-room-card-footer">
+                                      <div className="profile-room-card-footer-left">
+                                        <span className="profile-room-card-status-text">Saved</span>
+                                      </div>
+                                      <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
+                                        {room.likedBy && room.likedBy.length > 0 && (
+                                          <div className="card-likes-avatars-stack">
+                                            {room.likedBy.slice(0, 3).map((u, i) => (
+                                              <div
+                                                key={i}
+                                                className="avatar-stack-item"
+                                                style={{
+                                                  marginLeft: i > 0 ? "-6px" : "0",
+                                                  zIndex: 10 - i
+                                                }}
+                                              >
+                                                {u.avatar ? (
+                                                  <img src={u.avatar} alt={u.username} />
+                                                ) : (
+                                                  <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                    {(u.username || "D").charAt(0).toUpperCase()}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                            {room.likedBy.length > 3 && (
+                                              <span className="avatar-stack-more">
+                                                +{room.likedBy.length - 3}
+                                              </span>
+                                            )}
+                                            <div className="likes-tooltip">
+                                              <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
+                                              <div className="likes-tooltip-list">
+                                                {room.likedBy.map((u, idx) => (
+                                                  <div key={idx} className="likes-tooltip-user">
+                                                    {u.avatar ? (
+                                                      <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
+                                                    ) : (
+                                                      <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
+                                                        {(u.username || "D").charAt(0).toUpperCase()}
+                                                      </div>
+                                                    )}
+                                                    <span className="likes-tooltip-username">{u.username}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                          onClick={() => handleLikeRoom(room.roomId)}
+                                        >
+                                          <Heart
+                                            size={12}
+                                            fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                          />
+                                          <span className="like-count-text">{room.likesCount || 0}</span>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleBookmarkRoom(room.roomId); }} className="profile-room-bookmark-btn active"><Bookmark size={12} fill="currentColor" /></button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {!viewingUserProfile && profileTab === "activity" && (
+                            <div className="profile-activity-list">
+                              {activities.filter(a => String(a.username) === String(user?.username)).length === 0 ? (
+                                <p className="profile-rooms-empty-text">No recent activity logged.</p>
+                              ) : (
+                                activities.filter(a => String(a.username) === String(user?.username)).slice(0, 10).map(act => (
+                                  <div key={act._id} className="profile-activity-item">
+                                    <span>You {act.action} room <strong>{act.roomTitle}</strong></span>
+                                    <span className="profile-activity-time">{formatLastActive(act.timestamp)}</span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="cli-guideline-steps">
-                        <div className="cli-step-item">
-                          <div className="step-num-title-row">
-                            <span className="step-badge">Step 1</span>
-                            <span className="step-title">Install the CLI global runner</span>
-                          </div>
-                          <div className="terminal-code-block">
-                            <code>npm install -g code-expo-cli</code>
-                            <button 
-                              type="button"
-                              className="cli-copy-btn" 
-                              onClick={() => {
-                                navigator.clipboard.writeText("npm install -g code-expo-cli");
-                                addToast("CLI install command copied", "success");
-                              }}
-                            >
-                              <Copy size={12} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="cli-step-item">
-                          <div className="step-num-title-row">
-                            <span className="step-badge">Step 2</span>
-                            <span className="step-title">Authenticate using an API key generated above</span>
-                          </div>
-                          <div className="terminal-code-block">
-                            <code>code-expo login --token &lt;YOUR_API_KEY&gt;</code>
-                            <button 
-                              type="button"
-                              className="cli-copy-btn" 
-                              onClick={() => {
-                                navigator.clipboard.writeText("code-expo login --token <YOUR_API_KEY>");
-                                addToast("CLI login command copied", "success");
-                              }}
-                            >
-                              <Copy size={12} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="cli-step-item">
-                          <div className="step-num-title-row">
-                            <span className="step-badge">Step 3</span>
-                            <span className="step-title">Sync local directory to a live coding session</span>
-                          </div>
-                          <div className="terminal-code-block">
-                            <code>code-expo sync --room &lt;ROOM_ID&gt; --path ./src</code>
-                            <button 
-                              type="button"
-                              className="cli-copy-btn" 
-                              onClick={() => {
-                                navigator.clipboard.writeText("code-expo sync --room <ROOM_ID> --path ./src");
-                                addToast("CLI sync command copied", "success");
-                              }}
-                            >
-                              <Copy size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
                     </div>
+
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
 
-        {activeSection === "helpdesk" && (
-          <motion.div
-            key="helpdesk"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ width: "100%", height: "100%" }}
-          >
-            <HelpDesk />
-          </motion.div>
-        )}
+
+          {/* SETTINGS SECTION */}
+          {activeSection === "settings" && (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <div className="settings-section-container">
+                <div className="settings-tabbed-layout">
+                  <aside className="settings-tabs-sidebar">
+                    <button
+                      onClick={() => setSettingsTab("account")}
+                      className={`settings-tab-btn ${settingsTab === "account" ? "active" : ""}`}
+                    >
+                      <User size={14} /> Account Details
+                    </button>
+                    <button
+                      onClick={() => setSettingsTab("appearance")}
+                      className={`settings-tab-btn ${settingsTab === "appearance" ? "active" : ""}`}
+                    >
+                      <Laptop size={14} /> Theme & Appearance
+                    </button>
+                    <button
+                      onClick={() => setSettingsTab("editor")}
+                      className={`settings-tab-btn ${settingsTab === "editor" ? "active" : ""}`}
+                    >
+                      <BookOpen size={14} /> Editor Prefs
+                    </button>
+                    <button
+                      onClick={() => setSettingsTab("notifications")}
+                      className={`settings-tab-btn ${settingsTab === "notifications" ? "active" : ""}`}
+                    >
+                      <BellRing size={14} /> Notifications
+                    </button>
+                    <button
+                      onClick={() => setSettingsTab("security")}
+                      className={`settings-tab-btn ${settingsTab === "security" ? "active" : ""}`}
+                    >
+                      <Key size={14} /> Security
+                    </button>
+                    <button
+                      onClick={() => setSettingsTab("integrations")}
+                      className={`settings-tab-btn ${settingsTab === "integrations" ? "active" : ""}`}
+                    >
+                      <FolderGit size={14} /> Integrations & APIs
+                    </button>
+                  </aside>
+
+                  <div className="settings-pane-content">
+                    {settingsTab === "account" && (
+                      <div className="settings-pane-form">
+                        <h3>Account Profile</h3>
+                        <p>Manage your account name, email listings, and developer bio.</p>
+                        <div className="settings-form-row">
+                          <div className="settings-form-field flex-1">
+                            <label>Username</label>
+                            <input type="text" value={user?.username || ""} disabled />
+                          </div>
+                          <div className="settings-form-field flex-1">
+                            <label>Email Address</label>
+                            <input type="email" value={user?.email || ""} disabled />
+                          </div>
+                        </div>
+                        <div className="settings-form-field">
+                          <label>Profile Bio</label>
+                          <textarea
+                            placeholder="Tell us about your coding identity..."
+                            value={bioInput}
+                            onChange={(e) => setBioInput(e.target.value)}
+                          />
+                        </div>
+                        <div className="settings-form-field">
+                          <label>Programming Languages</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. JavaScript, Python, C++"
+                            value={langsInput}
+                            onChange={(e) => setLangsInput(e.target.value)}
+                          />
+                        </div>
+                        <button className="settings-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile}>{isSavingProfile ? "Saving..." : "Update Profile"}</button>
+                      </div>
+                    )}
+
+                    {settingsTab === "appearance" && (
+                      <div className="settings-pane-form">
+                        <h3>Theme & Appearance</h3>
+                        <p>Customize the look and feel of your workspace.</p>
+                        <div className="appearance-themes-grid">
+                          <div
+                            className={`appearance-theme-card ${activeTheme === "dark" ? "active" : ""}`}
+                            onClick={() => handleThemeChange("dark")}
+                          >
+                            <div className="theme-preview dark">
+                              <div className="preview-decor-sidebar" />
+                              <div className="preview-decor-editor">
+                                <div className="decor-line code-blue" style={{ width: "60%" }} />
+                                <div className="decor-line code-purple" style={{ width: "40%" }} />
+                                <div className="decor-line code-yellow" style={{ width: "75%" }} />
+                                <div className="decor-line code-green" style={{ width: "50%" }} />
+                              </div>
+                              <div className="preview-decor-chat" />
+                            </div>
+                            <span>System Dark Mode</span>
+                          </div>
+                          <div
+                            className={`appearance-theme-card ${activeTheme === "light" ? "active" : ""}`}
+                            onClick={() => handleThemeChange("light")}
+                          >
+                            <div className="theme-preview light">
+                              <div className="preview-decor-sidebar" />
+                              <div className="preview-decor-editor">
+                                <div className="decor-line code-blue" style={{ width: "60%" }} />
+                                <div className="decor-line code-purple" style={{ width: "40%" }} />
+                                <div className="decor-line code-yellow" style={{ width: "75%" }} />
+                                <div className="decor-line code-green" style={{ width: "50%" }} />
+                              </div>
+                              <div className="preview-decor-chat" />
+                            </div>
+                            <span>Linear Light Mode</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {settingsTab === "editor" && (
+                      <div className="settings-pane-form">
+                        <h3>Editor & Workspace Settings</h3>
+                        <p>Customize the Monaco code compiler and workspace canvas preferences.</p>
+
+                        <div className="settings-form-row">
+                          <div className="settings-form-field flex-1">
+                            <label>Font Size (px)</label>
+                            <input type="number" value={dashEditorFontSize} onChange={handleEditorFontSizeChange} min="12" max="24" />
+                          </div>
+                          <div className="settings-form-field flex-1">
+                            <label>Tab Size</label>
+                            <select value={dashEditorTabSize} onChange={handleEditorTabSizeChange}>
+                              <option value={2}>2 spaces</option>
+                              <option value={4}>4 spaces</option>
+                              <option value={8}>8 spaces</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="settings-form-row">
+                          <div className="settings-form-field flex-1">
+                            <label>Default Room Language</label>
+                            <select value={dashDefaultLanguage} onChange={handleDefaultLanguageChange}>
+                              <option value="javascript">JavaScript</option>
+                              <option value="python">Python</option>
+                              <option value="cpp">C++</option>
+                              <option value="java">Java</option>
+                            </select>
+                          </div>
+                          <div className="settings-form-field flex-1">
+                            <label>Default Whiteboard Grid</label>
+                            <select value={dashWhiteboardGrid} onChange={handleWhiteboardGridChange}>
+                              <option value="dots">Dots</option>
+                              <option value="lines">Grid Lines</option>
+                              <option value="none">None</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="settings-form-row">
+                          <div className="settings-form-field flex-1">
+                            <label>AI IntelliSense Autocomplete</label>
+                            <select value={dashEditorSuggestions} onChange={handleEditorSuggestionsChange}>
+                              <option value="ai">AI-Powered (Smart Autocomplete) ✨</option>
+                              <option value="standard">Standard Autocomplete</option>
+                              <option value="disabled">Disabled</option>
+                            </select>
+                          </div>
+                          <div className="settings-form-field flex-1">
+                            <label>Auto-Save Frequency</label>
+                            <select value={dashEditorAutoSave} onChange={handleEditorAutoSaveChange}>
+                              <option value="off">Manual Save Only</option>
+                              <option value="5">Every 5 Seconds</option>
+                              <option value="30">Every 30 Seconds</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="settings-toggle-row">
+                          <div className="toggle-info">
+                            <span className="toggle-label">Minimap Preview</span>
+                            <span className="toggle-desc">Show mini outline code map on the right side of the canvas</span>
+                          </div>
+                          <label className="ce-switch">
+                            <input type="checkbox" checked={dashEditorMinimap} onChange={handleEditorMinimapChange} />
+                            <span className="ce-switch-slider" />
+                          </label>
+                        </div>
+
+                        <div className="settings-toggle-row">
+                          <div className="toggle-info">
+                            <span className="toggle-label">Word Wrap</span>
+                            <span className="toggle-desc">Auto-wrap long code lines to fit the viewport boundary</span>
+                          </div>
+                          <label className="ce-switch">
+                            <input type="checkbox" checked={dashEditorWordWrap} onChange={handleEditorWordWrapChange} />
+                            <span className="ce-switch-slider" />
+                          </label>
+                        </div>
+
+                        <div className="settings-toggle-row">
+                          <div className="toggle-info">
+                            <span className="toggle-label">Line Numbers</span>
+                            <span className="toggle-desc">Display line numbers in the editor margin gutter</span>
+                          </div>
+                          <label className="ce-switch">
+                            <input type="checkbox" checked={dashEditorLineNumbers} onChange={handleEditorLineNumbersChange} />
+                            <span className="ce-switch-slider" />
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {settingsTab === "notifications" && (
+                      <div className="settings-pane-form">
+                        <h3>Notification Settings</h3>
+                        <p>Manage when you want to receive real-time dashboard notifications.</p>
+
+                        <div className="settings-toggle-row">
+                          <div className="toggle-info">
+                            <span className="toggle-label">Room Join Request Alerts</span>
+                            <span className="toggle-desc">Get notified immediately when someone requests to join your room</span>
+                          </div>
+                          <label className="ce-switch">
+                            <input type="checkbox" checked={notifApprovalAlerts} onChange={handleApprovalAlertsChange} />
+                            <span className="ce-switch-slider" />
+                          </label>
+                        </div>
+
+                        <div className="settings-toggle-row">
+                          <div className="toggle-info">
+                            <span className="toggle-label">Direct Message Tones</span>
+                            <span className="toggle-desc">Receive popups when other developers ping you in DM chats</span>
+                          </div>
+                          <label className="ce-switch">
+                            <input type="checkbox" checked={notifMentionAlerts} onChange={handleMentionAlertsChange} />
+                            <span className="ce-switch-slider" />
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {settingsTab === "security" && (
+                      <div className="settings-pane-form">
+                        <h3>Security Preferences</h3>
+                        <p>Configure security authorizations and passwords.</p>
+                        <div className="settings-form-field">
+                          <label>Current Password</label>
+                          <input type="password" placeholder="••••••••" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                        </div>
+                        <div className="settings-form-field">
+                          <label>New Password</label>
+                          <input type="password" placeholder="At least 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                          {newPassword && (
+                            <div className="password-strength-container">
+                              <div className="strength-bar-track">
+                                <div
+                                  className="strength-bar-fill"
+                                  style={{
+                                    width: `${passwordStrength.percent}%`,
+                                    backgroundColor: passwordStrength.color,
+                                    boxShadow: `0 0 10px ${passwordStrength.color}55`
+                                  }}
+                                />
+                              </div>
+                              <span className="strength-label" style={{ color: passwordStrength.color }}>
+                                Strength: <strong>{passwordStrength.label}</strong>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <button className="settings-save-btn" onClick={handleUpdatePassword}>Change Password</button>
+                      </div>
+                    )}
+
+                    {settingsTab === "integrations" && (
+                      <div className="settings-pane-form integrations-pane">
+                        <h3>Integrations & API Services</h3>
+                        <p>Connect your account to third-party services and generate personal API tokens for CLI tool access.</p>
+
+                        {/* GitHub Integration Section */}
+                        <div className="integration-card-wrapper">
+                          <div className="integration-card-header">
+                            <div className="integration-service-meta">
+                              <div className="integration-icon-bg github">
+                                <Code size={18} style={{ color: "#fff" }} />
+                              </div>
+                              <div>
+                                <h4>GitHub Integration</h4>
+                                <span className="integration-desc-small">Link repositories, push files, and collaborate.</span>
+                              </div>
+                            </div>
+                            {gitConnectionInfo ? (
+                              <span className="badge-status-new success">Connected</span>
+                            ) : (
+                              <span className="badge-status-new danger">Disconnected</span>
+                            )}
+                          </div>
+
+                          {gitConnectionInfo ? (
+                            <div className="git-connected-container">
+                              <div className="git-user-profile">
+                                <img src={gitConnectionInfo.avatar_url} alt={gitConnectionInfo.login} className="git-avatar" />
+                                <div className="git-user-details">
+                                  <strong>{gitConnectionInfo.name}</strong>
+                                  <a href={gitConnectionInfo.html_url} target="_blank" rel="noopener noreferrer" className="git-profile-link">
+                                    @{gitConnectionInfo.login}
+                                  </a>
+                                </div>
+                              </div>
+                              <div className="git-connected-actions">
+                                <div className="settings-form-field flex-1" style={{ maxWidth: "240px" }}>
+                                  <label>Default Repo Branch</label>
+                                  <div style={{ display: "flex", gap: "8px" }}>
+                                    <input
+                                      type="text"
+                                      value={gitDefaultBranch}
+                                      onChange={(e) => setGitDefaultBranch(e.target.value)}
+                                      placeholder="main"
+                                    />
+                                    <button className="settings-save-btn" onClick={handleSaveGitBranch} style={{ padding: "0 12px" }}>Save</button>
+                                  </div>
+                                </div>
+                                <button className="settings-btn-revoke danger" onClick={handleDisconnectGitHub}>
+                                  Disconnect GitHub
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <form onSubmit={handleVerifyGitHubToken} className="git-disconnected-form">
+                              <div className="settings-form-field">
+                                <label>GitHub Personal Access Token (PAT)</label>
+                                <div className="input-with-action-wrapper">
+                                  <input
+                                    type={showGitToken ? "text" : "password"}
+                                    placeholder="ghp_..."
+                                    value={gitHubToken}
+                                    onChange={(e) => setGitHubToken(e.target.value)}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="input-action-btn"
+                                    onClick={() => setShowGitToken(!showGitToken)}
+                                  >
+                                    {showGitToken ? <EyeOff size={16} /> : <Eye size={16} />}
+                                  </button>
+                                </div>
+                                <span className="field-help-hint">
+                                  Create a classic token with `read:user` scope on GitHub settings to sync user stats.
+                                </span>
+                              </div>
+
+                              <div className="settings-form-row">
+                                <div className="settings-form-field flex-1">
+                                  <label>Default Branch</label>
+                                  <input
+                                    type="text"
+                                    value={gitDefaultBranch}
+                                    onChange={(e) => setGitDefaultBranch(e.target.value)}
+                                    placeholder="main"
+                                  />
+                                </div>
+                                <div className="settings-form-field flex-1" style={{ justifyContent: "flex-end" }}>
+                                  <button
+                                    type="submit"
+                                    className="settings-save-btn"
+                                    disabled={isVerifyingGit}
+                                    style={{ width: "100%", alignSelf: "unset" }}
+                                  >
+                                    {isVerifyingGit ? "Verifying..." : "Verify & Connect"}
+                                  </button>
+                                </div>
+                              </div>
+                            </form>
+                          )}
+                        </div>
+
+                        <div className="settings-divider-horizontal" />
+
+                        {/* Personal API Keys Section */}
+                        <div className="integration-card-wrapper api-keys-section">
+                          <h4>Personal Access Keys</h4>
+                          <p className="section-desc-sub text-muted" style={{ marginTop: "-10px", marginBottom: "16px", fontSize: "0.78rem" }}>
+                            Generate secure tokens to interface with the CODE-EXPO command line tools and automated runners.
+                          </p>
+
+                          <div className="generate-api-key-form">
+                            <div className="settings-form-field">
+                              <label>New Key Identifier / Name</label>
+                              <div style={{ display: "flex", gap: "12px" }}>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. VSCode-Local-Dev"
+                                  value={apiKeyName}
+                                  onChange={(e) => setApiKeyName(e.target.value)}
+                                  style={{ flex: 1 }}
+                                />
+                                <button
+                                  type="button"
+                                  className="settings-save-btn"
+                                  onClick={() => {
+                                    handleGenerateApiKey(apiKeyName);
+                                    setApiKeyName("");
+                                  }}
+                                >
+                                  Generate Key
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {newlyGeneratedKey && (
+                            <div className="generated-key-alert success">
+                              <div className="alert-content">
+                                <strong>New API Key Created!</strong>
+                                <p>Copy this key now. For security reasons, it will not be displayed again.</p>
+                                <div className="key-display-copy-row">
+                                  <code className="raw-key-code">{newlyGeneratedKey}</code>
+                                  <button
+                                    className="copy-key-btn"
+                                    onClick={(e) => {
+                                      navigator.clipboard.writeText(newlyGeneratedKey);
+                                      addToast("API Key copied to clipboard", "success");
+                                    }}
+                                  >
+                                    <Check size={14} /> Copy
+                                  </button>
+                                </div>
+                                <button className="btn-close-alert" onClick={() => setNewlyGeneratedKey(null)}>
+                                  I've Copied the Key
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="active-keys-table-container">
+                            <h5>Active Keys</h5>
+                            {apiKeys.length === 0 ? (
+                              <p className="no-active-keys-hint">No active API keys found. Generate one above to get started.</p>
+                            ) : (
+                              <div className="keys-list-container">
+                                {apiKeys.map(key => (
+                                  <div key={key.id} className="key-list-row-item">
+                                    <div className="key-info-meta">
+                                      <strong className="key-item-name">{key.name}</strong>
+                                      <div className="key-item-details">
+                                        <code className="key-prefix-hint">{key.prefix}</code>
+                                        <span className="dot-divider" />
+                                        <span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      className="key-revoke-btn"
+                                      title="Revoke Key"
+                                      onClick={() => handleRevokeApiKey(key.id)}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="settings-divider-horizontal" />
+
+                        {/* Code-Expo CLI Connection Center */}
+                        <div className="integration-card-wrapper cli-integration-card">
+                          <div className="cli-header-row">
+                            <Terminal size={18} className="cli-icon-neon" />
+                            <div>
+                              <h4>CODE-EXPO Command Line Interface (CLI)</h4>
+                              <span className="integration-desc-small" style={{ display: "block", marginTop: "2px" }}>
+                                Synchronize local folders, run compilers, and connect your terminal environment directly to workspaces.
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="cli-guideline-steps">
+                            <div className="cli-step-item">
+                              <div className="step-num-title-row">
+                                <span className="step-badge">Step 1</span>
+                                <span className="step-title">Install the CLI global runner</span>
+                              </div>
+                              <div className="terminal-code-block">
+                                <code>npm install -g code-expo-cli</code>
+                                <button
+                                  type="button"
+                                  className="cli-copy-btn"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText("npm install -g code-expo-cli");
+                                    addToast("CLI install command copied", "success");
+                                  }}
+                                >
+                                  <Copy size={12} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="cli-step-item">
+                              <div className="step-num-title-row">
+                                <span className="step-badge">Step 2</span>
+                                <span className="step-title">Authenticate using an API key generated above</span>
+                              </div>
+                              <div className="terminal-code-block">
+                                <code>code-expo login --token &lt;YOUR_API_KEY&gt;</code>
+                                <button
+                                  type="button"
+                                  className="cli-copy-btn"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText("code-expo login --token <YOUR_API_KEY>");
+                                    addToast("CLI login command copied", "success");
+                                  }}
+                                >
+                                  <Copy size={12} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="cli-step-item">
+                              <div className="step-num-title-row">
+                                <span className="step-badge">Step 3</span>
+                                <span className="step-title">Sync local directory to a live coding session</span>
+                              </div>
+                              <div className="terminal-code-block">
+                                <code>code-expo sync --room &lt;ROOM_ID&gt; --path ./src</code>
+                                <button
+                                  type="button"
+                                  className="cli-copy-btn"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText("code-expo sync --room <ROOM_ID> --path ./src");
+                                    addToast("CLI sync command copied", "success");
+                                  }}
+                                >
+                                  <Copy size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeSection === "helpdesk" && (
+            <motion.div
+              key="helpdesk"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <HelpDesk />
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Room Details Modal */}
@@ -7749,7 +8071,7 @@ function Dashboard() {
         {/* Followers modal */}
         {showFollowersModal && createPortal(
           <div className="ce-modal-overlay" onClick={() => setShowFollowersModal(false)}>
-            <div className="ce-modal-card social-graph-modal-card">
+            <div className="ce-modal-card social-graph-modal-card" onClick={(e) => e.stopPropagation()}>
               <button className="modal-close-btn" onClick={() => setShowFollowersModal(false)}>
                 <X size={18} />
               </button>
@@ -7790,27 +8112,45 @@ function Dashboard() {
                           </div>
                           <div className="social-member-actions">
                             {!isSelf && (
-                              <button
-                                onClick={() => {
-                                  handleFollowToggle(item._id);
-                                  const activeId = viewingUserProfile ? viewingUserProfile._id : user?.id || user?._id;
-                                  if (activeId) {
-                                    Promise.all([
-                                      getFollowers(activeId).catch(() => ({ success: false, followers: [] })),
-                                      viewingUserProfile ? getUserPublicProfile(viewingUserProfile._id).catch(() => ({ success: false })) : Promise.resolve(null)
-                                    ]).then(([followersRes, profileRes]) => {
-                                      if (followersRes?.success) setTargetFollowersList(followersRes.followers || []);
-                                      if (profileRes?.success && profileRes.user) {
-                                        setViewingUserProfile(profileRes.user);
-                                        setViewingUserStats(profileRes.stats || null);
-                                      }
+                              <div style={{ display: "flex", gap: "6px" }}>
+                                <button
+                                  onClick={() => {
+                                    handleFollowToggle(item._id);
+                                    const activeId = viewingUserProfile ? viewingUserProfile._id : user?.id || user?._id;
+                                    if (activeId) {
+                                      Promise.all([
+                                        getFollowers(activeId).catch(() => ({ success: false, followers: [] })),
+                                        viewingUserProfile ? getUserPublicProfile(viewingUserProfile._id).catch(() => ({ success: false })) : Promise.resolve(null)
+                                      ]).then(([followersRes, profileRes]) => {
+                                        if (followersRes?.success) setTargetFollowersList(followersRes.followers || []);
+                                        if (profileRes?.success && profileRes.user) {
+                                          setViewingUserProfile(profileRes.user);
+                                          setViewingUserStats(profileRes.stats || null);
+                                        }
+                                      });
+                                    }
+                                  }}
+                                  className={`ce-modal-follow-btn ${isFollowingUser ? "following" : "follow-back"}`}
+                                >
+                                  {isFollowingUser ? "Following" : "Follow Back"}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setShowFollowersModal(false);
+                                    setPreselectedChatPartner({
+                                      _id: item._id,
+                                      username: item.username,
+                                      avatar: item.avatar,
+                                      bio: item.bio || "Developer"
                                     });
-                                  }
-                                }}
-                                className={`ce-modal-follow-btn ${isFollowingUser ? "following" : "follow-back"}`}
-                              >
-                                {isFollowingUser ? "Following" : "Follow Back"}
-                              </button>
+                                    navigate("/dashboard?tab=messages");
+                                  }}
+                                  className="ce-modal-follow-btn"
+                                  style={{ background: "var(--ce-primary)", color: "#fff", border: "none" }}
+                                >
+                                  Message
+                                </button>
+                              </div>
                             )}
                             {!viewingUserProfile && (
                               <button
@@ -7845,7 +8185,7 @@ function Dashboard() {
         {/* Following modal */}
         {showFollowingModal && createPortal(
           <div className="ce-modal-overlay" onClick={() => setShowFollowingModal(false)}>
-            <div className="ce-modal-card social-graph-modal-card">
+            <div className="ce-modal-card social-graph-modal-card" onClick={(e) => e.stopPropagation()}>
               <button className="modal-close-btn" onClick={() => setShowFollowingModal(false)}>
                 <X size={18} />
               </button>
@@ -7885,30 +8225,48 @@ function Dashboard() {
                             </div>
                           </div>
                           {!isSelf && (
-                            <button
-                              onClick={() => {
-                                handleFollowToggle(item._id);
-                                if (!viewingUserProfile) {
-                                  setTargetFollowingList(prev => prev.filter(f => String(f._id || f) !== String(item._id)));
-                                }
-                                const activeId = viewingUserProfile ? viewingUserProfile._id : user?.id || user?._id;
-                                if (activeId) {
-                                  Promise.all([
-                                    getFollowing(activeId).catch(() => ({ success: false, following: [] })),
-                                    viewingUserProfile ? getUserPublicProfile(viewingUserProfile._id).catch(() => ({ success: false })) : Promise.resolve(null)
-                                  ]).then(([followingRes, profileRes]) => {
-                                    if (followingRes?.success) setTargetFollowingList(followingRes.following || []);
-                                    if (profileRes?.success && profileRes.user) {
-                                      setViewingUserProfile(profileRes.user);
-                                      setViewingUserStats(profileRes.stats || null);
-                                    }
+                            <div style={{ display: "flex", gap: "6px" }}>
+                              <button
+                                onClick={() => {
+                                  handleFollowToggle(item._id);
+                                  if (!viewingUserProfile) {
+                                    setTargetFollowingList(prev => prev.filter(f => String(f._id || f) !== String(item._id)));
+                                  }
+                                  const activeId = viewingUserProfile ? viewingUserProfile._id : user?.id || user?._id;
+                                  if (activeId) {
+                                    Promise.all([
+                                      getFollowing(activeId).catch(() => ({ success: false, following: [] })),
+                                      viewingUserProfile ? getUserPublicProfile(viewingUserProfile._id).catch(() => ({ success: false })) : Promise.resolve(null)
+                                    ]).then(([followingRes, profileRes]) => {
+                                      if (followingRes?.success) setTargetFollowingList(followingRes.following || []);
+                                      if (profileRes?.success && profileRes.user) {
+                                        setViewingUserProfile(profileRes.user);
+                                        setViewingUserStats(profileRes.stats || null);
+                                      }
+                                    });
+                                  }
+                                }}
+                                className={`ce-modal-follow-btn ${isFollowingUser ? "following" : "follow"}`}
+                              >
+                                {isFollowingUser ? "Following" : "Follow"}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowFollowingModal(false);
+                                  setPreselectedChatPartner({
+                                    _id: item._id,
+                                    username: item.username,
+                                    avatar: item.avatar,
+                                    bio: item.bio || "Developer"
                                   });
-                                }
-                              }}
-                              className={`ce-modal-follow-btn ${isFollowingUser ? "following" : "follow"}`}
-                            >
-                              {isFollowingUser ? "Following" : "Follow"}
-                            </button>
+                                  navigate("/dashboard?tab=messages");
+                                }}
+                                className="ce-modal-follow-btn"
+                                style={{ background: "var(--ce-primary)", color: "#fff", border: "none" }}
+                              >
+                                Message
+                              </button>
+                            </div>
                           )}
                         </div>
                       );
@@ -7928,7 +8286,7 @@ function Dashboard() {
               <button className="popup-ad-close-btn" onClick={handleClosePopupAd} aria-label="Close Ad">
                 <X size={18} />
               </button>
-              
+
               <div className="popup-ad-content" onClick={handlePopupAdClick}>
                 <div className="popup-ad-image-container">
                   <img
@@ -7938,7 +8296,7 @@ function Dashboard() {
                   />
                   <span className="popup-ad-sponsored-tag">SPONSORED</span>
                 </div>
-                
+
                 <div className="popup-ad-body">
                   <h3 className="popup-ad-title">{currentPopupAd.title}</h3>
                   {currentPopupAd.redirectUrl && (
@@ -7955,6 +8313,309 @@ function Dashboard() {
           </div>,
           document.body
         )}
+
+
+
+        {likedUsersListModal && createPortal(
+          <div className="ce-modal-overlay" onClick={() => setLikedUsersListModal(null)} style={{ zIndex: 100000 }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="ce-modal-card"
+              style={{ maxWidth: "380px", width: "90%", padding: "20px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h3 style={{ margin: 0, color: "var(--ce-text-h)", fontSize: "1.1rem", fontWeight: "700" }}>Liked By</h3>
+                <button 
+                  onClick={() => setLikedUsersListModal(null)} 
+                  style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer" }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "300px", overflowY: "auto", paddingRight: "4px" }}>
+                {likedUsersListModal.map((liker, idx) => (
+                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px", background: "rgba(99, 102, 241, 0.04)", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
+                    <div 
+                      style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
+                      onClick={() => {
+                        setLikedUsersListModal(null);
+                        handleViewUserProfile(liker._id);
+                      }}
+                    >
+                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {liker.avatar ? (
+                          <img src={liker.avatar} alt={liker.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.8rem", fontWeight: "600" }}>
+                            {(liker.username || "D").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ce-text)" }}>@{liker.username}</span>
+                        <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{liker.title || "Developer"}</span>
+                      </div>
+                    </div>
+
+                    {liker._id !== (user?.id || user?._id) && (
+                      <button
+                        onClick={() => {
+                          setLikedUsersListModal(null);
+                          setPreselectedChatPartner({
+                            _id: liker._id,
+                            username: liker.username,
+                            avatar: liker.avatar,
+                            bio: liker.bio || "Developer"
+                          });
+                          navigate("/dashboard?tab=messages");
+                        }}
+                        style={{ padding: "4px 8px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "4px", fontSize: "0.72rem", cursor: "pointer", fontWeight: "600" }}
+                      >
+                        Message
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>,
+          document.body
+        )}
+
+
+
+        {selectedPostModal && (() => {
+          const postImages = selectedPostModal.images && selectedPostModal.images.length > 0 ? selectedPostModal.images : (selectedPostModal.image ? [selectedPostModal.image] : []);
+          const hasImage = postImages.length > 0;
+
+          return createPortal(
+            <div className="ce-modal-overlay" onClick={() => setSelectedPostModal(null)} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: hasImage ? "880px" : "480px",
+                  height: "600px",
+                  maxHeight: "90vh",
+                  maxWidth: "95vw",
+                  background: "var(--ce-surface-card)",
+                  borderRadius: "16px",
+                  border: "1px solid var(--ce-border)",
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: hasImage ? "row" : "column",
+                  boxShadow: "0 24px 60px rgba(0,0,0,0.5)"
+                }}
+              >
+                {/* Left Column: Image (only if attachments exist) */}
+                {hasImage && (
+                  <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img 
+                      src={postImages[0]} 
+                      alt="Post media view" 
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                    />
+                  </div>
+                )}
+
+                {/* Right/Main Column: Post Details */}
+                <div style={{ width: hasImage ? "380px" : "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--ce-surface-card)" }}>
+                {/* Header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderBottom: "1px solid var(--ce-border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", overflow: "hidden" }}>
+                      {selectedPostModal.author?.avatar ? (
+                        <img src={selectedPostModal.author.avatar} alt={selectedPostModal.author.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.8rem", fontWeight: "600" }}>
+                          {(selectedPostModal.author?.username || "D").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ce-text)" }}>@{selectedPostModal.author?.username || "developer"}</span>
+                      <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{selectedPostModal.author?.title || "Developer"}</span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedPostModal(null)} 
+                    style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Content & Comments scroll section */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {/* Post description text */}
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                      {selectedPostModal.author?.avatar ? (
+                        <img src={selectedPostModal.author.avatar} alt="Author" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.7rem" }}>
+                          {(selectedPostModal.author?.username || "D").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)", whiteSpace: "pre-wrap" }}>
+                      <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{selectedPostModal.author?.username}:</strong>
+                      {selectedPostModal.content}
+                    </p>
+                  </div>
+
+                  {/* Divider line */}
+                  <div style={{ borderBottom: "1px solid var(--ce-border)" }} />
+
+                  {/* Comments list */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {selectedPostModal.comments && selectedPostModal.comments.length > 0 ? (
+                      selectedPostModal.comments.map((comment, index) => (
+                        <div key={index} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                          <div style={{ width: "24px", height: "24px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                            {comment.avatar ? (
+                              <img src={comment.avatar} alt={comment.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            ) : (
+                              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.7rem" }}>
+                                {(comment.username || "D").charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)" }}>
+                            <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{comment.username}:</strong>
+                            {comment.text}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)", textAlign: "center", marginTop: "20px" }}>No comments yet. Be first to comment!</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer panel containing Like Action and Likes stack */}
+                <div style={{ padding: "16px", borderTop: "1px solid var(--ce-border)", display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      {/* Liking action - ONLY heart icon */}
+                      <button
+                        onClick={handleLikePostInModal}
+                        style={{ background: "none", border: "none", color: selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "var(--ce-text)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
+                      >
+                        <Heart size={20} fill={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "none"} color={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "currentColor"} />
+                      </button>
+
+                      {/* Likers Stack with Clickable More Option */}
+                      {(() => {
+                        const resolvedLikers = (selectedPostModal.likes || []).map(resolveLikedUser).filter(Boolean);
+                        if (resolvedLikers.length === 0) return null;
+                        return (
+                          <div className="card-likes-avatars-stack" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              {resolvedLikers.slice(0, 3).map((u, i) => (
+                                <div
+                                  key={i}
+                                  className="avatar-stack-item"
+                                  style={{
+                                    width: "18px",
+                                    height: "18px",
+                                    borderRadius: "50%",
+                                    overflow: "hidden",
+                                    border: "1px solid var(--ce-surface-card)",
+                                    marginLeft: i > 0 ? "-6px" : "0",
+                                    zIndex: 10 - i,
+                                    cursor: "pointer"
+                                  }}
+                                  onClick={() => {
+                                    setSelectedPostModal(null);
+                                    u._id && handleViewUserProfile(u._id);
+                                  }}
+                                  title={`@${u.username}`}
+                                >
+                                  {u.avatar ? (
+                                    <img src={u.avatar} alt={u.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  ) : (
+                                    <div className="avatar-fallback" style={{ width: "100%", height: "100%", fontSize: "0.6rem", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff" }}>
+                                      {(u.username || "D").charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedPostModal(null);
+                                setLikedUsersListModal(resolvedLikers);
+                              }}
+                              style={{ background: "none", border: "none", color: "var(--ce-primary)", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, padding: 0 }}
+                            >
+                              {resolvedLikers.length > 3 ? `+${resolvedLikers.length - 3} others` : `liked`}
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      {/* Bookmark / Saved button */}
+                      <button
+                        onClick={() => {
+                          setSavedPostIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(selectedPostModal._id)) {
+                              next.delete(selectedPostModal._id);
+                              addToast("Post removed from saved bookmarks", "success");
+                            } else {
+                              next.add(selectedPostModal._id);
+                              addToast("Post saved to bookmarks", "success");
+                            }
+                            localStorage.setItem("codeexpo_bookmarked_post_ids", JSON.stringify(Array.from(next)));
+                            return next;
+                          });
+                        }}
+                        style={{ background: "none", border: "none", color: savedPostIds.has(selectedPostModal._id) ? "#3b82f6" : "var(--ce-text)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
+                        title="Bookmark post"
+                      >
+                        <Bookmark size={18} fill={savedPostIds.has(selectedPostModal._id) ? "#3b82f6" : "none"} />
+                      </button>
+
+                      <span style={{ fontSize: "0.75rem", color: "var(--ce-text-muted)" }}>
+                        {new Date(selectedPostModal.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Comment form input */}
+                  <form onSubmit={handleAddCommentInModal} style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                    <input 
+                      type="text"
+                      placeholder="Add a comment..."
+                      value={modalCommentText}
+                      onChange={(e) => setModalCommentText(e.target.value)}
+                      style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "var(--ce-surface-card-hover)", border: "1px solid var(--ce-border)", color: "var(--ce-text)", fontSize: "0.8rem" }}
+                    />
+                    <button 
+                      type="submit" 
+                      style={{ padding: "6px 12px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
+                    >
+                      Post
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </motion.div>
+          </div>,
+          document.body
+        );
+      })()}
 
 
 

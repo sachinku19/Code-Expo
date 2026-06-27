@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const MediaSchema = require("./Media");
 
 const adSchema = new mongoose.Schema({
   title: {
@@ -8,6 +9,10 @@ const adSchema = new mongoose.Schema({
   imageUrl: {
     type: String,
     required: true
+  },
+  imageMetadata: {
+    type: MediaSchema,
+    default: null
   },
   redirectUrl: {
     type: String,

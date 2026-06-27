@@ -159,8 +159,8 @@ const my_profile=async(req,res)=>{
         }
 
         if (req.user) {
-            const followersCount = await Follow.countDocuments({ following: req.user._id });
-            const followingCount = await Follow.countDocuments({ follower: req.user._id });
+            const followersCount = req.user.followers ? req.user.followers.length : 0;
+            const followingCount = req.user.following ? req.user.following.length : 0;
             if (req.user.followersCount !== followersCount || req.user.followingCount !== followingCount) {
                 await User.updateOne(
                     { _id: req.user._id },

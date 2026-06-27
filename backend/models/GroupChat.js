@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const MediaSchema = require("./Media");
 
 const groupChatSchema = new mongoose.Schema({
   name: {
@@ -9,6 +10,10 @@ const groupChatSchema = new mongoose.Schema({
   avatar: {
     type: String,
     default: ""
+  },
+  avatarMetadata: {
+    type: MediaSchema,
+    default: null
   },
   bio: {
     type: String,

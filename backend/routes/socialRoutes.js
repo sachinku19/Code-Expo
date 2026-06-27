@@ -33,7 +33,9 @@ const {
 const {
   createStory,
   getStories,
-  deleteStory
+  deleteStory,
+  toggleLikeStory,
+  addCommentStory
 } = require("../controllers/storyController");
 
 const upload = require("../middleware/upload");
@@ -68,16 +70,18 @@ router.get("/notifications", auth_protect, getNotifications);
 router.post("/notifications/read", auth_protect, markNotificationsRead);
 
 // Posts
-router.post("/posts", auth_protect, upload.single("image"), createPost);
+router.post("/posts", auth_protect, upload.array("images", 10), createPost);
 router.get("/posts", auth_protect, getPosts);
 router.delete("/posts/:id", auth_protect, deletePost);
 router.post("/posts/:id/like", auth_protect, toggleLikePost);
 router.post("/posts/:id/comment", auth_protect, addComment);
 
 // Stories
-router.post("/stories", auth_protect, createStory);
+router.post("/stories", auth_protect, upload.single("media"), createStory);
 router.get("/stories", auth_protect, getStories);
 router.delete("/stories/:id", auth_protect, deleteStory);
+router.post("/stories/:id/like", auth_protect, toggleLikeStory);
+router.post("/stories/:id/comment", auth_protect, addCommentStory);
 
 // Status & Analytics
 router.post("/status", auth_protect, updateStatus);
