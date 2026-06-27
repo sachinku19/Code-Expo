@@ -8609,7 +8609,7 @@ function Dashboard() {
                                   }}
                                   onClick={() => {
                                     handleClosePostModal();
-                                    u._id && handleViewUserProfile(u._id);
+                                    setLikedUsersListModal(resolvedLikers);
                                   }}
                                   title={`@${u.username}`}
                                 >

@@ -23,7 +23,11 @@ import {
   getAdminAds,
   createAdminAd,
   toggleAdminAd,
-  deleteAdminAd
+  deleteAdminAd,
+  getAdminPosts,
+  deleteAdminPost,
+  deleteAdminPostComment,
+  updateAdminPostStatus
 } from "../services/adminService";
 import {
   Users,
@@ -258,6 +262,7 @@ const AdminDashboard = () => {
   // Data states
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
+  const [admins, setAdmins] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [ratings, setRatings] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -336,6 +341,15 @@ const AdminDashboard = () => {
   const [submittingAd, setSubmittingAd] = useState(false);
   const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false);
   const [confirmingAction, setConfirmingAction] = useState(false);
+
+  // Feed Moderation states
+  const [posts, setPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [postSearch, setPostSearch] = useState("");
+  const [postPage, setPostPage] = useState(1);
+  const [postPagination, setPostPagination] = useState({ totalPages: 1, totalPosts: 0 });
+  const [expandedPosts, setExpandedPosts] = useState({});
+  const [feedStats, setFeedStats] = useState({ totalPosts: 0, flaggedPosts: 0, hiddenPosts: 0, totalComments: 0 });
 
 
 
@@ -442,6 +456,7 @@ const AdminDashboard = () => {
       const data = await getAdminUsers(userPage, 10, userSearch);
       if (data.success) {
         setUsers(data.users);
+        setAdmins(data.admins || []);
         setUserPagination(data.pagination);
       }
     } catch (err) {
@@ -572,6 +587,37 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchPosts = async () => {
+    setLoadingPosts(true);
+    try {
+      const data = await getAdminPosts(postPage, 10, postSearch);
+      if (data.success) {
+        setPosts(data.posts);
+        setPostPagination(data.pagination);
+        if (data.stats) {
+          setFeedStats(data.stats);
+        }
+      }
+    } catch (err) {
+      addToast("Failed to fetch feed posts", "error");
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
+  const handleStatusChange = async (postId, status) => {
+    try {
+      const res = await updateAdminPostStatus(postId, status);
+      if (res.success) {
+        addToast(res.message, "success");
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, status } : p));
+        fetchPosts(); // Refresh stats banner
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message || "Failed to update status", "error");
+    }
+  };
+
   useEffect(() => {
     if (activeTab === "broadcasts") {
       fetchAnnouncements();
@@ -579,8 +625,16 @@ const AdminDashboard = () => {
       fetchAds();
     } else if (activeTab === "tickets") {
       fetchAdminTickets();
+    } else if (activeTab === "feed") {
+      fetchPosts();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "feed") {
+      fetchPosts();
+    }
+  }, [postPage, postSearch]);
 
   // Initial runs
   useEffect(() => {
@@ -659,6 +713,25 @@ const AdminDashboard = () => {
     });
   };
 
+  const handleDeletePostClick = (postId, authorName) => {
+    setConfirmModal({
+      isOpen: true,
+      type: "deletePost",
+      targetId: postId,
+      targetName: authorName
+    });
+  };
+
+  const handleDeleteCommentClick = (postId, commentId, commenterName) => {
+    setConfirmModal({
+      isOpen: true,
+      type: "deleteComment",
+      targetId: postId,
+      targetName: commenterName,
+      extraData: commentId
+    });
+  };
+
   const handleMaintenanceToggleClick = () => {
     setConfirmModal({
       isOpen: true,
@@ -734,6 +807,19 @@ const AdminDashboard = () => {
         if (res.success) {
           addToast(res.message, "success");
           fetchAds();
+        }
+      } else if (type === "deletePost") {
+        const res = await deleteAdminPost(targetId);
+        if (res.success) {
+          addToast(res.message, "success");
+          fetchPosts();
+          fetchStats();
+        }
+      } else if (type === "deleteComment") {
+        const res = await deleteAdminPostComment(targetId, extraData);
+        if (res.success) {
+          addToast(res.message, "success");
+          setPosts(prev => prev.map(p => p.id === targetId ? { ...p, comments: res.comments } : p));
         }
       }
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -1070,13 +1156,25 @@ const AdminDashboard = () => {
                   This advertisement and its banner will be permanently removed.
                 </p>
               )}
+              {confirmModal.type === "deletePost" && (
+                <p>
+                  <strong>CRITICAL CONTENT MODERATION:</strong> Are you sure you want to delete this post by <strong>{confirmModal.targetName}</strong>?<br />
+                  This will permanently delete the post content, associated media files, and all comments on it.
+                </p>
+              )}
+              {confirmModal.type === "deleteComment" && (
+                <p>
+                  Are you sure you want to delete this comment by <strong>{confirmModal.targetName}</strong>?<br />
+                  This comment will be permanently removed from the post feed.
+                </p>
+              )}
             </div>
             <div className="modal-actions">
               <button className="btn-modal-cancel" onClick={() => setConfirmModal({ isOpen: false })}>
                 Cancel
               </button>
               <button
-                className={`btn-modal-confirm ${["deleteUser", "suspendUser", "toggleMaintenance", "deleteAnnouncement", "deleteAd"].includes(confirmModal.type) ? "critical" : ""
+                className={`btn-modal-confirm ${["deleteUser", "suspendUser", "toggleMaintenance", "deleteAnnouncement", "deleteAd", "deletePost", "deleteComment"].includes(confirmModal.type) ? "critical" : ""
                   }`}
                 onClick={executeConfirmation}
                 disabled={confirmingAction}
@@ -1133,6 +1231,14 @@ const AdminDashboard = () => {
           >
             <MessageSquare size={16} />
             <span>Chat Moderation</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab("feed"); setIsMobileSidebarOpen(false); }}
+            className={`sidebar-nav-item-btn ${activeTab === "feed" ? "active" : ""}`}
+          >
+            <Zap size={16} />
+            <span>Network Feed</span>
           </button>
 
           <button
@@ -1415,8 +1521,8 @@ const AdminDashboard = () => {
 
           {/* TAB 2: DEVELOPERS ACCOUNTS */}
           {activeTab === "users" && (() => {
-            const adminUsers = users.filter((u) => u.role === "admin");
-            const regularUsers = users.filter((u) => u.role === "user");
+            const adminUsers = admins;
+            const regularUsers = users;
 
             const renderUserTable = (userList, emptyMessage) => (
               <div className="table-wrapper-responsive">
@@ -1923,6 +2029,226 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4.5: NETWORK FEED MODERATION */}
+          {activeTab === "feed" && (
+            <div className="tab-pane-feed-moderation animate-fade-in">
+              {/* FEED STATS BANNER */}
+              <div className="feed-stats-dashboard-row animate-fade-in">
+                <div className="feed-stat-card glass-panel purple">
+                  <div className="stat-icon-wrapper"><Megaphone size={18} /></div>
+                  <div className="stat-info">
+                    <span className="stat-label">Total Posts</span>
+                    <span className="stat-value">{feedStats.totalPosts}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel yellow">
+                  <div className="stat-icon-wrapper"><AlertTriangle size={18} /></div>
+                  <div className="stat-info">
+                    <span className="stat-label">Flagged Posts</span>
+                    <span className="stat-value">{feedStats.flaggedPosts}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel red">
+                  <div className="stat-icon-wrapper"><VolumeX size={18} /></div>
+                  <div className="stat-info">
+                    <span className="stat-label">Hidden Posts</span>
+                    <span className="stat-value">{feedStats.hiddenPosts}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel blue">
+                  <div className="stat-icon-wrapper"><MessageSquare size={18} /></div>
+                  <div className="stat-info">
+                    <span className="stat-label">Total Comments</span>
+                    <span className="stat-value">{feedStats.totalComments}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SEARCH BAR */}
+              <div className="table-search-row glass-panel" style={{ marginBottom: "20px" }}>
+                <div className="search-input-wrapper">
+                  <Search size={14} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search posts by content, tech stack, or author..."
+                    value={postSearch}
+                    onChange={(e) => {
+                      setPostSearch(e.target.value);
+                      setPostPage(1);
+                    }}
+                    className="table-search-input"
+                  />
+                </div>
+                {loadingPosts && <Loader className="spinner table-inline-loader" size={14} />}
+              </div>
+
+              {/* POSTS LISTING */}
+              <div className="admin-posts-grid">
+                {posts.length === 0 ? (
+                  <div className="empty-posts-state glass-panel">
+                    {loadingPosts ? "Fetching feed posts..." : "No posts found in the network feed."}
+                  </div>
+                ) : (
+                  posts.map((post) => {
+                    const isExpanded = !!expandedPosts[post.id];
+                    return (
+                      <div key={post.id} className={`admin-post-card glass-panel border-${post.status}`}>
+                        <div className="post-card-header">
+                          <div className="post-author-info">
+                            <div className="author-avatar-wrapper">
+                              {post.author?.avatar ? (
+                                <img src={post.author.avatar} alt={post.author.username} className="avatar-img" />
+                              ) : (
+                                <div className="avatar-placeholder">
+                                  {(post.author?.username || "U").substring(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div className="author-meta">
+                              <div className="author-username-row">
+                                <span className="author-username">{post.author?.username || "Deleted User"}</span>
+                                <span className={`post-status-badge status-${post.status}`}>
+                                  {post.status.toUpperCase()}
+                                </span>
+                              </div>
+                              <span className="author-email">{post.author?.email || ""}</span>
+                              {post.author?.title && <span className="author-title-badge">{post.author.title}</span>}
+                            </div>
+                          </div>
+
+                          <div className="post-card-actions-wrapper">
+                            <div className="post-moderation-controls">
+                              <select
+                                value={post.status || "active"}
+                                onChange={(e) => handleStatusChange(post.id, e.target.value)}
+                                className="admin-post-status-select"
+                              >
+                                <option value="active">Active (Visible)</option>
+                                <option value="flagged">Flagged (Warning)</option>
+                                <option value="hidden">Hidden (Moderated)</option>
+                              </select>
+                              <button
+                                onClick={() => handleDeletePostClick(post.id, post.author?.username || "Someone")}
+                                className="btn-action-delete"
+                                title="Delete post permanently"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="post-card-body">
+                          <p className="post-text-content">{post.text}</p>
+                          
+                          {post.techStack && post.techStack.length > 0 && (
+                            <div className="post-tech-tags">
+                              {post.techStack.map((tech, idx) => (
+                                <span key={idx} className="tech-tag-pill">{tech}</span>
+                              ))}
+                            </div>
+                          )}
+
+                          {post.image && (
+                            <div className="post-media-preview">
+                              <img src={post.image} alt="Post Attachment" className="post-preview-img" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="post-card-footer">
+                          <div className="post-stats-row">
+                            <span className="stat-pill">👍 {post.likesCount} Likes</span>
+                            <span className="stat-pill">💬 {post.comments ? post.comments.length : 0} Comments</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setExpandedPosts(prev => ({
+                                ...prev,
+                                [post.id]: !prev[post.id]
+                              }));
+                            }}
+                            className="btn-toggle-comments"
+                          >
+                            {isExpanded ? "Hide Comments" : `Manage Comments (${post.comments ? post.comments.length : 0})`}
+                          </button>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="post-comments-section animate-slide-down">
+                            <h5>Comments Moderation</h5>
+                            {(!post.comments || post.comments.length === 0) ? (
+                              <p className="no-comments-text">No comments on this post.</p>
+                            ) : (
+                              <div className="admin-comments-list">
+                                {post.comments.map((comment) => (
+                                  <div key={comment._id} className="admin-comment-row">
+                                    <div className="comment-left-col">
+                                      <div className="commenter-avatar">
+                                        {comment.avatar ? (
+                                          <img src={comment.avatar} alt={comment.username} className="avatar-img" />
+                                        ) : (
+                                          <div className="avatar-placeholder">
+                                            {(comment.username || "U").substring(0, 2).toUpperCase()}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="comment-text-details">
+                                        <div className="commenter-meta">
+                                          <span className="commenter-name">{comment.username}</span>
+                                          <span className="comment-time">
+                                            {new Date(comment.createdAt).toLocaleString()}
+                                          </span>
+                                        </div>
+                                        <p className="comment-content-text">"{comment.text}"</p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteCommentClick(post.id, comment._id, comment.username)}
+                                      className="btn-comment-delete"
+                                      title="Delete and moderate comment"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* PAGINATION */}
+              {postPagination.totalPages > 1 && (
+                <div className="table-pagination-row" style={{ marginTop: "24px" }}>
+                  <button
+                    disabled={postPage <= 1}
+                    onClick={() => setPostPage((prev) => Math.max(1, prev - 1))}
+                    className="btn-page-nav"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Previous</span>
+                  </button>
+                  <span className="page-indicator">
+                    Page <strong>{postPage}</strong> of <strong>{postPagination.totalPages}</strong> ({postPagination.totalPosts} posts)
+                  </span>
+                  <button
+                    disabled={postPage >= postPagination.totalPages}
+                    onClick={() => setPostPage((prev) => Math.min(postPagination.totalPages, prev + 1))}
+                    className="btn-page-nav"
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={14} />
+                  </button>
                 </div>
               )}
             </div>

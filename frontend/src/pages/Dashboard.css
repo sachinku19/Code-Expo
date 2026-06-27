@@ -4969,10 +4969,105 @@
 
 .profile-rooms-empty-text {
   color: var(--ce-text-muted);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   grid-column: 1 / -1;
   text-align: center;
-  padding: 24px 0;
+  padding: 40px 20px;
+  background: var(--ce-surface-card);
+  border: 1px dashed var(--ce-border);
+  border-radius: 12px;
+  animation: emptyPulseText 2s infinite ease-in-out;
+  max-width: 480px;
+  margin: 20px auto;
+}
+
+/* Animated Premium Empty State Card System */
+.empty-state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 36px 24px;
+  background: var(--ce-surface-card);
+  border: 1px dashed var(--ce-border);
+  border-radius: 12px;
+  transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  animation: emptyFadeIn 0.5s ease-out;
+  width: 100%;
+}
+
+.empty-state-card:hover {
+  border-color: var(--ce-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(170, 59, 255, 0.08);
+}
+
+.empty-state-card.compact {
+  padding: 20px 16px;
+}
+
+/* Floating animation for icons inside empty states */
+.empty-state-icon {
+  color: var(--ce-text-muted);
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+  animation: emptyFloat 3s infinite ease-in-out;
+  transition: color 0.3s ease;
+}
+
+.empty-state-card:hover .empty-state-icon {
+  color: var(--ce-primary);
+}
+
+/* Text and details inside empty-state-card */
+.empty-state-card h4 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ce-text);
+  margin-bottom: 4px;
+}
+
+.empty-state-card p {
+  font-size: 0.78rem;
+  color: var(--ce-text-muted);
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+/* Animations definition */
+@keyframes emptyFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes emptyFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes emptyPulseText {
+  0%, 100% {
+    opacity: 0.85;
+    border-color: var(--ce-border);
+  }
+  50% {
+    opacity: 1;
+    border-color: rgba(170, 59, 255, 0.25);
+  }
 }
 
 .profile-activity-list {

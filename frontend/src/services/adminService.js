@@ -131,3 +131,23 @@ export const deleteAdminAd = async (id) => {
   return response.data;
 };
 
+export const getAdminPosts = async (page = 1, limit = 10, search = "") => {
+  const response = await API.get(`/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, getHeaders());
+  return response.data;
+};
+
+export const deleteAdminPost = async (postId) => {
+  const response = await API.delete(`/admin/posts/${postId}`, getHeaders());
+  return response.data;
+};
+
+export const deleteAdminPostComment = async (postId, commentId) => {
+  const response = await API.delete(`/admin/posts/${postId}/comments/${commentId}`, getHeaders());
+  return response.data;
+};
+
+export const updateAdminPostStatus = async (postId, status) => {
+  const response = await API.put(`/admin/posts/${postId}/status`, { status }, getHeaders());
+  return response.data;
+};
+

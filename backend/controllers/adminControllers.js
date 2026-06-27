@@ -123,22 +123,28 @@ const getAllUsers = async (req, res) => {
     const search = req.query.search || "";
     const skip = (page - 1) * limit;
 
-    const query = {};
+    const adminQuery = { role: "admin" };
+    const userQuery = { role: "user" };
+
     if (search) {
-      query.$or = [
+      const searchOr = [
         { username: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } }
       ];
+      adminQuery.$or = searchOr;
+      userQuery.$or = searchOr;
     }
 
-    const total = await User.countDocuments(query);
-    const users = await User.find(query)
+    const admins = await User.find(adminQuery).sort({ createdAt: -1 });
+    const total = await User.countDocuments(userQuery);
+    const users = await User.find(userQuery)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
     res.status(200).json({
       success: true,
+      admins: admins.map(formatUser),
       users: users.map(formatUser),
       pagination: {
         page,
@@ -740,6 +746,204 @@ const toggleMaintenanceMode = async (req, res) => {
   }
 };
 
+// 15. Feed Moderation: List all posts
+const getAdminPosts = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (search) {
+      const matchingUsers = await User.find({
+        username: { $regex: search, $options: "i" }
+      }).select("_id");
+      const userIds = matchingUsers.map(u => u._id);
+
+      query.$or = [
+        { text: { $regex: search, $options: "i" } },
+        { techStack: { $regex: search, $options: "i" } },
+        { author: { $in: userIds } }
+      ];
+    }
+
+    // Compute Feed Statistics
+    const totalPosts = await Post.countDocuments();
+    const flaggedPosts = await Post.countDocuments({ status: "flagged" });
+    const hiddenPosts = await Post.countDocuments({ status: "hidden" });
+    
+    // Compute total comments count via aggregation
+    const commentsCount = await Post.aggregate([
+      { $project: { numberOfComments: { $size: { $ifNull: ["$comments", []] } } } },
+      { $group: { _id: null, total: { $sum: "$numberOfComments" } } }
+    ]);
+    const totalComments = commentsCount.length > 0 ? commentsCount[0].total : 0;
+
+    const totalFiltered = await Post.countDocuments(query);
+    const posts = await Post.find(query)
+      .populate("author", "username email avatar title")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      posts: posts.map(p => ({
+        id: p._id,
+        text: p.text,
+        techStack: p.techStack || [],
+        image: p.image || "",
+        images: p.images || [],
+        likesCount: p.likes ? p.likes.length : 0,
+        comments: p.comments || [],
+        status: p.status || "active",
+        createdAt: p.createdAt,
+        author: p.author ? {
+          id: p.author._id,
+          username: p.author.username,
+          email: p.author.email,
+          avatar: p.author.avatar,
+          title: p.author.title
+        } : { username: "Unknown / Deleted User" }
+      })),
+      stats: {
+        totalPosts,
+        flaggedPosts,
+        hiddenPosts,
+        totalComments
+      },
+      pagination: {
+        page,
+        limit,
+        totalPages: Math.ceil(totalFiltered / limit),
+        totalPosts: totalFiltered
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch posts"
+    });
+  }
+};
+
+// 16. Feed Moderation: Delete post
+const deleteAdminPost = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found"
+      });
+    }
+
+    // Delete post images via MediaService
+    if (post.imagesMetadata && post.imagesMetadata.length > 0) {
+      await MediaService.deleteMultipleMedia(post.imagesMetadata).catch((e) => {
+        console.error("Failed to delete post images array from storage:", e.message);
+      });
+    } else if (post.imageMetadata || post.image) {
+      await MediaService.deleteMedia(post.imageMetadata || post.image).catch((e) => {
+        console.error("Failed to delete post image from storage:", e.message);
+      });
+    }
+
+    await Post.deleteOne({ _id: postId });
+
+    res.status(200).json({
+      success: true,
+      message: "Post has been deleted and moderated successfully."
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete post"
+    });
+  }
+};
+
+// 17. Feed Moderation: Delete comment
+const deleteAdminPostComment = async (req, res) => {
+  try {
+    const { id: postId, commentId } = req.params;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found"
+      });
+    }
+
+    const commentIndex = post.comments.findIndex(c => String(c._id) === String(commentId));
+    if (commentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Comment not found"
+      });
+    }
+
+    post.comments.splice(commentIndex, 1);
+    await post.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Comment has been deleted and moderated successfully.",
+      comments: post.comments
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete comment"
+    });
+  }
+};
+
+// 18. Feed Moderation: Update post status (active, flagged, hidden)
+const updateAdminPostStatus = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const { status } = req.body;
+
+    if (!status || !["active", "flagged", "hidden"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value. Must be 'active', 'flagged', or 'hidden'."
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found"
+      });
+    }
+
+    post.status = status;
+    await post.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Post status updated to '${status}' successfully.`,
+      post: {
+        id: post._id,
+        status: post.status
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update post status"
+    });
+  }
+};
+
 module.exports = {
   getAdminOverviewStats,
   getAllUsers,
@@ -755,5 +959,9 @@ module.exports = {
   getRecentMessages,
   deleteChatMessage,
   getMaintenanceStatus,
-  toggleMaintenanceMode
+  toggleMaintenanceMode,
+  getAdminPosts,
+  deleteAdminPost,
+  deleteAdminPostComment,
+  updateAdminPostStatus
 };

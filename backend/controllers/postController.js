@@ -128,7 +128,7 @@ const getPosts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const posts = await Post.find()
+    const posts = await Post.find({ status: { $ne: "hidden" } })
       .populate("author", "username email avatar title developerLevel status reputationScore")
       .sort({ createdAt: -1 })
       .skip(skip)

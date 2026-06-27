@@ -32,6 +32,11 @@ const postSchema = new mongoose.Schema({
     type: [MediaSchema],
     default: []
   },
+  status: {
+    type: String,
+    enum: ["active", "flagged", "hidden"],
+    default: "active"
+  },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"

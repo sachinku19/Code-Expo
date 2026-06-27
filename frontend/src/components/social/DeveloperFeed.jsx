@@ -1111,7 +1111,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                                     zIndex: 10 - i,
                                     cursor: "pointer"
                                   }}
-                                  onClick={() => u._id && onViewProfile && onViewProfile(u._id)}
+                                  onClick={() => setLikedUsersListModal(resolvedLikers)}
                                   title={`@${u.username}`}
                                 >
                                   {u.avatar ? (

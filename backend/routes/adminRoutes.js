@@ -16,7 +16,11 @@ const {
   getRecentMessages,
   deleteChatMessage,
   getMaintenanceStatus,
-  toggleMaintenanceMode
+  toggleMaintenanceMode,
+  getAdminPosts,
+  deleteAdminPost,
+  deleteAdminPostComment,
+  updateAdminPostStatus
 } = require("../controllers/adminControllers");
 
 const router = express.Router();
@@ -44,5 +48,10 @@ router.delete("/messages/:id", auth_protect, admin_protect, deleteChatMessage);
 
 router.get("/maintenance", auth_protect, admin_protect, getMaintenanceStatus);
 router.post("/maintenance", auth_protect, admin_protect, toggleMaintenanceMode);
+
+router.get("/posts", auth_protect, admin_protect, getAdminPosts);
+router.delete("/posts/:id", auth_protect, admin_protect, deleteAdminPost);
+router.delete("/posts/:id/comments/:commentId", auth_protect, admin_protect, deleteAdminPostComment);
+router.put("/posts/:id/status", auth_protect, admin_protect, updateAdminPostStatus);
 
 module.exports = router;
