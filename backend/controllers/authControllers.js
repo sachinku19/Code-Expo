@@ -6,6 +6,7 @@ const validator=require("validator");
 const mongoose=require("mongoose");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
+const LoginLog = require("../models/LoginLog");
 
 
 //function of token creation
@@ -124,7 +125,31 @@ const loginUser=async(req,res)=>{
 
         await user.save();
 
-        //send responses
+        // Close any dangling open sessions for this user
+        await LoginLog.updateMany(
+            { user: user._id, logoutTime: null },
+            { $set: { logoutTime: new Date() } }
+        );
+
+        // Create new LoginLog entry
+        await LoginLog.create({
+            user: user._id,
+            username: user.username,
+            email: user.email,
+            loginTime: new Date(),
+            ipAddress: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || "",
+            userAgent: req.headers['user-agent'] || ""
+        });
+
+        // Cap to 10 logs per user: delete older logs beyond the top 10
+        const userLogs = await LoginLog.find({ user: user._id }).sort({ loginTime: -1 });
+        if (userLogs.length > 10) {
+            const logsToDelete = userLogs.slice(10);
+            const logIdsToDelete = logsToDelete.map(log => log._id);
+            await LoginLog.deleteMany({ _id: { $in: logIdsToDelete } });
+        }
+
+        // send responses
         res.status(201).json({
             success:true,
             message:"Login Successfull",
@@ -211,6 +236,13 @@ const logoutUser=async(req,res)=>{
         isOnline: false,
         lastSeen: Date.now()
       }
+    );
+
+    // Update the latest active LoginLog entry
+    await LoginLog.findOneAndUpdate(
+      { user: req.user._id, logoutTime: null },
+      { $set: { logoutTime: new Date() } },
+      { sort: { loginTime: -1 } }
     );
 
     res.status(200).json({
@@ -401,6 +433,30 @@ const googleLogin = async (req, res) => {
     user.isOnline = true;
     user.lastSeene = Date.now();
     await user.save();
+
+    // Close any dangling open sessions for this user
+    await LoginLog.updateMany(
+        { user: user._id, logoutTime: null },
+        { $set: { logoutTime: new Date() } }
+    );
+
+    // Create new LoginLog entry
+    await LoginLog.create({
+        user: user._id,
+        username: user.username,
+        email: user.email,
+        loginTime: new Date(),
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || "",
+        userAgent: req.headers['user-agent'] || ""
+    });
+
+    // Cap to 10 logs per user: delete older logs beyond the top 10
+    const userGoogleLogs = await LoginLog.find({ user: user._id }).sort({ loginTime: -1 });
+    if (userGoogleLogs.length > 10) {
+        const logsToDelete = userGoogleLogs.slice(10);
+        const logIdsToDelete = logsToDelete.map(log => log._id);
+        await LoginLog.deleteMany({ _id: { $in: logIdsToDelete } });
+    }
 
     res.status(200).json({
       success: true,

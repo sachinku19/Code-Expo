@@ -37,6 +37,33 @@ const postSchema = new mongoose.Schema({
     enum: ["active", "flagged", "hidden"],
     default: "active"
   },
+  legalCase: {
+    caseId: {
+      type: String,
+      default: ""
+    },
+    infringementType: {
+      type: String,
+      enum: ["None", "DMCA Takedown Request", "Copyright Infringement", "TOS Violation", "Hate Speech / Harassment", "Other Legal Claim"],
+      default: "None"
+    },
+    caseStatus: {
+      type: String,
+      enum: ["Open", "Under Review", "Compliance Action Taken", "Dismissed", "Resolved"],
+      default: "Resolved"
+    },
+    notes: {
+      type: String,
+      default: ""
+    },
+    actionTakenBy: {
+      type: String,
+      default: ""
+    },
+    actionDate: {
+      type: Date
+    }
+  },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"

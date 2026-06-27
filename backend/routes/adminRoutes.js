@@ -20,7 +20,8 @@ const {
   getAdminPosts,
   deleteAdminPost,
   deleteAdminPostComment,
-  updateAdminPostStatus
+  updateAdminPostStatus,
+  getAdminLoginLogs
 } = require("../controllers/adminControllers");
 
 const router = express.Router();
@@ -53,5 +54,7 @@ router.get("/posts", auth_protect, admin_protect, getAdminPosts);
 router.delete("/posts/:id", auth_protect, admin_protect, deleteAdminPost);
 router.delete("/posts/:id/comments/:commentId", auth_protect, admin_protect, deleteAdminPostComment);
 router.put("/posts/:id/status", auth_protect, admin_protect, updateAdminPostStatus);
+
+router.get("/login-logs", auth_protect, admin_protect, getAdminLoginLogs);
 
 module.exports = router;

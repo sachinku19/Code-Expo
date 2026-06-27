@@ -131,8 +131,8 @@ export const deleteAdminAd = async (id) => {
   return response.data;
 };
 
-export const getAdminPosts = async (page = 1, limit = 10, search = "") => {
-  const response = await API.get(`/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, getHeaders());
+export const getAdminPosts = async (page = 1, limit = 10, search = "", status = "all") => {
+  const response = await API.get(`/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${status}`, getHeaders());
   return response.data;
 };
 
@@ -146,8 +146,13 @@ export const deleteAdminPostComment = async (postId, commentId) => {
   return response.data;
 };
 
-export const updateAdminPostStatus = async (postId, status) => {
-  const response = await API.put(`/admin/posts/${postId}/status`, { status }, getHeaders());
+export const updateAdminPostStatus = async (postId, status, legalCase = null) => {
+  const response = await API.put(`/admin/posts/${postId}/status`, { status, legalCase }, getHeaders());
+  return response.data;
+};
+
+export const getAdminLoginLogs = async (page = 1, limit = 10, search = "", userId = "") => {
+  const response = await API.get(`/admin/login-logs?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&userId=${userId}`, getHeaders());
   return response.data;
 };
 

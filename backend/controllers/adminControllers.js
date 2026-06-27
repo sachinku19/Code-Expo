@@ -12,6 +12,7 @@ const Post = require("../models/Post");
 const DirectMessage = require("../models/DirectMessage");
 const GroupChat = require("../models/GroupChat");
 const MediaService = require("../services/MediaService");
+const LoginLog = require("../models/LoginLog");
 
 // Helper to sanitize/format user responses
 const formatUser = (user) => ({
@@ -755,17 +756,34 @@ const getAdminPosts = async (req, res) => {
     const skip = (page - 1) * limit;
 
     let query = {};
+    if (req.query.status && req.query.status !== "all") {
+      query.status = req.query.status;
+    }
     if (search) {
       const matchingUsers = await User.find({
         username: { $regex: search, $options: "i" }
       }).select("_id");
       const userIds = matchingUsers.map(u => u._id);
 
-      query.$or = [
-        { text: { $regex: search, $options: "i" } },
-        { techStack: { $regex: search, $options: "i" } },
-        { author: { $in: userIds } }
-      ];
+      if (query.status) {
+        query.$and = [
+          { status: query.status },
+          {
+            $or: [
+              { text: { $regex: search, $options: "i" } },
+              { techStack: { $regex: search, $options: "i" } },
+              { author: { $in: userIds } }
+            ]
+          }
+        ];
+        delete query.status;
+      } else {
+        query.$or = [
+          { text: { $regex: search, $options: "i" } },
+          { techStack: { $regex: search, $options: "i" } },
+          { author: { $in: userIds } }
+        ];
+      }
     }
 
     // Compute Feed Statistics
@@ -799,6 +817,21 @@ const getAdminPosts = async (req, res) => {
         likesCount: p.likes ? p.likes.length : 0,
         comments: p.comments || [],
         status: p.status || "active",
+        legalCase: p.legalCase ? {
+          caseId: p.legalCase.caseId || "",
+          infringementType: p.legalCase.infringementType || "None",
+          caseStatus: p.legalCase.caseStatus || "Resolved",
+          notes: p.legalCase.notes || "",
+          actionTakenBy: p.legalCase.actionTakenBy || "",
+          actionDate: p.legalCase.actionDate
+        } : {
+          caseId: "",
+          infringementType: "None",
+          caseStatus: "Resolved",
+          notes: "",
+          actionTakenBy: "",
+          actionDate: null
+        },
         createdAt: p.createdAt,
         author: p.author ? {
           id: p.author._id,
@@ -904,18 +937,11 @@ const deleteAdminPostComment = async (req, res) => {
   }
 };
 
-// 18. Feed Moderation: Update post status (active, flagged, hidden)
+// 18. Feed Moderation: Update post status & compliance case files
 const updateAdminPostStatus = async (req, res) => {
   try {
     const postId = req.params.id;
-    const { status } = req.body;
-
-    if (!status || !["active", "flagged", "hidden"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status value. Must be 'active', 'flagged', or 'hidden'."
-      });
-    }
+    const { status, legalCase } = req.body;
 
     const post = await Post.findById(postId);
     if (!post) {
@@ -925,21 +951,106 @@ const updateAdminPostStatus = async (req, res) => {
       });
     }
 
-    post.status = status;
+    if (status) {
+      if (!["active", "flagged", "hidden"].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status value. Must be 'active', 'flagged', or 'hidden'."
+        });
+      }
+      post.status = status;
+    }
+
+    if (legalCase) {
+      post.legalCase = {
+        caseId: legalCase.caseId || post.legalCase?.caseId || `CE-LEGAL-${Math.floor(1000 + Math.random() * 9000)}`,
+        infringementType: legalCase.infringementType || "None",
+        caseStatus: legalCase.caseStatus || "Resolved",
+        notes: legalCase.notes || "",
+        actionTakenBy: req.user?.username || "Admin System",
+        actionDate: new Date()
+      };
+    }
+
     await post.save();
 
     res.status(200).json({
       success: true,
-      message: `Post status updated to '${status}' successfully.`,
+      message: `Post compliance status updated successfully.`,
       post: {
         id: post._id,
-        status: post.status
+        status: post.status,
+        legalCase: post.legalCase
       }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message || "Failed to update post status"
+    });
+  }
+};
+
+// 19. Get Admin Login Logs
+const getAdminLoginLogs = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const skip = (page - 1) * limit;
+
+    const query = {};
+
+    if (req.query.userId) {
+      query.user = req.query.userId;
+    } else if (search) {
+      query.$or = [
+        { username: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const total = await LoginLog.countDocuments(query);
+    const logs = await LoginLog.find(query)
+      .populate("user", "avatar username email role title executionsCount createdAt isOnline")
+      .sort({ loginTime: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      success: true,
+      logs: logs.map(log => ({
+        id: log._id,
+        user: log.user ? {
+          id: log.user._id,
+          username: log.user.username,
+          email: log.user.email,
+          avatar: log.user.avatar,
+          role: log.user.role,
+          title: log.user.title,
+          executionsCount: log.user.executionsCount,
+          createdAt: log.user.createdAt,
+          isOnline: log.user.isOnline === "true" || log.user.isOnline === true
+        } : null,
+        username: log.username,
+        email: log.email,
+        loginTime: log.loginTime,
+        logoutTime: log.logoutTime,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+        createdAt: log.createdAt
+      })),
+      pagination: {
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        totalLogs: total
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch login logs"
     });
   }
 };
@@ -963,5 +1074,6 @@ module.exports = {
   getAdminPosts,
   deleteAdminPost,
   deleteAdminPostComment,
-  updateAdminPostStatus
+  updateAdminPostStatus,
+  getAdminLoginLogs
 };

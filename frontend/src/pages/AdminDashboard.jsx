@@ -27,7 +27,8 @@ import {
   getAdminPosts,
   deleteAdminPost,
   deleteAdminPostComment,
-  updateAdminPostStatus
+  updateAdminPostStatus,
+  getAdminLoginLogs
 } from "../services/adminService";
 import {
   Users,
@@ -267,6 +268,23 @@ const AdminDashboard = () => {
   const [ratings, setRatings] = useState([]);
   const [messages, setMessages] = useState([]);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+  // Login Logs State
+  const [loginLogs, setLoginLogs] = useState([]);
+  const [loadingLoginLogs, setLoadingLoginLogs] = useState(true);
+  const [loginLogSearch, setLoginLogSearch] = useState("");
+  const [loginLogPage, setLoginLogPage] = useState(1);
+  const [loginLogPagination, setLoginLogPagination] = useState({ totalPages: 1, totalLogs: 0 });
+
+  // Developer Profile & Auth logs modal states
+  const [selectedUserLogs, setSelectedUserLogs] = useState(null);
+  const [userLogsForModal, setUserLogsForModal] = useState([]);
+  const [loadingModalLogs, setLoadingModalLogs] = useState(false);
+
+  // Feed Moderation states
+  const [postStatusFilter, setPostStatusFilter] = useState("all");
+  const [expandedPostLegal, setExpandedPostLegal] = useState({});
+  const [savingCompliance, setSavingCompliance] = useState({});
 
   // Radial metrics state (simulated real-time pings oscillation)
   const [cpuUsage, setCpuUsage] = useState(24);
@@ -510,6 +528,37 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchLoginLogs = async () => {
+    setLoadingLoginLogs(true);
+    try {
+      const data = await getAdminLoginLogs(loginLogPage, 10, loginLogSearch);
+      if (data.success) {
+        setLoginLogs(data.logs);
+        setLoginLogPagination(data.pagination);
+      }
+    } catch (err) {
+      addToast("Failed to fetch login logs", "error");
+    } finally {
+      setLoadingLoginLogs(false);
+    }
+  };
+
+  const handleViewUserLogs = async (targetUser) => {
+    setSelectedUserLogs(targetUser);
+    setLoadingModalLogs(true);
+    setUserLogsForModal([]);
+    try {
+      const data = await getAdminLoginLogs(1, 10, "", targetUser.id);
+      if (data.success) {
+        setUserLogsForModal(data.logs);
+      }
+    } catch (err) {
+      addToast("Failed to load developer session history", "error");
+    } finally {
+      setLoadingModalLogs(false);
+    }
+  };
+
   const fetchMaintenanceMode = async () => {
     try {
       const data = await getMaintenanceStatus();
@@ -590,7 +639,7 @@ const AdminDashboard = () => {
   const fetchPosts = async () => {
     setLoadingPosts(true);
     try {
-      const data = await getAdminPosts(postPage, 10, postSearch);
+      const data = await getAdminPosts(postPage, 10, postSearch, postStatusFilter);
       if (data.success) {
         setPosts(data.posts);
         setPostPagination(data.pagination);
@@ -602,6 +651,22 @@ const AdminDashboard = () => {
       addToast("Failed to fetch feed posts", "error");
     } finally {
       setLoadingPosts(false);
+    }
+  };
+
+  const handleSaveCompliance = async (postId, status, legalData) => {
+    setSavingCompliance(prev => ({ ...prev, [postId]: true }));
+    try {
+      const res = await updateAdminPostStatus(postId, status, legalData);
+      if (res.success) {
+        addToast("Legal compliance details saved successfully", "success");
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, status, legalCase: res.post.legalCase } : p));
+        fetchPosts(); // Refresh stats banner
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message || "Failed to update compliance details", "error");
+    } finally {
+      setSavingCompliance(prev => ({ ...prev, [postId]: false }));
     }
   };
 
@@ -627,6 +692,8 @@ const AdminDashboard = () => {
       fetchAdminTickets();
     } else if (activeTab === "feed") {
       fetchPosts();
+    } else if (activeTab === "loginLogs") {
+      fetchLoginLogs();
     }
   }, [activeTab]);
 
@@ -634,7 +701,13 @@ const AdminDashboard = () => {
     if (activeTab === "feed") {
       fetchPosts();
     }
-  }, [postPage, postSearch]);
+  }, [postPage, postSearch, postStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab === "loginLogs") {
+      fetchLoginLogs();
+    }
+  }, [loginLogPage, loginLogSearch]);
 
   // Initial runs
   useEffect(() => {
@@ -1188,6 +1261,115 @@ const AdminDashboard = () => {
         </div>
       )}
 
+      {/* Developer Profile & Auth Logs Modal Overlay */}
+      {selectedUserLogs && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-card profile-details-modal" style={{ maxWidth: "800px", width: "95%" }}>
+            <div className="modal-header">
+              <Users className="warning-icon" size={22} style={{ color: "var(--accent)" }} />
+              <h3>Developer Profile & Auth Logs</h3>
+              <button className="btn-modal-close-x" onClick={() => setSelectedUserLogs(null)} style={{ background: "none", border: "none", color: "var(--admin-text-muted)", fontSize: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body user-profile-logs-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginTop: "15px" }}>
+              {/* Profile details panel */}
+              <div className="profile-overview-card glass-panel" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", textAlign: "center" }}>
+                <div className="profile-large-avatar" style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", border: "2px solid var(--accent)", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--admin-btn-active-bg)" }}>
+                  {selectedUserLogs.avatar ? (
+                    <img src={selectedUserLogs.avatar} alt={selectedUserLogs.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <span style={{ fontSize: "2rem", fontWeight: "800", color: "var(--accent)" }}>{selectedUserLogs.username.substring(0, 2).toUpperCase()}</span>
+                  )}
+                </div>
+                
+                <h4 style={{ margin: "5px 0", color: "var(--admin-text-h)" }}>{selectedUserLogs.username}</h4>
+                <p style={{ margin: "2px 0 15px", fontSize: "0.85rem", color: "var(--admin-text-muted)" }}>{selectedUserLogs.email}</p>
+                
+                <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+                  <span className={`role-badge ${selectedUserLogs.role}`}>
+                    {selectedUserLogs.role.toUpperCase()}
+                  </span>
+                  <span className={`status-badge-dot ${selectedUserLogs.isOnline ? "online" : "offline"}`}>
+                    <span className="dot"></span>
+                    <span className="label" style={{ fontSize: "0.75rem" }}>{selectedUserLogs.isOnline ? "Online" : "Offline"}</span>
+                  </span>
+                </div>
+                
+                <div style={{ width: "100%", borderTop: "1px solid var(--admin-border)", padding: "15px 0 0", display: "flex", flexDirection: "column", gap: "10px", textAlign: "left" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                    <span style={{ color: "var(--admin-text-muted)", flex: "1" }}>Developer Rank:</span>
+                    <span style={{ color: "var(--admin-text-h)", fontWeight: "600" }}>{selectedUserLogs.title || "Developer"}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                    <span style={{ color: "var(--admin-text-muted)", flex: "1" }}>Compiler Runs:</span>
+                    <span style={{ color: "var(--admin-text-h)", fontWeight: "600" }}>{selectedUserLogs.executionsCount || 0} runs</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                    <span style={{ color: "var(--admin-text-muted)", flex: "1" }}>Registered Date:</span>
+                    <span style={{ color: "var(--admin-text-h)", fontWeight: "600" }}>{new Date(selectedUserLogs.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Session logs panel */}
+              <div className="sessions-list-panel glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "360px" }}>
+                <h5 style={{ margin: "0 0 15px", color: "var(--admin-text-h)" }}>Auth Sessions History (Max 10)</h5>
+                
+                {loadingModalLogs ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: "1", padding: "40px 0" }}>
+                    <Loader className="spinner" size={20} />
+                    <span style={{ fontSize: "0.85rem", marginTop: "10px", color: "var(--admin-text-muted)" }}>Loading session history...</span>
+                  </div>
+                ) : userLogsForModal.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "var(--admin-text-muted)", fontStyle: "italic", padding: "40px 0" }}>No authentication logs found.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {userLogsForModal.map((log, index) => {
+                      let durationStr = "Running...";
+                      if (log.logoutTime) {
+                        const durationMs = new Date(log.logoutTime) - new Date(log.loginTime);
+                        if (durationMs > 0) {
+                          const secs = Math.floor(durationMs / 1000);
+                          const mins = Math.floor(secs / 60);
+                          const hours = Math.floor(mins / 60);
+                          if (hours > 0) durationStr = `${hours}h ${mins % 60}m`;
+                          else if (mins > 0) durationStr = `${mins}m ${secs % 60}s`;
+                          else durationStr = `${secs}s`;
+                        } else {
+                          durationStr = "0s";
+                        }
+                      }
+                      
+                      return (
+                        <div key={log.id || index} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "10px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "4px" }}>
+                            <span style={{ fontWeight: "700", color: "var(--accent)" }}>Session #{index + 1}</span>
+                            <span style={{ fontFamily: "monospace", color: "var(--admin-text-muted)" }}>{log.ipAddress || "Unknown IP"}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "0.78rem", color: "var(--admin-text)" }}>
+                            <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Login:</span> <span>{new Date(log.loginTime).toLocaleString()}</span></div>
+                            <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Logout:</span> <span>{log.logoutTime ? new Date(log.logoutTime).toLocaleString() : <span style={{ color: "var(--chart-green-color, #10b981)", fontWeight: "600" }}>Active Session</span>}</span></div>
+                            <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Duration:</span> <span style={{ fontWeight: !log.logoutTime ? "600" : "normal" }}>{durationStr}</span></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="modal-actions" style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn-modal-cancel" onClick={() => setSelectedUserLogs(null)}>
+                Close Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DEDICATED INDEPENDENT SIDEBAR */}
       <aside className={`admin-backoffice-sidebar ${isMobileSidebarOpen ? "mobile-open" : ""}`}>
         <div className="sidebar-branding">
@@ -1215,6 +1397,14 @@ const AdminDashboard = () => {
           >
             <Users size={16} />
             <span>Developers Accounts</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab("loginLogs"); setIsMobileSidebarOpen(false); }}
+            className={`sidebar-nav-item-btn ${activeTab === "loginLogs" ? "active" : ""}`}
+          >
+            <Activity size={16} />
+            <span>Login History</span>
           </button>
 
           <button
@@ -1336,6 +1526,7 @@ const AdminDashboard = () => {
                 fetchRooms();
                 fetchRatings();
                 fetchMessages();
+                fetchLoginLogs();
                 addToast("Diagnostics synchronized successfully", "success");
               }}
               className="btn-topnav-refresh"
@@ -1551,7 +1742,7 @@ const AdminDashboard = () => {
                         const isSelf = String(u.id) === String(user?.id);
                         return (
                           <tr key={u.id} className={isSelf ? "self-row" : ""}>
-                            <td className="user-details-cell">
+                            <td className="user-details-cell clickable-cell" onClick={() => handleViewUserLogs(u)} style={{ cursor: "pointer" }} title="Click to view profile & authentication history">
                               <div className="user-avatar-wrapper">
                                 {u.avatar ? (
                                   <img src={u.avatar} alt={u.username} className="avatar-img" />
@@ -1724,6 +1915,166 @@ const AdminDashboard = () => {
               </div>
             );
           })()}
+
+          {/* TAB: LOGIN/LOGOUT LOGS */}
+          {activeTab === "loginLogs" && (
+            <div className="tab-pane-table glass-panel animate-fade-in">
+              <div className="table-search-row">
+                <div className="search-input-wrapper">
+                  <Search size={14} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search logs by developer name or email..."
+                    value={loginLogSearch}
+                    onChange={(e) => {
+                      setLoginLogSearch(e.target.value);
+                      setLoginLogPage(1);
+                    }}
+                    className="table-search-input"
+                  />
+                </div>
+                {loadingLoginLogs && <Loader className="spinner table-inline-loader" size={14} />}
+              </div>
+
+              <div className="table-wrapper-responsive">
+                <table className="admin-data-table">
+                  <thead>
+                    <tr>
+                      <th>Developer</th>
+                      <th>Email</th>
+                      <th>Login Date/Time</th>
+                      <th>Logout Date/Time</th>
+                      <th>Session Duration</th>
+                      <th>IP Address</th>
+                      <th>Client Info</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loginLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="empty-table-row">
+                          {loadingLoginLogs ? "Loading session history..." : "No authentication logs found."}
+                        </td>
+                      </tr>
+                    ) : (
+                      loginLogs.map((log) => {
+                        // Calculate duration
+                        let durationStr = "Running...";
+                        if (log.logoutTime) {
+                          const durationMs = new Date(log.logoutTime) - new Date(log.loginTime);
+                          if (durationMs > 0) {
+                            const secs = Math.floor(durationMs / 1000);
+                            const mins = Math.floor(secs / 60);
+                            const hours = Math.floor(mins / 60);
+                            
+                            if (hours > 0) {
+                              durationStr = `${hours}h ${mins % 60}m`;
+                            } else if (mins > 0) {
+                              durationStr = `${mins}m ${secs % 60}s`;
+                            } else {
+                              durationStr = `${secs}s`;
+                            }
+                          } else {
+                            durationStr = "0s";
+                          }
+                        }
+
+                        // Parse simple user agent description
+                        let deviceStr = "Unknown Browser";
+                        const ua = log.userAgent;
+                        if (ua) {
+                          if (ua.includes("Chrome") && !ua.includes("Edg")) deviceStr = "Google Chrome";
+                          else if (ua.includes("Safari") && !ua.includes("Chrome")) deviceStr = "Safari";
+                          else if (ua.includes("Firefox")) deviceStr = "Mozilla Firefox";
+                          else if (ua.includes("Edg")) deviceStr = "Microsoft Edge";
+                          else if (ua.includes("Postman")) deviceStr = "Postman Runtime";
+                          else deviceStr = ua.split(" ")[0] || "Browser Client";
+                          
+                          if (ua.includes("Windows")) deviceStr += " (Windows)";
+                          else if (ua.includes("Macintosh")) deviceStr += " (macOS)";
+                          else if (ua.includes("Linux")) deviceStr += " (Linux)";
+                          else if (ua.includes("Android")) deviceStr += " (Android)";
+                          else if (ua.includes("iPhone")) deviceStr += " (iPhone)";
+                        }
+
+                        return (
+                          <tr key={log.id}>
+                            <td className="user-details-cell clickable-cell" onClick={() => log.user && handleViewUserLogs(log.user)} style={{ cursor: log.user ? "pointer" : "default" }} title={log.user ? "Click to view profile & authentication history" : ""}>
+                              <div className="user-avatar-wrapper">
+                                {log.user?.avatar ? (
+                                  <img src={log.user.avatar} alt={log.username} className="avatar-img" />
+                                ) : (
+                                  <div className="avatar-placeholder">{log.username.substring(0, 2).toUpperCase()}</div>
+                                )}
+                              </div>
+                              <span className="username-text">{log.username}</span>
+                            </td>
+                            <td>
+                              <div className="email-flex">
+                                <Mail size={12} className="muted-icon" />
+                                <span>{log.email}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="date-flex">
+                                <Calendar size={12} className="muted-icon" />
+                                <span>{new Date(log.loginTime).toLocaleString()}</span>
+                              </div>
+                            </td>
+                            <td>
+                              {log.logoutTime ? (
+                                <div className="date-flex">
+                                  <Calendar size={12} className="muted-icon" />
+                                  <span>{new Date(log.logoutTime).toLocaleString()}</span>
+                                </div>
+                              ) : (
+                                <span className="status-badge-dot online">
+                                  <span className="dot"></span>
+                                  <span className="label">Active Session</span>
+                                </span>
+                              )}
+                            </td>
+                            <td className="monospaced-text" style={{ fontWeight: !log.logoutTime ? "600" : "normal", color: !log.logoutTime ? "var(--chart-green-color, #10b981)" : "inherit" }}>
+                              {durationStr}
+                            </td>
+                            <td className="monospaced-text">{log.ipAddress || "N/A"}</td>
+                            <td className="client-info-cell" title={ua}>
+                              {deviceStr}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* PAGINATION */}
+              {loginLogPagination.totalPages > 1 && (
+                <div className="table-pagination-row" style={{ marginTop: "24px" }}>
+                  <button
+                    disabled={loginLogPage <= 1}
+                    onClick={() => setLoginLogPage((prev) => Math.max(1, prev - 1))}
+                    className="btn-page-nav"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Previous</span>
+                  </button>
+                  <span className="page-indicator">
+                    Page <strong>{loginLogPage}</strong> of <strong>{loginLogPagination.totalPages}</strong> ({loginLogPagination.totalLogs} logs)
+                  </span>
+                  <button
+                    disabled={loginLogPage >= loginLogPagination.totalPages}
+                    onClick={() => setLoginLogPage((prev) => Math.min(loginLogPagination.totalPages, prev + 1))}
+                    className="btn-page-nav"
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* TAB 3: ROOM MODERATION */}
           {activeTab === "rooms" && (
@@ -2087,6 +2438,78 @@ const AdminDashboard = () => {
                 {loadingPosts && <Loader className="spinner table-inline-loader" size={14} />}
               </div>
 
+              {/* STATUS FILTER CHIPS */}
+              <div className="feed-filter-chips-row" style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
+                <button
+                  onClick={() => { setPostStatusFilter("all"); setPostPage(1); }}
+                  className={`feed-filter-chip ${postStatusFilter === "all" ? "active" : ""}`}
+                  style={{
+                    background: postStatusFilter === "all" ? "var(--accent)" : "var(--admin-btn-secondary-bg)",
+                    border: `1px solid ${postStatusFilter === "all" ? "var(--accent)" : "var(--admin-border)"}`,
+                    color: postStatusFilter === "all" ? "#fff" : "var(--admin-text)",
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    cursor: "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: "750",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  All Posts ({feedStats.totalPosts})
+                </button>
+                <button
+                  onClick={() => { setPostStatusFilter("active"); setPostPage(1); }}
+                  className={`feed-filter-chip ${postStatusFilter === "active" ? "active" : ""}`}
+                  style={{
+                    background: postStatusFilter === "active" ? "rgba(16, 185, 129, 0.15)" : "var(--admin-btn-secondary-bg)",
+                    border: `1px solid ${postStatusFilter === "active" ? "#10b981" : "var(--admin-border)"}`,
+                    color: postStatusFilter === "active" ? "#10b981" : "var(--admin-text)",
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    cursor: "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: "750",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  🟢 Active ({feedStats.totalPosts - feedStats.flaggedPosts - feedStats.hiddenPosts})
+                </button>
+                <button
+                  onClick={() => { setPostStatusFilter("flagged"); setPostPage(1); }}
+                  className={`feed-filter-chip ${postStatusFilter === "flagged" ? "active" : ""}`}
+                  style={{
+                    background: postStatusFilter === "flagged" ? "rgba(245, 158, 11, 0.15)" : "var(--admin-btn-secondary-bg)",
+                    border: `1px solid ${postStatusFilter === "flagged" ? "#f59e0b" : "var(--admin-border)"}`,
+                    color: postStatusFilter === "flagged" ? "#f59e0b" : "var(--admin-text)",
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    cursor: "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: "750",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  🟡 Flagged ({feedStats.flaggedPosts})
+                </button>
+                <button
+                  onClick={() => { setPostStatusFilter("hidden"); setPostPage(1); }}
+                  className={`feed-filter-chip ${postStatusFilter === "hidden" ? "active" : ""}`}
+                  style={{
+                    background: postStatusFilter === "hidden" ? "rgba(239, 68, 68, 0.15)" : "var(--admin-btn-secondary-bg)",
+                    border: `1px solid ${postStatusFilter === "hidden" ? "#ef4444" : "var(--admin-border)"}`,
+                    color: postStatusFilter === "hidden" ? "#ef4444" : "var(--admin-text)",
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    cursor: "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: "750",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  🔴 Hidden ({feedStats.hiddenPosts})
+                </button>
+              </div>
+
               {/* POSTS LISTING */}
               <div className="admin-posts-grid">
                 {posts.length === 0 ? (
@@ -2122,25 +2545,54 @@ const AdminDashboard = () => {
                           </div>
 
                           <div className="post-card-actions-wrapper">
-                            <div className="post-moderation-controls">
-                              <select
-                                value={post.status || "active"}
-                                onChange={(e) => handleStatusChange(post.id, e.target.value)}
-                                className="admin-post-status-select"
-                              >
-                                <option value="active">Active (Visible)</option>
-                                <option value="flagged">Flagged (Warning)</option>
-                                <option value="hidden">Hidden (Moderated)</option>
-                              </select>
-                              <button
-                                onClick={() => handleDeletePostClick(post.id, post.author?.username || "Someone")}
-                                className="btn-action-delete"
-                                title="Delete post permanently"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
+                             <div className="post-moderation-controls" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                               <select
+                                 value={post.status || "active"}
+                                 onChange={(e) => handleStatusChange(post.id, e.target.value)}
+                                 className="admin-post-status-select"
+                               >
+                                 <option value="active">Active (Visible)</option>
+                                 <option value="flagged">Flagged (Warning)</option>
+                                 <option value="hidden">Hidden (Moderated)</option>
+                               </select>
+                               
+                               <button
+                                 onClick={() => {
+                                   setExpandedPostLegal(prev => ({
+                                     ...prev,
+                                     [post.id]: !prev[post.id]
+                                   }));
+                                 }}
+                                 className={`btn-compliance-action ${expandedPostLegal[post.id] ? "active" : ""}`}
+                                 title="Manage legal case file & compliance notes"
+                                 style={{
+                                   display: "inline-flex",
+                                   alignItems: "center",
+                                   gap: "4px",
+                                   background: expandedPostLegal[post.id] ? "var(--admin-btn-active-bg)" : "var(--admin-btn-secondary-bg)",
+                                   border: `1px solid ${expandedPostLegal[post.id] ? "var(--admin-btn-active-border)" : "var(--admin-border)"}`,
+                                   color: expandedPostLegal[post.id] ? "var(--accent)" : "var(--admin-text-muted)",
+                                   padding: "5px 10px",
+                                   borderRadius: "6px",
+                                   cursor: "pointer",
+                                   fontSize: "0.72rem",
+                                   fontWeight: "700",
+                                   transition: "all 0.15s ease"
+                                 }}
+                               >
+                                 <ShieldAlert size={12} />
+                                 <span>Legal File</span>
+                               </button>
+
+                               <button
+                                 onClick={() => handleDeletePostClick(post.id, post.author?.username || "Someone")}
+                                 className="btn-action-delete"
+                                 title="Delete post permanently"
+                               >
+                                 <Trash2 size={13} />
+                               </button>
+                             </div>
+                           </div>
                         </div>
 
                         <div className="post-card-body">
@@ -2178,6 +2630,114 @@ const AdminDashboard = () => {
                             {isExpanded ? "Hide Comments" : `Manage Comments (${post.comments ? post.comments.length : 0})`}
                           </button>
                         </div>
+
+                        {expandedPostLegal[post.id] && (
+                          <div className="post-legal-compliance-section animate-slide-down" style={{
+                            background: "rgba(170, 59, 255, 0.03)",
+                            border: "1px solid rgba(170, 59, 255, 0.15)",
+                            borderRadius: "8px",
+                            padding: "16px",
+                            margin: "0 20px 20px 20px"
+                          }}>
+                            <h5 style={{ margin: "0 0 12px 0", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--accent)" }}>
+                              Compliance File & Legal Claims
+                            </h5>
+                            
+                            <form onSubmit={(e) => {
+                              e.preventDefault();
+                              const form = e.target;
+                              const infringementType = form.infringementType.value;
+                              const caseStatus = form.caseStatus.value;
+                              const notes = form.notes.value;
+                              const caseId = form.caseId.value;
+                              
+                              handleSaveCompliance(post.id, post.status, {
+                                caseId,
+                                infringementType,
+                                caseStatus,
+                                notes
+                              });
+                            }} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                                <div>
+                                  <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Legal Case ID</label>
+                                  <input
+                                    type="text"
+                                    name="caseId"
+                                    defaultValue={post.legalCase?.caseId || `CE-LEGAL-${Math.floor(1000 + Math.random() * 9000)}`}
+                                    className="table-search-input"
+                                    placeholder="Case ID (e.g. CE-DMCA-2026)"
+                                    style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Infringement Classification</label>
+                                  <select
+                                    name="infringementType"
+                                    defaultValue={post.legalCase?.infringementType || "None"}
+                                    style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
+                                  >
+                                    <option value="None">None (General Clean)</option>
+                                    <option value="DMCA Takedown Request">DMCA Takedown Request</option>
+                                    <option value="Copyright Infringement">Copyright Infringement</option>
+                                    <option value="TOS Violation">TOS Violation</option>
+                                    <option value="Hate Speech / Harassment">Hate Speech / Harassment</option>
+                                    <option value="Other Legal Claim">Other Legal Claim</option>
+                                  </select>
+                                </div>
+                              </div>
+                              
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                                <div>
+                                  <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Case Moderation Status</label>
+                                  <select
+                                    name="caseStatus"
+                                    defaultValue={post.legalCase?.caseStatus || "Resolved"}
+                                    style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
+                                  >
+                                    <option value="Open">Open Case</option>
+                                    <option value="Under Review">Under Review</option>
+                                    <option value="Compliance Action Taken">Compliance Action Taken</option>
+                                    <option value="Dismissed">Dismissed Case</option>
+                                    <option value="Resolved">Resolved (No Claim)</option>
+                                  </select>
+                                </div>
+                                
+                                <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                                  {post.legalCase?.actionTakenBy && (
+                                    <div style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontStyle: "italic", borderLeft: "2px solid var(--accent)", paddingLeft: "6px" }}>
+                                      Last audited by <strong>{post.legalCase.actionTakenBy}</strong>
+                                      {post.legalCase.actionDate && ` on ${new Date(post.legalCase.actionDate).toLocaleDateString()}`}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Audit compliance notes / log</label>
+                                <textarea
+                                  name="notes"
+                                  defaultValue={post.legalCase?.notes || ""}
+                                  placeholder="Write notes about legal notices received, DMCA takedown correspondence or reason for flagging..."
+                                  style={{ width: "100%", height: "80px", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "8px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)", resize: "none", outline: "none", boxSizing: "border-box" }}
+                                />
+                              </div>
+                              
+                              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                <button
+                                  type="submit"
+                                  className="btn-action"
+                                  disabled={savingCompliance[post.id]}
+                                  style={{ background: "var(--accent)", color: "#fff", borderColor: "var(--accent)", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                                >
+                                  {savingCompliance[post.id] && <Loader className="spinner" size={10} />}
+                                  <span>{savingCompliance[post.id] ? "Saving..." : "Save Case Details"}</span>
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        )}
 
                         {isExpanded && (
                           <div className="post-comments-section animate-slide-down">

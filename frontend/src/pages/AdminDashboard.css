@@ -3078,3 +3078,27 @@
   background: var(--admin-modal-bg);
   color: var(--admin-text);
 }
+
+.client-info-cell {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+}
+
+.user-details-cell.clickable-cell {
+  transition: all 0.2s ease;
+}
+
+.user-details-cell.clickable-cell:hover .username-text {
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--accent-glow);
+}
+
+.user-details-cell.clickable-cell:hover .user-avatar-wrapper {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  transform: scale(1.05);
+}
