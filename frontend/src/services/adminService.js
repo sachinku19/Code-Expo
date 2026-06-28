@@ -146,8 +146,24 @@ export const deleteAdminPostComment = async (postId, commentId) => {
   return response.data;
 };
 
-export const updateAdminPostStatus = async (postId, status, legalCase = null) => {
-  const response = await API.put(`/admin/posts/${postId}/status`, { status, legalCase }, getHeaders());
+export const updateAdminPostStatus = async (postId, status, payload = null) => {
+  let body = { status };
+  if (payload) {
+    if (
+      payload.legalCase !== undefined ||
+      payload.isPinned !== undefined ||
+      payload.isFeatured !== undefined ||
+      payload.commentsLocked !== undefined ||
+      payload.likesDisabled !== undefined ||
+      payload.isSensitive !== undefined ||
+      payload.text !== undefined
+    ) {
+      body = { status, ...payload };
+    } else {
+      body.legalCase = payload;
+    }
+  }
+  const response = await API.put(`/admin/posts/${postId}/status`, body, getHeaders());
   return response.data;
 };
 
@@ -163,6 +179,15 @@ export const getAdminStories = async (page = 1, limit = 10, userId = "") => {
 
 export const deleteAdminStory = async (storyId) => {
   const response = await API.delete(`/admin/stories/${storyId}`, getHeaders());
+  return response.data;
+};
+
+export const adminIssueUserAction = async (userId, actionType, reason, notes) => {
+  const response = await API.put(
+    `/admin/users/${userId}/action`,
+    { actionType, reason, notes },
+    getHeaders()
+  );
   return response.data;
 };
 

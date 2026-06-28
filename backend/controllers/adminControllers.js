@@ -34,6 +34,95 @@ const formatUser = (user) => ({
   createdAt: user.createdAt
 });
 
+// Helper to log moderation actions and update user account standing
+const logModerationAction = async (userId, actionType, postId, reason, moderatorUsername, currentStatus = "Active", resolutionStatus = "No Action Needed") => {
+  const ModerationAction = require("../models/ModerationAction");
+  const User = require("../models/User");
+  const Notification = require("../models/Notification");
+
+  const action = new ModerationAction({
+    user: userId,
+    actionType,
+    postId,
+    reason: reason || "Content violates community guidelines.",
+    moderator: moderatorUsername || "System",
+    currentStatus,
+    resolutionStatus
+  });
+  await action.save();
+
+  // Deduct health & update violations/warnings
+  const userObj = await User.findById(userId);
+  if (userObj) {
+    if (actionType === "Post Hidden" || actionType === "Post Deleted") {
+      userObj.accountHealth = Math.max(0, userObj.accountHealth - 20);
+      userObj.totalViolations += 1;
+    } else if (actionType === "Sensitive Content" || actionType === "Warning Issued") {
+      userObj.accountHealth = Math.max(0, userObj.accountHealth - 10);
+      userObj.totalWarnings += 1;
+    } else if (actionType === "Post Restored" || actionType === "Account Reactivated") {
+      userObj.accountHealth = Math.min(100, userObj.accountHealth + 20);
+    } else if (actionType === "Temporary Restriction") {
+      userObj.accountHealth = Math.max(0, userObj.accountHealth - 30);
+      userObj.accountStatus = "Restricted";
+      userObj.guidelineStatus = "Restricted Standing";
+    } else if (actionType === "Suspension") {
+      userObj.accountHealth = Math.max(0, userObj.accountHealth - 50);
+      userObj.accountStatus = "Suspended";
+      userObj.guidelineStatus = "Suspended Standing";
+    } else if (actionType === "Ban") {
+      userObj.accountHealth = 0;
+      userObj.accountStatus = "Permanently Banned";
+      userObj.guidelineStatus = "Banned Standing";
+    }
+
+    if (userObj.accountHealth < 50 && userObj.accountStatus === "Active") {
+      userObj.accountStatus = "Restricted";
+      userObj.guidelineStatus = "Restricted Standing";
+    }
+
+    await userObj.save();
+  }
+
+  // Create Notification
+  let notificationMessage = "";
+  if (actionType === "Post Hidden") notificationMessage = "Your post has been hidden by moderators.";
+  else if (actionType === "Post Deleted") notificationMessage = "Your post has been removed due to guidelines violation.";
+  else if (actionType === "Post Restored") notificationMessage = "Your post has been restored.";
+  else if (actionType === "Warning Issued") notificationMessage = "Your account has received an administrative warning.";
+  else if (actionType === "Likes Disabled") notificationMessage = "Likes have been disabled for your post.";
+  else if (actionType === "Comment Disabled") notificationMessage = "Comments have been locked for your post.";
+  else if (actionType === "Temporary Restriction") notificationMessage = "Your account has been temporarily restricted.";
+  else if (actionType === "Suspension") notificationMessage = "Your account has been suspended.";
+  else if (actionType === "Ban") notificationMessage = "Your account has been permanently banned.";
+  else if (actionType === "Sensitive Content") notificationMessage = "Your post has been flagged as containing sensitive content.";
+
+  if (notificationMessage) {
+    const notification = new Notification({
+      recipient: userId,
+      sender: userObj?._id || userId,
+      type: "MODERATION_ACTION",
+      category: "MODERATION",
+      targetPost: postId,
+      message: notificationMessage
+    });
+    await notification.save();
+
+    // Emit live events
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("notification-received", notification);
+        socketHandler.io.emit("admin-user-action", {
+          userId,
+          isSuspended: userObj?.isSuspended || false,
+          user: userObj
+        });
+      }
+    } catch (e) {}
+  }
+};
+
 // 1. Overview Analytics Stats
 const getAdminOverviewStats = async (req, res) => {
   try {
@@ -642,7 +731,24 @@ const toggleUserSuspension = async (req, res) => {
     }
 
     user.isSuspended = !user.isSuspended;
+    if (user.isSuspended) {
+      user.accountStatus = "Suspended";
+      user.guidelineStatus = "Suspended Standing";
+      user.accountHealth = Math.max(0, user.accountHealth - 50);
+    } else {
+      user.accountStatus = "Active";
+      user.guidelineStatus = "Good Standing";
+      user.accountHealth = 100;
+    }
     await user.save();
+
+    await logModerationAction(
+      user._id,
+      user.isSuspended ? "Suspension" : "Account Reactivated",
+      null,
+      req.body.reason || (user.isSuspended ? "Suspended for safety and compliance review." : "Account access reinstated."),
+      req.user?.username || "Admin"
+    );
 
     res.status(200).json({
       success: true,
@@ -654,6 +760,53 @@ const toggleUserSuspension = async (req, res) => {
       success: false,
       message: error.message || "Failed to toggle user suspension"
     });
+  }
+};
+
+const adminIssueUserAction = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { actionType, reason } = req.body; // "Warning Issued", "Temporary Restriction", "Ban"
+
+    if (!actionType || !["Warning Issued", "Temporary Restriction", "Ban"].includes(actionType)) {
+      return res.status(400).json({ success: false, message: "Invalid action type." });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    if (actionType === "Ban") {
+      user.isSuspended = true;
+      user.accountStatus = "Permanently Banned";
+      user.guidelineStatus = "Banned Standing";
+      user.accountHealth = 0;
+    } else if (actionType === "Temporary Restriction") {
+      user.accountStatus = "Restricted";
+      user.guidelineStatus = "Restricted Standing";
+      user.accountHealth = Math.max(0, user.accountHealth - 30);
+    } else if (actionType === "Warning Issued") {
+      user.totalWarnings += 1;
+      user.accountHealth = Math.max(0, user.accountHealth - 10);
+    }
+    await user.save();
+
+    await logModerationAction(
+      user._id,
+      actionType,
+      null,
+      reason || `Administrative action: ${actionType}`,
+      req.user?.username || "Admin"
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully issued ${actionType} action to ${user.username}.`,
+      user: formatUser(user)
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -906,22 +1059,34 @@ const deleteAdminPost = async (req, res) => {
       });
     }
 
-    // Delete post images via MediaService
-    if (post.imagesMetadata && post.imagesMetadata.length > 0) {
-      await MediaService.deleteMultipleMedia(post.imagesMetadata).catch((e) => {
-        console.error("Failed to delete post images array from storage:", e.message);
-      });
-    } else if (post.imageMetadata || post.image) {
-      await MediaService.deleteMedia(post.imageMetadata || post.image).catch((e) => {
-        console.error("Failed to delete post image from storage:", e.message);
-      });
-    }
+    // Soft-delete: update status to "deleted" (preserve files in case of restoration)
+    post.status = "deleted";
+    await post.save();
 
-    await Post.deleteOne({ _id: postId });
+    await logModerationAction(
+      post.author,
+      "Post Deleted",
+      post._id,
+      req.body.reason || "Content violates community guidelines.",
+      req.user?.username || "Admin"
+    );
+
+    // Broadcast post update via Socket.IO
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("admin-post-action", {
+          postId: post._id,
+          post
+        });
+      }
+    } catch (e) {
+      console.error("Failed to broadcast admin-post-action via socket:", e.message);
+    }
 
     res.status(200).json({
       success: true,
-      message: "Post has been deleted and moderated successfully."
+      message: "Post has been soft-deleted and moderated successfully."
     });
   } catch (error) {
     res.status(500).json({
@@ -972,7 +1137,7 @@ const deleteAdminPostComment = async (req, res) => {
 const updateAdminPostStatus = async (req, res) => {
   try {
     const postId = req.params.id;
-    const { status, legalCase } = req.body;
+    const { status, legalCase, isPinned, isFeatured, commentsLocked, likesDisabled, isSensitive, text } = req.body;
 
     const post = await Post.findById(postId);
     if (!post) {
@@ -982,15 +1147,30 @@ const updateAdminPostStatus = async (req, res) => {
       });
     }
 
+    // Determine what changed to log moderation actions
+    const oldStatus = post.status;
+    const oldSensitive = post.isSensitive;
+    const oldCommentsLocked = post.commentsLocked;
+    const oldLikesDisabled = post.likesDisabled;
+    const oldPinned = post.isPinned;
+    const oldFeatured = post.isFeatured;
+
     if (status) {
-      if (!["active", "flagged", "hidden"].includes(status)) {
+      if (!["active", "flagged", "hidden", "deleted"].includes(status)) {
         return res.status(400).json({
           success: false,
-          message: "Invalid status value. Must be 'active', 'flagged', or 'hidden'."
+          message: "Invalid status value. Must be 'active', 'flagged', 'hidden', or 'deleted'."
         });
       }
       post.status = status;
     }
+
+    if (isPinned !== undefined) post.isPinned = isPinned;
+    if (isFeatured !== undefined) post.isFeatured = isFeatured;
+    if (commentsLocked !== undefined) post.commentsLocked = commentsLocked;
+    if (likesDisabled !== undefined) post.likesDisabled = likesDisabled;
+    if (isSensitive !== undefined) post.isSensitive = isSensitive;
+    if (text !== undefined) post.text = text;
 
     if (legalCase) {
       post.legalCase = {
@@ -1005,13 +1185,54 @@ const updateAdminPostStatus = async (req, res) => {
 
     await post.save();
 
+    // Log corresponding moderation actions
+    const moderatorUser = req.user?.username || "Admin";
+    const modReason = legalCase?.notes || req.body.reason || "Compliance review update";
+
+    if (status && oldStatus !== status) {
+      if (status === "hidden") {
+        await logModerationAction(post.author, "Post Hidden", post._id, modReason, moderatorUser);
+      } else if (status === "active" && oldStatus === "hidden") {
+        await logModerationAction(post.author, "Post Restored", post._id, modReason, moderatorUser);
+      }
+    }
+    if (isSensitive !== undefined && oldSensitive !== isSensitive) {
+      if (isSensitive) {
+        await logModerationAction(post.author, "Sensitive Content", post._id, modReason, moderatorUser);
+      }
+    }
+    if (commentsLocked !== undefined && oldCommentsLocked !== commentsLocked && commentsLocked) {
+      await logModerationAction(post.author, "Comment Disabled", post._id, modReason, moderatorUser);
+    }
+    if (likesDisabled !== undefined && oldLikesDisabled !== likesDisabled && likesDisabled) {
+      await logModerationAction(post.author, "Likes Disabled", post._id, modReason, moderatorUser);
+    }
+    if (isPinned !== undefined && oldPinned !== isPinned && isPinned) {
+      await logModerationAction(post.author, "Pin Post", post._id, modReason, moderatorUser);
+    }
+    if (isFeatured !== undefined && oldFeatured !== isFeatured && isFeatured) {
+      await logModerationAction(post.author, "Feature Post", post._id, modReason, moderatorUser);
+    }
+
+    // Broadcast post update via Socket.IO
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("admin-post-action", {
+          postId: post._id,
+          post
+        });
+      }
+    } catch (e) {
+      console.error("Failed to broadcast admin-post-action via socket:", e.message);
+    }
+
     res.status(200).json({
       success: true,
       message: `Post compliance status updated successfully.`,
       post: {
-        id: post._id,
-        status: post.status,
-        legalCase: post.legalCase
+        ...post.toObject(),
+        id: post._id
       }
     });
   } catch (error) {
@@ -1190,6 +1411,7 @@ module.exports = {
   deleteRating,
   promoteSelf,
   toggleUserSuspension,
+  adminIssueUserAction,
   getRecentMessages,
   deleteChatMessage,
   getMainMaintenanceStatus: getMaintenanceStatus, // Keep compatibility if needed

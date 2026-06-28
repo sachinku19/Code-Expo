@@ -33,9 +33,21 @@ const ticketSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  category: {
+    type: String,
+    default: "General"
+  },
+  assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
+  },
+  attachments: [{
+    type: String
+  }],
   status: {
     type: String,
-    enum: ["open", "in-progress", "resolved"],
+    enum: ["open", "under-review", "waiting-for-user", "resolved", "closed"],
     default: "open"
   },
   messages: [ticketMessageSchema]

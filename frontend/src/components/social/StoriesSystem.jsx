@@ -10,8 +10,101 @@ const Portal = ({ children }) => {
   return createPortal(children, document.body);
 };
 
+// Reusable animated glassmorphism WarningModal component
+const WarningModal = ({ isOpen, title, message, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div 
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(5, 5, 8, 0.85)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 999999
+        }}
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          style={{
+            background: "rgba(30, 30, 45, 0.65)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(239, 68, 68, 0.25)",
+            borderRadius: "16px",
+            padding: "24px",
+            width: "400px",
+            maxWidth: "90vw",
+            boxShadow: "0 24px 48px rgba(0, 0, 0, 0.5), 0 0 32px rgba(239, 68, 68, 0.1)",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "16px"
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div 
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: "rgba(239, 68, 68, 0.1)",
+              border: "1.5px solid rgba(239, 68, 68, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ef4444",
+              fontSize: "1.8rem"
+            }}
+          >
+            ⚠️
+          </div>
+          <div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.2rem", fontWeight: "700" }}>{title}</h3>
+            <p style={{ margin: 0, color: "#fff", fontSize: "0.88rem", lineHeight: "1.5", opacity: 0.85 }}>{message}</p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+              border: "none",
+              color: "#fff",
+              padding: "10px 24px",
+              borderRadius: "10px",
+              fontSize: "0.88rem",
+              fontWeight: "700",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)",
+              width: "100%",
+              marginTop: "8px"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.filter = "brightness(1.1)"}
+            onMouseOut={(e) => e.currentTarget.style.filter = "brightness(1)"}
+          >
+            OK
+          </button>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
 export default function StoriesSystem({ user, addToast, vertical = false }) {
   const [stories, setStories] = useState([]);
+  const [warningModal, setWarningModal] = useState({ isOpen: false, title: "", message: "" });
   const [isAdding, setIsAdding] = useState(false);
   const [cropSource, setCropSource] = useState(null);
   const [newStoryText, setNewStoryText] = useState("");
@@ -66,12 +159,13 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
   useEffect(() => {
     fetchStories();
     try {
-      const cached = localStorage.getItem("codeexpo_read_stories");
+      const userKey = user?.id || user?._id || "guest";
+      const cached = localStorage.getItem(`codeexpo_read_stories_${userKey}`);
       if (cached) {
         setReadStories(new Set(JSON.parse(cached)));
       }
     } catch (e) { }
-  }, []);
+  }, [user?.id, user?._id]);
 
   const markStoryAsRead = (storyId) => {
     if (!storyId) return;
@@ -79,7 +173,8 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
       const updated = new Set(prev);
       updated.add(storyId);
       try {
-        localStorage.setItem("codeexpo_read_stories", JSON.stringify(Array.from(updated)));
+        const userKey = user?.id || user?._id || "guest";
+        localStorage.setItem(`codeexpo_read_stories_${userKey}`, JSON.stringify(Array.from(updated)));
       } catch (e) { }
       return updated;
     });
@@ -179,10 +274,53 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
 
     const isVideo = file.type.startsWith("video/");
     if (isVideo) {
-      setMediaType("video");
-      setSelectedMedia(file);
-      setMediaPreview(URL.createObjectURL(file));
+      if (file.size > 30 * 1024 * 1024) {
+        setWarningModal({
+          isOpen: true,
+          title: "Video Too Large",
+          message: "Story videos are limited to 30 MB. Please compress your video or select a smaller file."
+        });
+        e.target.value = "";
+        return;
+      }
+
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        if (video.duration > 30) {
+          setWarningModal({
+            isOpen: true,
+            title: "Video Too Long",
+            message: "Story videos are limited to 30 seconds. Please trim your video and try again."
+          });
+          e.target.value = "";
+        } else {
+          setMediaType("video");
+          setSelectedMedia(file);
+          setMediaPreview(URL.createObjectURL(file));
+        }
+      };
+      video.onerror = () => {
+        window.URL.revokeObjectURL(video.src);
+        setWarningModal({
+          isOpen: true,
+          title: "Invalid Video File",
+          message: "Could not read the video file metadata. The file might be corrupted."
+        });
+        e.target.value = "";
+      };
+      video.src = URL.createObjectURL(file);
     } else {
+      if (file.size > 5 * 1024 * 1024) {
+        setWarningModal({
+          isOpen: true,
+          title: "Image Too Large",
+          message: "Story images are limited to 5 MB. Please compress your image and try again."
+        });
+        e.target.value = "";
+        return;
+      }
       setCropSource(URL.createObjectURL(file));
     }
   };
@@ -1163,6 +1301,15 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
             imageSrc={cropSource}
             aspect={9 / 16}
             onCropComplete={(croppedFile, croppedPreview) => {
+              if (croppedFile.size > 5 * 1024 * 1024) {
+                setWarningModal({
+                  isOpen: true,
+                  title: "Cropped Image Too Large",
+                  message: "The cropped image exceeds the 5 MB limit. Please crop a smaller region or compress the image."
+                });
+                setCropSource(null);
+                return;
+              }
               setMediaType("image");
               setSelectedMedia(croppedFile);
               setMediaPreview(croppedPreview);
@@ -1172,6 +1319,14 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
           />
         </Portal>
       )}
+
+      {/* Strict Validation Warning Modal */}
+      <WarningModal 
+        isOpen={warningModal.isOpen} 
+        title={warningModal.title} 
+        message={warningModal.message} 
+        onClose={() => setWarningModal({ isOpen: false, title: "", message: "" })} 
+      />
     </div>
   );
 }

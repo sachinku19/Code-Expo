@@ -20,6 +20,7 @@ const adminRoutes=require("./routes/adminRoutes");
 const announcementRoutes=require("./routes/announcementRoutes");
 const ticketRoutes=require("./routes/ticketRoutes");
 const aiRoutes=require("./routes/aiRoutes");
+const trustSafetyRoutes=require("./routes/trustSafetyRoutes");
 
 // make app
 const app=express();
@@ -81,6 +82,9 @@ app.use("/api/tickets",ticketRoutes);
 
 // ai route
 app.use("/api/ai",aiRoutes);
+
+// trust-safety route
+app.use("/api/trust-safety", trustSafetyRoutes);
 
 // ads route
 const adRoutes = require("./routes/adRoutes");

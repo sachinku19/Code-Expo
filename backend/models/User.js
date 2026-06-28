@@ -178,6 +178,38 @@ const userSchema=new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
     }],
+    accountStatus: {
+        type: String,
+        enum: ["Active", "Restricted", "Suspended", "Under Review", "Permanently Banned"],
+        default: "Active"
+    },
+    accountHealth: {
+        type: Number,
+        default: 100,
+        min: 0,
+        max: 100
+    },
+    guidelineStatus: {
+        type: String,
+        default: "Good Standing"
+    },
+    totalWarnings: {
+        type: Number,
+        default: 0
+    },
+    totalViolations: {
+        type: Number,
+        default: 0
+    },
+    appealStatus: {
+        type: String,
+        enum: ["None", "Pending", "Resolved"],
+        default: "None"
+    },
+    lastReviewedDate: {
+        type: Date,
+        default: null
+    },
     resetPasswordToken:String,
     resetPasswordExpire:Date
 },{timestamps:true});

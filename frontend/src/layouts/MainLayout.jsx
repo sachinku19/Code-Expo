@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Code2, DoorOpen, History, User, Settings,
   Pin, Search, Bell, Sun, Moon, LogOut, Terminal, Palette,
   Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
-  FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle,
+  FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail
 } from "lucide-react";
 import socket from "../socket/socket";
@@ -115,13 +115,8 @@ export default function MainLayout({
     try {
       const res = await dmService.getConversations();
       if (res && res.success) {
-        const myId = user?.id || user?._id;
         const count = (res.conversations || []).reduce((acc, conv) => {
-          const lastMsg = conv.lastMessage;
-          if (lastMsg && String(lastMsg.senderId) !== String(myId) && !lastMsg.isRead) {
-            return acc + 1;
-          }
-          return acc;
+          return acc + (conv.unreadCount || 0);
         }, 0);
         setUnreadMessageCount(count);
       }
@@ -135,7 +130,7 @@ export default function MainLayout({
       fetchDbNotifications();
       fetchUnreadMessageCount();
     }
-  }, [user]);
+  }, [user?.id, user?._id]);
 
   useEffect(() => {
     const userId = user?.id || user?._id;
@@ -166,7 +161,7 @@ export default function MainLayout({
       window.removeEventListener("ce-unread-messages-update", handleUnreadMessagesUpdate);
       window.removeEventListener("ce-unread-notifications-update", handleUnreadNotificationsUpdate);
     };
-  }, [user]);
+  }, [user?.id, user?._id]);
 
   useEffect(() => {
     const userId = user?.id || user?._id;
@@ -748,10 +743,25 @@ export default function MainLayout({
   const handleLogout = () => {
     logoutUser().catch(err => console.error("Logout error:", err));
     const theme = localStorage.getItem("codeExpoHomeTheme");
+    
+    // Preserve read stories cache for all users
+    const readStoriesKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("codeexpo_read_stories")) {
+        readStoriesKeys.push({ key, value: localStorage.getItem(key) });
+      }
+    }
+    
     localStorage.clear();
+    
     if (theme) {
       localStorage.setItem("codeExpoHomeTheme", theme);
     }
+    readStoriesKeys.forEach(item => {
+      localStorage.setItem(item.key, item.value);
+    });
+    
     window.location.href = "/login";
   };
 
@@ -1223,6 +1233,11 @@ export default function MainLayout({
                   <button onClick={() => { setProfileDropdownOpen(false); handleConfirmNavigate("/dashboard?tab=helpdesk"); }} className="list-menu-item">
                     <HelpCircle size={15} />
                     <span>Help Desk</span>
+                  </button>
+
+                  <button onClick={() => { setProfileDropdownOpen(false); handleConfirmNavigate("/dashboard?tab=feed-action"); }} className="list-menu-item">
+                    <ShieldAlert size={15} />
+                    <span>Feed Action</span>
                   </button>
 
                   <div className="list-menu-item appearance-trigger">

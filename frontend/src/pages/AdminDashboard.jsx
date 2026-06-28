@@ -30,8 +30,10 @@ import {
   updateAdminPostStatus,
   getAdminLoginLogs,
   getAdminStories,
-  deleteAdminStory
+  deleteAdminStory,
+  adminIssueUserAction
 } from "../services/adminService";
+import { adminGetAppeals, adminResolveAppeal } from "../services/trustSafetyService";
 import {
   Users,
   Terminal,
@@ -73,6 +75,7 @@ import {
   Sparkles
 } from "lucide-react";
 import Logo from "../components/shared/Logo";
+import { Pin, Heart, Edit, EyeOff } from "lucide-react";
 import {
   adminGetAllTickets,
   adminUpdateTicketStatus,
@@ -80,6 +83,325 @@ import {
   getTicketDetails
 } from "../services/ticketService";
 import "./AdminDashboard.css";
+
+// Reusable styled CodeBlock component with line numbers, syntax highlighting, and copy button
+const CodeBlock = ({ lang, code, addToast }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const lines = code.split(/\r?\n/);
+  const totalLines = lines.length;
+  const isLong = totalLines > 30;
+  
+  const visibleLines = isLong && !isExpanded ? lines.slice(0, 22) : lines;
+  const remainingLines = totalLines - visibleLines.length;
+  const highlightCode = (lineText) => {
+    if (!lineText) return "&nbsp;";
+    let escaped = lineText
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const keywords = [
+      "class", "public", "private", "protected", "int", "double", "float", "char", "void", "vector",
+      "std", "include", "return", "if", "else", "for", "while", "do", "break", "continue", "switch",
+      "case", "const", "let", "var", "function", "import", "export", "from", "default", "new", "this",
+      "struct", "template", "typename", "using", "namespace", "false", "true", "null", "nullptr"
+    ];
+
+    const regex = new RegExp(
+      `(\\/\\/.*)|` + 
+      `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` + 
+      `\\b(${keywords.join("|")})\\b|` + 
+      `\\b(\\d+)\\b`,
+      "g"
+    );
+
+    return escaped.replace(regex, (match, comment, string, keyword, number) => {
+      if (comment) {
+        return `<span style="color:#64748b; font-style:italic;">${comment}</span>`;
+      }
+      if (string) {
+        return `<span style="color:#34d399;">${string}</span>`;
+      }
+      if (keyword) {
+        return `<span style="color:#f472b6; font-weight:600;">${keyword}</span>`;
+      }
+      if (number) {
+        return `<span style="color:#fbbf24;">${number}</span>`;
+      }
+      return match;
+    });
+  };
+  return (
+    <div 
+      className="premium-code-window"
+      style={{
+        background: "#09090f",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRadius: "12px",
+        overflow: "hidden",
+        margin: "12px 0",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative"
+      }}
+    >
+      <div 
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "10px 16px",
+          background: "#11111b",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+          position: "sticky",
+          top: 0,
+          zIndex: 10
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", gap: "5px", marginRight: "8px" }}>
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ff5f56" }} />
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ffbd2e" }} />
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#27c93f" }} />
+          </div>
+          <span style={{ fontSize: "0.72rem", color: "#a5b4fc", fontFamily: "monospace", textTransform: "uppercase", fontWeight: "700" }}>
+            {lang || "code"}
+          </span>
+        </div>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(code);
+            if (addToast) addToast("Code copied to clipboard!", "success");
+          }}
+          style={{
+            background: "rgba(255, 255, 255, 0.05)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            color: "#e2e8f0",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.7rem",
+            cursor: "pointer",
+            fontWeight: "600",
+            transition: "all 0.2s"
+          }}
+        >
+          Copy
+        </button>
+      </div>
+
+      <div 
+        style={{
+          display: "flex",
+          overflow: "auto",
+          maxHeight: isLong && !isExpanded ? "380px" : "600px",
+          position: "relative",
+          background: "#09090f"
+        }}
+      >
+        <div 
+          style={{
+            padding: "16px 12px",
+            borderRight: "1px solid rgba(255, 255, 255, 0.05)",
+            background: "#07070c",
+            textAlign: "right",
+            userSelect: "none",
+            fontFamily: "'Fira Code', monospace",
+            fontSize: "0.8rem",
+            color: "#475569",
+            lineHeight: "1.5",
+            minWidth: "35px"
+          }}
+        >
+          {visibleLines.map((_, idx) => (
+            <div key={idx}>{idx + 1}</div>
+          ))}
+        </div>
+
+        <div 
+          style={{
+            padding: "16px 16px",
+            flex: 1,
+            fontFamily: "'Fira Code', monospace",
+            fontSize: "0.8rem",
+            lineHeight: "1.5",
+            color: "#e2e8f0",
+            whiteSpace: "pre",
+            overflowX: "auto"
+          }}
+        >
+          {visibleLines.map((line, idx) => (
+            <div 
+              key={idx} 
+              dangerouslySetInnerHTML={{ __html: highlightCode(line) }} 
+            />
+          ))}
+        </div>
+
+        {isLong && !isExpanded && (
+          <div 
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "80px",
+              background: "linear-gradient(to top, #09090f 20%, transparent 100%)",
+              pointerEvents: "none"
+            }}
+          />
+        )}
+      </div>
+
+      {isLong && (
+        <div 
+          style={{
+            padding: "12px",
+            background: "#11111b",
+            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 5
+          }}
+        >
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{
+              background: "rgba(99, 102, 241, 0.1)",
+              border: "1px solid rgba(99, 102, 241, 0.2)",
+              color: "#a5b4fc",
+              padding: "6px 16px",
+              borderRadius: "20px",
+              fontSize: "0.78rem",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+          >
+            {isExpanded 
+              ? "Show Less" 
+              : `${remainingLines} more lines... View Full Code`
+            }
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Reusable ExpandableText component for post descriptions to clamp long text
+const ExpandableText = ({ htmlContent }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [shouldShowButton, setShouldShowButton] = useState(false);
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    if (textRef.current) {
+      setShouldShowButton(textRef.current.scrollHeight > textRef.current.clientHeight);
+    }
+  }, [htmlContent]);
+
+  return (
+    <div style={{ position: "relative", marginBottom: "8px" }}>
+      <div 
+        ref={textRef}
+        style={{ 
+          maxHeight: !isExpanded ? "120px" : "none", 
+          overflow: "hidden",
+          transition: "max-height 0.3s ease",
+          position: "relative"
+        }}
+      >
+        {htmlContent}
+        {!isExpanded && shouldShowButton && (
+          <div 
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "24px",
+              background: "linear-gradient(to top, var(--admin-bg) 10%, transparent 100%)",
+              pointerEvents: "none"
+            }}
+          />
+        )}
+      </div>
+      {shouldShowButton && (
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#60a5fa",
+            fontSize: "0.8rem",
+            fontWeight: "700",
+            cursor: "pointer",
+            padding: "4px 0",
+            marginTop: "4px",
+            display: "inline-flex",
+            alignItems: "center"
+          }}
+        >
+          {isExpanded ? "Show Less" : "Read More"}
+        </button>
+      )}
+    </div>
+  );
+};
+
+const parseMarkdownOnly = (text) => {
+  if (!text) return "";
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  html = html.replace(/^### (.*$)/gim, '<h4 style="margin:8px 0; color:#fff;">$1</h4>');
+  html = html.replace(/^## (.*$)/gim, '<h3 style="margin:10px 0; color:#fff;">$1</h3>');
+  html = html.replace(/^# (.*$)/gim, '<h2 style="margin:12px 0; color:#fff;">$1</h2>');
+
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  html = html.replace(/`([^`\r\n]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#fb7185;">$1</code>');
+  html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span style="color:#8b5cf6; font-weight:600; cursor:pointer;">#$1</span>');
+  html = html.replace(/@([a-zA-Z0-9_]+)/g, '<span style="color:#06b6d4; font-weight:600; cursor:pointer;">@$1</span>');
+  html = html.replace(/\n/g, "<br />");
+
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+};
+
+const renderPostContent = (text, addToast) => {
+  if (!text) return null;
+  
+  const parts = text.split(/(```[a-zA-Z0-9]*(?:\r?\n)[\s\S]*?```)/g);
+  
+  return parts.map((part, index) => {
+    if (part.startsWith("```")) {
+      const match = part.match(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/);
+      if (match) {
+        const lang = match[1] || "code";
+        const code = match[2];
+        return (
+          <CodeBlock 
+            key={index} 
+            lang={lang} 
+            code={code} 
+            addToast={addToast} 
+          />
+        );
+      }
+    }
+    
+    return (
+      <ExpandableText 
+        key={index} 
+        htmlContent={parseMarkdownOnly(part)} 
+      />
+    );
+  });
+};
 
 // Radial SVG Resource Gauge Component
 const AdminRadialGauge = ({ value, label, maxVal = 100, colorClass }) => {
@@ -295,11 +617,25 @@ const AdminDashboard = () => {
   const [userStoriesForModal, setUserStoriesForModal] = useState([]);
   const [loadingModalPosts, setLoadingModalPosts] = useState(false);
   const [loadingModalStories, setLoadingModalStories] = useState(false);
+  const [expandedModalPostLegal, setExpandedModalPostLegal] = useState({});
 
   // Feed Moderation states
   const [postStatusFilter, setPostStatusFilter] = useState("all");
   const [expandedPostLegal, setExpandedPostLegal] = useState({});
   const [savingCompliance, setSavingCompliance] = useState({});
+
+  // Appeals State
+  const [appeals, setAppeals] = useState([]);
+  const [loadingAppeals, setLoadingAppeals] = useState(false);
+  const [selectedAppealForReview, setSelectedAppealForReview] = useState(null);
+  const [appealAdminNotes, setAppealAdminNotes] = useState("");
+  const [resolvingAppeal, setResolvingAppeal] = useState(false);
+
+  // Manual User Penalty Form State
+  const [issueActionType, setIssueActionType] = useState("Warning");
+  const [issueReason, setIssueReason] = useState("");
+  const [issueNotes, setIssueNotes] = useState("");
+  const [submittingUserAction, setSubmittingUserAction] = useState(false);
 
   // Radial metrics state (simulated real-time pings oscillation)
   const [cpuUsage, setCpuUsage] = useState(24);
@@ -381,6 +717,8 @@ const AdminDashboard = () => {
   const [postSearch, setPostSearch] = useState("");
   const [postPage, setPostPage] = useState(1);
   const [postPagination, setPostPagination] = useState({ totalPages: 1, totalPosts: 0 });
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editingPostText, setEditingPostText] = useState("");
   const [expandedPosts, setExpandedPosts] = useState({});
   const [feedStats, setFeedStats] = useState({ totalPosts: 0, flaggedPosts: 0, hiddenPosts: 0, totalComments: 0 });
 
@@ -732,10 +1070,226 @@ const AdminDashboard = () => {
         addToast(res.message, "success");
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, status } : p));
         fetchPosts(); // Refresh stats banner
+        return true;
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message || "Failed to update status", "error");
     }
+    return false;
+  };
+
+  const handleTogglePin = async (post) => {
+    try {
+      const targetId = post.id || post._id;
+      const nextVal = !post.isPinned;
+      const res = await updateAdminPostStatus(targetId, post.status, { isPinned: nextVal });
+      if (res.success) {
+        addToast(nextVal ? "Post pinned successfully" : "Post unpinned successfully", "success");
+        setPosts(prev => prev.map(p => (p.id === targetId || p._id === targetId) ? { ...p, isPinned: nextVal } : p));
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleToggleFeature = async (post) => {
+    try {
+      const targetId = post.id || post._id;
+      const nextVal = !post.isFeatured;
+      const res = await updateAdminPostStatus(targetId, post.status, { isFeatured: nextVal });
+      if (res.success) {
+        addToast(nextVal ? "Post featured successfully" : "Post unfeatured successfully", "success");
+        setPosts(prev => prev.map(p => (p.id === targetId || p._id === targetId) ? { ...p, isFeatured: nextVal } : p));
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleToggleCommentsLock = async (post) => {
+    try {
+      const targetId = post.id || post._id;
+      const nextVal = !post.commentsLocked;
+      const res = await updateAdminPostStatus(targetId, post.status, { commentsLocked: nextVal });
+      if (res.success) {
+        addToast(nextVal ? "Comments locked successfully" : "Comments unlocked successfully", "success");
+        setPosts(prev => prev.map(p => (p.id === targetId || p._id === targetId) ? { ...p, commentsLocked: nextVal } : p));
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleToggleLikesDisabled = async (post) => {
+    try {
+      const targetId = post.id || post._id;
+      const nextVal = !post.likesDisabled;
+      const res = await updateAdminPostStatus(targetId, post.status, { likesDisabled: nextVal });
+      if (res.success) {
+        addToast(nextVal ? "Likes disabled successfully" : "Likes enabled successfully", "success");
+        setPosts(prev => prev.map(p => (p.id === targetId || p._id === targetId) ? { ...p, likesDisabled: nextVal } : p));
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleToggleSensitive = async (post) => {
+    try {
+      const targetId = post.id || post._id;
+      const nextVal = !post.isSensitive;
+      const res = await updateAdminPostStatus(targetId, post.status, { isSensitive: nextVal });
+      if (res.success) {
+        addToast(nextVal ? "Post marked as sensitive" : "Sensitive flag removed", "success");
+        setPosts(prev => prev.map(p => (p.id === targetId || p._id === targetId) ? { ...p, isSensitive: nextVal } : p));
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleSaveEditedText = async (postId, text, currentStatus) => {
+    try {
+      const res = await updateAdminPostStatus(postId, currentStatus || "active", { text });
+      if (res.success) {
+        addToast("Post content updated successfully", "success");
+        setPosts(prev => prev.map(p => (p.id === postId || p._id === postId) ? { ...p, text } : p));
+        setEditingPostId(null);
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  // Parsing Helpers for Markdown, Code, Polls, Repos, and Events
+  const parseMarkdown = (text) => {
+    if (!text) return "";
+    let html = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Bold/Italics
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Code block (with vertical scroll if it exceeds 180px)
+    html = html.replace(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/g, (match, lang, code) => {
+      return `<pre style="background:#09090f; border:1px solid rgba(255,255,255,0.06); padding:12px; border-radius:10px; font-family:'Fira Code', monospace; font-size:0.8rem; overflow:auto; max-height:180px; margin:12px 0; max-width:100%; box-sizing:border-box;"><div style="display:flex; justify-content:space-between; font-size:0.65rem; color:#64748b; margin-bottom:6px; text-transform:uppercase; position:sticky; top:0; background:#09090f; padding-bottom:4px;"><span>${lang || "code"}</span></div><code style="color:#38bdf8; white-space:pre; display:block;">${code}</code></pre>`;
+    });
+
+    // Inline Code
+    html = html.replace(/`([^`\r\n]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#fb7185;">$1</code>');
+
+    // Hashtags
+    html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span style="color:#8b5cf6; font-weight:600;">#$1</span>');
+
+    // Mentions
+    html = html.replace(/@([a-zA-Z0-9_]+)/g, '<span style="color:#06b6d4; font-weight:600;">@$1</span>');
+
+    html = html.replace(/\n/g, "<br />");
+
+    return <div dangerouslySetInnerHTML={{ __html: html }} />;
+  };
+
+  const parsePollBlock = (postId, text) => {
+    if (!text || !text.includes("[POLL_QUESTION]")) return null;
+    const matchQ = text.match(/\[POLL_QUESTION\] (.*)/);
+    const matchO = text.match(/\[POLL_OPTS\] (.*)/);
+    if (!matchQ || !matchO) return null;
+
+    const question = matchQ[1].split("\n")[0];
+    const opts = matchO[1].split(",").map(o => o.trim());
+
+    return (
+      <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", padding: "12px", margin: "10px 0" }}>
+        <h5 style={{ margin: "0 0 8px 0", color: "var(--accent)", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}>
+          📊 Developer Poll (Moderation)
+        </h5>
+        <p style={{ margin: "0 0 10px 0", color: "var(--admin-text-h)", fontSize: "0.78rem", fontWeight: "600" }}>{question}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          {opts.map((opt, idx) => (
+            <div
+              key={idx}
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "var(--admin-text)",
+                padding: "8px 10px",
+                borderRadius: "6px",
+                fontSize: "0.74rem"
+              }}
+            >
+              {opt}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const parseRepoBlock = (text) => {
+    if (!text || !text.includes("[REPO]")) return null;
+    const match = text.match(/\[REPO\] (.*)/);
+    if (!match) return null;
+    const repoName = match[1].split("\n")[0].trim();
+
+    return (
+      <div
+        style={{
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "10px",
+          padding: "12px",
+          margin: "10px 0",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ color: "#fbbf24", fontSize: "0.9rem" }}>⭐</span>
+          <div>
+            <h6 style={{ margin: 0, color: "#60a5fa", fontSize: "0.78rem", fontWeight: "750" }}>{repoName}</h6>
+            <span style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Linked GitHub Repository</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const parseEventBlock = (text) => {
+    if (!text || !text.includes("[EVENT]")) return null;
+    const match = text.match(/\[EVENT\] (.*)/);
+    if (!match) return null;
+    const parts = match[1].split("\n")[0].split("&").map(p => p.trim());
+    const title = parts[0];
+    const date = parts[1] || "Upcoming Date";
+
+    return (
+      <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: "10px", padding: "12px", margin: "10px 0", display: "flex", alignItems: "center", gap: "10px" }}>
+        <span style={{ color: "#818cf8", fontSize: "0.9rem" }}>📅</span>
+        <div>
+          <h6 style={{ margin: 0, color: "var(--admin-text-h)", fontSize: "0.78rem", fontWeight: "750" }}>{title}</h6>
+          <span style={{ fontSize: "0.68rem", color: "#a5b4fc" }}>Event Date: {date}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPostImages = (post) => {
+    const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
+    if (postImages.length === 0) return null;
+
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: postImages.length > 1 ? "repeat(auto-fit, minmax(120px, 1fr))" : "1fr", gap: "8px", marginTop: "10px", borderRadius: "8px", overflow: "hidden" }}>
+        {postImages.map((src, idx) => (
+          <div key={idx} style={{ borderRadius: "6px", overflow: "hidden", border: "1px solid var(--admin-border-subtle)", position: "relative", paddingBottom: "66.6%", height: 0 }}>
+            <img src={src} alt={`Attachment ${idx}`} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+        ))}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -753,6 +1307,8 @@ const AdminDashboard = () => {
       }
     } else if (activeTab === "loginLogs") {
       fetchLoginLogs();
+    } else if (activeTab === "appeals") {
+      fetchAppealsList();
     }
   }, [activeTab, feedSubTab]);
 
@@ -1071,10 +1627,25 @@ const AdminDashboard = () => {
 
   const handleLogout = () => {
     const theme = localStorage.getItem("codeExpoHomeTheme");
+
+    // Preserve read stories cache for all users
+    const readStoriesKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("codeexpo_read_stories")) {
+        readStoriesKeys.push({ key, value: localStorage.getItem(key) });
+      }
+    }
+
     localStorage.clear();
+
     if (theme) {
       localStorage.setItem("codeExpoHomeTheme", theme);
     }
+    readStoriesKeys.forEach(item => {
+      localStorage.setItem(item.key, item.value);
+    });
+
     window.location.href = "/login";
   };
 
@@ -1138,19 +1709,80 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUpdateTicketStatus = async (ticketId, status) => {
+  const handleUpdateTicketStatus = async (ticketId, status, assignedTo) => {
     try {
-      const res = await adminUpdateTicketStatus(ticketId, status);
+      const res = await adminUpdateTicketStatus(ticketId, status, assignedTo);
       if (res.success) {
-        setSelectedAdminTicket(prev => {
-          if (!prev || prev._id !== ticketId) return prev;
-          return { ...prev, status };
-        });
-        addToast(`Ticket status updated to '${status}'`, "success");
+        setSelectedAdminTicket(res.ticket);
+        addToast("Ticket details updated successfully", "success");
         fetchAdminTickets();
       }
     } catch (err) {
-      addToast("Failed to update status", "error");
+      addToast("Failed to update ticket", "error");
+    }
+  };
+
+  const fetchAppealsList = async () => {
+    setLoadingAppeals(true);
+    try {
+      const res = await adminGetAppeals();
+      if (res.success) {
+        setAppeals(res.appeals || []);
+      }
+    } catch (err) {
+      addToast("Failed to fetch appeals", "error");
+    } finally {
+      setLoadingAppeals(false);
+    }
+  };
+
+  const handleResolveAppealDecision = async (appealId, status) => {
+    if (!appealAdminNotes.trim()) {
+      addToast("Please provide administrative response explanation notes.", "warning");
+      return;
+    }
+    setResolvingAppeal(true);
+    try {
+      const res = await adminResolveAppeal(appealId, status, appealAdminNotes);
+      if (res.success) {
+        addToast(`Appeal has been successfully ${status.toLowerCase()}.`, "success");
+        setSelectedAppealForReview(null);
+        setAppealAdminNotes("");
+        fetchAppealsList();
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || "Failed to resolve appeal.", "error");
+    } finally {
+      setResolvingAppeal(false);
+    }
+  };
+
+  const handleIssueUserAction = async (e) => {
+    e.preventDefault();
+    if (!selectedUserLogs) return;
+    if (!issueReason.trim()) {
+      addToast("Please provide a reason for this administrative action.", "warning");
+      return;
+    }
+    setSubmittingUserAction(true);
+    try {
+      const res = await adminIssueUserAction(
+        selectedUserLogs._id || selectedUserLogs.id,
+        issueActionType,
+        issueReason,
+        issueNotes
+      );
+      if (res.success) {
+        addToast(`Successfully issued ${issueActionType} action penalty.`, "success");
+        setIssueReason("");
+        setIssueNotes("");
+        setSelectedUserLogs(null);
+        fetchUsers();
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || "Failed to issue user action.", "error");
+    } finally {
+      setSubmittingUserAction(false);
     }
   };
 
@@ -1365,7 +1997,7 @@ const AdminDashboard = () => {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="modal-body user-profile-logs-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginTop: "15px" }}>
               {/* Profile details panel */}
               <div className="profile-overview-card glass-panel" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", textAlign: "center" }}>
@@ -1376,10 +2008,10 @@ const AdminDashboard = () => {
                     <span style={{ fontSize: "2rem", fontWeight: "800", color: "var(--accent)" }}>{selectedUserLogs.username.substring(0, 2).toUpperCase()}</span>
                   )}
                 </div>
-                
+
                 <h4 style={{ margin: "5px 0", color: "var(--admin-text-h)" }}>{selectedUserLogs.username}</h4>
                 <p style={{ margin: "2px 0 15px", fontSize: "0.85rem", color: "var(--admin-text-muted)" }}>{selectedUserLogs.email}</p>
-                
+
                 <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
                   <span className={`role-badge ${selectedUserLogs.role}`}>
                     {selectedUserLogs.role.toUpperCase()}
@@ -1389,7 +2021,7 @@ const AdminDashboard = () => {
                     <span className="label" style={{ fontSize: "0.75rem" }}>{selectedUserLogs.isOnline ? "Online" : "Offline"}</span>
                   </span>
                 </div>
-                
+
                 <div style={{ width: "100%", borderTop: "1px solid var(--admin-border)", padding: "15px 0 0", display: "flex", flexDirection: "column", gap: "10px", textAlign: "left" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
                     <span style={{ color: "var(--admin-text-muted)", flex: "1" }}>Developer Rank:</span>
@@ -1404,8 +2036,58 @@ const AdminDashboard = () => {
                     <span style={{ color: "var(--admin-text-h)", fontWeight: "600" }}>{new Date(selectedUserLogs.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
+
+                {/* Manual Moderation Compliance Action Panel */}
+                <form onSubmit={handleIssueUserAction} style={{ width: "100%", borderTop: "1px solid var(--admin-border)", padding: "15px 0 0", marginTop: "15px", display: "flex", flexDirection: "column", gap: "10px", textAlign: "left" }}>
+                  <h5 style={{ margin: "0 0 5px", fontSize: "0.82rem", color: "var(--admin-text-h)" }}>Issue Moderation Penalty</h5>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Action Type</label>
+                    <select
+                      value={issueActionType}
+                      onChange={(e) => setIssueActionType(e.target.value)}
+                      style={{ background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--admin-border)", borderRadius: "4px", padding: "6px 8px", fontSize: "0.75rem" }}
+                    >
+                      <option value="Warning">Warning</option>
+                      <option value="Restricted">Restricted Standing</option>
+                      <option value="Suspended">Suspension</option>
+                      <option value="Permanently Banned">Permanent Ban</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Reason *</label>
+                    <input
+                      type="text"
+                      value={issueReason}
+                      onChange={(e) => setIssueReason(e.target.value)}
+                      required
+                      placeholder="e.g. Terms of Service violation..."
+                      style={{ background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--admin-border)", borderRadius: "4px", padding: "6px 8px", fontSize: "0.75rem" }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Private Notes (Optional)</label>
+                    <input
+                      type="text"
+                      value={issueNotes}
+                      onChange={(e) => setIssueNotes(e.target.value)}
+                      placeholder="Admin notes..."
+                      style={{ background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--admin-border)", borderRadius: "4px", padding: "6px 8px", fontSize: "0.75rem" }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submittingUserAction}
+                    style={{ background: "var(--admin-accent)", border: "none", color: "#fff", padding: "8px", borderRadius: "6px", fontSize: "0.78rem", fontWeight: "650", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    {submittingUserAction ? "Issuing..." : "Submit Penalty Action"}
+                  </button>
+                </form>
               </div>
-              
+
               {/* Tabbed panel for Sessions, Posts, and Stories */}
               <div className="sessions-list-panel glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", minHeight: "380px", flex: 1 }}>
                 {/* Modal Tab Headers */}
@@ -1486,7 +2168,7 @@ const AdminDashboard = () => {
                               durationStr = "0s";
                             }
                           }
-                          
+
                           return (
                             <div key={log.id || index} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "10px" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "4px" }}>
@@ -1517,47 +2199,163 @@ const AdminDashboard = () => {
                       <div style={{ textAlign: "center", color: "var(--admin-text-muted)", fontStyle: "italic", padding: "40px 0" }}>No posts found for this user.</div>
                     ) : (
                       userPostsForModal.map((p) => (
-                        <div key={p.id} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                             <span style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>{new Date(p.createdAt).toLocaleString()}</span>
-                             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                               <select
-                                 value={p.status || "active"}
-                                 onChange={async (e) => {
-                                   await handleStatusChange(p.id, e.target.value);
-                                   const postData = await getAdminPosts(1, 20, "", "all", selectedUserLogs.id);
-                                   if (postData.success) setUserPostsForModal(postData.posts);
-                                 }}
-                                 style={{ background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", borderRadius: "4px", fontSize: "0.7rem", color: "var(--admin-text-h)", padding: "2px 6px", outline: "none" }}
-                               >
-                                 <option value="active">Active</option>
-                                 <option value="flagged">Flagged</option>
-                                 <option value="hidden">Hidden</option>
-                               </select>
-                               <button
-                                 onClick={async () => {
-                                   if (window.confirm("Are you sure you want to delete this post?")) {
-                                     const res = await deleteAdminPost(p.id);
-                                     if (res.success) {
-                                       addToast(res.message, "success");
-                                       const postData = await getAdminPosts(1, 20, "", "all", selectedUserLogs.id);
-                                       if (postData.success) setUserPostsForModal(postData.posts);
-                                       fetchPosts();
-                                     }
-                                   }
-                                 }}
-                                 style={{ background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
-                               >
-                                 <Trash2 size={12} />
-                               </button>
-                             </div>
-                           </div>
-                           <p style={{ margin: "0", fontSize: "0.8rem", color: "var(--admin-text-h)", whiteSpace: "pre-wrap" }}>{p.text}</p>
-                           {p.image && (
-                             <div style={{ width: "60px", height: "45px", borderRadius: "4px", overflow: "hidden", border: "1px solid var(--admin-border-subtle)" }}>
-                               <img src={p.image} alt="Attached Media" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                             </div>
-                           )}
+                        <div key={p.id} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                              <span style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>{new Date(p.createdAt).toLocaleString()}</span>
+                              <span className={`post-status-badge status-${p.status}`} style={{ fontSize: "0.6rem", padding: "1px 4px", borderRadius: "3px" }}>
+                                {p.status.toUpperCase()}
+                              </span>
+                            </div>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                              <select
+                                value={p.status || "active"}
+                                onChange={async (e) => {
+                                  const success = await handleStatusChange(p.id, e.target.value);
+                                  if (success) {
+                                    const postData = await getAdminPosts(1, 20, "", "all", selectedUserLogs.id);
+                                    if (postData.success) setUserPostsForModal(postData.posts);
+                                  }
+                                }}
+                                style={{ background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", borderRadius: "4px", fontSize: "0.7rem", color: "var(--admin-text-h)", padding: "2px 6px", outline: "none" }}
+                              >
+                                <option value="active">Active</option>
+                                <option value="flagged">Flagged</option>
+                                <option value="hidden">Hidden</option>
+                              </select>
+
+                              <button
+                                onClick={() => {
+                                  setExpandedModalPostLegal(prev => ({
+                                    ...prev,
+                                    [p.id]: !prev[p.id]
+                                  }));
+                                }}
+                                className={`btn-compliance-action ${expandedModalPostLegal[p.id] ? "active" : ""}`}
+                                title="Manage legal case file & compliance notes"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  background: expandedModalPostLegal[p.id] ? "var(--admin-btn-active-bg)" : "var(--admin-btn-secondary-bg)",
+                                  border: `1px solid ${expandedModalPostLegal[p.id] ? "var(--admin-btn-active-border)" : "var(--admin-border)"}`,
+                                  color: expandedModalPostLegal[p.id] ? "var(--accent)" : "var(--admin-text-muted)",
+                                  padding: "3px 8px",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                  fontSize: "0.7rem",
+                                  fontWeight: "700",
+                                  transition: "all 0.15s ease"
+                                }}
+                              >
+                                <ShieldAlert size={10} />
+                                <span>Legal File</span>
+                              </button>
+
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm("Are you sure you want to delete this post?")) {
+                                    const res = await deleteAdminPost(p.id);
+                                    if (res.success) {
+                                      addToast(res.message, "success");
+                                      const postData = await getAdminPosts(1, 20, "", "all", selectedUserLogs.id);
+                                      if (postData.success) setUserPostsForModal(postData.posts);
+                                      fetchPosts();
+                                    }
+                                  }
+                                }}
+                                style={{ background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {renderPostContent(p.text, addToast)}
+                          {parsePollBlock(p.id, p.text)}
+                          {parseRepoBlock(p.text)}
+                          {parseEventBlock(p.text)}
+
+                          {p.techStack && p.techStack.length > 0 && (
+                            <div className="post-tech-tags" style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
+                              {p.techStack.map((tech, idx) => (
+                                <span key={idx} className="tech-tag-pill" style={{ fontSize: "0.68rem", padding: "1px 6px", background: "var(--admin-btn-active-bg)", border: "1px solid var(--admin-border-subtle)", borderRadius: "4px", color: "var(--admin-text)" }}>{tech}</span>
+                              ))}
+                            </div>
+                          )}
+
+                          {renderPostImages(p)}
+
+                          {expandedModalPostLegal[p.id] && (
+                            <div className="post-legal-compliance-section animate-slide-down" style={{
+                              background: "rgba(170, 59, 255, 0.03)",
+                              border: "1px solid rgba(170, 59, 255, 0.15)",
+                              borderRadius: "8px",
+                              padding: "12px",
+                              marginTop: "10px"
+                            }}>
+                              <h5 style={{ margin: "0 0 8px 0", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--accent)" }}>
+                                Compliance File & Legal Claims
+                              </h5>
+
+                              <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = e.target;
+                                const infringementType = form.infringementType.value;
+                                const caseStatus = form.caseStatus.value;
+                                const notes = form.notes.value;
+                                const caseId = form.caseId.value;
+
+                                await handleSaveCompliance(p.id, p.status, {
+                                  caseId,
+                                  infringementType,
+                                  caseStatus,
+                                  notes
+                                });
+
+                                const postData = await getAdminPosts(1, 20, "", "all", selectedUserLogs.id);
+                                if (postData.success) setUserPostsForModal(postData.posts);
+                              }}>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+                                  <div>
+                                    <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Case ID</label>
+                                    <input type="text" name="caseId" defaultValue={p.legalCase?.caseId || ""} style={{ width: "100%", padding: "4px", fontSize: "0.7rem", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", borderRadius: "4px", color: "var(--admin-text-h)" }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Infringement Type</label>
+                                    <select name="infringementType" defaultValue={p.legalCase?.infringementType || "None"} style={{ width: "100%", padding: "4px", fontSize: "0.7rem", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", borderRadius: "4px", color: "var(--admin-text-h)" }}>
+                                      <option value="None">None</option>
+                                      <option value="Copyright">Copyright</option>
+                                      <option value="Plagiarism">Plagiarism</option>
+                                      <option value="Harassment">Harassment</option>
+                                      <option value="Terms Violation">Terms Violation</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+                                  <div>
+                                    <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Case Status</label>
+                                    <select name="caseStatus" defaultValue={p.legalCase?.caseStatus || "Resolved"} style={{ width: "100%", padding: "4px", fontSize: "0.7rem", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", borderRadius: "4px", color: "var(--admin-text-h)" }}>
+                                      <option value="Pending">Pending</option>
+                                      <option value="Under Review">Under Review</option>
+                                      <option value="Resolved">Resolved</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Action Taken By</label>
+                                    <input type="text" readOnly value={p.legalCase?.actionTakenBy || "System Admin"} style={{ width: "100%", padding: "4px", fontSize: "0.7rem", background: "rgba(0,0,0,0.1)", border: "1px solid var(--admin-border)", borderRadius: "4px", color: "var(--admin-text-muted)" }} />
+                                  </div>
+                                </div>
+                                <div style={{ marginBottom: "8px" }}>
+                                  <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Compliance Notes</label>
+                                  <textarea name="notes" defaultValue={p.legalCase?.notes || ""} rows={2} style={{ width: "100%", padding: "4px", fontSize: "0.7rem", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", borderRadius: "4px", color: "var(--admin-text-h)", resize: "none" }} />
+                                </div>
+                                <button type="submit" style={{ padding: "4px 8px", background: "var(--accent)", border: "none", borderRadius: "4px", color: "#fff", fontSize: "0.7rem", cursor: "pointer", fontWeight: "700" }}>
+                                  Save Compliance File
+                                </button>
+                              </form>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -1576,35 +2374,35 @@ const AdminDashboard = () => {
                     ) : (
                       userStoriesForModal.map((s) => (
                         <div key={s.id} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                             <span style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>{new Date(s.createdAt).toLocaleString()}</span>
-                             <button
-                               onClick={async () => {
-                                 if (window.confirm("Are you sure you want to delete this story?")) {
-                                   const res = await deleteAdminStory(s.id);
-                                   if (res.success) {
-                                     addToast(res.message, "success");
-                                     const storyData = await getAdminStories(1, 20, selectedUserLogs.id);
-                                     if (storyData.success) setUserStoriesForModal(storyData.stories);
-                                     fetchStories();
-                                   }
-                                 }
-                               }}
-                               style={{ background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
-                             >
-                               <Trash2 size={12} />
-                             </button>
-                           </div>
-                           {s.text && <p style={{ margin: "0", fontSize: "0.8rem", color: "var(--admin-text-h)" }}>{s.text}</p>}
-                           {s.mediaUrl && (
-                             <div style={{ width: "60px", height: "60px", borderRadius: "4px", overflow: "hidden", background: "rgba(0,0,0,0.2)" }}>
-                               {s.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || s.mediaUrl.includes("video") ? (
-                                 <video src={s.mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                               ) : (
-                                 <img src={s.mediaUrl} alt="Story Media" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                               )}
-                             </div>
-                           )}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>{new Date(s.createdAt).toLocaleString()}</span>
+                            <button
+                              onClick={async () => {
+                                if (window.confirm("Are you sure you want to delete this story?")) {
+                                  const res = await deleteAdminStory(s.id);
+                                  if (res.success) {
+                                    addToast(res.message, "success");
+                                    const storyData = await getAdminStories(1, 20, selectedUserLogs.id);
+                                    if (storyData.success) setUserStoriesForModal(storyData.stories);
+                                    fetchStories();
+                                  }
+                                }
+                              }}
+                              style={{ background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                          {s.text && <p style={{ margin: "0", fontSize: "0.8rem", color: "var(--admin-text-h)" }}>{s.text}</p>}
+                          {s.mediaUrl && (
+                            <div style={{ width: "60px", height: "60px", borderRadius: "4px", overflow: "hidden", background: "rgba(0,0,0,0.2)" }}>
+                              {s.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || s.mediaUrl.includes("video") ? (
+                                <video src={s.mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              ) : (
+                                <img src={s.mediaUrl} alt="Story Media" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -1612,7 +2410,7 @@ const AdminDashboard = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="modal-actions" style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
               <button className="btn-modal-cancel" onClick={() => setSelectedUserLogs(null)}>
                 Close Window
@@ -1721,6 +2519,14 @@ const AdminDashboard = () => {
           >
             <HelpCircle size={16} />
             <span>Help Desk</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab("appeals"); setIsMobileSidebarOpen(false); }}
+            className={`sidebar-nav-item-btn ${activeTab === "appeals" ? "active" : ""}`}
+          >
+            <ShieldAlert size={16} />
+            <span>Appeals Review</span>
           </button>
         </nav>
 
@@ -2278,7 +3084,7 @@ const AdminDashboard = () => {
                             const secs = Math.floor(durationMs / 1000);
                             const mins = Math.floor(secs / 60);
                             const hours = Math.floor(mins / 60);
-                            
+
                             if (hours > 0) {
                               durationStr = `${hours}h ${mins % 60}m`;
                             } else if (mins > 0) {
@@ -2301,7 +3107,7 @@ const AdminDashboard = () => {
                           else if (ua.includes("Edg")) deviceStr = "Microsoft Edge";
                           else if (ua.includes("Postman")) deviceStr = "Postman Runtime";
                           else deviceStr = ua.split(" ")[0] || "Browser Client";
-                          
+
                           if (ua.includes("Windows")) deviceStr += " (Windows)";
                           else if (ua.includes("Macintosh")) deviceStr += " (macOS)";
                           else if (ua.includes("Linux")) deviceStr += " (Linux)";
@@ -2748,428 +3554,544 @@ const AdminDashboard = () => {
                 <>
                   {/* FEED STATS BANNER */}
                   <div className="feed-stats-dashboard-row animate-fade-in">
-                <div className="feed-stat-card glass-panel purple">
-                  <div className="stat-icon-wrapper"><Megaphone size={18} /></div>
-                  <div className="stat-info">
-                    <span className="stat-label">Total Posts</span>
-                    <span className="stat-value">{feedStats.totalPosts}</span>
+                    <div className="feed-stat-card glass-panel purple">
+                      <div className="stat-icon-wrapper"><Megaphone size={18} /></div>
+                      <div className="stat-info">
+                        <span className="stat-label">Total Posts</span>
+                        <span className="stat-value">{feedStats.totalPosts}</span>
+                      </div>
+                    </div>
+                    <div className="feed-stat-card glass-panel yellow">
+                      <div className="stat-icon-wrapper"><AlertTriangle size={18} /></div>
+                      <div className="stat-info">
+                        <span className="stat-label">Flagged Posts</span>
+                        <span className="stat-value">{feedStats.flaggedPosts}</span>
+                      </div>
+                    </div>
+                    <div className="feed-stat-card glass-panel red">
+                      <div className="stat-icon-wrapper"><VolumeX size={18} /></div>
+                      <div className="stat-info">
+                        <span className="stat-label">Hidden Posts</span>
+                        <span className="stat-value">{feedStats.hiddenPosts}</span>
+                      </div>
+                    </div>
+                    <div className="feed-stat-card glass-panel blue">
+                      <div className="stat-icon-wrapper"><MessageSquare size={18} /></div>
+                      <div className="stat-info">
+                        <span className="stat-label">Total Comments</span>
+                        <span className="stat-value">{feedStats.totalComments}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="feed-stat-card glass-panel yellow">
-                  <div className="stat-icon-wrapper"><AlertTriangle size={18} /></div>
-                  <div className="stat-info">
-                    <span className="stat-label">Flagged Posts</span>
-                    <span className="stat-value">{feedStats.flaggedPosts}</span>
+
+                  {/* SEARCH BAR */}
+                  <div className="table-search-row glass-panel" style={{ marginBottom: "20px" }}>
+                    <div className="search-input-wrapper">
+                      <Search size={14} className="search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search posts by content, tech stack, or author..."
+                        value={postSearch}
+                        onChange={(e) => {
+                          setPostSearch(e.target.value);
+                          setPostPage(1);
+                        }}
+                        className="table-search-input"
+                      />
+                    </div>
+                    {loadingPosts && <Loader className="spinner table-inline-loader" size={14} />}
                   </div>
-                </div>
-                <div className="feed-stat-card glass-panel red">
-                  <div className="stat-icon-wrapper"><VolumeX size={18} /></div>
-                  <div className="stat-info">
-                    <span className="stat-label">Hidden Posts</span>
-                    <span className="stat-value">{feedStats.hiddenPosts}</span>
+
+                  {/* STATUS FILTER CHIPS */}
+                  <div className="feed-filter-chips-row" style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => { setPostStatusFilter("all"); setPostPage(1); }}
+                      className={`feed-filter-chip ${postStatusFilter === "all" ? "active" : ""}`}
+                      style={{
+                        background: postStatusFilter === "all" ? "var(--accent)" : "var(--admin-btn-secondary-bg)",
+                        border: `1px solid ${postStatusFilter === "all" ? "var(--accent)" : "var(--admin-border)"}`,
+                        color: postStatusFilter === "all" ? "#fff" : "var(--admin-text)",
+                        padding: "6px 14px",
+                        borderRadius: "20px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                        fontWeight: "750",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      All Posts ({feedStats.totalPosts})
+                    </button>
+                    <button
+                      onClick={() => { setPostStatusFilter("active"); setPostPage(1); }}
+                      className={`feed-filter-chip ${postStatusFilter === "active" ? "active" : ""}`}
+                      style={{
+                        background: postStatusFilter === "active" ? "rgba(16, 185, 129, 0.15)" : "var(--admin-btn-secondary-bg)",
+                        border: `1px solid ${postStatusFilter === "active" ? "#10b981" : "var(--admin-border)"}`,
+                        color: postStatusFilter === "active" ? "#10b981" : "var(--admin-text)",
+                        padding: "6px 14px",
+                        borderRadius: "20px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                        fontWeight: "750",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      🟢 Active ({feedStats.totalPosts - feedStats.flaggedPosts - feedStats.hiddenPosts})
+                    </button>
+                    <button
+                      onClick={() => { setPostStatusFilter("flagged"); setPostPage(1); }}
+                      className={`feed-filter-chip ${postStatusFilter === "flagged" ? "active" : ""}`}
+                      style={{
+                        background: postStatusFilter === "flagged" ? "rgba(245, 158, 11, 0.15)" : "var(--admin-btn-secondary-bg)",
+                        border: `1px solid ${postStatusFilter === "flagged" ? "#f59e0b" : "var(--admin-border)"}`,
+                        color: postStatusFilter === "flagged" ? "#f59e0b" : "var(--admin-text)",
+                        padding: "6px 14px",
+                        borderRadius: "20px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                        fontWeight: "750",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      🟡 Flagged ({feedStats.flaggedPosts})
+                    </button>
+                    <button
+                      onClick={() => { setPostStatusFilter("hidden"); setPostPage(1); }}
+                      className={`feed-filter-chip ${postStatusFilter === "hidden" ? "active" : ""}`}
+                      style={{
+                        background: postStatusFilter === "hidden" ? "rgba(239, 68, 68, 0.15)" : "var(--admin-btn-secondary-bg)",
+                        border: `1px solid ${postStatusFilter === "hidden" ? "#ef4444" : "var(--admin-border)"}`,
+                        color: postStatusFilter === "hidden" ? "#ef4444" : "var(--admin-text)",
+                        padding: "6px 14px",
+                        borderRadius: "20px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                        fontWeight: "750",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      🔴 Hidden ({feedStats.hiddenPosts})
+                    </button>
                   </div>
-                </div>
-                <div className="feed-stat-card glass-panel blue">
-                  <div className="stat-icon-wrapper"><MessageSquare size={18} /></div>
-                  <div className="stat-info">
-                    <span className="stat-label">Total Comments</span>
-                    <span className="stat-value">{feedStats.totalComments}</span>
-                  </div>
-                </div>
-              </div>
 
-              {/* SEARCH BAR */}
-              <div className="table-search-row glass-panel" style={{ marginBottom: "20px" }}>
-                <div className="search-input-wrapper">
-                  <Search size={14} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search posts by content, tech stack, or author..."
-                    value={postSearch}
-                    onChange={(e) => {
-                      setPostSearch(e.target.value);
-                      setPostPage(1);
-                    }}
-                    className="table-search-input"
-                  />
-                </div>
-                {loadingPosts && <Loader className="spinner table-inline-loader" size={14} />}
-              </div>
-
-              {/* STATUS FILTER CHIPS */}
-              <div className="feed-filter-chips-row" style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
-                <button
-                  onClick={() => { setPostStatusFilter("all"); setPostPage(1); }}
-                  className={`feed-filter-chip ${postStatusFilter === "all" ? "active" : ""}`}
-                  style={{
-                    background: postStatusFilter === "all" ? "var(--accent)" : "var(--admin-btn-secondary-bg)",
-                    border: `1px solid ${postStatusFilter === "all" ? "var(--accent)" : "var(--admin-border)"}`,
-                    color: postStatusFilter === "all" ? "#fff" : "var(--admin-text)",
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    cursor: "pointer",
-                    fontSize: "0.8rem",
-                    fontWeight: "750",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  All Posts ({feedStats.totalPosts})
-                </button>
-                <button
-                  onClick={() => { setPostStatusFilter("active"); setPostPage(1); }}
-                  className={`feed-filter-chip ${postStatusFilter === "active" ? "active" : ""}`}
-                  style={{
-                    background: postStatusFilter === "active" ? "rgba(16, 185, 129, 0.15)" : "var(--admin-btn-secondary-bg)",
-                    border: `1px solid ${postStatusFilter === "active" ? "#10b981" : "var(--admin-border)"}`,
-                    color: postStatusFilter === "active" ? "#10b981" : "var(--admin-text)",
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    cursor: "pointer",
-                    fontSize: "0.8rem",
-                    fontWeight: "750",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  🟢 Active ({feedStats.totalPosts - feedStats.flaggedPosts - feedStats.hiddenPosts})
-                </button>
-                <button
-                  onClick={() => { setPostStatusFilter("flagged"); setPostPage(1); }}
-                  className={`feed-filter-chip ${postStatusFilter === "flagged" ? "active" : ""}`}
-                  style={{
-                    background: postStatusFilter === "flagged" ? "rgba(245, 158, 11, 0.15)" : "var(--admin-btn-secondary-bg)",
-                    border: `1px solid ${postStatusFilter === "flagged" ? "#f59e0b" : "var(--admin-border)"}`,
-                    color: postStatusFilter === "flagged" ? "#f59e0b" : "var(--admin-text)",
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    cursor: "pointer",
-                    fontSize: "0.8rem",
-                    fontWeight: "750",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  🟡 Flagged ({feedStats.flaggedPosts})
-                </button>
-                <button
-                  onClick={() => { setPostStatusFilter("hidden"); setPostPage(1); }}
-                  className={`feed-filter-chip ${postStatusFilter === "hidden" ? "active" : ""}`}
-                  style={{
-                    background: postStatusFilter === "hidden" ? "rgba(239, 68, 68, 0.15)" : "var(--admin-btn-secondary-bg)",
-                    border: `1px solid ${postStatusFilter === "hidden" ? "#ef4444" : "var(--admin-border)"}`,
-                    color: postStatusFilter === "hidden" ? "#ef4444" : "var(--admin-text)",
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    cursor: "pointer",
-                    fontSize: "0.8rem",
-                    fontWeight: "750",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  🔴 Hidden ({feedStats.hiddenPosts})
-                </button>
-              </div>
-
-              {/* POSTS LISTING */}
-              <div className="admin-posts-grid">
-                {posts.length === 0 ? (
-                  <div className="empty-posts-state glass-panel">
-                    {loadingPosts ? "Fetching feed posts..." : "No posts found in the network feed."}
-                  </div>
-                ) : (
-                  posts.map((post) => {
-                    const isExpanded = !!expandedPosts[post.id];
-                    return (
-                      <div key={post.id} className={`admin-post-card glass-panel border-${post.status}`}>
-                        <div className="post-card-header">
-                          <div className="post-author-info">
-                            <div className="author-avatar-wrapper" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: post.author ? "pointer" : "default" }} title={post.author ? "View Developer Profile & Moderation" : ""}>
-                              {post.author?.avatar ? (
-                                <img src={post.author.avatar} alt={post.author.username} className="avatar-img" />
-                              ) : (
-                                <div className="avatar-placeholder">
-                                  {(post.author?.username || "U").substring(0, 2).toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                            <div className="author-meta">
-                              <div className="author-username-row" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: post.author ? "pointer" : "default" }} title={post.author ? "View Developer Profile & Moderation" : ""}>
-                                <span className="author-username">{post.author?.username || "Deleted User"}</span>
-                                <span className={`post-status-badge status-${post.status}`}>
-                                  {post.status.toUpperCase()}
-                                </span>
-                              </div>
-                              <span className="author-email">{post.author?.email || ""}</span>
-                              {post.author?.title && <span className="author-title-badge">{post.author.title}</span>}
-                            </div>
-                          </div>
-
-                          <div className="post-card-actions-wrapper">
-                             <div className="post-moderation-controls" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                               <select
-                                 value={post.status || "active"}
-                                 onChange={(e) => handleStatusChange(post.id, e.target.value)}
-                                 className="admin-post-status-select"
-                               >
-                                 <option value="active">Active (Visible)</option>
-                                 <option value="flagged">Flagged (Warning)</option>
-                                 <option value="hidden">Hidden (Moderated)</option>
-                               </select>
-                               
-                               <button
-                                 onClick={() => {
-                                   setExpandedPostLegal(prev => ({
-                                     ...prev,
-                                     [post.id]: !prev[post.id]
-                                   }));
-                                 }}
-                                 className={`btn-compliance-action ${expandedPostLegal[post.id] ? "active" : ""}`}
-                                 title="Manage legal case file & compliance notes"
-                                 style={{
-                                   display: "inline-flex",
-                                   alignItems: "center",
-                                   gap: "4px",
-                                   background: expandedPostLegal[post.id] ? "var(--admin-btn-active-bg)" : "var(--admin-btn-secondary-bg)",
-                                   border: `1px solid ${expandedPostLegal[post.id] ? "var(--admin-btn-active-border)" : "var(--admin-border)"}`,
-                                   color: expandedPostLegal[post.id] ? "var(--accent)" : "var(--admin-text-muted)",
-                                   padding: "5px 10px",
-                                   borderRadius: "6px",
-                                   cursor: "pointer",
-                                   fontSize: "0.72rem",
-                                   fontWeight: "700",
-                                   transition: "all 0.15s ease"
-                                 }}
-                               >
-                                 <ShieldAlert size={12} />
-                                 <span>Legal File</span>
-                               </button>
-
-                               <button
-                                 onClick={() => handleDeletePostClick(post.id, post.author?.username || "Someone")}
-                                 className="btn-action-delete"
-                                 title="Delete post permanently"
-                               >
-                                 <Trash2 size={13} />
-                               </button>
-                             </div>
-                           </div>
-                        </div>
-
-                        <div className="post-card-body">
-                          <p className="post-text-content">{post.text}</p>
-                          
-                          {post.techStack && post.techStack.length > 0 && (
-                            <div className="post-tech-tags">
-                              {post.techStack.map((tech, idx) => (
-                                <span key={idx} className="tech-tag-pill">{tech}</span>
-                              ))}
-                            </div>
-                          )}
-
-                          {post.image && (
-                            <div className="post-media-preview">
-                              <img src={post.image} alt="Post Attachment" className="post-preview-img" />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="post-card-footer">
-                          <div className="post-stats-row">
-                            <span className="stat-pill">👍 {post.likesCount} Likes</span>
-                            <span className="stat-pill">💬 {post.comments ? post.comments.length : 0} Comments</span>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setExpandedPosts(prev => ({
-                                ...prev,
-                                [post.id]: !prev[post.id]
-                              }));
-                            }}
-                            className="btn-toggle-comments"
-                          >
-                            {isExpanded ? "Hide Comments" : `Manage Comments (${post.comments ? post.comments.length : 0})`}
-                          </button>
-                        </div>
-
-                        {expandedPostLegal[post.id] && (
-                          <div className="post-legal-compliance-section animate-slide-down" style={{
-                            background: "rgba(170, 59, 255, 0.03)",
-                            border: "1px solid rgba(170, 59, 255, 0.15)",
-                            borderRadius: "8px",
-                            padding: "16px",
-                            margin: "0 20px 20px 20px"
-                          }}>
-                            <h5 style={{ margin: "0 0 12px 0", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--accent)" }}>
-                              Compliance File & Legal Claims
-                            </h5>
-                            
-                            <form onSubmit={(e) => {
-                              e.preventDefault();
-                              const form = e.target;
-                              const infringementType = form.infringementType.value;
-                              const caseStatus = form.caseStatus.value;
-                              const notes = form.notes.value;
-                              const caseId = form.caseId.value;
-                              
-                              handleSaveCompliance(post.id, post.status, {
-                                caseId,
-                                infringementType,
-                                caseStatus,
-                                notes
-                              });
-                            }} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                                <div>
-                                  <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Legal Case ID</label>
-                                  <input
-                                    type="text"
-                                    name="caseId"
-                                    defaultValue={post.legalCase?.caseId || `CE-LEGAL-${Math.floor(1000 + Math.random() * 9000)}`}
-                                    className="table-search-input"
-                                    placeholder="Case ID (e.g. CE-DMCA-2026)"
-                                    style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Infringement Classification</label>
-                                  <select
-                                    name="infringementType"
-                                    defaultValue={post.legalCase?.infringementType || "None"}
-                                    style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
-                                  >
-                                    <option value="None">None (General Clean)</option>
-                                    <option value="DMCA Takedown Request">DMCA Takedown Request</option>
-                                    <option value="Copyright Infringement">Copyright Infringement</option>
-                                    <option value="TOS Violation">TOS Violation</option>
-                                    <option value="Hate Speech / Harassment">Hate Speech / Harassment</option>
-                                    <option value="Other Legal Claim">Other Legal Claim</option>
-                                  </select>
-                                </div>
-                              </div>
-                              
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                                <div>
-                                  <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Case Moderation Status</label>
-                                  <select
-                                    name="caseStatus"
-                                    defaultValue={post.legalCase?.caseStatus || "Resolved"}
-                                    style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
-                                  >
-                                    <option value="Open">Open Case</option>
-                                    <option value="Under Review">Under Review</option>
-                                    <option value="Compliance Action Taken">Compliance Action Taken</option>
-                                    <option value="Dismissed">Dismissed Case</option>
-                                    <option value="Resolved">Resolved (No Claim)</option>
-                                  </select>
-                                </div>
-                                
-                                <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                                  {post.legalCase?.actionTakenBy && (
-                                    <div style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontStyle: "italic", borderLeft: "2px solid var(--accent)", paddingLeft: "6px" }}>
-                                      Last audited by <strong>{post.legalCase.actionTakenBy}</strong>
-                                      {post.legalCase.actionDate && ` on ${new Date(post.legalCase.actionDate).toLocaleDateString()}`}
+                  {/* POSTS LISTING */}
+                  <div className="admin-posts-grid">
+                    {posts.length === 0 ? (
+                      <div className="empty-posts-state glass-panel">
+                        {loadingPosts ? "Fetching feed posts..." : "No posts found in the network feed."}
+                      </div>
+                    ) : (
+                      posts.map((post) => {
+                        const isExpanded = !!expandedPosts[post.id];
+                        return (
+                          <div key={post.id} className={`admin-post-card glass-panel border-${post.status}`}>
+                            <div className="post-card-header">
+                              <div className="post-author-info">
+                                <div className="author-avatar-wrapper" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: post.author ? "pointer" : "default" }} title={post.author ? "View Developer Profile & Moderation" : ""}>
+                                  {post.author?.avatar ? (
+                                    <img src={post.author.avatar} alt={post.author.username} className="avatar-img" />
+                                  ) : (
+                                    <div className="avatar-placeholder">
+                                      {(post.author?.username || "U").substring(0, 2).toUpperCase()}
                                     </div>
                                   )}
                                 </div>
+                                <div className="author-meta">
+                                  <div className="author-username-row" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: post.author ? "pointer" : "default" }} title={post.author ? "View Developer Profile & Moderation" : ""}>
+                                    <span className="author-username">{post.author?.username || "Deleted User"}</span>
+                                    <span className={`post-status-badge status-${post.status}`}>
+                                      {post.status.toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <span className="author-email">{post.author?.email || ""}</span>
+                                  {post.author?.title && <span className="author-title-badge">{post.author.title}</span>}
+                                </div>
                               </div>
-                              
-                              <div>
-                                <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Audit compliance notes / log</label>
-                                <textarea
-                                  name="notes"
-                                  defaultValue={post.legalCase?.notes || ""}
-                                  placeholder="Write notes about legal notices received, DMCA takedown correspondence or reason for flagging..."
-                                  style={{ width: "100%", height: "80px", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "8px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)", resize: "none", outline: "none", boxSizing: "border-box" }}
-                                />
-                              </div>
-                              
-                              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                <button
-                                  type="submit"
-                                  className="btn-action"
-                                  disabled={savingCompliance[post.id]}
-                                  style={{ background: "var(--accent)", color: "#fff", borderColor: "var(--accent)", display: "inline-flex", alignItems: "center", gap: "6px" }}
-                                >
-                                  {savingCompliance[post.id] && <Loader className="spinner" size={10} />}
-                                  <span>{savingCompliance[post.id] ? "Saving..." : "Save Case Details"}</span>
-                                </button>
-                              </div>
-                            </form>
-                          </div>
-                        )}
 
-                        {isExpanded && (
-                          <div className="post-comments-section animate-slide-down">
-                            <h5>Comments Moderation</h5>
-                            {(!post.comments || post.comments.length === 0) ? (
-                              <p className="no-comments-text">No comments on this post.</p>
-                            ) : (
-                              <div className="admin-comments-list">
-                                {post.comments.map((comment) => (
-                                  <div key={comment._id} className="admin-comment-row">
-                                    <div className="comment-left-col">
-                                      <div className="commenter-avatar">
-                                        {comment.avatar ? (
-                                          <img src={comment.avatar} alt={comment.username} className="avatar-img" />
-                                        ) : (
-                                          <div className="avatar-placeholder">
-                                            {(comment.username || "U").substring(0, 2).toUpperCase()}
-                                          </div>
-                                        )}
-                                      </div>
-                                      <div className="comment-text-details">
-                                        <div className="commenter-meta">
-                                          <span className="commenter-name">{comment.username}</span>
-                                          <span className="comment-time">
-                                            {new Date(comment.createdAt).toLocaleString()}
-                                          </span>
-                                        </div>
-                                        <p className="comment-content-text">"{comment.text}"</p>
-                                      </div>
+                              <div className="post-card-actions-wrapper">
+                                <div className="post-moderation-controls" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <select
+                                    value={post.status || "active"}
+                                    onChange={(e) => handleStatusChange(post.id, e.target.value)}
+                                    className="admin-post-status-select"
+                                  >
+                                    <option value="active">Active (Visible)</option>
+                                    <option value="flagged">Flagged (Warning)</option>
+                                    <option value="hidden">Hidden (Moderated)</option>
+                                  </select>
+
+                                  <button
+                                    onClick={() => handleTogglePin(post)}
+                                    className={`btn-compliance-action ${post.isPinned ? "active" : ""}`}
+                                    title={post.isPinned ? "Unpin Post" : "Pin Post"}
+                                    style={{
+                                      background: post.isPinned ? "rgba(16, 185, 129, 0.15)" : "var(--admin-btn-secondary-bg)",
+                                      border: `1px solid ${post.isPinned ? "rgba(16, 185, 129, 0.4)" : "var(--admin-border)"}`,
+                                      color: post.isPinned ? "#10b981" : "var(--admin-text-muted)",
+                                      padding: "5px 8px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontSize: "0.72rem",
+                                      display: "flex",
+                                      alignItems: "center"
+                                    }}
+                                  >
+                                    <Pin size={12} fill={post.isPinned ? "#10b981" : "none"} />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleToggleFeature(post)}
+                                    className={`btn-compliance-action ${post.isFeatured ? "active" : ""}`}
+                                    title={post.isFeatured ? "Unfeature Post" : "Feature Post"}
+                                    style={{
+                                      background: post.isFeatured ? "rgba(245, 158, 11, 0.15)" : "var(--admin-btn-secondary-bg)",
+                                      border: `1px solid ${post.isFeatured ? "rgba(245, 158, 11, 0.4)" : "var(--admin-border)"}`,
+                                      color: post.isFeatured ? "#f59e0b" : "var(--admin-text-muted)",
+                                      padding: "5px 8px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontSize: "0.72rem",
+                                      display: "flex",
+                                      alignItems: "center"
+                                    }}
+                                  >
+                                    <Sparkles size={12} fill={post.isFeatured ? "#f59e0b" : "none"} />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleToggleCommentsLock(post)}
+                                    className={`btn-compliance-action ${post.commentsLocked ? "active" : ""}`}
+                                    title={post.commentsLocked ? "Unlock Comments" : "Lock Comments"}
+                                    style={{
+                                      background: post.commentsLocked ? "rgba(239, 68, 68, 0.15)" : "var(--admin-btn-secondary-bg)",
+                                      border: `1px solid ${post.commentsLocked ? "rgba(239, 68, 68, 0.4)" : "var(--admin-border)"}`,
+                                      color: post.commentsLocked ? "#ef4444" : "var(--admin-text-muted)",
+                                      padding: "5px 8px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontSize: "0.72rem",
+                                      display: "flex",
+                                      alignItems: "center"
+                                    }}
+                                  >
+                                    {post.commentsLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleToggleLikesDisabled(post)}
+                                    className={`btn-compliance-action ${post.likesDisabled ? "active" : ""}`}
+                                    title={post.likesDisabled ? "Enable Likes" : "Disable Likes"}
+                                    style={{
+                                      background: post.likesDisabled ? "rgba(239, 68, 68, 0.15)" : "var(--admin-btn-secondary-bg)",
+                                      border: `1px solid ${post.likesDisabled ? "rgba(239, 68, 68, 0.4)" : "var(--admin-border)"}`,
+                                      color: post.likesDisabled ? "#ef4444" : "var(--admin-text-muted)",
+                                      padding: "5px 8px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontSize: "0.72rem",
+                                      display: "flex",
+                                      alignItems: "center"
+                                    }}
+                                  >
+                                    <Heart size={12} fill={post.likesDisabled ? "none" : "#ef4444"} color={post.likesDisabled ? "#ef4444" : "none"} />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleToggleSensitive(post)}
+                                    className={`btn-compliance-action ${post.isSensitive ? "active" : ""}`}
+                                    title={post.isSensitive ? "Remove Sensitive Flag" : "Mark as Sensitive"}
+                                    style={{
+                                      background: post.isSensitive ? "rgba(244, 63, 94, 0.15)" : "var(--admin-btn-secondary-bg)",
+                                      border: `1px solid ${post.isSensitive ? "rgba(244, 63, 94, 0.4)" : "var(--admin-border)"}`,
+                                      color: post.isSensitive ? "#f43f5e" : "var(--admin-text-muted)",
+                                      padding: "5px 8px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontSize: "0.72rem",
+                                      display: "flex",
+                                      alignItems: "center"
+                                    }}
+                                  >
+                                    {post.isSensitive ? <EyeOff size={12} /> : <Eye size={12} />}
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setEditingPostId(post.id || post._id);
+                                      setEditingPostText(post.text);
+                                    }}
+                                    className="btn-compliance-action"
+                                    title="Edit Post Text"
+                                    style={{
+                                      background: "var(--admin-btn-secondary-bg)",
+                                      border: "1px solid var(--admin-border)",
+                                      color: "var(--admin-text-muted)",
+                                      padding: "5px 8px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontSize: "0.72rem",
+                                      display: "flex",
+                                      alignItems: "center"
+                                    }}
+                                  >
+                                    <Edit size={12} />
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setExpandedPostLegal(prev => ({
+                                        ...prev,
+                                        [post.id]: !prev[post.id]
+                                      }));
+                                    }}
+                                    className={`btn-compliance-action ${expandedPostLegal[post.id] ? "active" : ""}`}
+                                    title="Manage legal case file & compliance notes"
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      background: expandedPostLegal[post.id] ? "var(--admin-btn-active-bg)" : "var(--admin-btn-secondary-bg)",
+                                      border: `1px solid ${expandedPostLegal[post.id] ? "var(--admin-btn-active-border)" : "var(--admin-border)"}`,
+                                      color: expandedPostLegal[post.id] ? "var(--accent)" : "var(--admin-text-muted)",
+                                      padding: "5px 10px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontSize: "0.72rem",
+                                      fontWeight: "700",
+                                      transition: "all 0.15s ease"
+                                    }}
+                                  >
+                                    <ShieldAlert size={12} />
+                                    <span>Legal File</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeletePostClick(post.id, post.author?.username || "Someone")}
+                                    className="btn-action-delete"
+                                    title="Delete post permanently"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="post-card-body">
+                              {renderPostContent(post.text, addToast)}
+                              {parsePollBlock(post.id, post.text)}
+                              {parseRepoBlock(post.text)}
+                              {parseEventBlock(post.text)}
+
+                              {post.techStack && post.techStack.length > 0 && (
+                                <div className="post-tech-tags" style={{ marginTop: "8px" }}>
+                                  {post.techStack.map((tech, idx) => (
+                                    <span key={idx} className="tech-tag-pill">{tech}</span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {renderPostImages(post)}
+                            </div>
+
+                            <div className="post-card-footer">
+                              <div className="post-stats-row">
+                                <span className="stat-pill">👍 {post.likesCount} Likes</span>
+                                <span className="stat-pill">💬 {post.comments ? post.comments.length : 0} Comments</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setExpandedPosts(prev => ({
+                                    ...prev,
+                                    [post.id]: !prev[post.id]
+                                  }));
+                                }}
+                                className="btn-toggle-comments"
+                              >
+                                {isExpanded ? "Hide Comments" : `Manage Comments (${post.comments ? post.comments.length : 0})`}
+                              </button>
+                            </div>
+
+                            {expandedPostLegal[post.id] && (
+                              <div className="post-legal-compliance-section animate-slide-down" style={{
+                                background: "rgba(170, 59, 255, 0.03)",
+                                border: "1px solid rgba(170, 59, 255, 0.15)",
+                                borderRadius: "8px",
+                                padding: "16px",
+                                margin: "0 20px 20px 20px"
+                              }}>
+                                <h5 style={{ margin: "0 0 12px 0", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--accent)" }}>
+                                  Compliance File & Legal Claims
+                                </h5>
+
+                                <form onSubmit={(e) => {
+                                  e.preventDefault();
+                                  const form = e.target;
+                                  const infringementType = form.infringementType.value;
+                                  const caseStatus = form.caseStatus.value;
+                                  const notes = form.notes.value;
+                                  const caseId = form.caseId.value;
+
+                                  handleSaveCompliance(post.id, post.status, {
+                                    caseId,
+                                    infringementType,
+                                    caseStatus,
+                                    notes
+                                  });
+                                }} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                                    <div>
+                                      <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Legal Case ID</label>
+                                      <input
+                                        type="text"
+                                        name="caseId"
+                                        defaultValue={post.legalCase?.caseId || `CE-LEGAL-${Math.floor(1000 + Math.random() * 9000)}`}
+                                        className="table-search-input"
+                                        placeholder="Case ID (e.g. CE-DMCA-2026)"
+                                        style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
+                                      />
                                     </div>
+
+                                    <div>
+                                      <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Infringement Classification</label>
+                                      <select
+                                        name="infringementType"
+                                        defaultValue={post.legalCase?.infringementType || "None"}
+                                        style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
+                                      >
+                                        <option value="None">None (General Clean)</option>
+                                        <option value="DMCA Takedown Request">DMCA Takedown Request</option>
+                                        <option value="Copyright Infringement">Copyright Infringement</option>
+                                        <option value="TOS Violation">TOS Violation</option>
+                                        <option value="Hate Speech / Harassment">Hate Speech / Harassment</option>
+                                        <option value="Other Legal Claim">Other Legal Claim</option>
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                                    <div>
+                                      <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Case Moderation Status</label>
+                                      <select
+                                        name="caseStatus"
+                                        defaultValue={post.legalCase?.caseStatus || "Resolved"}
+                                        style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
+                                      >
+                                        <option value="Open">Open Case</option>
+                                        <option value="Under Review">Under Review</option>
+                                        <option value="Compliance Action Taken">Compliance Action Taken</option>
+                                        <option value="Dismissed">Dismissed Case</option>
+                                        <option value="Resolved">Resolved (No Claim)</option>
+                                      </select>
+                                    </div>
+
+                                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                                      {post.legalCase?.actionTakenBy && (
+                                        <div style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontStyle: "italic", borderLeft: "2px solid var(--accent)", paddingLeft: "6px" }}>
+                                          Last audited by <strong>{post.legalCase.actionTakenBy}</strong>
+                                          {post.legalCase.actionDate && ` on ${new Date(post.legalCase.actionDate).toLocaleDateString()}`}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Audit compliance notes / log</label>
+                                    <textarea
+                                      name="notes"
+                                      defaultValue={post.legalCase?.notes || ""}
+                                      placeholder="Write notes about legal notices received, DMCA takedown correspondence or reason for flagging..."
+                                      style={{ width: "100%", height: "80px", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "8px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)", resize: "none", outline: "none", boxSizing: "border-box" }}
+                                    />
+                                  </div>
+
+                                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                     <button
-                                      onClick={() => handleDeleteCommentClick(post.id, comment._id, comment.username)}
-                                      className="btn-comment-delete"
-                                      title="Delete and moderate comment"
+                                      type="submit"
+                                      className="btn-action"
+                                      disabled={savingCompliance[post.id]}
+                                      style={{ background: "var(--accent)", color: "#fff", borderColor: "var(--accent)", display: "inline-flex", alignItems: "center", gap: "6px" }}
                                     >
-                                      <Trash2 size={12} />
+                                      {savingCompliance[post.id] && <Loader className="spinner" size={10} />}
+                                      <span>{savingCompliance[post.id] ? "Saving..." : "Save Case Details"}</span>
                                     </button>
                                   </div>
-                                ))}
+                                </form>
+                              </div>
+                            )}
+
+                            {isExpanded && (
+                              <div className="post-comments-section animate-slide-down">
+                                <h5>Comments Moderation</h5>
+                                {(!post.comments || post.comments.length === 0) ? (
+                                  <p className="no-comments-text">No comments on this post.</p>
+                                ) : (
+                                  <div className="admin-comments-list">
+                                    {post.comments.map((comment) => (
+                                      <div key={comment._id} className="admin-comment-row">
+                                        <div className="comment-left-col">
+                                          <div className="commenter-avatar">
+                                            {comment.avatar ? (
+                                              <img src={comment.avatar} alt={comment.username} className="avatar-img" />
+                                            ) : (
+                                              <div className="avatar-placeholder">
+                                                {(comment.username || "U").substring(0, 2).toUpperCase()}
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="comment-text-details">
+                                            <div className="commenter-meta">
+                                              <span className="commenter-name">{comment.username}</span>
+                                              <span className="comment-time">
+                                                {new Date(comment.createdAt).toLocaleString()}
+                                              </span>
+                                            </div>
+                                            <p className="comment-content-text">"{comment.text}"</p>
+                                          </div>
+                                        </div>
+                                        <button
+                                          onClick={() => handleDeleteCommentClick(post.id, comment._id, comment.username)}
+                                          className="btn-comment-delete"
+                                          title="Delete and moderate comment"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                        );
+                      })
+                    )}
+                  </div>
 
-              {/* PAGINATION */}
-              {postPagination.totalPages > 1 && (
-                <div className="table-pagination-row" style={{ marginTop: "24px" }}>
-                  <button
-                    disabled={postPage <= 1}
-                    onClick={() => setPostPage((prev) => Math.max(1, prev - 1))}
-                    className="btn-page-nav"
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Previous</span>
-                  </button>
-                  <span className="page-indicator">
-                    Page <strong>{postPage}</strong> of <strong>{postPagination.totalPages}</strong> ({postPagination.totalPosts} posts)
-                  </span>
-                  <button
-                    disabled={postPage >= postPagination.totalPages}
-                    onClick={() => setPostPage((prev) => Math.min(postPagination.totalPages, prev + 1))}
-                    className="btn-page-nav"
-                  >
-                    <span>Next</span>
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
-              </>)}
+                  {/* PAGINATION */}
+                  {postPagination.totalPages > 1 && (
+                    <div className="table-pagination-row" style={{ marginTop: "24px" }}>
+                      <button
+                        disabled={postPage <= 1}
+                        onClick={() => setPostPage((prev) => Math.max(1, prev - 1))}
+                        className="btn-page-nav"
+                      >
+                        <ChevronLeft size={14} />
+                        <span>Previous</span>
+                      </button>
+                      <span className="page-indicator">
+                        Page <strong>{postPage}</strong> of <strong>{postPagination.totalPages}</strong> ({postPagination.totalPosts} posts)
+                      </span>
+                      <button
+                        disabled={postPage >= postPagination.totalPages}
+                        onClick={() => setPostPage((prev) => Math.min(postPagination.totalPages, prev + 1))}
+                        className="btn-page-nav"
+                      >
+                        <span>Next</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </>)}
 
               {feedSubTab === "stories" && (
                 <div className="admin-stories-moderation-pane animate-fade-in">
@@ -3215,7 +4137,7 @@ const AdminDashboard = () => {
 
                             <div className="post-card-body" style={{ padding: "12px 0" }}>
                               {story.text && <p className="post-text-content" style={{ margin: "0 0 10px 0", fontSize: "0.85rem", color: "var(--admin-text-h)" }}>{story.text}</p>}
-                              
+
                               {story.mediaUrl && (
                                 <div className="story-media-preview-frame" style={{ borderRadius: "6px", overflow: "hidden", maxHeight: "200px", background: "rgba(0,0,0,0.2)", display: "flex", justifyContent: "center" }}>
                                   {story.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || story.mediaUrl.includes("video") ? (
@@ -3289,7 +4211,7 @@ const AdminDashboard = () => {
                 {/* Left Card: Lockout Control */}
                 <div className={`maintenance-control-card glass-panel ${maintenanceMode ? "system-locked" : "system-open"}`}>
                   <div className="card-badge">GATE CONTROLLER</div>
-                  
+
                   <div className="pulse-indicator-wrapper">
                     <div className="pulse-ring"></div>
                     <div className="pulse-core"></div>
@@ -3716,15 +4638,32 @@ const AdminDashboard = () => {
                     </button>
                     <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                       <span className="ticket-id-label" style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontFamily: "monospace" }}>ID: {selectedAdminTicket._id}</span>
+                      
+                      {/* Assignee select */}
+                      <select
+                        value={selectedAdminTicket.assignedTo?._id || selectedAdminTicket.assignedTo || ""}
+                        onChange={(e) => handleUpdateTicketStatus(selectedAdminTicket._id, selectedAdminTicket.status, e.target.value || null)}
+                        className="admin-title-select"
+                        style={{ padding: "6px 12px", fontSize: "0.78rem", background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--admin-border)", borderRadius: "4px" }}
+                      >
+                        <option value="">Unassigned Staff</option>
+                        {admins.map(adm => (
+                          <option key={adm._id || adm.id} value={adm._id || adm.id}>{adm.username}</option>
+                        ))}
+                      </select>
+
+                      {/* Expanded Status select */}
                       <select
                         value={selectedAdminTicket.status}
-                        onChange={(e) => handleUpdateTicketStatus(selectedAdminTicket._id, e.target.value)}
+                        onChange={(e) => handleUpdateTicketStatus(selectedAdminTicket._id, e.target.value, selectedAdminTicket.assignedTo?._id || selectedAdminTicket.assignedTo)}
                         className="admin-title-select"
-                        style={{ padding: "6px 12px", fontSize: "0.78rem" }}
+                        style={{ padding: "6px 12px", fontSize: "0.78rem", background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--admin-border)", borderRadius: "4px" }}
                       >
                         <option value="open">Open</option>
-                        <option value="in-progress">In Progress</option>
+                        <option value="under-review">Under Review</option>
+                        <option value="waiting-for-user">Waiting for User</option>
                         <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
                       </select>
                     </div>
                   </div>
@@ -3897,8 +4836,234 @@ const AdminDashboard = () => {
               )}
             </div>
           )}
+
+          {activeTab === "appeals" && (
+            <div className="tab-pane-table glass-panel animate-fade-in">
+              <div className="table-search-row">
+                <h4 style={{ margin: "0", fontSize: "0.95rem", fontWeight: "750", color: "var(--admin-text-h)" }}>User Appeals Review</h4>
+                {loadingAppeals && <Loader className="spinner table-inline-loader" size={14} />}
+              </div>
+
+              <div className="table-wrapper-responsive">
+                <table className="admin-data-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Violation / Action</th>
+                      <th>Reason for Appeal</th>
+                      <th>Status</th>
+                      <th>Submitted Date</th>
+                      <th className="actions-header">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appeals.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="empty-table-row">
+                          {loadingAppeals ? "Loading appeals list..." : "No appeals found."}
+                        </td>
+                      </tr>
+                    ) : (
+                      appeals.map((app) => (
+                        <tr key={app._id}>
+                          <td className="user-details-cell">
+                            <div className="user-avatar-wrapper">
+                              {app.user?.avatar ? (
+                                <img src={app.user.avatar} alt={app.user.username} className="avatar-img" />
+                              ) : (
+                                <div className="avatar-placeholder">{(app.user?.username || "U").substring(0, 2).toUpperCase()}</div>
+                              )}
+                            </div>
+                            <span className="username-text">
+                              {app.user?.username || "Deleted User"}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: "600", color: "var(--admin-text-h)" }}>
+                              {app.moderationAction?.actionType}
+                            </div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>
+                              Original Reason: {app.moderationAction?.reason}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: "0.82rem", color: "var(--admin-text-h)", maxWidth: "250px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {app.reason}
+                            </div>
+                            {app.notes && (
+                              <div style={{ fontSize: "0.7rem", color: "var(--admin-text-muted)" }}>
+                                Notes: {app.notes}
+                              </div>
+                            )}
+                            {app.attachment && (
+                              <div style={{ marginTop: "4px" }}>
+                                <a href={app.attachment} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "var(--admin-accent)", textDecoration: "underline" }}>View Attachment</a>
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span
+                              className={`role-badge ${app.status === "Approved" ? "user" : app.status === "Pending" ? "demote" : "suspended"}`}
+                              style={{
+                                background: app.status === "Approved" ? "rgba(16, 185, 129, 0.1)" : app.status === "Pending" ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)",
+                                color: app.status === "Approved" ? "#10b981" : app.status === "Pending" ? "#f59e0b" : "#ef4444",
+                                border: app.status === "Approved" ? "1px solid rgba(16, 185, 129, 0.2)" : app.status === "Pending" ? "1px solid rgba(245, 158, 11, 0.2)" : "1px solid rgba(239, 68, 68, 0.2)"
+                              }}
+                            >
+                              {app.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td>{new Date(app.submittedDate || app.createdAt).toLocaleString()}</td>
+                          <td className="actions-cell">
+                            {app.status === "Pending" ? (
+                              <button
+                                onClick={() => setSelectedAppealForReview(app)}
+                                className="btn-action promote"
+                              >
+                                Review Appeal
+                              </button>
+                            ) : (
+                              <div style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", maxWidth: "150px", whiteSpace: "normal" }}>
+                                <strong>Response:</strong> {app.adminResponse || "No comment."}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Quick Post Text Editor Modal */}
+      {editingPostId && (
+        <div className="ce-modal-overlay" onClick={() => setEditingPostId(null)} style={{ zIndex: 10000000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "500px",
+              background: "#0d0d15",
+              border: "1px solid var(--admin-border)",
+              borderRadius: "12px",
+              padding: "20px",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px"
+            }}
+          >
+            <h4 style={{ margin: 0, color: "#fff", fontSize: "1.1rem" }}>Edit Post Content</h4>
+            <textarea
+              value={editingPostText}
+              onChange={(e) => setEditingPostText(e.target.value)}
+              style={{
+                width: "100%",
+                height: "150px",
+                background: "#06060a",
+                border: "1px solid var(--admin-border)",
+                borderRadius: "8px",
+                padding: "10px",
+                color: "#e2e8f0",
+                fontSize: "0.85rem",
+                fontFamily: "inherit",
+                resize: "none"
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button 
+                onClick={() => setEditingPostId(null)}
+                style={{ padding: "6px 14px", background: "none", border: "1px solid var(--admin-border)", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const targetPost = posts.find(p => p.id === editingPostId || p._id === editingPostId);
+                  handleSaveEditedText(editingPostId, editingPostText, targetPost?.status);
+                }}
+                style={{ padding: "6px 14px", background: "var(--accent)", border: "none", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Appeal Review Decision Modal */}
+      {selectedAppealForReview && (
+        <div className="ce-modal-overlay" onClick={() => setSelectedAppealForReview(null)} style={{ zIndex: 10000000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "500px",
+              background: "#0d0d15",
+              border: "1px solid var(--admin-border)",
+              borderRadius: "12px",
+              padding: "20px",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px"
+            }}
+          >
+            <h4 style={{ margin: 0, color: "#fff", fontSize: "1.1rem" }}>Review Compliance Appeal</h4>
+            <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", fontSize: "0.75rem", color: "var(--admin-text-muted)", display: "flex", flexDirection: "column", gap: "4px", textAlign: "left" }}>
+              <span><strong>User:</strong> {selectedAppealForReview.user?.username}</span>
+              <span><strong>Action:</strong> {selectedAppealForReview.moderationAction?.actionType}</span>
+              <span><strong>User Reason:</strong> {selectedAppealForReview.reason}</span>
+              {selectedAppealForReview.notes && <span><strong>Notes:</strong> {selectedAppealForReview.notes}</span>}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", textAlign: "left" }}>
+              <label style={{ fontSize: "0.75rem", color: "var(--admin-text-muted)" }}>Administrative Explanation Response Notes *</label>
+              <textarea
+                value={appealAdminNotes}
+                onChange={(e) => setAppealAdminNotes(e.target.value)}
+                required
+                placeholder="Explain the approval/rejection justification decision..."
+                style={{
+                  width: "100%",
+                  height: "100px",
+                  background: "#06060a",
+                  border: "1px solid var(--admin-border)",
+                  borderRadius: "8px",
+                  padding: "10px",
+                  color: "#e2e8f0",
+                  fontSize: "0.85rem",
+                  resize: "none"
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button 
+                onClick={() => setSelectedAppealForReview(null)}
+                style={{ padding: "6px 14px", background: "none", border: "1px solid var(--admin-border)", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleResolveAppealDecision(selectedAppealForReview._id, "Rejected")}
+                disabled={resolvingAppeal}
+                style={{ padding: "6px 14px", background: "#ef4444", border: "none", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}
+              >
+                Reject Appeal
+              </button>
+              <button 
+                onClick={() => handleResolveAppealDecision(selectedAppealForReview._id, "Approved")}
+                disabled={resolvingAppeal}
+                style={{ padding: "6px 14px", background: "#10b981", border: "none", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}
+              >
+                Approve & Reverse
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

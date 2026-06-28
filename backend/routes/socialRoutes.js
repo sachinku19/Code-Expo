@@ -87,7 +87,7 @@ router.get("/notifications", auth_protect, getNotifications);
 router.post("/notifications/read", auth_protect, markNotificationsRead);
 
 // Posts
-router.post("/posts", auth_protect, upload.array("images", 10), createPost);
+router.post("/posts", auth_protect, upload.fields([{ name: "images", maxCount: 10 }, { name: "video", maxCount: 1 }]), createPost);
 router.get("/posts", optional_auth, getPosts);
 router.get("/posts/:id", optional_auth, getPostById);
 router.delete("/posts/:id", auth_protect, deletePost);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getPostById, toggleLikePost, addCommentPost } from "../services/socialService";
+import socket from "../socket/socket";
 import { 
   Heart, Bookmark, ChevronLeft, ChevronRight, MessageSquare, 
   Send, Share2, ArrowLeft
@@ -21,6 +22,7 @@ export default function PublicPostView() {
   const [commentText, setCommentText] = useState("");
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
+  const [revealedSensitive, setRevealedSensitive] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   const addToast = (message, type = "success") => {
@@ -35,7 +37,11 @@ export default function PublicPostView() {
     try {
       const res = await getPostById(postId);
       if (res?.success && res.post) {
-        setPost(res.post);
+        if (res.post.status === "hidden" || res.post.status === "deleted" || res.post.author?.isSuspended) {
+          setError("This post is unavailable because it has been removed or hidden by the platform.");
+        } else {
+          setPost(res.post);
+        }
       } else {
         setError("Post not found");
       }
@@ -49,7 +55,52 @@ export default function PublicPostView() {
 
   useEffect(() => {
     fetchPost();
-  }, [postId]);
+
+    const handleAdminPostAction = ({ postId: updatedPostId, post: updatedPost }) => {
+      if (String(updatedPostId) === String(postId)) {
+        if (updatedPost.status === "hidden" || updatedPost.status === "deleted") {
+          setError("This post is unavailable because it has been removed or hidden by the platform.");
+        } else {
+          setPost(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              ...updatedPost,
+              author: prev.author
+            };
+          });
+        }
+      }
+    };
+
+    const handleAdminUserAction = ({ userId, isSuspended }) => {
+      if (isSuspended) {
+        setPost(prev => {
+          if (prev && prev.author && (String(prev.author._id) === String(userId) || String(prev.author.id) === String(userId))) {
+            setError("This post is unavailable because it has been removed or hidden by the platform.");
+          }
+          return prev;
+        });
+
+        const currentUserId = user?.id || user?._id;
+        if (currentUserId && String(currentUserId) === String(userId)) {
+          localStorage.clear();
+          addToast("Your account has been suspended by an administrator.", "error");
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 1500);
+        }
+      }
+    };
+
+    socket.on("admin-post-action", handleAdminPostAction);
+    socket.on("admin-user-action", handleAdminUserAction);
+
+    return () => {
+      socket.off("admin-post-action", handleAdminPostAction);
+      socket.off("admin-user-action", handleAdminUserAction);
+    };
+  }, [postId, user]);
 
   const handleLike = async () => {
     if (!user) {
@@ -196,8 +247,9 @@ export default function PublicPostView() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          style={{ flexDirection: hasImage ? "row" : "column" }}
+          style={{ flexDirection: hasImage ? "row" : "column", position: "relative" }}
         >
+          <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: hasImage ? "row" : "column" }} className={post.isSensitive && !revealedSensitive ? "sensitive-blur-active" : ""}>
           {/* Image carousel block */}
           {hasImage && (
             <div className="public-post-image-column">
@@ -303,9 +355,11 @@ export default function PublicPostView() {
               <div className="actions-row">
                 <div className="action-buttons-group">
                   <button 
-                    onClick={handleLike} 
+                    onClick={() => !post.likesDisabled && handleLike()} 
+                    disabled={post.likesDisabled}
                     className="action-trigger-btn like" 
-                    style={{ color: post.likes?.includes(user?.id || user?._id) ? "#ef4444" : "var(--ce-text)" }}
+                    style={{ color: post.likes?.includes(user?.id || user?._id) ? "#ef4444" : "var(--ce-text)", opacity: post.likesDisabled ? 0.45 : 1, cursor: post.likesDisabled ? "not-allowed" : "pointer" }}
+                    title={post.likesDisabled ? "Likes are disabled" : ""}
                   >
                     <Heart size={20} fill={post.likes?.includes(user?.id || user?._id) ? "#ef4444" : "none"} />
                   </button>
@@ -357,9 +411,11 @@ export default function PublicPostView() {
               <form onSubmit={handleAddComment} className="public-comment-form">
                 <input 
                   type="text" 
-                  placeholder={user ? "Add a comment..." : "Login to write comments..."}
+                  placeholder={post.commentsLocked ? "Comments are locked for this post." : (user ? "Add a comment..." : "Login to write comments...")}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
+                  disabled={post.commentsLocked || !user}
+                  style={{ cursor: post.commentsLocked ? "not-allowed" : "text" }}
                   onClick={() => {
                     if (!user) {
                       addToast("Please login to write a comment.", "error");
@@ -369,12 +425,27 @@ export default function PublicPostView() {
                     }
                   }}
                 />
-                <button type="submit" className="comment-submit-btn" disabled={!user || !commentText.trim()}>
+                <button type="submit" className="comment-submit-btn" disabled={!user || !commentText.trim() || post.commentsLocked} style={{ cursor: post.commentsLocked ? "not-allowed" : "pointer" }}>
                   <Send size={14} />
                 </button>
               </form>
             </div>
           </div>
+          </div>
+
+          {post.isSensitive && !revealedSensitive && (
+            <div className="sensitive-shield-mask" style={{ borderRadius: "16px" }}>
+              <h4 className="sensitive-shield-title">Sensitive Content</h4>
+              <p className="sensitive-shield-desc">This post has been flagged as sensitive by the platform administrators.</p>
+              <button
+                type="button"
+                className="btn-reveal-sensitive"
+                onClick={() => setRevealedSensitive(true)}
+              >
+                Show Sensitive Content
+              </button>
+            </div>
+          )}
         </motion.div>
       </main>
     </div>

@@ -32,9 +32,37 @@ const postSchema = new mongoose.Schema({
     type: [MediaSchema],
     default: []
   },
+  video: {
+    type: String,
+    default: ""
+  },
+  videoMetadata: {
+    type: MediaSchema,
+    default: null
+  },
+  isPinned: {
+    type: Boolean,
+    default: false
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  commentsLocked: {
+    type: Boolean,
+    default: false
+  },
+  likesDisabled: {
+    type: Boolean,
+    default: false
+  },
+  isSensitive: {
+    type: Boolean,
+    default: false
+  },
   status: {
     type: String,
-    enum: ["active", "flagged", "hidden"],
+    enum: ["active", "flagged", "hidden", "deleted"],
     default: "active"
   },
   legalCase: {

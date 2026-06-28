@@ -14,10 +14,10 @@ const getAuthHeaders = () => {
   };
 };
 
-export const createTicket = async (subject, description) => {
+export const createTicket = async (subject, description, category, attachments) => {
   const response = await API.post(
     "/tickets",
-    { subject, description },
+    { subject, description, category, attachments },
     getAuthHeaders()
   );
   return response.data;
@@ -56,10 +56,10 @@ export const adminGetAllTickets = async () => {
   return response.data;
 };
 
-export const adminUpdateTicketStatus = async (ticketId, status) => {
+export const adminUpdateTicketStatus = async (ticketId, status, assignedTo) => {
   const response = await API.put(
     `/tickets/admin/${ticketId}/status`,
-    { status },
+    { status, assignedTo },
     getAuthHeaders()
   );
   return response.data;

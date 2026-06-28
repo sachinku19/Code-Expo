@@ -4,7 +4,7 @@ const { logActivity } = require("./activityControllers");
 // 1. User: Create a Support Ticket
 const createTicket = async (req, res) => {
   try {
-    const { subject, description } = req.body;
+    const { subject, description, category, attachments } = req.body;
     const userId = req.user._id;
 
     if (!subject || !subject.trim()) {
@@ -25,6 +25,8 @@ const createTicket = async (req, res) => {
       user: userId,
       subject: subject.trim(),
       description: description.trim(),
+      category: category || "General",
+      attachments: attachments || [],
       messages: []
     });
 
@@ -74,6 +76,7 @@ const getTicketDetails = async (req, res) => {
 
     const ticket = await Ticket.findById(ticketId)
       .populate("user", "username email avatar role")
+      .populate("assignedTo", "username email avatar role")
       .populate("messages.sender", "username email avatar role");
 
     if (!ticket) {
@@ -142,7 +145,7 @@ const addTicketMessage = async (req, res) => {
 
     // Auto-update ticket status based on sender
     if (userRole === "admin") {
-      ticket.status = "in-progress"; // Set status to in-progress when admin replies
+      ticket.status = "under-review"; // Set status to under-review when admin replies
     } else {
       ticket.status = "open"; // Re-open ticket when user posts a reply
     }
@@ -152,6 +155,40 @@ const addTicketMessage = async (req, res) => {
     // Populate ticket messages details to send back
     const updatedTicket = await Ticket.findById(ticketId)
       .populate("messages.sender", "username email avatar role");
+
+    // Notify user if admin replies
+    if (userRole === "admin") {
+      try {
+        const Notification = require("../models/Notification");
+        const notification = new Notification({
+          recipient: ticket.user,
+          sender: userId,
+          type: "TICKET_UPDATE",
+          category: "SYSTEM",
+          ticket: ticket._id,
+          message: `New support representative reply on ticket: "${ticket.subject}"`
+        });
+        await notification.save();
+
+        const socketHandler = require("../sockets/socketHandler");
+        if (socketHandler.io) {
+          socketHandler.io.emit("notification-received", notification);
+        }
+      } catch (e) {
+        console.error("Failed to notify user about ticket reply:", e.message);
+      }
+    }
+
+    // Broadcast ticket-update via socket
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("ticket-update", {
+          ticketId: ticket._id,
+          ticket: updatedTicket
+        });
+      }
+    } catch (e) {}
 
     res.status(200).json({
       success: true,
@@ -172,6 +209,7 @@ const adminGetAllTickets = async (req, res) => {
   try {
     const tickets = await Ticket.find()
       .populate("user", "username email avatar role")
+      .populate("assignedTo", "username email avatar role")
       .sort({ updatedAt: -1 });
 
     res.status(200).json({
@@ -190,14 +228,7 @@ const adminGetAllTickets = async (req, res) => {
 const adminUpdateTicketStatus = async (req, res) => {
   try {
     const ticketId = req.params.id;
-    const { status } = req.body;
-
-    if (!status || !["open", "in-progress", "resolved"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status. Must be 'open', 'in-progress', or 'resolved'."
-      });
-    }
+    const { status, assignedTo } = req.body;
 
     const ticket = await Ticket.findById(ticketId);
     if (!ticket) {
@@ -207,13 +238,64 @@ const adminUpdateTicketStatus = async (req, res) => {
       });
     }
 
-    ticket.status = status;
+    if (status) {
+      if (!["open", "under-review", "waiting-for-user", "resolved", "closed"].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status. Must be 'open', 'under-review', 'waiting-for-user', 'resolved', or 'closed'."
+        });
+      }
+      ticket.status = status;
+    }
+
+    if (assignedTo !== undefined) {
+      ticket.assignedTo = assignedTo || null;
+    }
+
     await ticket.save();
+
+    // Populate user and assignee details
+    const updatedTicket = await Ticket.findById(ticketId)
+      .populate("user", "username email avatar role")
+      .populate("assignedTo", "username email avatar role")
+      .populate("messages.sender", "username email avatar role");
+
+    // Create system notification for user
+    try {
+      const Notification = require("../models/Notification");
+      const notification = new Notification({
+        recipient: ticket.user,
+        sender: req.user._id,
+        type: "TICKET_UPDATE",
+        category: "SYSTEM",
+        ticket: ticket._id,
+        message: `Your ticket "${ticket.subject}" status is now "${ticket.status.toUpperCase()}"`
+      });
+      await notification.save();
+
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("notification-received", notification);
+      }
+    } catch (e) {
+      console.error("Failed to notify user on ticket update:", e.message);
+    }
+
+    // Emit live event
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("ticket-update", {
+          ticketId: ticket._id,
+          ticket: updatedTicket
+        });
+      }
+    } catch (e) {}
 
     res.status(200).json({
       success: true,
-      message: `Ticket status updated to '${status}'.`,
-      status
+      message: `Ticket updated successfully.`,
+      ticket: updatedTicket
     });
   } catch (error) {
     res.status(500).json({

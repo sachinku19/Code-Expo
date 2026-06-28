@@ -12,12 +12,23 @@ const createStory = async (req, res) => {
     let mediaMetadata = null;
 
     if (req.file) {
-      // Validate file size and type (supports image and video files up to 20MB)
-      MediaService.validateFile(req.file, {
-        maxSize: 20 * 1024 * 1024,
-        allowedExtensions: /jpeg|jpg|png|webp|gif|mp4|mov|avi|webm/,
-        allowedMimeTypes: /image\/jpeg|image\/png|image\/webp|image\/gif|video\/mp4|video\/quicktime|video\/x-msvideo|video\/webm/
-      });
+      const isVideo = req.file.mimetype.startsWith("video/");
+      const maxSize = isVideo ? 30 * 1024 * 1024 : 5 * 1024 * 1024;
+      const mediaTypeName = isVideo ? "Video" : "Image";
+
+      // Validate file size and type
+      try {
+        MediaService.validateFile(req.file, {
+          maxSize,
+          allowedExtensions: isVideo ? /mp4|webm|mov|avi|mkv/ : /jpeg|jpg|png|webp/,
+          allowedMimeTypes: isVideo ? /video\/mp4|video\/webm|video\/quicktime|video\/x-msvideo|video\/x-matroska/ : /image\/jpeg|image\/png|image\/webp/
+        });
+      } catch (err) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `${mediaTypeName} exceeds the limit. Images are limited to 5 MB, and videos are limited to 30 MB.`
+        });
+      }
 
       uploadedMedia = await MediaService.uploadMedia(
         req.file.buffer,
@@ -25,7 +36,7 @@ const createStory = async (req, res) => {
         "codeexpo_stories",
         { 
           req,
-          resourceType: req.file.mimetype.startsWith("video/") ? "video" : "image"
+          resourceType: isVideo ? "video" : "image"
         }
       );
       mediaUrl = uploadedMedia.url;

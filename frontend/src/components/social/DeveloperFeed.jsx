@@ -1,14 +1,427 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell } from "lucide-react";
+import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play } from "lucide-react";
 import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost } from "../../services/socialService";
 import { createPortal } from "react-dom";
+import socket from "../../socket/socket";
 import ProfileAvatar from "../ProfileAvatar";
 import ImageCropper from "./ImageCropper";
 import "./PremiumFeed.css";
 const FeedPortal = ({ children }) => {
   return createPortal(children, document.body);
 };
+
+// Reusable styled CodeBlock component with line numbers, syntax highlighting, and copy button
+const CodeBlock = ({ lang, code, addToast }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const lines = code.split(/\r?\n/);
+  const totalLines = lines.length;
+  const isLong = totalLines > 30;
+  
+  const visibleLines = isLong && !isExpanded ? lines.slice(0, 22) : lines;
+  const remainingLines = totalLines - visibleLines.length;
+  const highlightCode = (lineText) => {
+    if (!lineText) return "&nbsp;";
+    let escaped = lineText
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const keywords = [
+      "class", "public", "private", "protected", "int", "double", "float", "char", "void", "vector",
+      "std", "include", "return", "if", "else", "for", "while", "do", "break", "continue", "switch",
+      "case", "const", "let", "var", "function", "import", "export", "from", "default", "new", "this",
+      "struct", "template", "typename", "using", "namespace", "false", "true", "null", "nullptr"
+    ];
+
+    const regex = new RegExp(
+      `(\\/\\/.*)|` + 
+      `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` + 
+      `\\b(${keywords.join("|")})\\b|` + 
+      `\\b(\\d+)\\b`,
+      "g"
+    );
+
+    return escaped.replace(regex, (match, comment, string, keyword, number) => {
+      if (comment) {
+        return `<span style="color:#64748b; font-style:italic;">${comment}</span>`;
+      }
+      if (string) {
+        return `<span style="color:#34d399;">${string}</span>`;
+      }
+      if (keyword) {
+        return `<span style="color:#f472b6; font-weight:600;">${keyword}</span>`;
+      }
+      if (number) {
+        return `<span style="color:#fbbf24;">${number}</span>`;
+      }
+      return match;
+    });
+  };
+  return (
+    <div 
+      className="premium-code-window"
+      style={{
+        background: "#09090f",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRadius: "12px",
+        overflow: "hidden",
+        margin: "12px 0",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative"
+      }}
+    >
+      <div 
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "10px 16px",
+          background: "#11111b",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+          position: "sticky",
+          top: 0,
+          zIndex: 10
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", gap: "5px", marginRight: "8px" }}>
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ff5f56" }} />
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ffbd2e" }} />
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#27c93f" }} />
+          </div>
+          <span style={{ fontSize: "0.72rem", color: "#a5b4fc", fontFamily: "monospace", textTransform: "uppercase", fontWeight: "700" }}>
+            {lang || "code"}
+          </span>
+        </div>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(code);
+            if (addToast) addToast("Code copied to clipboard!", "success");
+          }}
+          style={{
+            background: "rgba(255, 255, 255, 0.05)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            color: "#e2e8f0",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.7rem",
+            cursor: "pointer",
+            fontWeight: "600",
+            transition: "all 0.2s"
+          }}
+        >
+          Copy
+        </button>
+      </div>
+
+      <div 
+        style={{
+          display: "flex",
+          overflow: "auto",
+          maxHeight: isLong && !isExpanded ? "380px" : "600px",
+          position: "relative",
+          background: "#09090f"
+        }}
+      >
+        <div 
+          style={{
+            padding: "16px 12px",
+            borderRight: "1px solid rgba(255, 255, 255, 0.05)",
+            background: "#07070c",
+            textAlign: "right",
+            userSelect: "none",
+            fontFamily: "'Fira Code', monospace",
+            fontSize: "0.8rem",
+            color: "#475569",
+            lineHeight: "1.5",
+            minWidth: "35px"
+          }}
+        >
+          {visibleLines.map((_, idx) => (
+            <div key={idx}>{idx + 1}</div>
+          ))}
+        </div>
+
+        <div 
+          style={{
+            padding: "16px 16px",
+            flex: 1,
+            fontFamily: "'Fira Code', monospace",
+            fontSize: "0.8rem",
+            lineHeight: "1.5",
+            color: "#e2e8f0",
+            whiteSpace: "pre",
+            overflowX: "auto"
+          }}
+        >
+          {visibleLines.map((line, idx) => (
+            <div 
+              key={idx} 
+              dangerouslySetInnerHTML={{ __html: highlightCode(line) }} 
+            />
+          ))}
+        </div>
+
+        {isLong && !isExpanded && (
+          <div 
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "80px",
+              background: "linear-gradient(to top, #09090f 20%, transparent 100%)",
+              pointerEvents: "none"
+            }}
+          />
+        )}
+      </div>
+
+      {isLong && (
+        <div 
+          style={{
+            padding: "12px",
+            background: "#11111b",
+            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 5
+          }}
+        >
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{
+              background: "rgba(99, 102, 241, 0.1)",
+              border: "1px solid rgba(99, 102, 241, 0.2)",
+              color: "#a5b4fc",
+              padding: "6px 16px",
+              borderRadius: "20px",
+              fontSize: "0.78rem",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+          >
+            {isExpanded 
+              ? "Show Less" 
+              : `${remainingLines} more lines... View Full Code`
+            }
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Reusable ExpandableText component for post descriptions to clamp long text
+const ExpandableText = ({ htmlContent }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [shouldShowButton, setShouldShowButton] = useState(false);
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    if (textRef.current) {
+      setShouldShowButton(textRef.current.scrollHeight > textRef.current.clientHeight);
+    }
+  }, [htmlContent]);
+
+  return (
+    <div style={{ position: "relative", marginBottom: "8px" }}>
+      <div 
+        ref={textRef}
+        style={{ 
+          maxHeight: !isExpanded ? "120px" : "none", 
+          overflow: "hidden",
+          transition: "max-height 0.3s ease",
+          position: "relative"
+        }}
+      >
+        {htmlContent}
+        {!isExpanded && shouldShowButton && (
+          <div 
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "24px",
+              background: "linear-gradient(to top, var(--ce-premium-bg) 10%, transparent 100%)",
+              pointerEvents: "none"
+            }}
+          />
+        )}
+      </div>
+      {shouldShowButton && (
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#60a5fa",
+            fontSize: "0.8rem",
+            fontWeight: "700",
+            cursor: "pointer",
+            padding: "4px 0",
+            marginTop: "4px",
+            display: "inline-flex",
+            alignItems: "center"
+          }}
+        >
+          {isExpanded ? "Show Less" : "Read More"}
+        </button>
+      )}
+    </div>
+  );
+};
+
+const parseMarkdownOnly = (text) => {
+  if (!text) return "";
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  html = html.replace(/^### (.*$)/gim, '<h4 style="margin:8px 0; color:#fff;">$1</h4>');
+  html = html.replace(/^## (.*$)/gim, '<h3 style="margin:10px 0; color:#fff;">$1</h3>');
+  html = html.replace(/^# (.*$)/gim, '<h2 style="margin:12px 0; color:#fff;">$1</h2>');
+
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  html = html.replace(/`([^`\r\n]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#fb7185;">$1</code>');
+  html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span style="color:#8b5cf6; font-weight:600; cursor:pointer;">#$1</span>');
+  html = html.replace(/@([a-zA-Z0-9_]+)/g, '<span style="color:#06b6d4; font-weight:600; cursor:pointer;">@$1</span>');
+  html = html.replace(/\n/g, "<br />");
+
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+};
+
+const renderPostContent = (text, addToast) => {
+  if (!text) return null;
+  
+  const parts = text.split(/(```[a-zA-Z0-9]*(?:\r?\n)[\s\S]*?```)/g);
+  
+  return parts.map((part, index) => {
+    if (part.startsWith("```")) {
+      const match = part.match(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/);
+      if (match) {
+        const lang = match[1] || "code";
+        const code = match[2];
+        return (
+          <CodeBlock 
+            key={index} 
+            lang={lang} 
+            code={code} 
+            addToast={addToast} 
+          />
+        );
+      }
+    }
+    
+    return (
+      <ExpandableText 
+        key={index} 
+        htmlContent={parseMarkdownOnly(part)} 
+      />
+    );
+  });
+};
+
+// Reusable animated glassmorphism WarningModal component
+const WarningModal = ({ isOpen, title, message, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div 
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(5, 5, 8, 0.85)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 999999
+        }}
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          style={{
+            background: "rgba(30, 30, 45, 0.65)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(239, 68, 68, 0.25)",
+            borderRadius: "16px",
+            padding: "24px",
+            width: "400px",
+            maxWidth: "90vw",
+            boxShadow: "0 24px 48px rgba(0, 0, 0, 0.5), 0 0 32px rgba(239, 68, 68, 0.1)",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "16px"
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div 
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: "rgba(239, 68, 68, 0.1)",
+              border: "1.5px solid rgba(239, 68, 68, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ef4444",
+              fontSize: "1.8rem"
+            }}
+          >
+            ⚠️
+          </div>
+          <div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.2rem", fontWeight: "700" }}>{title}</h3>
+            <p style={{ margin: 0, color: "var(--ce-premium-text)", fontSize: "0.88rem", lineHeight: "1.5", opacity: 0.85 }}>{message}</p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+              border: "none",
+              color: "#fff",
+              padding: "10px 24px",
+              borderRadius: "10px",
+              fontSize: "0.88rem",
+              fontWeight: "700",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)",
+              width: "100%",
+              marginTop: "8px"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.filter = "brightness(1.1)"}
+            onMouseOut={(e) => e.currentTarget.style.filter = "brightness(1)"}
+          >
+            OK
+          </button>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
 export default function DeveloperFeed({ user, addToast, followingList = [], handleFollowToggle, onViewProfile, suggestions = [] }) {
   const [posts, setPosts] = useState([]);
   const [visiblePosts, setVisiblePosts] = useState(6);
@@ -53,9 +466,48 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const [selectedImages, setSelectedImages] = useState([]); // Array of { file, preview }
   const fileInputRef = useRef(null);
 
+  // Video and Validation states
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [videoPreview, setVideoPreview] = useState("");
+  const [warningModal, setWarningModal] = useState({ isOpen: false, title: "", message: "" });
+  const videoInputRef = useRef(null);
+  const prevExceededRef = useRef(false);
+
+  // Live validation helpers
+  const codeLinesCount = attachedCode ? attachedCode.split(/\r?\n/).length : 0;
+  const codeSizeKB = attachedCode ? Math.round(new Blob([attachedCode]).size / 1024) : 0;
+  const isCodeInvalid = codeLinesCount > 300 || codeSizeKB > 100;
+
+  const textLength = inputText.length;
+  const isTextInvalid = textLength > 5000;
+
+  const isImagesInvalid = selectedImages.length > 10;
+
+  const isPublishDisabled = 
+    (!inputText.trim() && !attachedCode.trim() && selectedImages.length === 0 && !selectedVideo) || 
+    isCodeInvalid || 
+    isTextInvalid || 
+    isImagesInvalid || 
+    isPosting;
+
+  // Code size warning trigger
+  useEffect(() => {
+    const exceeded = codeLinesCount > 300 || codeSizeKB > 100;
+    if (exceeded && !prevExceededRef.current) {
+      setWarningModal({
+        isOpen: true,
+        title: "Code Too Large",
+        message: "Code posts are limited to 300 lines or 100 KB. Please split your solution into multiple posts or create a Gist."
+      });
+    }
+    prevExceededRef.current = exceeded;
+  }, [attachedCode, codeLinesCount, codeSizeKB]);
+
   // Carousel index tracker for post cards
   const [carouselIndices, setCarouselIndices] = useState({}); // postId: activeIndex
   const [pollVotesSim, setPollVotesSim] = useState({}); // postId: optionVoted
+  const [revealedSensitivePosts, setRevealedSensitivePosts] = useState({}); // postId: true
+
 
   // Filter feed tab state
   const [activeFeedTab, setActiveFeedTab] = useState("for-you");
@@ -88,7 +540,51 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+
+    // Real-time admin action synchronization
+    const handleAdminPostAction = ({ postId, post: updatedPost }) => {
+      if (updatedPost.status === "hidden" || updatedPost.status === "deleted") {
+        setPosts(prev => prev.filter(p => p._id !== postId && p.id !== postId));
+      } else {
+        setPosts(prev => prev.map(p => {
+          if (p._id === postId || p.id === postId) {
+            return {
+              ...p,
+              ...updatedPost,
+              _id: postId,
+              id: postId,
+              author: p.author
+            };
+          }
+          return p;
+        }));
+      }
+    };
+
+    const handleAdminUserAction = ({ userId, isSuspended }) => {
+      if (isSuspended) {
+        setPosts(prev => prev.filter(p => p.author?._id !== userId && p.author?.id !== userId));
+        const currentUserId = user?.id || user?._id;
+        if (currentUserId && String(currentUserId) === String(userId)) {
+          localStorage.clear();
+          if (typeof addToast === "function") {
+            addToast("Your account has been suspended by an administrator.", "error");
+          }
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 1500);
+        }
+      }
+    };
+
+    socket.on("admin-post-action", handleAdminPostAction);
+    socket.on("admin-user-action", handleAdminUserAction);
+
+    return () => {
+      socket.off("admin-post-action", handleAdminPostAction);
+      socket.off("admin-user-action", handleAdminUserAction);
+    };
+  }, [user?.id, user?._id]);
 
   const handleAddTechChip = (e) => {
     if (e.key === "Enter" || e.key === ",") {
@@ -109,13 +605,106 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    const fileToCrop = files.find(file => allowedTypes.includes(file.type));
+    if (selectedImages.length + files.length > 10) {
+      setWarningModal({
+        isOpen: true,
+        title: "Too Many Images",
+        message: "You can upload a maximum of 10 images per post."
+      });
+      e.target.value = "";
+      return;
+    }
 
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const hasInvalidFormat = files.some(file => !allowedTypes.includes(file.type));
+    if (hasInvalidFormat) {
+      setWarningModal({
+        isOpen: true,
+        title: "Unsupported Image Format",
+        message: "Only JPG, JPEG, PNG, or WEBP image formats are supported."
+      });
+      e.target.value = "";
+      return;
+    }
+
+    const oversizedFile = files.find(file => file.size > 10 * 1024 * 1024);
+    if (oversizedFile) {
+      setWarningModal({
+        isOpen: true,
+        title: "Image Too Large",
+        message: "Image exceeds the 10 MB limit. Please compress your image and try again."
+      });
+      e.target.value = "";
+      return;
+    }
+
+    const fileToCrop = files[0];
     if (fileToCrop) {
       setCropSource(URL.createObjectURL(fileToCrop));
-    } else {
-      addToast("Only JPG, PNG, WEBP images allowed!", "error");
+    }
+    e.target.value = "";
+  };
+
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedExtensions = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-matroska"];
+    if (!allowedExtensions.includes(file.type)) {
+      setWarningModal({
+        isOpen: true,
+        title: "Unsupported Video Format",
+        message: "Only MP4, WEBM, MOV, AVI, or MKV video formats are supported."
+      });
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      setWarningModal({
+        isOpen: true,
+        title: "Video Too Large",
+        message: "Video file size exceeds the 100 MB limit. Please compress your video or upload a shorter clip."
+      });
+      e.target.value = "";
+      return;
+    }
+
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(video.src);
+      if (video.duration > 300) {
+        setWarningModal({
+          isOpen: true,
+          title: "Video Too Long",
+          message: "Video duration exceeds the 5-minute limit. Please trim your video and try again."
+        });
+        setSelectedVideo(null);
+        setVideoPreview("");
+        e.target.value = "";
+      } else {
+        setSelectedVideo(file);
+        setVideoPreview(URL.createObjectURL(file));
+      }
+    };
+    video.onerror = () => {
+      window.URL.revokeObjectURL(video.src);
+      setWarningModal({
+        isOpen: true,
+        title: "Invalid Video File",
+        message: "Could not read the video file metadata. The file might be corrupted."
+      });
+      e.target.value = "";
+    };
+    video.src = URL.createObjectURL(file);
+  };
+
+  const handleRemoveSelectedVideo = () => {
+    setSelectedVideo(null);
+    setVideoPreview("");
+    if (videoInputRef.current) {
+      videoInputRef.current.value = "";
     }
   };
 
@@ -171,7 +760,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
   const handleCreatePost = async (e) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() && !attachedCode.trim() && selectedImages.length === 0 && !selectedVideo) return;
 
     setIsPosting(true);
     try {
@@ -209,12 +798,19 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         });
       }
 
+      // Append video to FormData
+      if (selectedVideo) {
+        formData.append("video", selectedVideo);
+      }
+
       const res = await createPost(formData);
       if (res.success) {
         addToast("Dev update shared successfully!", "success");
         setInputText("");
         setTechChips([]);
         setSelectedImages([]);
+        setSelectedVideo(null);
+        setVideoPreview("");
         setAttachedCode("");
         setPollQuestionInput("");
         setPollOptionsInput({ a: "", b: "", c: "", d: "" });
@@ -403,12 +999,12 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
     // Code block
-    html = html.replace(/```([a-zA-Z0-9]*)\n([\s\S]*?)```/g, (match, lang, code) => {
-      return `<pre style="background:#09090f; border:1px solid rgba(255,255,255,0.06); padding:12px; border-radius:10px; font-family:'Fira Code', monospace; font-size:0.8rem; overflow-x:auto; margin:12px 0;"><div style="display:flex; justify-content:space-between; font-size:0.65rem; color:#64748b; margin-bottom:6px; text-transform:uppercase;"><span>${lang || "code"}</span></div><code style="color:#38bdf8;">${code}</code></pre>`;
+    html = html.replace(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/g, (match, lang, code) => {
+      return `<pre style="background:#09090f; border:1px solid rgba(255,255,255,0.06); padding:12px; border-radius:10px; font-family:'Fira Code', monospace; font-size:0.8rem; overflow:auto; max-height:180px; margin:12px 0; max-width:100%; box-sizing:border-box;"><div style="display:flex; justify-content:space-between; font-size:0.65rem; color:#64748b; margin-bottom:6px; text-transform:uppercase; position:sticky; top:0; background:#09090f; padding-bottom:4px;"><span>${lang || "code"}</span></div><code style="color:#38bdf8; white-space:pre; display:block;">${code}</code></pre>`;
     });
 
     // Inline Code
-    html = html.replace(/`(.*?)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#fb7185;">$1</code>');
+    html = html.replace(/`([^`\r\n]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#fb7185;">$1</code>');
 
     // Hashtags
     html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span style="color:#8b5cf6; font-weight:600; cursor:pointer;">#$1</span>');
@@ -632,21 +1228,26 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                         onChange={(e) => setInputText(e.target.value)}
                         className="composer-textarea"
                         rows={5}
-                        required
                       />
+
+                      {/* Character Counter */}
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: isTextInvalid ? "#ef4444" : "var(--ce-premium-muted)", marginTop: "4px", padding: "0 4px" }}>
+                        <span>Text characters</span>
+                        <span style={{ fontWeight: isTextInvalid ? "700" : "normal" }}>{textLength} / 5,000</span>
+                      </div>
 
                       {/* Emoji picker button */}
                       <button
                         type="button"
                         onClick={() => setShowEmojiGrid(!showEmojiGrid)}
-                        style={{ position: "absolute", bottom: "10px", right: "10px", background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer" }}
+                        style={{ position: "absolute", bottom: "24px", right: "10px", background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer" }}
                       >
                         <Smile size={16} />
                       </button>
 
                       {/* Emojis Popup */}
                       {showEmojiGrid && (
-                        <div style={{ position: "absolute", bottom: "36px", right: "10px", background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", borderRadius: "8px", padding: "8px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px", zIndex: 12 }}>
+                        <div style={{ position: "absolute", bottom: "50px", right: "10px", background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", borderRadius: "8px", padding: "8px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px", zIndex: 12 }}>
                           {["💻", "🚀", "🔥", "💡", "⚡", "🧠", "🎉", "🤝", "📦", "🎨"].map(e => (
                             <span key={e} onClick={() => insertEmoji(e)} style={{ cursor: "pointer", fontSize: "1.1rem" }}>{e}</span>
                           ))}
@@ -669,30 +1270,36 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                   {/* Code Snippet attachment drawer */}
                   {showCodeInput && (
                     <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                        <span style={{ fontSize: "0.78rem", color: "var(--ce-premium-text)" }}>Language:</span>
-                        <select
-                          value={attachedCodeLang}
-                          onChange={(e) => setAttachedCodeLang(e.target.value)}
-                          style={{ background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", borderRadius: "6px", fontSize: "0.75rem", padding: "4px 8px" }}
-                        >
-                          <option value="javascript">JavaScript</option>
-                          <option value="typescript">TypeScript</option>
-                          <option value="html">HTML</option>
-                          <option value="css">CSS</option>
-                          <option value="python">Python</option>
-                          <option value="java">Java</option>
-                          <option value="cpp">C++</option>
-                          <option value="rust">Rust</option>
-                          <option value="golang">Go</option>
-                        </select>
+                      <div style={{ display: "flex", gap: "10px", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.78rem", color: "var(--ce-premium-text)" }}>Language:</span>
+                          <select
+                            value={attachedCodeLang}
+                            onChange={(e) => setAttachedCodeLang(e.target.value)}
+                            style={{ background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", borderRadius: "6px", fontSize: "0.75rem", padding: "4px 8px" }}
+                          >
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="rust">Rust</option>
+                            <option value="golang">Go</option>
+                          </select>
+                        </div>
+                        <div style={{ display: "flex", gap: "10px", fontSize: "0.72rem", color: isCodeInvalid ? "#ef4444" : "var(--ce-premium-muted)" }}>
+                          <span style={{ fontWeight: codeLinesCount > 300 ? "700" : "normal" }}>Lines: {codeLinesCount}/300</span>
+                          <span style={{ fontWeight: codeSizeKB > 100 ? "700" : "normal" }}>Size: {codeSizeKB}/100 KB</span>
+                        </div>
                       </div>
                       <textarea
                         placeholder="Paste or write your source code block here..."
                         value={attachedCode}
                         onChange={(e) => setAttachedCode(e.target.value)}
                         className="composer-textarea"
-                        style={{ fontFamily: "monospace", minHeight: "80px", fontSize: "0.82rem" }}
+                        style={{ fontFamily: "monospace", minHeight: "100px", fontSize: "0.82rem", borderColor: isCodeInvalid ? "#ef4444" : "" }}
                       />
                     </div>
                   )}
@@ -786,6 +1393,20 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                     </div>
                   )}
 
+                  {/* Video preview */}
+                  {selectedVideo && (
+                    <div style={{ position: "relative", width: "160px", height: "90px", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)", margin: "12px 0" }}>
+                      <video src={videoPreview} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <button
+                        type="button"
+                        onClick={handleRemoveSelectedVideo}
+                        style={{ position: "absolute", top: "4px", right: "4px", background: "rgba(0,0,0,0.6)", border: "none", color: "#fff", width: "20px", height: "20px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", cursor: "pointer" }}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  )}
+
                   {/* Composer Actions row */}
                   <div className="composer-actions-bar" style={{ marginTop: "18px" }}>
                     <div className="composer-action-btn-group" style={{ display: "flex", gap: "8px" }}>
@@ -796,6 +1417,14 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                         title="Add Images"
                       >
                         <Image size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => videoInputRef.current?.click()}
+                        className={`composer-icon-btn ${selectedVideo ? "active" : ""}`}
+                        title="Add Video"
+                      >
+                        <Play size={15} />
                       </button>
                       <button
                         type="button"
@@ -845,6 +1474,13 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                         multiple
                         onChange={handleImagesChange}
                       />
+                      <input
+                        type="file"
+                        ref={videoInputRef}
+                        style={{ display: "none" }}
+                        accept="video/*"
+                        onChange={handleVideoChange}
+                      />
                     </div>
 
                     <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
@@ -858,7 +1494,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                         <option value="private">🔒 Private Only</option>
                       </select>
 
-                      <button type="submit" disabled={isPosting} className="register-btn" style={{ width: "auto", padding: "8px 16px" }}>
+                      <button type="submit" disabled={isPublishDisabled} className="register-btn" style={{ width: "auto", padding: "8px 16px", opacity: isPublishDisabled ? 0.5 : 1, cursor: isPublishDisabled ? "not-allowed" : "pointer" }}>
                         {isPosting ? "Posting..." : "Share Post"}
                       </button>
                     </div>
@@ -869,6 +1505,14 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
           </FeedPortal>
         )}
       </AnimatePresence>
+
+      {/* Strict Validation Warning Modal */}
+      <WarningModal 
+        isOpen={warningModal.isOpen} 
+        title={warningModal.title} 
+        message={warningModal.message} 
+        onClose={() => setWarningModal({ isOpen: false, title: "", message: "" })} 
+      />
 
       {/* Horizontal Feed Filters */}
       <div className="premium-feed-tabs" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
@@ -972,11 +1616,20 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                         )}
                       </div>
                       <div className="post-name-section">
-                        <div className="post-username-row">
+                        <div className="post-username-row" style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
                           <span className="post-username-text">@{post.author.username}</span>
                           <span className="post-badge-lvl">Lvl {post.author.developerLevel || 1}</span>
                           {post.author.status === "Coding" && (
                             <span className="post-dot-online" style={{ width: "6px", height: "6px" }} />
+                          )}
+                          {post.isPinned && (
+                            <span className="post-badge-pinned" title="Pinned by Administrator">📌 Pinned</span>
+                          )}
+                          {post.isFeatured && (
+                            <span className="post-badge-featured" title="Featured by Administrator">⭐ Featured</span>
+                          )}
+                          {post.isSensitive && (
+                            <span className="post-badge-sensitive-indicator" title="Flagged as Sensitive Content">⚠️ Sensitive</span>
                           )}
                         </div>
                         <span className="post-author-role">{post.author.title || "Full Stack Developer"} &bull; {post.author.reputationScore || 0} XP</span>
@@ -1009,83 +1662,110 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                     </div>
                   </div>
 
-                  {/* Post Content */}
-                  <div className="post-card-content">
-                    {parseMarkdown(post.text)}
-                  </div>
-
-                  {/* Render Poll section template if present */}
-                  {parsePollBlock(post._id, post.text)}
-
-                  {/* Render GitHub repository embed template if present */}
-                  {parseRepoBlock(post.text)}
-
-                  {/* Render Event embed template if present */}
-                  {parseEventBlock(post.text)}
-
-                  {/* Redesigned Premium Carousel Multi-Image Block - Edge to Edge */}
-                  {postImages.length > 0 && (
-                    <div className="post-carousel-container" style={{ position: "relative", overflow: "hidden", background: "#000" }}>
-                      <div style={{ display: "flex", height: "100%", transition: "transform 0.3s ease", transform: `translateX(-${activeImgIdx * 100}%)` }}>
-                        {postImages.map((src, i) => (
-                          <img key={i} src={src} alt={`Attachment ${i}`} style={{ width: "100%", height: "100%", flexShrink: 0, objectFit: "cover" }} />
-                        ))}
+                   {/* Sensitive overlay wrapper */}
+                  <div className="sensitive-overlay-container">
+                    <div className={post.isSensitive && !revealedSensitivePosts[post._id] ? "sensitive-blur-active" : ""}>
+                      {/* Post Content */}
+                      <div className="post-card-content">
+                        {renderPostContent(post.text, addToast)}
                       </div>
 
-                      {/* Carousel Arrow Controls */}
-                      {postImages.length > 1 && (
-                        <>
-                          <button
-                            onClick={() => handlePrevImage(post._id, postImages.length)}
-                            style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
-                          >
-                            <ChevronLeft size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleNextImage(post._id, postImages.length)}
-                            style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
-                          >
-                            <ChevronRight size={16} />
-                          </button>
+                      {/* Render Poll section template if present */}
+                      {parsePollBlock(post._id, post.text)}
 
-                          {/* Carousel Dots indicators */}
-                          <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", zIndex: 5 }}>
-                            {postImages.map((_, i) => (
-                              <div
-                                key={i}
-                                style={{
-                                  width: "6px",
-                                  height: "6px",
-                                  borderRadius: "50%",
-                                  background: activeImgIdx === i ? "#fff" : "rgba(255,255,255,0.4)",
-                                  transition: "background 0.2s"
-                                }}
-                              />
+                      {/* Render GitHub repository embed template if present */}
+                      {parseRepoBlock(post.text)}
+
+                      {/* Render Event embed template if present */}
+                      {parseEventBlock(post.text)}
+
+                      {/* Video Attachment with 16:9 aspect ratio */}
+                      {post.video && (
+                        <div className="post-video-container" style={{ width: "100%", aspectRatio: "16/9", overflow: "hidden", borderRadius: "12px", background: "#000", marginTop: "12px", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                          <video src={post.video} controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        </div>
+                      )}
+
+                      {/* Redesigned Premium Carousel Multi-Image Block - Edge to Edge */}
+                      {postImages.length > 0 && (
+                        <div className="post-carousel-container" style={{ position: "relative", overflow: "hidden", background: "#000" }}>
+                          <div style={{ display: "flex", height: "100%", transition: "transform 0.3s ease", transform: `translateX(-${activeImgIdx * 100}%)` }}>
+                            {postImages.map((src, i) => (
+                              <img key={i} src={src} alt={`Attachment ${i}`} style={{ width: "100%", height: "100%", flexShrink: 0, objectFit: "cover" }} />
                             ))}
                           </div>
-                        </>
+
+                          {/* Carousel Arrow Controls */}
+                          {postImages.length > 1 && (
+                            <>
+                              <button
+                                onClick={() => handlePrevImage(post._id, postImages.length)}
+                                style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
+                              >
+                                <ChevronLeft size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleNextImage(post._id, postImages.length)}
+                                style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
+                              >
+                                <ChevronRight size={16} />
+                              </button>
+
+                              {/* Carousel Dots indicators */}
+                              <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", zIndex: 5 }}>
+                                {postImages.map((_, i) => (
+                                  <div
+                                    key={i}
+                                    style={{
+                                      width: "6px",
+                                      height: "6px",
+                                      borderRadius: "50%",
+                                      background: activeImgIdx === i ? "#fff" : "rgba(255,255,255,0.4)",
+                                      transition: "background 0.2s"
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Tech chips block */}
+                      {post.techStack && post.techStack.length > 0 && (
+                        <div className="post-card-tags">
+                          {post.techStack.map(tag => (
+                            <span key={tag} className="post-tag">#{tag}</span>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  )}
 
-                  {/* Tech chips block */}
-                  {post.techStack && post.techStack.length > 0 && (
-                    <div className="post-card-tags">
-                      {post.techStack.map(tag => (
-                        <span key={tag} className="post-tag">#{tag}</span>
-                      ))}
-                    </div>
-                  )}
+                    {post.isSensitive && !revealedSensitivePosts[post._id] && (
+                      <div className="sensitive-shield-mask">
+                        <h4 className="sensitive-shield-title">Sensitive Content</h4>
+                        <p className="sensitive-shield-desc">This post has been flagged as sensitive by the platform administrators.</p>
+                        <button
+                          type="button"
+                          className="btn-reveal-sensitive"
+                          onClick={() => setRevealedSensitivePosts(prev => ({ ...prev, [post._id]: true }))}
+                        >
+                          Show Sensitive Content
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Post Action Reactions row */}
                   <div className="post-reactions-wrapper">
                     <div className="post-reactions-group" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                       {/* Liking Button - ONLY Heart Icon */}
                       <button
-                        onClick={() => handleLikePost(post._id)}
+                        onClick={() => !post.likesDisabled && handleLikePost(post._id)}
                         className={`reaction-button-trigger ${hasLiked ? "liked" : ""}`}
-                        style={{ paddingRight: "4px" }}
-                        title={hasLiked ? "Unlike" : "Like"}
+                        style={{ paddingRight: "4px", opacity: post.likesDisabled ? 0.45 : 1, cursor: post.likesDisabled ? "not-allowed" : "pointer" }}
+                        title={post.likesDisabled ? "Likes are disabled for this post" : (hasLiked ? "Unlike" : "Like")}
+                        disabled={post.likesDisabled}
                       >
                         <Heart size={14} fill={hasLiked ? "#f43f5e" : "none"} color={hasLiked ? "#f43f5e" : "var(--ce-premium-text)"} />
                       </button>
@@ -1225,12 +1905,14 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       <form onSubmit={(e) => handleAddComment(e, post._id)} className="comment-input-form-row">
                         <input
                           type="text"
-                          placeholder="Reply to this thread with markdown..."
+                          placeholder={post.commentsLocked ? "Comments are locked for this post." : "Reply to this thread with markdown..."}
                           value={commentInputs[post._id] || ""}
                           onChange={(e) => setCommentInputs(prev => ({ ...prev, [post._id]: e.target.value }))}
                           className="comment-text-input"
+                          disabled={post.commentsLocked}
+                          style={{ cursor: post.commentsLocked ? "not-allowed" : "text" }}
                         />
-                        <button type="submit" className="comment-send-submit-btn">
+                        <button type="submit" className="comment-send-submit-btn" disabled={post.commentsLocked} style={{ cursor: post.commentsLocked ? "not-allowed" : "pointer" }}>
                           <Send size={12} />
                         </button>
                       </form>

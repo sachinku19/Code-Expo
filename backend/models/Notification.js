@@ -13,17 +13,33 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["FOLLOW", "LIKE", "BOOKMARK", "COMMENT", "JOIN", "MENTION", "INVITE"],
+    enum: ["FOLLOW", "LIKE", "BOOKMARK", "COMMENT", "JOIN", "MENTION", "INVITE", "MODERATION_ACTION", "APPEAL_STATUS", "TICKET_UPDATE"],
     required: true
   },
   category: {
     type: String,
-    enum: ["SOCIAL", "ROOMS", "COLLABORATION", "SYSTEM"],
+    enum: ["SOCIAL", "ROOMS", "COLLABORATION", "SYSTEM", "MODERATION"],
     required: true
   },
   targetRoom: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Room"
+  },
+  targetPost: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Post"
+  },
+  appeal: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Appeal"
+  },
+  ticket: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Ticket"
+  },
+  message: {
+    type: String,
+    default: ""
   },
   isRead: {
     type: Boolean,

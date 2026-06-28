@@ -5,12 +5,32 @@ const Post = require("../models/Post");
 const User = require("../models/User");
 
 // Create a post
+// Create a post
 const createPost = async (req, res) => {
   const uploadedMedias = [];
   try {
     const { text, techStack, image } = req.body;
     if (!text) {
       return res.status(400).json({ success: false, message: "Post content is required" });
+    }
+
+    // 1. Validate Text Length (max 5,000 chars)
+    if (text.length > 5000) {
+      return res.status(400).json({ success: false, message: "Text posts are limited to 5,000 characters." });
+    }
+
+    // 2. Validate Code Snippet (max 300 lines, 100 KB)
+    const codeMatch = text.match(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/);
+    if (codeMatch) {
+      const code = codeMatch[2];
+      const codeLines = code.split(/\r?\n/).length;
+      const codeSize = Buffer.byteLength(code, "utf8");
+      if (codeLines > 300 || codeSize > 100 * 1024) {
+        return res.status(400).json({
+          success: false,
+          message: "Code posts are limited to 300 lines or 100 KB. Please split your solution into multiple posts or create a Gist."
+        });
+      }
     }
 
     let finalTechStack = [];
@@ -34,10 +54,17 @@ const createPost = async (req, res) => {
     const images = [];
     const imagesMetadata = [];
 
-    // Support multiple uploaded images
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        MediaService.validateFile(file, { maxSize: 10 * 1024 * 1024 });
+    // 3. Validate and Upload Images (max 10, max 10MB each)
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      if (req.files.images.length > 10) {
+        return res.status(400).json({ success: false, message: "A post can contain at most 10 images." });
+      }
+      for (const file of req.files.images) {
+        MediaService.validateFile(file, {
+          maxSize: 10 * 1024 * 1024,
+          allowedExtensions: /jpeg|jpg|png|webp/,
+          allowedMimeTypes: /image\/jpeg|image\/png|image\/webp/
+        });
         const media = await MediaService.uploadMedia(
           file.buffer,
           file.originalname,
@@ -53,20 +80,34 @@ const createPost = async (req, res) => {
         imageUrl = images[0];
         imageMetadata = imagesMetadata[0];
       }
-    } else if (req.file) {
-      // Support single image upload
-      MediaService.validateFile(req.file, { maxSize: 10 * 1024 * 1024 });
+    }
+
+    // 4. Validate and Upload Video (max 1, max 100MB)
+    let videoUrl = "";
+    let videoMetadata = null;
+
+    if (req.files && req.files.video && req.files.video.length > 0) {
+      if (req.files.video.length > 1) {
+        return res.status(400).json({ success: false, message: "A post can contain at most 1 video." });
+      }
+      const videoFile = req.files.video[0];
+      MediaService.validateFile(videoFile, {
+        maxSize: 100 * 1024 * 1024,
+        allowedExtensions: /mp4|webm|mov|avi|mkv/,
+        allowedMimeTypes: /video\/mp4|video\/webm|video\/quicktime|video\/x-msvideo|video\/x-matroska/
+      });
       const media = await MediaService.uploadMedia(
-        req.file.buffer,
-        req.file.originalname,
+        videoFile.buffer,
+        videoFile.originalname,
         "codeexpo_posts",
-        { req }
+        { 
+          req,
+          resourceType: "video"
+        }
       );
       uploadedMedias.push(media);
-      imageUrl = media.url;
-      imageMetadata = media;
-      images.push(media.url);
-      imagesMetadata.push(media);
+      videoUrl = media.url;
+      videoMetadata = media;
     }
 
     const newPost = await Post.create({
@@ -76,7 +117,9 @@ const createPost = async (req, res) => {
       image: imageUrl || image || "",
       imageMetadata,
       images,
-      imagesMetadata
+      imagesMetadata,
+      video: videoUrl,
+      videoMetadata
     });
 
     const populatedPost = await Post.findById(newPost._id)
@@ -87,15 +130,21 @@ const createPost = async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, { $inc: { contributionScore: 5 } });
 
     // Clean up local temp files if Multer ever writes to disk
-    if (req.files && Array.isArray(req.files)) {
-      req.files.forEach(file => {
-        if (file.path && fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
-      });
-    }
-    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    if (req.files) {
+      if (req.files.images) {
+        req.files.images.forEach(file => {
+          if (file.path && fs.existsSync(file.path)) {
+            try { fs.unlinkSync(file.path); } catch (e) {}
+          }
+        });
+      }
+      if (req.files.video) {
+        req.files.video.forEach(file => {
+          if (file.path && fs.existsSync(file.path)) {
+            try { fs.unlinkSync(file.path); } catch (e) {}
+          }
+        });
+      }
     }
 
     res.status(201).json({ success: true, post: populatedPost });
@@ -107,17 +156,23 @@ const createPost = async (req, res) => {
       });
     }
     // Clean up local temp files on error
-    if (req.files && Array.isArray(req.files)) {
-      req.files.forEach(file => {
-        if (file.path && fs.existsSync(file.path)) {
-          try { fs.unlinkSync(file.path); } catch (e) {}
-        }
-      });
+    if (req.files) {
+      if (req.files.images) {
+        req.files.images.forEach(file => {
+          if (file.path && fs.existsSync(file.path)) {
+            try { fs.unlinkSync(file.path); } catch (e) {}
+          }
+        });
+      }
+      if (req.files.video) {
+        req.files.video.forEach(file => {
+          if (file.path && fs.existsSync(file.path)) {
+            try { fs.unlinkSync(file.path); } catch (e) {}
+          }
+        });
+      }
     }
-    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      try { fs.unlinkSync(req.file.path); } catch (e) {}
-    }
-    res.status(500).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 

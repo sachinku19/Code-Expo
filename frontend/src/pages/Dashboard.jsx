@@ -29,7 +29,7 @@ import {
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
-  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image
+  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -53,6 +53,7 @@ import {
   addCommentPost
 } from "../services/socialService";
 import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBanner, deleteCoverBanner } from "../services/userService";
+import { getTrustSafetyStatus } from "../services/trustSafetyService";
 import "./Dashboard.css";
 import MainLayout from "../layouts/MainLayout";
 import ProfileAvatar from "../components/ProfileAvatar";
@@ -61,6 +62,7 @@ import StoriesSystem from "../components/social/StoriesSystem";
 import DeveloperFeed from "../components/social/DeveloperFeed";
 import NetworkSidebar from "../components/social/NetworkSidebar";
 import LeftSidebar from "../components/social/LeftSidebar";
+import TrustSafety from "../components/social/TrustSafety";
 import NetworkAnalytics from "../components/social/NetworkAnalytics";
 import UserProfileModal from "../components/social/UserProfileModal";
 const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
@@ -89,6 +91,229 @@ const parseDateUTC = (dateStr) => {
   if (!dateStr) return null;
   const [yr, mo, dy] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(yr, mo - 1, dy));
+};
+
+// Parsing Helpers for Markdown, Code, and Layouts
+const extractCodeBlock = (text) => {
+  if (!text) return null;
+  const match = text.match(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/);
+  if (match) {
+    return {
+      lang: match[1] || "code",
+      code: match[2].trim()
+    };
+  }
+  return null;
+};
+
+const getRightSideText = (text) => {
+  if (!text) return "";
+  // Remove the code block from the text so we don't show it twice
+  return text.replace(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/g, "").trim();
+};
+
+const highlightCode = (lineText) => {
+  if (!lineText) return "&nbsp;";
+  let escaped = lineText
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const keywords = [
+    "class", "public", "private", "protected", "int", "double", "float", "char", "void", "vector",
+    "std", "include", "return", "if", "else", "for", "while", "do", "break", "continue", "switch",
+    "case", "const", "let", "var", "function", "import", "export", "from", "default", "new", "this",
+    "struct", "template", "typename", "using", "namespace", "false", "true", "null", "nullptr"
+  ];
+
+  const regex = new RegExp(
+    `(\\/\\/.*)|` + 
+    `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` + 
+    `\\b(${keywords.join("|")})\\b|` + 
+    `\\b(\\d+)\\b`,
+    "g"
+  );
+
+  return escaped.replace(regex, (match, comment, string, keyword, number) => {
+    if (comment) {
+      return `<span style="color:#64748b; font-style:italic;">${comment}</span>`;
+    }
+    if (string) {
+      return `<span style="color:#34d399;">${string}</span>`;
+    }
+    if (keyword) {
+      return `<span style="color:#f472b6; font-weight:600;">${keyword}</span>`;
+    }
+    if (number) {
+      return `<span style="color:#fbbf24;">${number}</span>`;
+    }
+    return match;
+  });
+};
+
+const timeAgo = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  
+  let interval = Math.floor(seconds / 31536000);
+  if (interval >= 1) return `${interval}y ago`;
+  interval = Math.floor(seconds / 2592000);
+  if (interval >= 1) return `${interval}mo ago`;
+  interval = Math.floor(seconds / 86400);
+  if (interval >= 1) return `${interval}d ago`;
+  interval = Math.floor(seconds / 3600);
+  if (interval >= 1) return `${interval}h ago`;
+  interval = Math.floor(seconds / 60);
+  if (interval >= 1) return `${interval}m ago`;
+  return "just now";
+};
+
+// Reusable styled ProfilePostCard component for the profile grid
+const ProfilePostCard = ({ post, onOpen, user }) => {
+  const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
+  const hasImage = postImages.length > 0;
+  const codeDetails = extractCodeBlock(post.text);
+  const hasCode = !!codeDetails;
+  const hasVideo = !!post.video;
+
+  const renderBadge = () => {
+    if (hasCode) return <span className="profile-card-type-badge code">{codeDetails.lang}</span>;
+    if (hasVideo) return <span className="profile-card-type-badge video">Video</span>;
+    if (hasImage) return <span className="profile-card-type-badge image">Image</span>;
+    return <span className="profile-card-type-badge text">Text</span>;
+  };
+
+  const renderBody = () => {
+    if (hasCode) {
+      const codeLines = codeDetails.code.split(/\r?\n/);
+      const totalLines = codeLines.length;
+      const previewLines = codeLines.slice(0, 6);
+
+      return (
+        <div className="profile-card-code-preview">
+          {previewLines.map((line, idx) => (
+            <div key={idx} className="profile-card-code-line" dangerouslySetInnerHTML={{ __html: highlightCode(line) }} />
+          ))}
+          <div className="profile-card-code-fade" />
+          <span className="profile-card-code-lines-count">
+            {totalLines} lines
+          </span>
+        </div>
+      );
+    }
+
+    if (hasImage) {
+      const cleanDesc = hasCode ? getRightSideText(post.text) : post.text;
+      return (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <img src={postImages[0]} alt="Post media preview" className="profile-card-image-preview" />
+          {cleanDesc && (
+            <p className="profile-card-image-caption">{cleanDesc}</p>
+          )}
+        </div>
+      );
+    }
+
+    if (hasVideo) {
+      const cleanDesc = hasCode ? getRightSideText(post.text) : post.text;
+      return (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <div className="profile-card-video-preview">
+            <video src={post.video} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <div className="profile-card-video-overlay">
+              <Play size={16} fill="#fff" color="#fff" />
+            </div>
+          </div>
+          {cleanDesc && (
+            <p className="profile-card-image-caption">{cleanDesc}</p>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <p className="profile-card-text-preview">{post.text}</p>
+    );
+  };
+
+  const author = post.author || user || {};
+
+  return (
+    <div className="profile-post-card-item" onClick={onOpen}>
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+        {/* Header */}
+        <div className="profile-card-header">
+          <div className="profile-card-author-info">
+            {author.avatar ? (
+              <img src={author.avatar} alt={author.username} className="profile-card-avatar" />
+            ) : (
+              <div className="profile-card-avatar-fallback" style={{ backgroundColor: "#aa3bff" }}>
+                {(author.username || "D").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="profile-card-meta">
+              <span className="profile-card-username">@{author.username || "developer"}</span>
+              <span className="profile-card-time">{timeAgo(post.createdAt)}</span>
+            </div>
+          </div>
+          {renderBadge()}
+        </div>
+
+        {/* Body */}
+        <div className="profile-card-body">
+          {renderBody()}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="profile-card-footer">
+        <div className="profile-card-stats">
+          <span className="profile-card-stat">
+            <Heart size={14} fill="none" /> {post.likes?.length || 0}
+          </span>
+          <span className="profile-card-stat">
+            <MessageSquare size={14} /> {post.comments?.length || 0}
+          </span>
+        </div>
+
+        <button className="profile-card-action-btn">
+          {hasCode ? "View Full Code" : "Read More"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const parseMarkdown = (text) => {
+  if (!text) return "";
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Bold/Italics
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // Code block
+  html = html.replace(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/g, (match, lang, code) => {
+    return `<pre style="background:#09090f; border:1px solid rgba(255,255,255,0.06); padding:12px; border-radius:10px; font-family:'Fira Code', monospace; font-size:0.8rem; overflow:auto; max-height:180px; margin:12px 0; max-width:100%; box-sizing:border-box;"><div style="display:flex; justify-content:space-between; font-size:0.65rem; color:#64748b; margin-bottom:6px; text-transform:uppercase; position:sticky; top:0; background:#09090f; padding-bottom:4px;"><span>${lang || "code"}</span></div><code style="color:#38bdf8; white-space:pre; display:block;">${code}</code></pre>`;
+  });
+
+  // Inline Code
+  html = html.replace(/`([^`\r\n]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#fb7185;">$1</code>');
+
+  // Hashtags
+  html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span style="color:#8b5cf6; font-weight:600;">#$1</span>');
+
+  // Mentions
+  html = html.replace(/@([a-zA-Z0-9_]+)/g, '<span style="color:#06b6d4; font-weight:600;">@$1</span>');
+
+  html = html.replace(/\n/g, "<br />");
+
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
 };
 
 // Isolated contribution heatmap component to prevent main Dashboard re-renders
@@ -863,6 +1088,11 @@ function Dashboard() {
   }, [selectedPostModal]);
 
   const [modalCommentText, setModalCommentText] = useState("");
+  const [modalRevealedSensitive, setModalRevealedSensitive] = useState(false);
+  
+  useEffect(() => {
+    setModalRevealedSensitive(false);
+  }, [selectedPostModal]);
 
   const handleLikePostInModal = async () => {
     if (!selectedPostModal) return;
@@ -1387,9 +1617,12 @@ function Dashboard() {
   // Sync section with query tab
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
-    const tab = searchParams.get("tab");
+    let tab = searchParams.get("tab");
     const userId = searchParams.get("userId");
     if (tab) {
+      if (tab === "feed-action") {
+        tab = "trust-safety";
+      }
       setActiveSection(tab);
       if (tab === "profile") {
         if (userId) {
@@ -2269,6 +2502,76 @@ function Dashboard() {
     }
   };
 
+  const [trustStatus, setTrustStatus] = useState(null);
+
+  const fetchTrustStatus = useCallback(async () => {
+    try {
+      const res = await getTrustSafetyStatus();
+      if (res.success) {
+        setTrustStatus(res.status);
+      }
+    } catch (err) {
+      console.error("Failed to load trust safety status for dashboard dashboard:", err.message);
+    }
+  }, []);
+
+  const renderTrustSafetyHeaderCards = () => {
+    if (!trustStatus) return null;
+    return (
+      <div 
+        className="ce-trust-safety-cards-row"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+          gap: "10px",
+          marginBottom: "16px",
+          width: "100%"
+        }}
+      >
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Account Status</span>
+          <span style={{
+            fontSize: "0.78rem",
+            fontWeight: "750",
+            color: trustStatus.accountStatus === "Active" ? "#10b981" : "#f59e0b"
+          }}>{trustStatus.accountStatus}</span>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Account Health</span>
+          <span style={{
+            fontSize: "0.8rem",
+            fontWeight: "750",
+            color: trustStatus.accountHealth >= 80 ? "#10b981" : trustStatus.accountHealth >= 50 ? "#f59e0b" : "#ef4444"
+          }}>{trustStatus.accountHealth}%</span>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Active Restrictions</span>
+          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#f43f5e" }}>{trustStatus.counters?.activeRestrictionsCount || 0}</span>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Open Appeals</span>
+          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "var(--accent)" }}>{trustStatus.counters?.openAppealsCount || 0}</span>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Open Tickets</span>
+          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#10b981" }}>{trustStatus.counters?.openSupportTicketsCount || 0}</span>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Total Warnings</span>
+          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#f59e0b" }}>{trustStatus.totalWarnings || 0}</span>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Removed Posts</span>
+          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#ef4444" }}>{trustStatus.counters?.removedPostsCount || 0}</span>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Hidden Posts</span>
+          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#ef4444" }}>{trustStatus.counters?.hiddenPostsCount || 0}</span>
+        </div>
+      </div>
+    );
+  };
+
   const handleDismissAnnouncement = (id) => {
     const nextDismissed = [...dismissedAnnouncements, id];
     setDismissedAnnouncements(nextDismissed);
@@ -2282,15 +2585,104 @@ function Dashboard() {
       fetchSocialDashboardData();
       fetchAnnouncementsData();
       fetchAdsData();
+      fetchTrustStatus();
       const interval = setInterval(() => {
         fetchDashboardData();
         fetchSocialDashboardData();
         fetchAnnouncementsData();
         fetchAdsData();
+        fetchTrustStatus();
       }, 8000);
       return () => clearInterval(interval);
     }
-  }, [user?.id, user?._id]);
+  }, [user?.id, user?._id, fetchTrustStatus]);
+
+  useEffect(() => {
+    const handleAdminPostAction = ({ postId, post: updatedPost }) => {
+      if (updatedPost && (String(updatedPost.author) === String(user?.id || user?._id) || String(updatedPost.author?._id) === String(user?.id || user?._id))) {
+        fetchTrustStatus();
+      }
+      // 1. If post is hidden or deleted, remove it
+      if (updatedPost.status === "hidden" || updatedPost.status === "deleted") {
+        setAllFeedPosts(prev => prev.filter(p => p._id !== postId && p.id !== postId));
+        setProfilePosts(prev => prev.filter(p => p._id !== postId && p.id !== postId));
+        setSelectedPostModal(prev => {
+          if (prev && (prev._id === postId || prev.id === postId)) {
+            addToast("This post has been moderated or hidden by the platform.", "info");
+            return null;
+          }
+          return prev;
+        });
+      } else {
+        // 2. Otherwise update fields
+        const updateFn = p => {
+          if (p._id === postId || p.id === postId) {
+            return {
+              ...p,
+              ...updatedPost,
+              _id: postId,
+              id: postId,
+              author: p.author
+            };
+          }
+          return p;
+        };
+        setAllFeedPosts(prev => prev.map(updateFn));
+        setProfilePosts(prev => prev.map(updateFn));
+        setSelectedPostModal(prev => {
+          if (prev && (prev._id === postId || prev.id === postId)) {
+            return {
+              ...prev,
+              ...updatedPost,
+              _id: postId,
+              id: postId,
+              author: prev.author
+            };
+          }
+          return prev;
+        });
+      }
+    };
+
+    const handleAdminUserAction = ({ userId, isSuspended, user: updatedUser }) => {
+      // Refresh safety parameters
+      const currentUserId = user?.id || user?._id;
+      if (currentUserId && String(currentUserId) === String(userId)) {
+        fetchTrustStatus();
+      }
+
+      if (isSuspended) {
+        // Remove all posts by this user from feed/profile arrays
+        const filterFn = p => p.author?._id !== userId && p.author?.id !== userId;
+        setAllFeedPosts(prev => prev.filter(filterFn));
+        setProfilePosts(prev => prev.filter(filterFn));
+        setSelectedPostModal(prev => {
+          if (prev && (prev.author?._id === userId || prev.author?.id === userId)) {
+            addToast("This user has been suspended by the platform.", "info");
+            return null;
+          }
+          return prev;
+        });
+
+        // Force logout if self is suspended
+        if (currentUserId && String(currentUserId) === String(userId)) {
+          localStorage.clear();
+          addToast("Your account has been suspended by an administrator.", "error");
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 1500);
+        }
+      }
+    };
+
+    socket.on("admin-post-action", handleAdminPostAction);
+    socket.on("admin-user-action", handleAdminUserAction);
+
+    return () => {
+      socket.off("admin-post-action", handleAdminPostAction);
+      socket.off("admin-user-action", handleAdminUserAction);
+    };
+  }, [user, addToast, fetchTrustStatus]);
 
   useEffect(() => {
     if (activeAds.length > 0 && !hasShownPopup) {
@@ -3317,6 +3709,7 @@ function Dashboard() {
               style={{ width: "100%", height: "100%" }}
             >
               <div className="dashboard-home-section">
+                {renderTrustSafetyHeaderCards()}
                 {/* SYSTEM ANNOUNCEMENTS BROADCAST FEED */}
                 {activeAnnouncements.filter(ann => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
                   <div className="ce-announcements-banner-wrapper">
@@ -6857,46 +7250,15 @@ function Dashboard() {
                               ) : profilePosts.length === 0 ? (
                                 <p className="profile-rooms-empty-text">No posts shared yet.</p>
                               ) : (
-                                <div className="insta-posts-grid">
-                                  {profilePosts.map(post => {
-                                    const currentUserId = user?.id || user?._id;
-                                    const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
-                                    const hasImage = postImages.length > 0;
-
-                                    return (
-                                      <div 
-                                        key={post._id} 
-                                        className="insta-post-item"
-                                        onClick={() => setSelectedPostModal(post)}
-                                      >
-                                        {hasImage ? (
-                                          <div style={{ position: "relative", width: "100%", height: "100%" }}>
-                                            <img src={postImages[0]} alt="Post grid preview" className="insta-post-image" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                            {postImages.length > 1 && (
-                                              <div className="insta-post-multiphoto-badge">
-                                                <Copy size={12} color="#fff" />
-                                              </div>
-                                            )}
-                                          </div>
-                                        ) : (
-                                          <div className="insta-post-text-fallback">
-                                            <p className="insta-post-fallback-text">{post.content}</p>
-                                            <span className="insta-post-fallback-footer">📝 Text Update</span>
-                                          </div>
-                                        )}
-
-                                        {/* Hover Overlay showing Stats (Instagram style) */}
-                                        <div className="insta-post-hover-overlay">
-                                          <span className="insta-overlay-stat">
-                                            <Heart size={16} fill="#fff" color="#fff" /> {post.likes?.length || 0}
-                                          </span>
-                                          <span className="insta-overlay-stat">
-                                            <MessageSquare size={16} fill="#fff" color="#fff" /> {post.comments?.length || 0}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                                <div className="profile-post-card-grid">
+                                  {profilePosts.map(post => (
+                                    <ProfilePostCard 
+                                      key={post._id} 
+                                      post={post} 
+                                      onOpen={() => setSelectedPostModal(post)} 
+                                      user={viewingUserProfile || user}
+                                    />
+                                  ))}
                                 </div>
                               )}
                             </div>
@@ -6910,44 +7272,15 @@ function Dashboard() {
                                   return <p className="profile-rooms-empty-text">No saved posts yet.</p>;
                                 }
                                 return (
-                                  <div className="insta-posts-grid">
-                                    {savedPostsList.map(post => {
-                                      const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
-                                      const hasImage = postImages.length > 0;
-
-                                      return (
-                                        <div 
-                                          key={post._id} 
-                                          className="insta-post-item"
-                                          onClick={() => setSelectedPostModal(post)}
-                                        >
-                                          {hasImage ? (
-                                            <div style={{ position: "relative", width: "100%", height: "100%" }}>
-                                              <img src={postImages[0]} alt="Post grid preview" className="insta-post-image" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                              {postImages.length > 1 && (
-                                                <div className="insta-post-multiphoto-badge">
-                                                  <Copy size={12} color="#fff" />
-                                                </div>
-                                              )}
-                                            </div>
-                                          ) : (
-                                            <div className="insta-post-text-fallback">
-                                              <p className="insta-post-fallback-text">{post.content}</p>
-                                              <span className="insta-post-fallback-footer">📝 Text Update</span>
-                                            </div>
-                                          )}
-
-                                          <div className="insta-post-hover-overlay">
-                                            <span className="insta-overlay-stat">
-                                              <Heart size={16} fill="#fff" color="#fff" /> {post.likes?.length || 0}
-                                            </span>
-                                            <span className="insta-overlay-stat">
-                                              <MessageSquare size={16} fill="#fff" color="#fff" /> {post.comments?.length || 0}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
+                                  <div className="profile-post-card-grid">
+                                    {savedPostsList.map(post => (
+                                      <ProfilePostCard 
+                                        key={post._id} 
+                                        post={post} 
+                                        onOpen={() => setSelectedPostModal(post)} 
+                                        user={post.author}
+                                      />
+                                    ))}
                                   </div>
                                 );
                               })()}
@@ -7713,6 +8046,19 @@ function Dashboard() {
               <HelpDesk />
             </motion.div>
           )}
+
+          {(activeSection === "trust-safety" || activeSection === "feed-action") && (
+            <motion.div
+              key="trust-safety"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <TrustSafety user={user} addToast={addToast} />
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Room Details Modal */}
@@ -8427,11 +8773,12 @@ function Dashboard() {
           document.body
         )}
 
-
-
         {selectedPostModal && (() => {
           const postImages = selectedPostModal.images && selectedPostModal.images.length > 0 ? selectedPostModal.images : (selectedPostModal.image ? [selectedPostModal.image] : []);
           const hasImage = postImages.length > 0;
+          const codeDetails = extractCodeBlock(selectedPostModal.text);
+          const hasCode = !!codeDetails;
+          const isSplit = hasImage || hasCode;
 
           return createPortal(
             <div className="ce-modal-overlay" onClick={handleClosePostModal} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -8441,7 +8788,7 @@ function Dashboard() {
                 exit={{ scale: 0.95, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                  width: hasImage ? "880px" : "480px",
+                  width: isSplit ? "880px" : "480px",
                   height: "600px",
                   maxHeight: "90vh",
                   maxWidth: "95vw",
@@ -8450,11 +8797,13 @@ function Dashboard() {
                   border: "1px solid var(--ce-border)",
                   overflow: "hidden",
                   display: "flex",
-                  flexDirection: hasImage ? "row" : "column",
-                  boxShadow: "0 24px 60px rgba(0,0,0,0.5)"
+                  flexDirection: isSplit ? "row" : "column",
+                  boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+                  position: "relative"
                 }}
               >
-                {/* Left Column: Image Carousel (only if attachments exist) */}
+                <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: isSplit ? "row" : "column" }} className={selectedPostModal.isSensitive && !modalRevealedSensitive ? "sensitive-blur-active" : ""}>
+                {/* Left Column: Image Carousel or Code Snippet */}
                 {hasImage && (
                   <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                     <div style={{ display: "flex", height: "100%", width: "100%", transition: "transform 0.3s ease", transform: `translateX(-${modalActiveImageIdx * 100}%)` }}>
@@ -8503,8 +8852,40 @@ function Dashboard() {
                   </div>
                 )}
 
+                {(!hasImage && hasCode) && (
+                  <div style={{ flex: 1, height: "100%", background: "#09090f", display: "flex", flexDirection: "column", borderRight: "1px solid var(--ce-border)" }}>
+                    {/* Mac style window header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "#11111b", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ff5f56" }} />
+                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ffbd2e" }} />
+                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#27c93f" }} />
+                      </div>
+                      <span style={{ fontSize: "0.75rem", color: "#a5b4fc", fontFamily: "monospace", textTransform: "uppercase", fontWeight: "700" }}>
+                        {codeDetails.lang}
+                      </span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(codeDetails.code);
+                          addToast("Code copied to clipboard!", "success");
+                        }}
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e8f0", padding: "4px 8px", borderRadius: "4px", fontSize: "0.7rem", cursor: "pointer", fontWeight: "600", transition: "all 0.2s" }}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    
+                    {/* Code Content */}
+                    <div style={{ flex: 1, overflow: "auto", padding: "16px", margin: 0 }}>
+                      <pre style={{ margin: 0, padding: 0, background: "none", border: "none", fontFamily: "'Fira Code', monospace", fontSize: "0.82rem", lineHeight: "1.5", color: "#e2e8f0", whiteSpace: "pre" }}>
+                        <code dangerouslySetInnerHTML={{ __html: highlightCode(codeDetails.code) }} />
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
                 {/* Right/Main Column: Post Details */}
-                <div style={{ width: hasImage ? "380px" : "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--ce-surface-card)" }}>
+                <div style={{ width: isSplit ? "380px" : "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--ce-surface-card)" }}>
                 {/* Header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderBottom: "1px solid var(--ce-border)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -8543,10 +8924,10 @@ function Dashboard() {
                         </div>
                       )}
                     </div>
-                    <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)", whiteSpace: "pre-wrap" }}>
+                    <div style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)", flex: 1 }}>
                       <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{selectedPostModal.author?.username}:</strong>
-                      {selectedPostModal.content}
-                    </p>
+                      {parseMarkdown(hasCode ? getRightSideText(selectedPostModal.text) : selectedPostModal.text)}
+                    </div>
                   </div>
 
                   {/* Divider line */}
@@ -8584,12 +8965,14 @@ function Dashboard() {
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                       {/* Liking action - ONLY heart icon */}
                       <button
-                        onClick={handleLikePostInModal}
-                        style={{ background: "none", border: "none", color: selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "var(--ce-text)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
+                        onClick={() => !selectedPostModal.likesDisabled && handleLikePostInModal()}
+                        disabled={selectedPostModal.likesDisabled}
+                        style={{ background: "none", border: "none", color: selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "var(--ce-text)", cursor: selectedPostModal.likesDisabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", padding: 0, opacity: selectedPostModal.likesDisabled ? 0.45 : 1 }}
+                        title={selectedPostModal.likesDisabled ? "Likes are disabled" : ""}
                       >
                         <Heart size={20} fill={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "none"} color={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "currentColor"} />
                       </button>
-
+                      
                       {/* Likers Stack with Clickable More Option */}
                       {(() => {
                         const resolvedLikers = (selectedPostModal.likes || []).map(resolveLikedUser).filter(Boolean);
@@ -8709,21 +9092,38 @@ function Dashboard() {
                   <form onSubmit={handleAddCommentInModal} style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                     <input 
                       type="text"
-                      placeholder="Add a comment..."
+                      placeholder={selectedPostModal.commentsLocked ? "Comments are locked for this post." : "Add a comment..."}
                       value={modalCommentText}
                       onChange={(e) => setModalCommentText(e.target.value)}
-                      style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "var(--ce-surface-card-hover)", border: "1px solid var(--ce-border)", color: "var(--ce-text)", fontSize: "0.8rem" }}
+                      disabled={selectedPostModal.commentsLocked}
+                      style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "var(--ce-surface-card-hover)", border: "1px solid var(--ce-border)", color: "var(--ce-text)", fontSize: "0.8rem", cursor: selectedPostModal.commentsLocked ? "not-allowed" : "text" }}
                     />
                     <button 
                       type="submit" 
-                      style={{ padding: "6px 12px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
+                      disabled={selectedPostModal.commentsLocked}
+                      style={{ padding: "6px 12px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "0.8rem", cursor: selectedPostModal.commentsLocked ? "not-allowed" : "pointer", fontWeight: 600, opacity: selectedPostModal.commentsLocked ? 0.5 : 1 }}
                     >
                       Post
                     </button>
                   </form>
                 </div>
               </div>
-            </motion.div>
+            </div>
+
+            {selectedPostModal.isSensitive && !modalRevealedSensitive && (
+              <div className="sensitive-shield-mask" style={{ borderRadius: "16px" }}>
+                <h4 className="sensitive-shield-title">Sensitive Content</h4>
+                <p className="sensitive-shield-desc">This post has been flagged as sensitive by the platform administrators.</p>
+                <button
+                  type="button"
+                  className="btn-reveal-sensitive"
+                  onClick={() => setModalRevealedSensitive(true)}
+                >
+                  Show Sensitive Content
+                </button>
+              </div>
+            )}
+          </motion.div>
           </div>,
           document.body
         );

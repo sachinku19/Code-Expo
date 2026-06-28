@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Menu, Moon, Sparkles, Sun, X, LogOut, LayoutDashboard, User, Settings, ChevronDown } from "lucide-react";
+import { ArrowRight, Menu, Moon, Sparkles, Sun, X, LogOut, LayoutDashboard, User, Settings, ChevronDown, ShieldAlert } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { logoutUser } from "../../services/authService";
 import Logo from "../shared/Logo";
@@ -38,10 +38,25 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
   const handleLogout = () => {
     logoutUser().catch(err => console.error("Logout error:", err));
     const theme = localStorage.getItem("codeExpoHomeTheme");
+    
+    // Preserve read stories cache for all users
+    const readStoriesKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("codeexpo_read_stories")) {
+        readStoriesKeys.push({ key, value: localStorage.getItem(key) });
+      }
+    }
+    
     localStorage.clear();
+    
     if (theme) {
       localStorage.setItem("codeExpoHomeTheme", theme);
     }
+    readStoriesKeys.forEach(item => {
+      localStorage.setItem(item.key, item.value);
+    });
+    
     window.location.href = "/login";
   };
 
@@ -136,6 +151,10 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
                     <button onClick={() => navigate("/dashboard?tab=settings")} className="dropdown-link">
                       <Settings size={15} />
                       <span>Settings</span>
+                    </button>
+                    <button onClick={() => navigate("/dashboard?tab=feed-action")} className="dropdown-link">
+                      <ShieldAlert size={15} />
+                      <span>Feed Action</span>
                     </button>
                     <div className="dropdown-divider" />
                     <button onClick={handleLogout} className="dropdown-link logout-link">

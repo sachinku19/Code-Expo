@@ -1434,10 +1434,25 @@ function Editor() {
   const handleLogout = () => {
     logoutUser().catch(err => console.error("Logout error:", err));
     const theme = localStorage.getItem("codeExpoHomeTheme");
+    
+    // Preserve read stories cache for all users
+    const readStoriesKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("codeexpo_read_stories")) {
+        readStoriesKeys.push({ key, value: localStorage.getItem(key) });
+      }
+    }
+    
     localStorage.clear();
+    
     if (theme) {
       localStorage.setItem("codeExpoHomeTheme", theme);
     }
+    readStoriesKeys.forEach(item => {
+      localStorage.setItem(item.key, item.value);
+    });
+    
     window.location.href = "/login";
   };
 

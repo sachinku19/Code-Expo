@@ -10126,4 +10126,300 @@ tier-badge.master {
   border-color: rgba(0, 0, 0, 0.06);
 }
 
+/* ==========================================================================
+   CodeExpo SaaS Redesign - Profile Post Cards Grid
+   ========================================================================== */
+
+.profile-post-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  width: 100%;
+  padding: 16px 0 32px 0;
+}
+
+.profile-post-card-item {
+  height: 380px;
+  background: rgba(16, 16, 24, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.profile-post-card-item:hover {
+  transform: translateY(-4px);
+  border-color: rgba(170, 59, 255, 0.35);
+  box-shadow: 0 12px 40px rgba(170, 59, 255, 0.18);
+  background: rgba(20, 20, 32, 0.55);
+}
+
+.light .profile-post-card-item {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04);
+}
+
+.light .profile-post-card-item:hover {
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 16px 40px rgba(139, 92, 246, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* Card Header */
+.profile-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.profile-card-author-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-card-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--ce-border);
+}
+
+.profile-card-avatar-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.profile-card-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-card-username {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ce-text-h);
+}
+
+.profile-card-time {
+  font-size: 0.68rem;
+  color: var(--ce-text-muted);
+}
+
+/* Badge styling */
+.profile-card-type-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--ce-text);
+  text-transform: uppercase;
+}
+
+.profile-card-type-badge.code {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.profile-card-type-badge.image {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.2);
+}
+
+.profile-card-type-badge.video {
+  color: #fb7185;
+  background: rgba(251, 113, 133, 0.1);
+  border-color: rgba(251, 113, 133, 0.2);
+}
+
+.profile-card-type-badge.text {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
+/* Card Body */
+.profile-card-body {
+  flex-grow: 1;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 12px;
+}
+
+/* Code Preview */
+.profile-card-code-preview {
+  margin: 0;
+  padding: 10px 12px;
+  background: #09090f;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  overflow: hidden;
+  height: 160px;
+  position: relative;
+}
+
+.profile-card-code-line {
+  white-space: pre;
+  display: block;
+}
+
+.profile-card-code-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to top, #09090f 30%, transparent 100%);
+  pointer-events: none;
+}
+
+.profile-card-code-lines-count {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-size: 0.65rem;
+  color: #a5b4fc;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+/* Text preview */
+.profile-card-text-preview {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--ce-text);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 7;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Image preview */
+.profile-card-image-preview {
+  width: 100%;
+  height: 160px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.profile-card-image-caption {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--ce-text);
+  margin-top: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Video preview */
+.profile-card-video-preview {
+  width: 100%;
+  height: 160px;
+  border-radius: 10px;
+  background: #000;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-card-video-overlay {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.profile-post-card-item:hover .profile-card-video-overlay {
+  transform: scale(1.1);
+  background: var(--ce-primary);
+  border-color: transparent;
+}
+
+/* Card Footer */
+.profile-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.profile-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-card-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--ce-text-muted);
+}
+
+.profile-card-action-btn {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ce-primary);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 12px rgba(170, 59, 255, 0.2);
+}
+
+.profile-post-card-item:hover .profile-card-action-btn {
+  background: var(--ce-primary-hover);
+  box-shadow: 0 0 16px rgba(170, 59, 255, 0.4);
+}
+
+
 
