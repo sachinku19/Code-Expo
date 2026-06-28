@@ -57,11 +57,29 @@ const logModerationAction = async (userId, actionType, postId, reason, moderator
     if (actionType === "Post Hidden" || actionType === "Post Deleted") {
       userObj.accountHealth = Math.max(0, userObj.accountHealth - 20);
       userObj.totalViolations += 1;
-    } else if (actionType === "Sensitive Content" || actionType === "Warning Issued") {
+    } else if (actionType === "Sensitive Content" || actionType === "Warning Issued" || actionType === "Post Flagged") {
       userObj.accountHealth = Math.max(0, userObj.accountHealth - 10);
       userObj.totalWarnings += 1;
     } else if (actionType === "Post Restored" || actionType === "Account Reactivated") {
-      userObj.accountHealth = Math.min(100, userObj.accountHealth + 20);
+      if (actionType === "Account Reactivated") {
+        userObj.accountHealth = 100;
+        userObj.isSuspended = false;
+        userObj.accountStatus = "Active";
+        userObj.guidelineStatus = "Good Standing";
+      } else {
+        userObj.accountHealth = Math.min(100, userObj.accountHealth + 20);
+      }
+      if (actionType === "Post Restored") {
+        if (userObj.totalWarnings > 0) {
+          userObj.totalWarnings = Math.max(0, userObj.totalWarnings - 1);
+        } else if (userObj.totalViolations > 0) {
+          userObj.totalViolations = Math.max(0, userObj.totalViolations - 1);
+        }
+      }
+      if (userObj.accountHealth >= 50 && (userObj.accountStatus === "Restricted" || userObj.accountStatus === "Suspended" || userObj.accountStatus === "Permanently Banned")) {
+        userObj.accountStatus = "Active";
+        userObj.guidelineStatus = "Good Standing";
+      }
     } else if (actionType === "Temporary Restriction") {
       userObj.accountHealth = Math.max(0, userObj.accountHealth - 30);
       userObj.accountStatus = "Restricted";
@@ -70,10 +88,12 @@ const logModerationAction = async (userId, actionType, postId, reason, moderator
       userObj.accountHealth = Math.max(0, userObj.accountHealth - 50);
       userObj.accountStatus = "Suspended";
       userObj.guidelineStatus = "Suspended Standing";
+      userObj.isSuspended = true;
     } else if (actionType === "Ban") {
       userObj.accountHealth = 0;
       userObj.accountStatus = "Permanently Banned";
       userObj.guidelineStatus = "Banned Standing";
+      userObj.isSuspended = true;
     }
 
     if (userObj.accountHealth < 50 && userObj.accountStatus === "Active") {
@@ -90,12 +110,14 @@ const logModerationAction = async (userId, actionType, postId, reason, moderator
   else if (actionType === "Post Deleted") notificationMessage = "Your post has been removed due to guidelines violation.";
   else if (actionType === "Post Restored") notificationMessage = "Your post has been restored.";
   else if (actionType === "Warning Issued") notificationMessage = "Your account has received an administrative warning.";
+  else if (actionType === "Post Flagged") notificationMessage = "Your post has been flagged by moderators.";
   else if (actionType === "Likes Disabled") notificationMessage = "Likes have been disabled for your post.";
   else if (actionType === "Comment Disabled") notificationMessage = "Comments have been locked for your post.";
   else if (actionType === "Temporary Restriction") notificationMessage = "Your account has been temporarily restricted.";
   else if (actionType === "Suspension") notificationMessage = "Your account has been suspended.";
   else if (actionType === "Ban") notificationMessage = "Your account has been permanently banned.";
   else if (actionType === "Sensitive Content") notificationMessage = "Your post has been flagged as containing sensitive content.";
+  else if (actionType === "Account Reactivated") notificationMessage = "Your account standing has been restored to active.";
 
   if (notificationMessage) {
     const notification = new Notification({
@@ -112,14 +134,14 @@ const logModerationAction = async (userId, actionType, postId, reason, moderator
     try {
       const socketHandler = require("../sockets/socketHandler");
       if (socketHandler.io) {
-        socketHandler.io.emit("notification-received", notification);
-        socketHandler.io.emit("admin-user-action", {
+        socketHandler.io.to(String(userId)).emit("notification-received", notification);
+        socketHandler.io.to(String(userId)).emit("admin-user-action", {
           userId,
           isSuspended: userObj?.isSuspended || false,
           user: userObj
         });
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 };
 
@@ -136,44 +158,65 @@ const getAdminOverviewStats = async (req, res) => {
       }
     }
 
-    const totalUsers = await User.countDocuments();
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Fetch stats concurrently to maximize performance
+    const [
+      totalUsers,
+      totalRooms,
+      totalMessages,
+      usersWithExecutions,
+      ratingStats,
+      ratingDistribution,
+      recentExecutions,
+      recentRoomsCreated,
+      activeUsers
+    ] = await Promise.all([
+      User.countDocuments(),
+      Room.countDocuments(),
+      Message.countDocuments(),
+      User.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalExecutions: { $sum: "$executionsCount" }
+          }
+        }
+      ]),
+      WebsiteRating.aggregate([
+        {
+          $group: {
+            _id: null,
+            average: { $avg: "$rating" },
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+      WebsiteRating.aggregate([
+        {
+          $group: {
+            _id: "$rating",
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+      Activity.countDocuments({
+        action: "executed",
+        createdAt: { $gte: oneDayAgo }
+      }),
+      Room.countDocuments({
+        createdAt: { $gte: oneDayAgo }
+      }),
+      User.find({ _id: { $in: activeUserIds } })
+        .select("username email avatar lastSeene")
+        .sort({ lastSeene: -1 })
+        .lean()
+    ]);
+
     const onlineUsers = activeUserIds.length;
-    const totalRooms = await Room.countDocuments();
-    const totalMessages = await Message.countDocuments();
-
-    // Sum executions
-    const usersWithExecutions = await User.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalExecutions: { $sum: "$executionsCount" }
-        }
-      }
-    ]);
     const totalExecutions = usersWithExecutions.length > 0 ? usersWithExecutions[0].totalExecutions : 0;
-
-    // Website ratings aggregated stats
-    const ratingStats = await WebsiteRating.aggregate([
-      {
-        $group: {
-          _id: null,
-          average: { $avg: "$rating" },
-          count: { $sum: 1 }
-        }
-      }
-    ]);
     const averageRating = ratingStats.length > 0 ? Math.round(ratingStats[0].average * 10) / 10 : 0;
     const totalRatings = ratingStats.length > 0 ? ratingStats[0].count : 0;
-
-    // Website ratings star distribution
-    const ratingDistribution = await WebsiteRating.aggregate([
-      {
-        $group: {
-          _id: "$rating",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
 
     const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     ratingDistribution.forEach((dist) => {
@@ -182,33 +225,23 @@ const getAdminOverviewStats = async (req, res) => {
       }
     });
 
-    // Recent activity counts (24h)
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentExecutions = await Activity.countDocuments({
-      action: "executed",
-      createdAt: { $gte: oneDayAgo }
-    });
-    const recentRoomsCreated = await Room.countDocuments({
-      createdAt: { $gte: oneDayAgo }
-    });
-
-    // Fetch detailed info of online users for tracking
-    const activeUsers = await User.find({ _id: { $in: activeUserIds } })
-      .select("username email avatar lastSeene")
-      .sort({ lastSeene: -1 });
-
-    const onlineUsersList = [];
-    for (const u of activeUsers) {
-      const latestLog = await LoginLog.findOne({ user: u._id, logoutTime: null }).sort({ loginTime: -1 });
-      onlineUsersList.push({
-        id: u._id,
-        username: u.username,
-        email: u.email,
-        avatar: u.avatar,
-        lastSeene: u.lastSeene,
-        ipAddress: latestLog ? latestLog.ipAddress : "Unknown"
-      });
-    }
+    // Fetch detailed info of online users for tracking in parallel
+    const onlineUsersList = await Promise.all(
+      activeUsers.map(async (u) => {
+        const latestLog = await LoginLog.findOne({ user: u._id, logoutTime: null })
+          .sort({ loginTime: -1 })
+          .select("ipAddress")
+          .lean();
+        return {
+          id: u._id,
+          username: u.username,
+          email: u.email,
+          avatar: u.avatar,
+          lastSeene: u.lastSeene,
+          ipAddress: latestLog ? latestLog.ipAddress : "Unknown"
+        };
+      })
+    );
 
     res.status(200).json({
       success: true,
@@ -254,12 +287,16 @@ const getAllUsers = async (req, res) => {
       userQuery.$or = searchOr;
     }
 
-    const admins = await User.find(adminQuery).sort({ createdAt: -1 });
-    const total = await User.countDocuments(userQuery);
-    const users = await User.find(userQuery)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Fetch admins, total users, and paginated users concurrently
+    const [admins, total, users] = await Promise.all([
+      User.find(adminQuery).sort({ createdAt: -1 }).lean(),
+      User.countDocuments(userQuery),
+      User.find(userQuery)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+    ]);
 
     res.status(200).json({
       success: true,
@@ -719,6 +756,14 @@ const toggleUserSuspension = async (req, res) => {
       });
     }
 
+    // Prevent self-suspension
+    if (req.user && req.user._id.toString() === user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Access denied: You cannot suspend or reactivate your own admin account."
+      });
+    }
+
     // Only super admin can suspend other admins
     const isSuperAdmin = req.user && req.user.email === "adminsachin@gmail.com";
     if (user.role === "admin") {
@@ -766,9 +811,9 @@ const toggleUserSuspension = async (req, res) => {
 const adminIssueUserAction = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { actionType, reason } = req.body; // "Warning Issued", "Temporary Restriction", "Ban"
+    const { actionType, reason } = req.body; // "Warning Issued", "Temporary Restriction", "Suspension", "Ban", "Account Reactivated"
 
-    if (!actionType || !["Warning Issued", "Temporary Restriction", "Ban"].includes(actionType)) {
+    if (!actionType || !["Warning Issued", "Temporary Restriction", "Suspension", "Ban", "Account Reactivated"].includes(actionType)) {
       return res.status(400).json({ success: false, message: "Invalid action type." });
     }
 
@@ -777,21 +822,15 @@ const adminIssueUserAction = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
-    if (actionType === "Ban") {
-      user.isSuspended = true;
-      user.accountStatus = "Permanently Banned";
-      user.guidelineStatus = "Banned Standing";
-      user.accountHealth = 0;
-    } else if (actionType === "Temporary Restriction") {
-      user.accountStatus = "Restricted";
-      user.guidelineStatus = "Restricted Standing";
-      user.accountHealth = Math.max(0, user.accountHealth - 30);
-    } else if (actionType === "Warning Issued") {
-      user.totalWarnings += 1;
-      user.accountHealth = Math.max(0, user.accountHealth - 10);
+    // Prevent self-moderation actions
+    if (req.user && req.user._id.toString() === user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Access denied: You cannot apply warnings, restrictions, or suspensions to your own admin account."
+      });
     }
-    await user.save();
 
+    // Delegate all property updates entirely to logModerationAction to prevent double-deduction!
     await logModerationAction(
       user._id,
       actionType,
@@ -800,10 +839,12 @@ const adminIssueUserAction = async (req, res) => {
       req.user?.username || "Admin"
     );
 
+    const updatedUser = await User.findById(userId);
+
     res.status(200).json({
       success: true,
       message: `Successfully issued ${actionType} action to ${user.username}.`,
-      user: formatUser(user)
+      user: formatUser(updatedUser)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -970,25 +1011,39 @@ const getAdminPosts = async (req, res) => {
       }
     }
 
-    // Compute Feed Statistics
-    const totalPosts = await Post.countDocuments();
-    const flaggedPosts = await Post.countDocuments({ status: "flagged" });
-    const hiddenPosts = await Post.countDocuments({ status: "hidden" });
-    
-    // Compute total comments count via aggregation
-    const commentsCount = await Post.aggregate([
-      { $project: { numberOfComments: { $size: { $ifNull: ["$comments", []] } } } },
-      { $group: { _id: null, total: { $sum: "$numberOfComments" } } }
+    // Fetch stats and posts concurrently
+    const [
+      totalPosts,
+      flaggedPosts,
+      hiddenPosts,
+      featuredPosts,
+      pinnedPosts,
+      totalStories,
+      hiddenStories,
+      commentsCount,
+      totalFiltered,
+      posts
+    ] = await Promise.all([
+      Post.countDocuments(),
+      Post.countDocuments({ status: "flagged" }),
+      Post.countDocuments({ status: "hidden" }),
+      Post.countDocuments({ isFeatured: true }),
+      Post.countDocuments({ isPinned: true }),
+      require("../models/Story").countDocuments(),
+      require("../models/Story").countDocuments({ status: "hidden" }),
+      Post.aggregate([
+        { $group: { _id: null, total: { $sum: { $size: { $ifNull: ["$comments", []] } } } } }
+      ]),
+      Post.countDocuments(query),
+      Post.find(query)
+        .populate("author", "username email avatar title role isOnline executionsCount createdAt")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
     ]);
-    const totalComments = commentsCount.length > 0 ? commentsCount[0].total : 0;
 
-    const totalFiltered = await Post.countDocuments(query);
-    const posts = await Post.find(query)
-      .populate("author", "username email avatar title")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const totalComments = commentsCount.length > 0 ? commentsCount[0].total : 0;
 
     res.status(200).json({
       success: true,
@@ -1001,6 +1056,9 @@ const getAdminPosts = async (req, res) => {
         likesCount: p.likes ? p.likes.length : 0,
         comments: p.comments || [],
         status: p.status || "active",
+        isPinned: p.isPinned || false,
+        isFeatured: p.isFeatured || false,
+        viewsCount: p.viewsCount || 0,
         legalCase: p.legalCase ? {
           caseId: p.legalCase.caseId || "",
           infringementType: p.legalCase.infringementType || "None",
@@ -1022,13 +1080,21 @@ const getAdminPosts = async (req, res) => {
           username: p.author.username,
           email: p.author.email,
           avatar: p.author.avatar,
-          title: p.author.title
+          title: p.author.title,
+          role: p.author.role,
+          isOnline: p.author.isOnline,
+          executionsCount: p.author.executionsCount,
+          createdAt: p.author.createdAt
         } : { username: "Unknown / Deleted User" }
       })),
       stats: {
         totalPosts,
         flaggedPosts,
         hiddenPosts,
+        featuredPosts,
+        pinnedPosts,
+        totalStories,
+        hiddenStories,
         totalComments
       },
       pagination: {
@@ -1120,6 +1186,20 @@ const deleteAdminPostComment = async (req, res) => {
     post.comments.splice(commentIndex, 1);
     await post.save();
 
+    // Emit real-time socket event
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("post:commented", {
+          postId,
+          comments: post.comments,
+          commentsCount: post.comments.length
+        });
+      }
+    } catch (e) {
+      console.error("Failed to emit post:commented event from admin comment deletion:", e.message);
+    }
+
     res.status(200).json({
       success: true,
       message: "Comment has been deleted and moderated successfully.",
@@ -1192,8 +1272,12 @@ const updateAdminPostStatus = async (req, res) => {
     if (status && oldStatus !== status) {
       if (status === "hidden") {
         await logModerationAction(post.author, "Post Hidden", post._id, modReason, moderatorUser);
-      } else if (status === "active" && oldStatus === "hidden") {
-        await logModerationAction(post.author, "Post Restored", post._id, modReason, moderatorUser);
+      } else if (status === "flagged") {
+        await logModerationAction(post.author, "Post Flagged", post._id, modReason || "Post flagged by moderators.", moderatorUser);
+      } else if (status === "active") {
+        await logModerationAction(post.author, "Post Restored", post._id, modReason || "Post restored by moderators.", moderatorUser);
+      } else if (status === "deleted") {
+        await logModerationAction(post.author, "Post Deleted", post._id, modReason || "Post deleted by moderators.", moderatorUser);
       }
     }
     if (isSensitive !== undefined && oldSensitive !== isSensitive) {
@@ -1319,6 +1403,15 @@ const getAdminStories = async (req, res) => {
     if (req.query.userId) {
       query.user = req.query.userId;
     }
+    if (req.query.search) {
+      query.$or = [
+        { text: { $regex: req.query.search, $options: "i" } },
+        { username: { $regex: req.query.search, $options: "i" } }
+      ];
+    }
+    if (req.query.status && req.query.status !== "all") {
+      query.status = req.query.status;
+    }
 
     const total = await Story.countDocuments(query);
     const stories = await Story.find(query)
@@ -1340,15 +1433,17 @@ const getAdminStories = async (req, res) => {
           title: story.user.title,
           isOnline: story.user.isOnline === "true" || story.user.isOnline === true,
           lastSeene: story.user.lastSeene
-        } : {
-          username: story.username,
-          avatar: story.avatar
-        },
+        } : null,
+        username: story.username,
+        avatar: story.avatar,
         text: story.text,
         mediaUrl: story.mediaUrl,
-        likesCount: story.likes.length,
-        commentsCount: story.comments.length,
-        createdAt: story.createdAt
+        likesCount: story.likes ? story.likes.length : 0,
+        commentsCount: story.comments ? story.comments.length : 0,
+        createdAt: story.createdAt,
+        status: story.status || "active",
+        isFeatured: story.isFeatured || false,
+        viewsCount: story.viewsCount || 0
       })),
       pagination: {
         page,
@@ -1379,6 +1474,15 @@ const deleteAdminStory = async (req, res) => {
       });
     }
 
+    // Log the moderation action to update user's standing and health
+    await logModerationAction(
+      story.user,
+      "Post Deleted",
+      null,
+      req.body.reason || "Story content violates community guidelines.",
+      req.user?.username || "Admin"
+    );
+
     // Clean up story media files from storage
     if (story.mediaMetadata || story.mediaUrl) {
       await MediaService.deleteMedia(story.mediaMetadata || story.mediaUrl).catch((e) => {
@@ -1399,6 +1503,200 @@ const deleteAdminStory = async (req, res) => {
   }
 };
 
+// Bulk Actions on Posts
+const bulkDeletePosts = async (req, res) => {
+  try {
+    const Post = require("../models/Post");
+    const { postIds } = req.body;
+    if (!postIds || !Array.isArray(postIds)) {
+      return res.status(400).json({ success: false, message: "Invalid postIds format" });
+    }
+
+    const posts = await Post.find({ _id: { $in: postIds } });
+    for (const post of posts) {
+      await logModerationAction(
+        post.author,
+        "Post Deleted",
+        null,
+        "Bulk deleted by admin",
+        req.user?.username || "Admin"
+      );
+      if (post.image || post.images?.length > 0 || post.video) {
+        const MediaService = require("../services/mediaService");
+        if (post.image) await MediaService.deleteMedia(post.image).catch(() => {});
+        if (post.video) await MediaService.deleteMedia(post.video).catch(() => {});
+        for (const img of post.images || []) {
+          await MediaService.deleteMedia(img).catch(() => {});
+        }
+      }
+    }
+
+    await Post.deleteMany({ _id: { $in: postIds } });
+
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        for (const id of postIds) {
+          socketHandler.io.emit("admin-post-action", { postId: id, post: null, isDeleted: true });
+        }
+      }
+    } catch (e) {}
+
+    res.status(200).json({ success: true, message: `${postIds.length} posts deleted successfully` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const bulkHidePosts = async (req, res) => {
+  try {
+    const Post = require("../models/Post");
+    const { postIds, hide } = req.body;
+    if (!postIds || !Array.isArray(postIds)) {
+      return res.status(400).json({ success: false, message: "Invalid postIds format" });
+    }
+
+    const status = hide ? "hidden" : "active";
+    const action = hide ? "Post Hidden" : "Post Restored";
+
+    const posts = await Post.find({ _id: { $in: postIds } });
+    for (const post of posts) {
+      post.status = status;
+      await post.save();
+      await logModerationAction(
+        post.author,
+        action,
+        post._id,
+        "Bulk action by admin",
+        req.user?.username || "Admin"
+      );
+    }
+
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        for (const post of posts) {
+          socketHandler.io.emit("admin-post-action", { postId: post._id, post });
+        }
+      }
+    } catch (e) {}
+
+    res.status(200).json({ success: true, message: `${postIds.length} posts status updated to ${status}` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const bulkFeaturePosts = async (req, res) => {
+  try {
+    const Post = require("../models/Post");
+    const { postIds, feature } = req.body;
+    if (!postIds || !Array.isArray(postIds)) {
+      return res.status(400).json({ success: false, message: "Invalid postIds format" });
+    }
+
+    const posts = await Post.find({ _id: { $in: postIds } });
+    for (const post of posts) {
+      post.isFeatured = feature;
+      await post.save();
+      await logModerationAction(
+        post.author,
+        feature ? "Featured by Admin" : "Post Restored",
+        post._id,
+        "Bulk action by admin",
+        req.user?.username || "Admin"
+      );
+    }
+
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        for (const post of posts) {
+          socketHandler.io.emit("admin-post-action", { postId: post._id, post });
+        }
+      }
+    } catch (e) {}
+
+    res.status(200).json({ success: true, message: `${postIds.length} posts featured status updated` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const updateAdminStoryStatus = async (req, res) => {
+  try {
+    const Story = require("../models/Story");
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["active", "hidden"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const story = await Story.findById(id);
+    if (!story) {
+      return res.status(404).json({ success: false, message: "Story not found" });
+    }
+
+    story.status = status;
+    await story.save();
+
+    await logModerationAction(
+      story.user,
+      status === "hidden" ? "Story Hidden" : "Story Restored",
+      null,
+      `Story status set to ${status} by admin`,
+      req.user?.username || "Admin"
+    );
+
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("admin-story-action", { storyId: id, story });
+      }
+    } catch (e) {}
+
+    res.status(200).json({ success: true, message: `Story status updated to ${status}`, story });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const toggleAdminStoryFeature = async (req, res) => {
+  try {
+    const Story = require("../models/Story");
+    const { id } = req.params;
+    const { isFeatured } = req.body;
+
+    const story = await Story.findById(id);
+    if (!story) {
+      return res.status(404).json({ success: false, message: "Story not found" });
+    }
+
+    story.isFeatured = isFeatured;
+    await story.save();
+
+    await logModerationAction(
+      story.user,
+      isFeatured ? "Featured by Admin" : "Story Restored",
+      null,
+      isFeatured ? "Story featured by admin" : "Story unfeatured by admin",
+      req.user?.username || "Admin"
+    );
+
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("admin-story-action", { storyId: id, story });
+      }
+    } catch (e) {}
+
+    res.status(200).json({ success: true, message: `Story featured status updated`, story });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAdminOverviewStats,
   getAllUsers,
@@ -1414,7 +1712,7 @@ module.exports = {
   adminIssueUserAction,
   getRecentMessages,
   deleteChatMessage,
-  getMainMaintenanceStatus: getMaintenanceStatus, // Keep compatibility if needed
+  getMainMaintenanceStatus: getMaintenanceStatus,
   getMaintenanceStatus,
   toggleMaintenanceMode,
   getAdminPosts,
@@ -1423,5 +1721,10 @@ module.exports = {
   updateAdminPostStatus,
   getAdminLoginLogs,
   getAdminStories,
-  deleteAdminStory
+  deleteAdminStory,
+  bulkDeletePosts,
+  bulkHidePosts,
+  bulkFeaturePosts,
+  updateAdminStoryStatus,
+  toggleAdminStoryFeature
 };

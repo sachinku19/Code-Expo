@@ -65,9 +65,11 @@ const getTrustSafetyStatus = async (req, res) => {
 const getModerationHistory = async (req, res) => {
   try {
     const userId = req.user._id;
+    console.log("🔍 [getModerationHistory] Request by User:", req.user.username, "| ID:", userId);
     const history = await ModerationAction.find({ user: userId })
       .populate("postId", "title text image images video textFormat")
       .sort({ createdAt: -1 });
+    console.log("🔍 [getModerationHistory] Found history items:", history.length);
 
     res.status(200).json({
       success: true,

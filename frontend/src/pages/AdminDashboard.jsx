@@ -31,8 +31,14 @@ import {
   getAdminLoginLogs,
   getAdminStories,
   deleteAdminStory,
-  adminIssueUserAction
+  adminIssueUserAction,
+  bulkDeletePosts,
+  bulkHidePosts,
+  bulkFeaturePosts,
+  updateAdminStoryStatus,
+  toggleAdminStoryFeature
 } from "../services/adminService";
+import socket from "../socket/socket";
 import { adminGetAppeals, adminResolveAppeal } from "../services/trustSafetyService";
 import {
   Users,
@@ -72,7 +78,10 @@ import {
   X,
   Megaphone,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  Link,
+  BarChart2,
+  FileText
 } from "lucide-react";
 import Logo from "../components/shared/Logo";
 import { Pin, Heart, Edit, EyeOff } from "lucide-react";
@@ -87,11 +96,11 @@ import "./AdminDashboard.css";
 // Reusable styled CodeBlock component with line numbers, syntax highlighting, and copy button
 const CodeBlock = ({ lang, code, addToast }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const lines = code.split(/\r?\n/);
   const totalLines = lines.length;
   const isLong = totalLines > 30;
-  
+
   const visibleLines = isLong && !isExpanded ? lines.slice(0, 22) : lines;
   const remainingLines = totalLines - visibleLines.length;
   const highlightCode = (lineText) => {
@@ -109,9 +118,9 @@ const CodeBlock = ({ lang, code, addToast }) => {
     ];
 
     const regex = new RegExp(
-      `(\\/\\/.*)|` + 
-      `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` + 
-      `\\b(${keywords.join("|")})\\b|` + 
+      `(\\/\\/.*)|` +
+      `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` +
+      `\\b(${keywords.join("|")})\\b|` +
       `\\b(\\d+)\\b`,
       "g"
     );
@@ -133,7 +142,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
     });
   };
   return (
-    <div 
+    <div
       className="premium-code-window"
       style={{
         background: "#09090f",
@@ -146,7 +155,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
         position: "relative"
       }}
     >
-      <div 
+      <div
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -190,7 +199,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
         </button>
       </div>
 
-      <div 
+      <div
         style={{
           display: "flex",
           overflow: "auto",
@@ -199,7 +208,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
           background: "#09090f"
         }}
       >
-        <div 
+        <div
           style={{
             padding: "16px 12px",
             borderRight: "1px solid rgba(255, 255, 255, 0.05)",
@@ -218,7 +227,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
           ))}
         </div>
 
-        <div 
+        <div
           style={{
             padding: "16px 16px",
             flex: 1,
@@ -231,15 +240,15 @@ const CodeBlock = ({ lang, code, addToast }) => {
           }}
         >
           {visibleLines.map((line, idx) => (
-            <div 
-              key={idx} 
-              dangerouslySetInnerHTML={{ __html: highlightCode(line) }} 
+            <div
+              key={idx}
+              dangerouslySetInnerHTML={{ __html: highlightCode(line) }}
             />
           ))}
         </div>
 
         {isLong && !isExpanded && (
-          <div 
+          <div
             style={{
               position: "absolute",
               bottom: 0,
@@ -254,7 +263,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
       </div>
 
       {isLong && (
-        <div 
+        <div
           style={{
             padding: "12px",
             background: "#11111b",
@@ -279,8 +288,8 @@ const CodeBlock = ({ lang, code, addToast }) => {
               transition: "all 0.2s"
             }}
           >
-            {isExpanded 
-              ? "Show Less" 
+            {isExpanded
+              ? "Show Less"
               : `${remainingLines} more lines... View Full Code`
             }
           </button>
@@ -304,10 +313,10 @@ const ExpandableText = ({ htmlContent }) => {
 
   return (
     <div style={{ position: "relative", marginBottom: "8px" }}>
-      <div 
+      <div
         ref={textRef}
-        style={{ 
-          maxHeight: !isExpanded ? "120px" : "none", 
+        style={{
+          maxHeight: !isExpanded ? "120px" : "none",
           overflow: "hidden",
           transition: "max-height 0.3s ease",
           position: "relative"
@@ -315,7 +324,7 @@ const ExpandableText = ({ htmlContent }) => {
       >
         {htmlContent}
         {!isExpanded && shouldShowButton && (
-          <div 
+          <div
             style={{
               position: "absolute",
               bottom: 0,
@@ -329,7 +338,7 @@ const ExpandableText = ({ htmlContent }) => {
         )}
       </div>
       {shouldShowButton && (
-        <button 
+        <button
           onClick={() => setIsExpanded(!isExpanded)}
           style={{
             background: "none",
@@ -374,9 +383,9 @@ const parseMarkdownOnly = (text) => {
 
 const renderPostContent = (text, addToast) => {
   if (!text) return null;
-  
+
   const parts = text.split(/(```[a-zA-Z0-9]*(?:\r?\n)[\s\S]*?```)/g);
-  
+
   return parts.map((part, index) => {
     if (part.startsWith("```")) {
       const match = part.match(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/);
@@ -384,20 +393,20 @@ const renderPostContent = (text, addToast) => {
         const lang = match[1] || "code";
         const code = match[2];
         return (
-          <CodeBlock 
-            key={index} 
-            lang={lang} 
-            code={code} 
-            addToast={addToast} 
+          <CodeBlock
+            key={index}
+            lang={lang}
+            code={code}
+            addToast={addToast}
           />
         );
       }
     }
-    
+
     return (
-      <ExpandableText 
-        key={index} 
-        htmlContent={parseMarkdownOnly(part)} 
+      <ExpandableText
+        key={index}
+        htmlContent={parseMarkdownOnly(part)}
       />
     );
   });
@@ -623,6 +632,10 @@ const AdminDashboard = () => {
   const [postStatusFilter, setPostStatusFilter] = useState("all");
   const [expandedPostLegal, setExpandedPostLegal] = useState({});
   const [savingCompliance, setSavingCompliance] = useState({});
+  const [selectedPostsBulk, setSelectedPostsBulk] = useState([]);
+  const [selectedPostAnalytics, setSelectedPostAnalytics] = useState(null);
+  const [storySearch, setStorySearch] = useState("");
+  const [storyStatusFilter, setStoryStatusFilter] = useState("all");
 
   // Appeals State
   const [appeals, setAppeals] = useState([]);
@@ -632,7 +645,7 @@ const AdminDashboard = () => {
   const [resolvingAppeal, setResolvingAppeal] = useState(false);
 
   // Manual User Penalty Form State
-  const [issueActionType, setIssueActionType] = useState("Warning");
+  const [issueActionType, setIssueActionType] = useState("Warning Issued");
   const [issueReason, setIssueReason] = useState("");
   const [issueNotes, setIssueNotes] = useState("");
   const [submittingUserAction, setSubmittingUserAction] = useState(false);
@@ -735,6 +748,166 @@ const AdminDashboard = () => {
   // Clear bypass redirection on load so that future returns are gated
   useEffect(() => {
     localStorage.removeItem("ceBypassAdminRedirect");
+  }, []);
+
+  // Real-time synchronization via Socket.IO
+  useEffect(() => {
+    const handlePostCreated = (newPost) => {
+      setPosts((prev) => {
+        if (prev.some((p) => p.id === newPost._id || p.id === newPost.id)) return prev;
+        const formattedPost = {
+          id: newPost._id,
+          text: newPost.text,
+          techStack: newPost.techStack || [],
+          image: newPost.image || "",
+          images: newPost.images || [],
+          likesCount: newPost.likes ? newPost.likes.length : 0,
+          comments: newPost.comments || [],
+          status: newPost.status || "active",
+          legalCase: newPost.legalCase || {
+            caseId: "",
+            infringementType: "None",
+            caseStatus: "Resolved",
+            notes: "",
+            actionTakenBy: "",
+            actionDate: null
+          },
+          createdAt: newPost.createdAt,
+          author: newPost.author ? {
+            id: newPost.author._id || newPost.author.id,
+            username: newPost.author.username,
+            email: newPost.author.email,
+            avatar: newPost.author.avatar,
+            title: newPost.author.title
+          } : { username: "Unknown / Deleted User" }
+        };
+        return [formattedPost, ...prev];
+      });
+      setFeedStats((prev) => ({
+        ...prev,
+        totalPosts: prev.totalPosts + 1
+      }));
+    };
+
+    const handlePostDeleted = ({ postId }) => {
+      let deletedPost = null;
+      setPosts((prev) => {
+        deletedPost = prev.find((p) => p.id === postId || p._id === postId);
+        return prev.filter((p) => p.id !== postId && p._id !== postId);
+      });
+      if (deletedPost) {
+        setFeedStats((prev) => {
+          const next = { ...prev };
+          next.totalPosts = Math.max(0, next.totalPosts - 1);
+          if (deletedPost.status === "flagged") next.flaggedPosts = Math.max(0, next.flaggedPosts - 1);
+          if (deletedPost.status === "hidden") next.hiddenPosts = Math.max(0, next.hiddenPosts - 1);
+          next.totalComments = Math.max(0, next.totalComments - (deletedPost.comments ? deletedPost.comments.length : 0));
+          return next;
+        });
+      }
+    };
+
+    const handlePostLiked = ({ postId, likes, likesCount }) => {
+      setPosts((prev) =>
+        prev.map((p) => {
+          if (p.id === postId || p._id === postId) {
+            return {
+              ...p,
+              likesCount: likesCount !== undefined ? likesCount : (likes ? likes.length : p.likesCount)
+            };
+          }
+          return p;
+        })
+      );
+    };
+
+    const handlePostCommented = ({ postId, comments, commentsCount }) => {
+      let commentDiff = 0;
+      setPosts((prev) =>
+        prev.map((p) => {
+          if (p.id === postId || p._id === postId) {
+            const oldCommentsCount = p.comments ? p.comments.length : 0;
+            const newCommentsCount = comments ? comments.length : (commentsCount || 0);
+            commentDiff = newCommentsCount - oldCommentsCount;
+            return { ...p, comments: comments || [] };
+          }
+          return p;
+        })
+      );
+      if (commentDiff !== 0) {
+        setFeedStats((prev) => ({
+          ...prev,
+          totalComments: Math.max(0, prev.totalComments + commentDiff)
+        }));
+      }
+    };
+
+    const handleAdminPostAction = ({ postId, post: updatedPost }) => {
+      let oldStatus = "";
+      let newStatus = "";
+      setPosts((prev) =>
+        prev.map((p) => {
+          if (p.id === postId || p._id === postId) {
+            oldStatus = p.status || "active";
+            newStatus = updatedPost.status || oldStatus;
+            return {
+              ...p,
+              ...updatedPost,
+              id: postId,
+              author: p.author
+            };
+          }
+          return p;
+        })
+      );
+      if (oldStatus && newStatus && oldStatus !== newStatus) {
+        setFeedStats((prev) => {
+          const next = { ...prev };
+          if (oldStatus === "flagged") next.flaggedPosts = Math.max(0, next.flaggedPosts - 1);
+          if (oldStatus === "hidden") next.hiddenPosts = Math.max(0, next.hiddenPosts - 1);
+          if (newStatus === "flagged") next.flaggedPosts += 1;
+          if (newStatus === "hidden") next.hiddenPosts += 1;
+          return next;
+        });
+      }
+    };
+
+    const handleUserStatus = ({ userId, isOnline }) => {
+      setStats((prev) => {
+        if (!prev) return prev;
+        const updatedOnlineCount = isOnline
+          ? Math.min(prev.totalUsers || 100, (prev.onlineUsers || 0) + 1)
+          : Math.max(0, (prev.onlineUsers || 0) - 1);
+
+        setNetworkStats(Math.min(100, Math.max(10, 20 + updatedOnlineCount * 8)));
+
+        let updatedList = prev.onlineUsersList || [];
+        if (!isOnline) {
+          updatedList = updatedList.filter((u) => u.id !== userId && u._id !== userId);
+        }
+        return {
+          ...prev,
+          onlineUsers: updatedOnlineCount,
+          onlineUsersList: updatedList
+        };
+      });
+    };
+
+    socket.on("post:created", handlePostCreated);
+    socket.on("post:deleted", handlePostDeleted);
+    socket.on("post:liked", handlePostLiked);
+    socket.on("post:commented", handlePostCommented);
+    socket.on("admin-post-action", handleAdminPostAction);
+    socket.on("user:status", handleUserStatus);
+
+    return () => {
+      socket.off("post:created", handlePostCreated);
+      socket.off("post:deleted", handlePostDeleted);
+      socket.off("post:liked", handlePostLiked);
+      socket.off("post:commented", handlePostCommented);
+      socket.off("admin-post-action", handleAdminPostAction);
+      socket.off("user:status", handleUserStatus);
+    };
   }, []);
 
   // Sync theme to document element
@@ -1035,7 +1208,7 @@ const AdminDashboard = () => {
   const fetchStories = async () => {
     setLoadingStories(true);
     try {
-      const data = await getAdminStories(storyPage, 12);
+      const data = await getAdminStories(storyPage, 12, storySearch, storyStatusFilter);
       if (data.success) {
         setStories(data.stories);
         setStoryPagination(data.pagination);
@@ -1053,8 +1226,26 @@ const AdminDashboard = () => {
       const res = await updateAdminPostStatus(postId, status, legalData);
       if (res.success) {
         addToast("Legal compliance details saved successfully", "success");
-        setPosts(prev => prev.map(p => p.id === postId ? { ...p, status, legalCase: res.post.legalCase } : p));
-        fetchPosts(); // Refresh stats banner
+        let oldStatus = "active";
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId || p._id === postId) {
+            oldStatus = p.status || "active";
+            return { ...p, status, legalCase: res.post.legalCase };
+          }
+          return p;
+        }));
+
+        // Update stats locally
+        setFeedStats(prev => {
+          const next = { ...prev };
+          if (oldStatus === "flagged") next.flaggedPosts = Math.max(0, next.flaggedPosts - 1);
+          if (oldStatus === "hidden") next.hiddenPosts = Math.max(0, next.hiddenPosts - 1);
+
+          if (status === "flagged") next.flaggedPosts += 1;
+          if (status === "hidden") next.hiddenPosts += 1;
+
+          return next;
+        });
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message || "Failed to update compliance details", "error");
@@ -1068,8 +1259,26 @@ const AdminDashboard = () => {
       const res = await updateAdminPostStatus(postId, status);
       if (res.success) {
         addToast(res.message, "success");
-        setPosts(prev => prev.map(p => p.id === postId ? { ...p, status } : p));
-        fetchPosts(); // Refresh stats banner
+        let oldStatus = "active";
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId || p._id === postId) {
+            oldStatus = p.status || "active";
+            return { ...p, status };
+          }
+          return p;
+        }));
+
+        // Update stats locally
+        setFeedStats(prev => {
+          const next = { ...prev };
+          if (oldStatus === "flagged") next.flaggedPosts = Math.max(0, next.flaggedPosts - 1);
+          if (oldStatus === "hidden") next.hiddenPosts = Math.max(0, next.hiddenPosts - 1);
+
+          if (status === "flagged") next.flaggedPosts += 1;
+          if (status === "hidden") next.hiddenPosts += 1;
+
+          return next;
+        });
         return true;
       }
     } catch (err) {
@@ -1322,7 +1531,7 @@ const AdminDashboard = () => {
     if (activeTab === "feed" && feedSubTab === "stories") {
       fetchStories();
     }
-  }, [storyPage]);
+  }, [storyPage, storySearch, storyStatusFilter]);
 
   useEffect(() => {
     if (activeTab === "loginLogs") {
@@ -1515,8 +1724,28 @@ const AdminDashboard = () => {
         const res = await deleteAdminPost(targetId);
         if (res.success) {
           addToast(res.message, "success");
+          let deletedPost = null;
+          setPosts(prev => {
+            deletedPost = prev.find(p => p.id === targetId || p._id === targetId);
+            return prev.filter(p => p.id !== targetId && p._id !== targetId);
+          });
+          if (deletedPost) {
+            setFeedStats(prev => {
+              const next = { ...prev };
+              next.totalPosts = Math.max(0, next.totalPosts - 1);
+              if (deletedPost.status === "flagged") next.flaggedPosts = Math.max(0, next.flaggedPosts - 1);
+              if (deletedPost.status === "hidden") next.hiddenPosts = Math.max(0, next.hiddenPosts - 1);
+              next.totalComments = Math.max(0, next.totalComments - (deletedPost.comments ? deletedPost.comments.length : 0));
+              return next;
+            });
+          }
+        }
+      } else if (type === "bulkDeletePosts") {
+        const res = await bulkDeletePosts(extraData);
+        if (res.success) {
+          addToast(res.message, "success");
+          setSelectedPostsBulk([]);
           fetchPosts();
-          fetchStats();
         }
       } else if (type === "deleteComment") {
         const res = await deleteAdminPostComment(targetId, extraData);
@@ -1529,7 +1758,7 @@ const AdminDashboard = () => {
         if (res.success) {
           addToast(res.message, "success");
           fetchStories();
-          fetchStats();
+          fetchPosts();
         }
       }
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -1538,6 +1767,79 @@ const AdminDashboard = () => {
     } finally {
       setConfirmingAction(false);
     }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedPostsBulk.length === 0) return;
+    setConfirmModal({
+      isOpen: true,
+      type: "bulkDeletePosts",
+      targetId: "bulk",
+      targetName: `${selectedPostsBulk.length} selected posts`,
+      extraData: selectedPostsBulk
+    });
+  };
+
+  const handleBulkHide = async (hide) => {
+    if (selectedPostsBulk.length === 0) return;
+    try {
+      const res = await bulkHidePosts(selectedPostsBulk, hide);
+      if (res.success) {
+        addToast(res.message, "success");
+        setSelectedPostsBulk([]);
+        fetchPosts();
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleBulkFeature = async (feature) => {
+    if (selectedPostsBulk.length === 0) return;
+    try {
+      const res = await bulkFeaturePosts(selectedPostsBulk, feature);
+      if (res.success) {
+        addToast(res.message, "success");
+        setSelectedPostsBulk([]);
+        fetchPosts();
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleToggleStoryHide = async (storyId, currentStatus) => {
+    try {
+      const nextStatus = currentStatus === "hidden" ? "active" : "hidden";
+      const res = await updateAdminStoryStatus(storyId, nextStatus);
+      if (res.success) {
+        addToast(res.message, "success");
+        fetchStories();
+        fetchPosts();
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleToggleStoryFeature = async (storyId, currentFeature) => {
+    try {
+      const nextFeature = !currentFeature;
+      const res = await toggleAdminStoryFeature(storyId, nextFeature);
+      if (res.success) {
+        addToast(res.message, "success");
+        fetchStories();
+        fetchPosts();
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
+    }
+  };
+
+  const handleCopyPostLink = (postId) => {
+    const url = `${window.location.origin}/posts/${postId}`;
+    navigator.clipboard.writeText(url);
+    addToast("Post link copied to clipboard", "success");
   };
 
   const handleDeleteAdClick = (adId, title) => {
@@ -2040,7 +2342,7 @@ const AdminDashboard = () => {
                 {/* Manual Moderation Compliance Action Panel */}
                 <form onSubmit={handleIssueUserAction} style={{ width: "100%", borderTop: "1px solid var(--admin-border)", padding: "15px 0 0", marginTop: "15px", display: "flex", flexDirection: "column", gap: "10px", textAlign: "left" }}>
                   <h5 style={{ margin: "0 0 5px", fontSize: "0.82rem", color: "var(--admin-text-h)" }}>Issue Moderation Penalty</h5>
-                  
+
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Action Type</label>
                     <select
@@ -2048,10 +2350,11 @@ const AdminDashboard = () => {
                       onChange={(e) => setIssueActionType(e.target.value)}
                       style={{ background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--admin-border)", borderRadius: "4px", padding: "6px 8px", fontSize: "0.75rem" }}
                     >
-                      <option value="Warning">Warning</option>
-                      <option value="Restricted">Restricted Standing</option>
-                      <option value="Suspended">Suspension</option>
-                      <option value="Permanently Banned">Permanent Ban</option>
+                      <option value="Warning Issued">Warning</option>
+                      <option value="Temporary Restriction">Restricted Standing</option>
+                      <option value="Suspension">Suspension</option>
+                      <option value="Ban">Permanent Ban</option>
+                      <option value="Account Reactivated">Lift Restrictions / Reactivate (Active)</option>
                     </select>
                   </div>
 
@@ -2144,7 +2447,7 @@ const AdminDashboard = () => {
 
                 {/* TAB 1: SESSIONS */}
                 {modalActiveTab === "sessions" && (
-                  <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "300px", flex: 1 }}>
+                  <div className="admin-modal-scrollable-list">
                     {loadingModalLogs ? (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", flex: 1 }}>
                         <Loader className="spinner" size={20} />
@@ -2190,7 +2493,7 @@ const AdminDashboard = () => {
 
                 {/* TAB 2: POSTS */}
                 {modalActiveTab === "posts" && (
-                  <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "300px", flex: 1, gap: "12px" }}>
+                  <div className="admin-modal-scrollable-list" style={{ gap: "12px" }}>
                     {loadingModalPosts ? (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", flex: 1 }}>
                         <Loader className="spinner" size={20} />
@@ -2364,7 +2667,7 @@ const AdminDashboard = () => {
 
                 {/* TAB 3: STORIES */}
                 {modalActiveTab === "stories" && (
-                  <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "300px", flex: 1, gap: "12px" }}>
+                  <div className="admin-modal-scrollable-list" style={{ gap: "12px" }}>
                     {loadingModalStories ? (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", flex: 1 }}>
                         <Loader className="spinner" size={20} />
@@ -3506,8 +3809,61 @@ const AdminDashboard = () => {
           {/* TAB 4.5: NETWORK FEED MODERATION */}
           {activeTab === "feed" && (
             <div className="tab-pane-feed-moderation animate-fade-in">
+              {/* OVERVIEW STATS CARDS */}
+              <div className="feed-stats-overview-grid">
+                <div className="feed-stat-card glass-panel blue">
+                  <div className="stat-icon"><FileText size={18} /></div>
+                  <div className="stat-details">
+                    <span className="stat-title">Total Posts</span>
+                    <span className="stat-count">{feedStats.totalPosts}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel indigo">
+                  <div className="stat-icon"><Sparkles size={18} /></div>
+                  <div className="stat-details">
+                    <span className="stat-title">Total Stories</span>
+                    <span className="stat-count">{feedStats.totalStories || 0}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel yellow">
+                  <div className="stat-icon"><EyeOff size={18} /></div>
+                  <div className="stat-details">
+                    <span className="stat-title">Hidden Posts</span>
+                    <span className="stat-count">{feedStats.hiddenPosts}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel orange">
+                  <div className="stat-icon"><VolumeX size={18} /></div>
+                  <div className="stat-details">
+                    <span className="stat-title">Hidden Stories</span>
+                    <span className="stat-count">{feedStats.hiddenStories || 0}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel purple">
+                  <div className="stat-icon"><Star size={18} /></div>
+                  <div className="stat-details">
+                    <span className="stat-title">Featured Posts</span>
+                    <span className="stat-count">{feedStats.featuredPosts || 0}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel teal">
+                  <div className="stat-icon"><Pin size={18} /></div>
+                  <div className="stat-details">
+                    <span className="stat-title">Pinned Posts</span>
+                    <span className="stat-count">{feedStats.pinnedPosts || 0}</span>
+                  </div>
+                </div>
+                <div className="feed-stat-card glass-panel red">
+                  <div className="stat-icon"><AlertTriangle size={18} /></div>
+                  <div className="stat-details">
+                    <span className="stat-title">Recent Reports</span>
+                    <span className="stat-count">{feedStats.flaggedPosts}</span>
+                  </div>
+                </div>
+              </div>
+
               {/* FEED TYPE TOGGLE */}
-              <div className="feed-type-toggle-row" style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid var(--admin-border)", paddingBottom: "12px" }}>
+              <div className="feed-type-toggle-row" style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid var(--admin-border)", paddingBottom: "12px", marginTop: "10px" }}>
                 <button
                   onClick={() => setFeedSubTab("posts")}
                   className={`feed-subtab-btn ${feedSubTab === "posts" ? "active" : ""}`}
@@ -3550,524 +3906,210 @@ const AdminDashboard = () => {
                 </button>
               </div>
 
+              {/* POSTS TAB CONTENT */}
               {feedSubTab === "posts" && (
                 <>
-                  {/* FEED STATS BANNER */}
-                  <div className="feed-stats-dashboard-row animate-fade-in">
-                    <div className="feed-stat-card glass-panel purple">
-                      <div className="stat-icon-wrapper"><Megaphone size={18} /></div>
-                      <div className="stat-info">
-                        <span className="stat-label">Total Posts</span>
-                        <span className="stat-value">{feedStats.totalPosts}</span>
-                      </div>
-                    </div>
-                    <div className="feed-stat-card glass-panel yellow">
-                      <div className="stat-icon-wrapper"><AlertTriangle size={18} /></div>
-                      <div className="stat-info">
-                        <span className="stat-label">Flagged Posts</span>
-                        <span className="stat-value">{feedStats.flaggedPosts}</span>
-                      </div>
-                    </div>
-                    <div className="feed-stat-card glass-panel red">
-                      <div className="stat-icon-wrapper"><VolumeX size={18} /></div>
-                      <div className="stat-info">
-                        <span className="stat-label">Hidden Posts</span>
-                        <span className="stat-value">{feedStats.hiddenPosts}</span>
-                      </div>
-                    </div>
-                    <div className="feed-stat-card glass-panel blue">
-                      <div className="stat-icon-wrapper"><MessageSquare size={18} /></div>
-                      <div className="stat-info">
-                        <span className="stat-label">Total Comments</span>
-                        <span className="stat-value">{feedStats.totalComments}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SEARCH BAR */}
-                  <div className="table-search-row glass-panel" style={{ marginBottom: "20px" }}>
-                    <div className="search-input-wrapper">
+                  {/* Search and Filters Bar */}
+                  <div className="feed-filters-bar glass-panel" style={{ marginBottom: "20px" }}>
+                    <div className="search-wrapper">
                       <Search size={14} className="search-icon" />
                       <input
                         type="text"
-                        placeholder="Search posts by content, tech stack, or author..."
+                        placeholder="Search posts by text, tags, or author..."
                         value={postSearch}
                         onChange={(e) => {
                           setPostSearch(e.target.value);
                           setPostPage(1);
                         }}
-                        className="table-search-input"
                       />
+                      {loadingPosts && <Loader className="spinner" size={14} />}
                     </div>
-                    {loadingPosts && <Loader className="spinner table-inline-loader" size={14} />}
+
+                    <div className="filters-group" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => { setPostStatusFilter("all"); setPostPage(1); }}
+                        className={`filter-chip ${postStatusFilter === "all" ? "active" : ""}`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => { setPostStatusFilter("active"); setPostPage(1); }}
+                        className={`filter-chip active-chip ${postStatusFilter === "active" ? "active" : ""}`}
+                      >
+                        Active
+                      </button>
+                      <button
+                        onClick={() => { setPostStatusFilter("flagged"); setPostPage(1); }}
+                        className={`filter-chip flagged-chip ${postStatusFilter === "flagged" ? "active" : ""}`}
+                      >
+                        Flagged
+                      </button>
+                      <button
+                        onClick={() => { setPostStatusFilter("hidden"); setPostPage(1); }}
+                        className={`filter-chip hidden-chip ${postStatusFilter === "hidden" ? "active" : ""}`}
+                      >
+                        Hidden
+                      </button>
+                    </div>
                   </div>
 
-                  {/* STATUS FILTER CHIPS */}
-                  <div className="feed-filter-chips-row" style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
-                    <button
-                      onClick={() => { setPostStatusFilter("all"); setPostPage(1); }}
-                      className={`feed-filter-chip ${postStatusFilter === "all" ? "active" : ""}`}
-                      style={{
-                        background: postStatusFilter === "all" ? "var(--accent)" : "var(--admin-btn-secondary-bg)",
-                        border: `1px solid ${postStatusFilter === "all" ? "var(--accent)" : "var(--admin-border)"}`,
-                        color: postStatusFilter === "all" ? "#fff" : "var(--admin-text)",
-                        padding: "6px 14px",
-                        borderRadius: "20px",
-                        cursor: "pointer",
-                        fontSize: "0.8rem",
-                        fontWeight: "750",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      All Posts ({feedStats.totalPosts})
-                    </button>
-                    <button
-                      onClick={() => { setPostStatusFilter("active"); setPostPage(1); }}
-                      className={`feed-filter-chip ${postStatusFilter === "active" ? "active" : ""}`}
-                      style={{
-                        background: postStatusFilter === "active" ? "rgba(16, 185, 129, 0.15)" : "var(--admin-btn-secondary-bg)",
-                        border: `1px solid ${postStatusFilter === "active" ? "#10b981" : "var(--admin-border)"}`,
-                        color: postStatusFilter === "active" ? "#10b981" : "var(--admin-text)",
-                        padding: "6px 14px",
-                        borderRadius: "20px",
-                        cursor: "pointer",
-                        fontSize: "0.8rem",
-                        fontWeight: "750",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      🟢 Active ({feedStats.totalPosts - feedStats.flaggedPosts - feedStats.hiddenPosts})
-                    </button>
-                    <button
-                      onClick={() => { setPostStatusFilter("flagged"); setPostPage(1); }}
-                      className={`feed-filter-chip ${postStatusFilter === "flagged" ? "active" : ""}`}
-                      style={{
-                        background: postStatusFilter === "flagged" ? "rgba(245, 158, 11, 0.15)" : "var(--admin-btn-secondary-bg)",
-                        border: `1px solid ${postStatusFilter === "flagged" ? "#f59e0b" : "var(--admin-border)"}`,
-                        color: postStatusFilter === "flagged" ? "#f59e0b" : "var(--admin-text)",
-                        padding: "6px 14px",
-                        borderRadius: "20px",
-                        cursor: "pointer",
-                        fontSize: "0.8rem",
-                        fontWeight: "750",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      🟡 Flagged ({feedStats.flaggedPosts})
-                    </button>
-                    <button
-                      onClick={() => { setPostStatusFilter("hidden"); setPostPage(1); }}
-                      className={`feed-filter-chip ${postStatusFilter === "hidden" ? "active" : ""}`}
-                      style={{
-                        background: postStatusFilter === "hidden" ? "rgba(239, 68, 68, 0.15)" : "var(--admin-btn-secondary-bg)",
-                        border: `1px solid ${postStatusFilter === "hidden" ? "#ef4444" : "var(--admin-border)"}`,
-                        color: postStatusFilter === "hidden" ? "#ef4444" : "var(--admin-text)",
-                        padding: "6px 14px",
-                        borderRadius: "20px",
-                        cursor: "pointer",
-                        fontSize: "0.8rem",
-                        fontWeight: "750",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      🔴 Hidden ({feedStats.hiddenPosts})
-                    </button>
-                  </div>
+                  {/* Bulk Actions Floating Bar */}
+                  {selectedPostsBulk.length > 0 && (
+                    <div className="bulk-action-bar glass-panel animate-slide-up" style={{ marginBottom: "20px" }}>
+                      <div className="bulk-info">
+                        <input
+                          type="checkbox"
+                          checked={selectedPostsBulk.length === posts.length}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPostsBulk(posts.map(p => p.id || p._id));
+                            } else {
+                              setSelectedPostsBulk([]);
+                            }
+                          }}
+                        />
+                        <span className="bulk-count">{selectedPostsBulk.length} posts selected</span>
+                      </div>
+                      <div className="bulk-buttons">
+                        <button onClick={() => handleBulkHide(true)} className="btn-bulk hide">Hide</button>
+                        <button onClick={() => handleBulkHide(false)} className="btn-bulk show">Unhide</button>
+                        <button onClick={() => handleBulkFeature(true)} className="btn-bulk feature">Feature</button>
+                        <button onClick={() => handleBulkFeature(false)} className="btn-bulk unfeature">Unfeature</button>
+                        <button onClick={handleBulkDeleteClick} className="btn-bulk delete">Delete</button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* POSTS LISTING */}
-                  <div className="admin-posts-grid">
-                    {posts.length === 0 ? (
-                      <div className="empty-posts-state glass-panel">
-                        {loadingPosts ? "Fetching feed posts..." : "No posts found in the network feed."}
+                  <div className="admin-posts-list">
+                    {loadingPosts && posts.length === 0 ? (
+                      /* Loading Skeletons */
+                      <div className="loading-skeletons">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="skeleton-card glass-panel" style={{ height: "140px", marginBottom: "16px" }}></div>
+                        ))}
+                      </div>
+                    ) : posts.length === 0 ? (
+                      <div className="empty-state-card glass-panel animate-fade-in">
+                        <FileText size={36} className="empty-icon" />
+                        <h4>No posts found</h4>
+                        <p>No posts match the current search query or status filter.</p>
                       </div>
                     ) : (
                       posts.map((post) => {
-                        const isExpanded = !!expandedPosts[post.id];
+                        const isSelected = selectedPostsBulk.includes(post.id || post._id);
+                        const postType = post.video ? "video" : post.images && post.images.length > 0 ? "image" : "text";
+
                         return (
-                          <div key={post.id} className={`admin-post-card glass-panel border-${post.status}`}>
-                            <div className="post-card-header">
-                              <div className="post-author-info">
-                                <div className="author-avatar-wrapper" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: post.author ? "pointer" : "default" }} title={post.author ? "View Developer Profile & Moderation" : ""}>
+                          <div key={post.id || post._id} className={`admin-post-card-premium glass-panel ${post.status}`}>
+                            {/* Card Sidebar - Checkbox */}
+                            <div className="card-selector-column">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedPostsBulk(prev => [...prev, post.id || post._id]);
+                                  } else {
+                                    setSelectedPostsBulk(prev => prev.filter(id => id !== (post.id || post._id)));
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            {/* Card Content */}
+                            <div className="card-main-content">
+                              {/* Header */}
+                              <div className="post-header-row">
+                                <div className="post-author-info" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: "pointer" }}>
                                   {post.author?.avatar ? (
-                                    <img src={post.author.avatar} alt={post.author.username} className="avatar-img" />
+                                    <img src={post.author.avatar} alt={post.author.username} className="author-avatar" />
                                   ) : (
-                                    <div className="avatar-placeholder">
+                                    <div className="author-avatar-placeholder">
                                       {(post.author?.username || "U").substring(0, 2).toUpperCase()}
                                     </div>
                                   )}
-                                </div>
-                                <div className="author-meta">
-                                  <div className="author-username-row" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: post.author ? "pointer" : "default" }} title={post.author ? "View Developer Profile & Moderation" : ""}>
-                                    <span className="author-username">{post.author?.username || "Deleted User"}</span>
-                                    <span className={`post-status-badge status-${post.status}`}>
-                                      {post.status.toUpperCase()}
-                                    </span>
+                                  <div className="author-meta">
+                                    <span className="author-name">{post.author?.username || "Deleted User"}</span>
+                                    <span className="post-date">{new Date(post.createdAt).toLocaleString()}</span>
                                   </div>
-                                  <span className="author-email">{post.author?.email || ""}</span>
-                                  {post.author?.title && <span className="author-title-badge">{post.author.title}</span>}
+                                </div>
+
+                                <div className="post-badges">
+                                  {post.isPinned && <span className="badge badge-pinned"><Pin size={10} fill="#818cf8" /> Pinned</span>}
+                                  {post.isFeatured && <span className="badge badge-featured"><Sparkles size={10} fill="#c084fc" /> Featured</span>}
+                                  <span className="badge badge-type">{postType.toUpperCase()}</span>
+                                  <span className={`badge badge-status ${post.status}`}>{post.status.toUpperCase()}</span>
                                 </div>
                               </div>
 
-                              <div className="post-card-actions-wrapper">
-                                <div className="post-moderation-controls" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                  <select
-                                    value={post.status || "active"}
-                                    onChange={(e) => handleStatusChange(post.id, e.target.value)}
-                                    className="admin-post-status-select"
-                                  >
-                                    <option value="active">Active (Visible)</option>
-                                    <option value="flagged">Flagged (Warning)</option>
-                                    <option value="hidden">Hidden (Moderated)</option>
-                                  </select>
-
-                                  <button
-                                    onClick={() => handleTogglePin(post)}
-                                    className={`btn-compliance-action ${post.isPinned ? "active" : ""}`}
-                                    title={post.isPinned ? "Unpin Post" : "Pin Post"}
-                                    style={{
-                                      background: post.isPinned ? "rgba(16, 185, 129, 0.15)" : "var(--admin-btn-secondary-bg)",
-                                      border: `1px solid ${post.isPinned ? "rgba(16, 185, 129, 0.4)" : "var(--admin-border)"}`,
-                                      color: post.isPinned ? "#10b981" : "var(--admin-text-muted)",
-                                      padding: "5px 8px",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "0.72rem",
-                                      display: "flex",
-                                      alignItems: "center"
-                                    }}
-                                  >
-                                    <Pin size={12} fill={post.isPinned ? "#10b981" : "none"} />
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleToggleFeature(post)}
-                                    className={`btn-compliance-action ${post.isFeatured ? "active" : ""}`}
-                                    title={post.isFeatured ? "Unfeature Post" : "Feature Post"}
-                                    style={{
-                                      background: post.isFeatured ? "rgba(245, 158, 11, 0.15)" : "var(--admin-btn-secondary-bg)",
-                                      border: `1px solid ${post.isFeatured ? "rgba(245, 158, 11, 0.4)" : "var(--admin-border)"}`,
-                                      color: post.isFeatured ? "#f59e0b" : "var(--admin-text-muted)",
-                                      padding: "5px 8px",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "0.72rem",
-                                      display: "flex",
-                                      alignItems: "center"
-                                    }}
-                                  >
-                                    <Sparkles size={12} fill={post.isFeatured ? "#f59e0b" : "none"} />
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleToggleCommentsLock(post)}
-                                    className={`btn-compliance-action ${post.commentsLocked ? "active" : ""}`}
-                                    title={post.commentsLocked ? "Unlock Comments" : "Lock Comments"}
-                                    style={{
-                                      background: post.commentsLocked ? "rgba(239, 68, 68, 0.15)" : "var(--admin-btn-secondary-bg)",
-                                      border: `1px solid ${post.commentsLocked ? "rgba(239, 68, 68, 0.4)" : "var(--admin-border)"}`,
-                                      color: post.commentsLocked ? "#ef4444" : "var(--admin-text-muted)",
-                                      padding: "5px 8px",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "0.72rem",
-                                      display: "flex",
-                                      alignItems: "center"
-                                    }}
-                                  >
-                                    {post.commentsLocked ? <Lock size={12} /> : <Unlock size={12} />}
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleToggleLikesDisabled(post)}
-                                    className={`btn-compliance-action ${post.likesDisabled ? "active" : ""}`}
-                                    title={post.likesDisabled ? "Enable Likes" : "Disable Likes"}
-                                    style={{
-                                      background: post.likesDisabled ? "rgba(239, 68, 68, 0.15)" : "var(--admin-btn-secondary-bg)",
-                                      border: `1px solid ${post.likesDisabled ? "rgba(239, 68, 68, 0.4)" : "var(--admin-border)"}`,
-                                      color: post.likesDisabled ? "#ef4444" : "var(--admin-text-muted)",
-                                      padding: "5px 8px",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "0.72rem",
-                                      display: "flex",
-                                      alignItems: "center"
-                                    }}
-                                  >
-                                    <Heart size={12} fill={post.likesDisabled ? "none" : "#ef4444"} color={post.likesDisabled ? "#ef4444" : "none"} />
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleToggleSensitive(post)}
-                                    className={`btn-compliance-action ${post.isSensitive ? "active" : ""}`}
-                                    title={post.isSensitive ? "Remove Sensitive Flag" : "Mark as Sensitive"}
-                                    style={{
-                                      background: post.isSensitive ? "rgba(244, 63, 94, 0.15)" : "var(--admin-btn-secondary-bg)",
-                                      border: `1px solid ${post.isSensitive ? "rgba(244, 63, 94, 0.4)" : "var(--admin-border)"}`,
-                                      color: post.isSensitive ? "#f43f5e" : "var(--admin-text-muted)",
-                                      padding: "5px 8px",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "0.72rem",
-                                      display: "flex",
-                                      alignItems: "center"
-                                    }}
-                                  >
-                                    {post.isSensitive ? <EyeOff size={12} /> : <Eye size={12} />}
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setEditingPostId(post.id || post._id);
-                                      setEditingPostText(post.text);
-                                    }}
-                                    className="btn-compliance-action"
-                                    title="Edit Post Text"
-                                    style={{
-                                      background: "var(--admin-btn-secondary-bg)",
-                                      border: "1px solid var(--admin-border)",
-                                      color: "var(--admin-text-muted)",
-                                      padding: "5px 8px",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "0.72rem",
-                                      display: "flex",
-                                      alignItems: "center"
-                                    }}
-                                  >
-                                    <Edit size={12} />
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setExpandedPostLegal(prev => ({
-                                        ...prev,
-                                        [post.id]: !prev[post.id]
-                                      }));
-                                    }}
-                                    className={`btn-compliance-action ${expandedPostLegal[post.id] ? "active" : ""}`}
-                                    title="Manage legal case file & compliance notes"
-                                    style={{
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      gap: "4px",
-                                      background: expandedPostLegal[post.id] ? "var(--admin-btn-active-bg)" : "var(--admin-btn-secondary-bg)",
-                                      border: `1px solid ${expandedPostLegal[post.id] ? "var(--admin-btn-active-border)" : "var(--admin-border)"}`,
-                                      color: expandedPostLegal[post.id] ? "var(--accent)" : "var(--admin-text-muted)",
-                                      padding: "5px 10px",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "0.72rem",
-                                      fontWeight: "700",
-                                      transition: "all 0.15s ease"
-                                    }}
-                                  >
-                                    <ShieldAlert size={12} />
-                                    <span>Legal File</span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleDeletePostClick(post.id, post.author?.username || "Someone")}
-                                    className="btn-action-delete"
-                                    title="Delete post permanently"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="post-card-body">
-                              {renderPostContent(post.text, addToast)}
-                              {parsePollBlock(post.id, post.text)}
-                              {parseRepoBlock(post.text)}
-                              {parseEventBlock(post.text)}
-
-                              {post.techStack && post.techStack.length > 0 && (
-                                <div className="post-tech-tags" style={{ marginTop: "8px" }}>
-                                  {post.techStack.map((tech, idx) => (
-                                    <span key={idx} className="tech-tag-pill">{tech}</span>
-                                  ))}
-                                </div>
-                              )}
-
-                              {renderPostImages(post)}
-                            </div>
-
-                            <div className="post-card-footer">
-                              <div className="post-stats-row">
-                                <span className="stat-pill">👍 {post.likesCount} Likes</span>
-                                <span className="stat-pill">💬 {post.comments ? post.comments.length : 0} Comments</span>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  setExpandedPosts(prev => ({
-                                    ...prev,
-                                    [post.id]: !prev[post.id]
-                                  }));
-                                }}
-                                className="btn-toggle-comments"
-                              >
-                                {isExpanded ? "Hide Comments" : `Manage Comments (${post.comments ? post.comments.length : 0})`}
-                              </button>
-                            </div>
-
-                            {expandedPostLegal[post.id] && (
-                              <div className="post-legal-compliance-section animate-slide-down" style={{
-                                background: "rgba(170, 59, 255, 0.03)",
-                                border: "1px solid rgba(170, 59, 255, 0.15)",
-                                borderRadius: "8px",
-                                padding: "16px",
-                                margin: "0 20px 20px 20px"
-                              }}>
-                                <h5 style={{ margin: "0 0 12px 0", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--accent)" }}>
-                                  Compliance File & Legal Claims
-                                </h5>
-
-                                <form onSubmit={(e) => {
-                                  e.preventDefault();
-                                  const form = e.target;
-                                  const infringementType = form.infringementType.value;
-                                  const caseStatus = form.caseStatus.value;
-                                  const notes = form.notes.value;
-                                  const caseId = form.caseId.value;
-
-                                  handleSaveCompliance(post.id, post.status, {
-                                    caseId,
-                                    infringementType,
-                                    caseStatus,
-                                    notes
-                                  });
-                                }} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                                    <div>
-                                      <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Legal Case ID</label>
-                                      <input
-                                        type="text"
-                                        name="caseId"
-                                        defaultValue={post.legalCase?.caseId || `CE-LEGAL-${Math.floor(1000 + Math.random() * 9000)}`}
-                                        className="table-search-input"
-                                        placeholder="Case ID (e.g. CE-DMCA-2026)"
-                                        style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
-                                      />
-                                    </div>
-
-                                    <div>
-                                      <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Infringement Classification</label>
-                                      <select
-                                        name="infringementType"
-                                        defaultValue={post.legalCase?.infringementType || "None"}
-                                        style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
-                                      >
-                                        <option value="None">None (General Clean)</option>
-                                        <option value="DMCA Takedown Request">DMCA Takedown Request</option>
-                                        <option value="Copyright Infringement">Copyright Infringement</option>
-                                        <option value="TOS Violation">TOS Violation</option>
-                                        <option value="Hate Speech / Harassment">Hate Speech / Harassment</option>
-                                        <option value="Other Legal Claim">Other Legal Claim</option>
-                                      </select>
-                                    </div>
-                                  </div>
-
-                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                                    <div>
-                                      <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Case Moderation Status</label>
-                                      <select
-                                        name="caseStatus"
-                                        defaultValue={post.legalCase?.caseStatus || "Resolved"}
-                                        style={{ width: "100%", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "6px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)" }}
-                                      >
-                                        <option value="Open">Open Case</option>
-                                        <option value="Under Review">Under Review</option>
-                                        <option value="Compliance Action Taken">Compliance Action Taken</option>
-                                        <option value="Dismissed">Dismissed Case</option>
-                                        <option value="Resolved">Resolved (No Claim)</option>
-                                      </select>
-                                    </div>
-
-                                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                                      {post.legalCase?.actionTakenBy && (
-                                        <div style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontStyle: "italic", borderLeft: "2px solid var(--accent)", paddingLeft: "6px" }}>
-                                          Last audited by <strong>{post.legalCase.actionTakenBy}</strong>
-                                          {post.legalCase.actionDate && ` on ${new Date(post.legalCase.actionDate).toLocaleDateString()}`}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <label style={{ display: "block", fontSize: "0.7rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700" }}>Audit compliance notes / log</label>
+                              {/* Body */}
+                              <div className="post-body-row">
+                                {editingPostId === (post.id || post._id) ? (
+                                  <div className="edit-post-inline">
                                     <textarea
-                                      name="notes"
-                                      defaultValue={post.legalCase?.notes || ""}
-                                      placeholder="Write notes about legal notices received, DMCA takedown correspondence or reason for flagging..."
-                                      style={{ width: "100%", height: "80px", background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", padding: "8px 10px", borderRadius: "6px", fontSize: "0.8rem", color: "var(--admin-text-h)", resize: "none", outline: "none", boxSizing: "border-box" }}
+                                      value={editingPostText}
+                                      onChange={(e) => setEditingPostText(e.target.value)}
+                                      className="edit-textarea"
                                     />
+                                    <div className="edit-actions">
+                                      <button onClick={() => handleSaveEditedText(post.id || post._id, editingPostText, post.status)} className="btn-save">Save</button>
+                                      <button onClick={() => setEditingPostId(null)} className="btn-cancel">Cancel</button>
+                                    </div>
                                   </div>
-
-                                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                    <button
-                                      type="submit"
-                                      className="btn-action"
-                                      disabled={savingCompliance[post.id]}
-                                      style={{ background: "var(--accent)", color: "#fff", borderColor: "var(--accent)", display: "inline-flex", alignItems: "center", gap: "6px" }}
-                                    >
-                                      {savingCompliance[post.id] && <Loader className="spinner" size={10} />}
-                                      <span>{savingCompliance[post.id] ? "Saving..." : "Save Case Details"}</span>
-                                    </button>
-                                  </div>
-                                </form>
-                              </div>
-                            )}
-
-                            {isExpanded && (
-                              <div className="post-comments-section animate-slide-down">
-                                <h5>Comments Moderation</h5>
-                                {(!post.comments || post.comments.length === 0) ? (
-                                  <p className="no-comments-text">No comments on this post.</p>
                                 ) : (
-                                  <div className="admin-comments-list">
-                                    {post.comments.map((comment) => (
-                                      <div key={comment._id} className="admin-comment-row">
-                                        <div className="comment-left-col">
-                                          <div className="commenter-avatar">
-                                            {comment.avatar ? (
-                                              <img src={comment.avatar} alt={comment.username} className="avatar-img" />
-                                            ) : (
-                                              <div className="avatar-placeholder">
-                                                {(comment.username || "U").substring(0, 2).toUpperCase()}
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="comment-text-details">
-                                            <div className="commenter-meta">
-                                              <span className="commenter-name">{comment.username}</span>
-                                              <span className="comment-time">
-                                                {new Date(comment.createdAt).toLocaleString()}
-                                              </span>
-                                            </div>
-                                            <p className="comment-content-text">"{comment.text}"</p>
-                                          </div>
-                                        </div>
-                                        <button
-                                          onClick={() => handleDeleteCommentClick(post.id, comment._id, comment.username)}
-                                          className="btn-comment-delete"
-                                          title="Delete and moderate comment"
-                                        >
-                                          <Trash2 size={12} />
-                                        </button>
-                                      </div>
+                                  <div className="post-text-snippet">
+                                    {renderPostContent(post.text, addToast)}
+                                  </div>
+                                )}
+
+                                {post.techStack && post.techStack.length > 0 && (
+                                  <div className="post-tags">
+                                    {post.techStack.map((tech, idx) => (
+                                      <span key={idx} className="tech-tag">{tech}</span>
                                     ))}
                                   </div>
                                 )}
+
+                                {/* Media Preview if any */}
+                                {(post.image || (post.images && post.images.length > 0) || post.video) && (
+                                  <div className="post-media-preview-row">
+                                    {post.video ? (
+                                      <video src={post.video} className="media-preview-thumb" muted />
+                                    ) : (
+                                      <img src={post.image || post.images[0]} alt="Preview" className="media-preview-thumb" />
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            )}
+
+                              {/* Footer Metrics & Actions */}
+                              <div className="post-footer-row">
+                                <div className="post-metrics">
+                                  <span className="metric-item" title="Views"><Eye size={12} /> {post.viewsCount || 0}</span>
+                                  <span className="metric-item" title="Likes"><Heart size={12} /> {post.likesCount}</span>
+                                  <span className="metric-item" title="Comments"><MessageSquare size={12} /> {post.comments?.length || 0}</span>
+                                </div>
+
+                                <div className="post-actions-group">
+                                  <button onClick={() => window.open(`/posts/${post.id || post._id}`, "_blank")} className="btn-post-action" title="View Post"><Eye size={12} /></button>
+                                  <button onClick={() => { setEditingPostId(post.id || post._id); setEditingPostText(post.text); }} className="btn-post-action" title="Edit Post"><Edit size={12} /></button>
+                                  <button onClick={() => handleStatusChange(post.id || post._id, post.status === "hidden" ? "active" : "hidden")} className="btn-post-action" title={post.status === "hidden" ? "Unhide" : "Hide"}><EyeOff size={12} style={{ color: post.status === "hidden" ? "#10b981" : "inherit" }} /></button>
+                                  <button onClick={() => handleTogglePin(post)} className="btn-post-action" title={post.isPinned ? "Unpin" : "Pin"}><Pin size={12} style={{ color: post.isPinned ? "#818cf8" : "inherit" }} /></button>
+                                  <button onClick={() => handleToggleFeature(post)} className="btn-post-action" title={post.isFeatured ? "Unfeature" : "Feature"}><Sparkles size={12} style={{ color: post.isFeatured ? "#c084fc" : "inherit" }} /></button>
+                                  <button onClick={() => handleCopyPostLink(post.id || post._id)} className="btn-post-action" title="Copy Link"><Link size={12} /></button>
+                                  <button onClick={() => setSelectedPostAnalytics(post)} className="btn-post-action" title="View Analytics"><BarChart2 size={12} /></button>
+                                  <button onClick={() => handleDeletePostClick(post.id || post._id, post.author?.username || "Someone")} className="btn-post-action btn-delete" title="Delete Post"><Trash2 size={12} /></button>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         );
                       })
                     )}
                   </div>
 
-                  {/* PAGINATION */}
+                  {/* Pagination */}
                   {postPagination.totalPages > 1 && (
                     <div className="table-pagination-row" style={{ marginTop: "24px" }}>
                       <button
@@ -4091,75 +4133,130 @@ const AdminDashboard = () => {
                       </button>
                     </div>
                   )}
-                </>)}
+                </>
+              )}
 
+              {/* STORIES TAB CONTENT */}
               {feedSubTab === "stories" && (
-                <div className="admin-stories-moderation-pane animate-fade-in">
-                  <div className="table-search-row glass-panel" style={{ marginBottom: "20px" }}>
-                    <h4 style={{ margin: "0", fontSize: "0.95rem", fontWeight: "750", color: "var(--admin-text-h)" }}>Developer Stories Moderation</h4>
-                    {loadingStories && <Loader className="spinner table-inline-loader" size={14} />}
+                <>
+                  {/* Search and Filter bar */}
+                  <div className="feed-filters-bar glass-panel" style={{ marginBottom: "20px" }}>
+                    <div className="search-wrapper">
+                      <Search size={14} className="search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search stories by text or owner..."
+                        value={storySearch}
+                        onChange={(e) => {
+                          setStorySearch(e.target.value);
+                          setStoryPage(1);
+                        }}
+                      />
+                      {loadingStories && <Loader className="spinner" size={14} />}
+                    </div>
+
+                    <div className="filters-group" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => { setStoryStatusFilter("all"); setStoryPage(1); }}
+                        className={`filter-chip ${storyStatusFilter === "all" ? "active" : ""}`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => { setStoryStatusFilter("active"); setStoryPage(1); }}
+                        className={`filter-chip active-chip ${storyStatusFilter === "active" ? "active" : ""}`}
+                      >
+                        Active
+                      </button>
+                      <button
+                        onClick={() => { setStoryStatusFilter("hidden"); setStoryPage(1); }}
+                        className={`filter-chip hidden-chip ${storyStatusFilter === "hidden" ? "active" : ""}`}
+                      >
+                        Hidden
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="admin-stories-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
-                    {stories.length === 0 ? (
-                      <div className="empty-posts-state glass-panel" style={{ gridColumn: "1 / -1" }}>
-                        {loadingStories ? "Fetching developer stories..." : "No active developer stories found."}
+                  {/* STORIES GRID */}
+                  <div className="admin-stories-grid-premium">
+                    {loadingStories && stories.length === 0 ? (
+                      /* Loading Skeletons */
+                      <div className="loading-skeletons-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="skeleton-card glass-panel" style={{ height: "260px" }}></div>
+                        ))}
+                      </div>
+                    ) : stories.length === 0 ? (
+                      <div className="empty-state-card glass-panel animate-fade-in" style={{ gridColumn: "1 / -1" }}>
+                        <Sparkles size={36} className="empty-icon" />
+                        <h4>No stories found</h4>
+                        <p>No active stories match the current search query or status filter.</p>
                       </div>
                     ) : (
-                      stories.map((story) => (
-                        <div key={story.id} className="admin-post-card glass-panel" style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
-                          <div>
-                            <div className="post-card-header" style={{ paddingBottom: "10px", borderBottom: "1px solid var(--admin-border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <div className="post-author-info">
-                                <div className="author-avatar-wrapper" onClick={() => story.user && handleViewUserLogs(story.user)} style={{ cursor: story.user ? "pointer" : "default" }} title={story.user ? "View Developer Profile & Moderation" : ""}>
-                                  {story.user?.avatar ? (
-                                    <img src={story.user.avatar} alt={story.user.username} className="avatar-img" />
-                                  ) : (
-                                    <div className="avatar-placeholder">
-                                      {(story.user?.username || story.username || "U").substring(0, 2).toUpperCase()}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="author-meta">
-                                  <span className="author-username" onClick={() => story.user && handleViewUserLogs(story.user)} style={{ color: "var(--admin-text-h)", fontWeight: "600", cursor: story.user ? "pointer" : "default" }} title={story.user ? "View Developer Profile & Moderation" : ""}>{story.user?.username || story.username}</span>
-                                  {story.user?.email && <span className="author-email" style={{ fontSize: "0.7rem", color: "var(--admin-text-muted)" }}>{story.user.email}</span>}
+                      stories.map((story) => {
+                        const storyType = story.mediaUrl && (story.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || story.mediaUrl.includes("video")) ? "video" : story.mediaUrl ? "image" : "text";
+                        const expiryDate = new Date(new Date(story.createdAt).getTime() + 24 * 60 * 60 * 1000);
+                        const hoursRemaining = Math.max(0, Math.round((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60)));
+
+                        return (
+                          <div key={story.id} className={`admin-story-card-premium glass-panel ${story.status || "active"}`}>
+                            {/* Header */}
+                            <div className="story-card-header">
+                              <div className="story-author-info" onClick={() => story.user && handleViewUserLogs(story.user)} style={{ cursor: "pointer" }}>
+                                {story.user?.avatar ? (
+                                  <img src={story.user.avatar} alt={story.user.username} className="story-avatar" />
+                                ) : (
+                                  <div className="story-avatar-placeholder">
+                                    {(story.user?.username || story.username || "U").substring(0, 2).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="story-author-meta">
+                                  <span className="story-author-name">{story.user?.username || story.username}</span>
+                                  <span className="story-expiry-time">Expires in {hoursRemaining}h</span>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => handleDeleteStoryClick(story.id, story.user?.username || story.username)}
-                                className="btn-action-delete"
-                                title="Delete story permanently"
-                                style={{ padding: "6px", background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer" }}
-                              >
-                                <Trash2 size={13} />
-                              </button>
+
+                              <div className="story-badges">
+                                {story.isFeatured && <span className="badge badge-featured"><Sparkles size={8} fill="#c084fc" /> Featured</span>}
+                                <span className="badge badge-type">{storyType.toUpperCase()}</span>
+                                <span className={`badge badge-status ${story.status || "active"}`}>{story.status || "active"}</span>
+                              </div>
                             </div>
 
-                            <div className="post-card-body" style={{ padding: "12px 0" }}>
-                              {story.text && <p className="post-text-content" style={{ margin: "0 0 10px 0", fontSize: "0.85rem", color: "var(--admin-text-h)" }}>{story.text}</p>}
-
+                            {/* Body Preview */}
+                            <div className="story-card-body">
+                              {story.text && <p className="story-text-preview">{story.text}</p>}
                               {story.mediaUrl && (
-                                <div className="story-media-preview-frame" style={{ borderRadius: "6px", overflow: "hidden", maxHeight: "200px", background: "rgba(0,0,0,0.2)", display: "flex", justifyContent: "center" }}>
-                                  {story.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || story.mediaUrl.includes("video") ? (
-                                    <video src={story.mediaUrl} controls style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }} />
+                                <div className="story-media-frame">
+                                  {storyType === "video" ? (
+                                    <video src={story.mediaUrl} controls className="story-media-thumb" />
                                   ) : (
-                                    <img src={story.mediaUrl} alt="Story Media" style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }} />
+                                    <img src={story.mediaUrl} alt="Story Media" className="story-media-thumb" />
                                   )}
                                 </div>
                               )}
                             </div>
-                          </div>
 
-                          <div className="post-card-footer" style={{ borderTop: "1px solid var(--admin-border-subtle)", paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", color: "var(--admin-text-muted)" }}>
-                            <span>❤️ {story.likesCount} Likes | 💬 {story.commentsCount} Comments</span>
-                            <span>{new Date(story.createdAt).toLocaleString()}</span>
+                            {/* Footer */}
+                            <div className="story-card-footer">
+                              <div className="story-metrics">
+                                <span className="metric-item"><Eye size={10} /> {story.viewsCount || 0}</span>
+                                <span className="metric-item"><Heart size={10} /> {story.likesCount || 0}</span>
+                              </div>
+
+                              <div className="story-actions">
+                                <button onClick={() => handleToggleStoryHide(story.id, story.status)} className="btn-story-action" title={story.status === "hidden" ? "Unhide" : "Hide"}><EyeOff size={12} style={{ color: story.status === "hidden" ? "#10b981" : "inherit" }} /></button>
+                                <button onClick={() => handleToggleStoryFeature(story.id, story.isFeatured)} className="btn-story-action" title={story.isFeatured ? "Unfeature" : "Feature"}><Sparkles size={12} style={{ color: story.isFeatured ? "#c084fc" : "inherit" }} /></button>
+                                <button onClick={() => handleDeleteStoryClick(story.id, story.user?.username || story.username)} className="btn-story-action btn-delete" title="Delete"><Trash2 size={12} /></button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 
-                  {/* STORIES PAGINATION */}
+                  {/* Stories Pagination */}
                   {storyPagination.totalPages > 1 && (
                     <div className="table-pagination-row" style={{ marginTop: "24px" }}>
                       <button
@@ -4183,6 +4280,41 @@ const AdminDashboard = () => {
                       </button>
                     </div>
                   )}
+                </>
+              )}
+
+              {/* POST ANALYTICS MODAL */}
+              {selectedPostAnalytics && (
+                <div className="analytics-modal-overlay animate-fade-in" onClick={() => setSelectedPostAnalytics(null)}>
+                  <div className="analytics-modal-content glass-panel animate-scale-up" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-header">
+                      <h3>Post Engagement Metrics</h3>
+                      <button onClick={() => setSelectedPostAnalytics(null)} className="btn-close-modal"><X size={16} /></button>
+                    </div>
+                    <div className="modal-body">
+                      <div className="analytics-metrics-grid">
+                        <div className="metric-box">
+                          <span className="metric-label">Views</span>
+                          <span className="metric-val">{selectedPostAnalytics.viewsCount || 0}</span>
+                        </div>
+                        <div className="metric-box">
+                          <span className="metric-label">Likes</span>
+                          <span className="metric-val">{selectedPostAnalytics.likesCount}</span>
+                        </div>
+                        <div className="metric-box">
+                          <span className="metric-label">Comments</span>
+                          <span className="metric-val">{selectedPostAnalytics.comments?.length || 0}</span>
+                        </div>
+                        <div className="metric-box highlighted">
+                          <span className="metric-label">Engagement Rate</span>
+                          <span className="metric-val">
+                            {((selectedPostAnalytics.likesCount + (selectedPostAnalytics.comments?.length || 0)) / Math.max(1, selectedPostAnalytics.viewsCount || 0) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                      <p className="analytics-tip">Engagement rate is calculated as total interactions (likes + comments) divided by views.</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -4638,7 +4770,7 @@ const AdminDashboard = () => {
                     </button>
                     <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                       <span className="ticket-id-label" style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontFamily: "monospace" }}>ID: {selectedAdminTicket._id}</span>
-                      
+
                       {/* Assignee select */}
                       <select
                         value={selectedAdminTicket.assignedTo?._id || selectedAdminTicket.assignedTo || ""}
@@ -4942,7 +5074,7 @@ const AdminDashboard = () => {
       {/* Quick Post Text Editor Modal */}
       {editingPostId && (
         <div className="ce-modal-overlay" onClick={() => setEditingPostId(null)} style={{ zIndex: 10000000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "500px",
@@ -4974,13 +5106,13 @@ const AdminDashboard = () => {
               }}
             />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              <button 
+              <button
                 onClick={() => setEditingPostId(null)}
                 style={{ padding: "6px 14px", background: "none", border: "1px solid var(--admin-border)", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   const targetPost = posts.find(p => p.id === editingPostId || p._id === editingPostId);
                   handleSaveEditedText(editingPostId, editingPostText, targetPost?.status);
@@ -4996,7 +5128,7 @@ const AdminDashboard = () => {
       {/* Appeal Review Decision Modal */}
       {selectedAppealForReview && (
         <div className="ce-modal-overlay" onClick={() => setSelectedAppealForReview(null)} style={{ zIndex: 10000000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "500px",
@@ -5040,20 +5172,20 @@ const AdminDashboard = () => {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              <button 
+              <button
                 onClick={() => setSelectedAppealForReview(null)}
                 style={{ padding: "6px 14px", background: "none", border: "1px solid var(--admin-border)", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => handleResolveAppealDecision(selectedAppealForReview._id, "Rejected")}
                 disabled={resolvingAppeal}
                 style={{ padding: "6px 14px", background: "#ef4444", border: "none", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}
               >
                 Reject Appeal
               </button>
-              <button 
+              <button
                 onClick={() => handleResolveAppealDecision(selectedAppealForReview._id, "Approved")}
                 disabled={resolvingAppeal}
                 style={{ padding: "6px 14px", background: "#10b981", border: "none", color: "#fff", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}

@@ -56,6 +56,24 @@ export default function PublicPostView() {
   useEffect(() => {
     fetchPost();
 
+    const handlePostDeleted = ({ postId: deletedPostId }) => {
+      if (String(deletedPostId) === String(postId)) {
+        setError("This post is unavailable because it has been removed or hidden by the platform.");
+      }
+    };
+
+    const handlePostLiked = ({ postId: likedPostId, likes }) => {
+      if (String(likedPostId) === String(postId)) {
+        setPost(prev => prev ? { ...prev, likes } : prev);
+      }
+    };
+
+    const handlePostCommented = ({ postId: commentedPostId, comments }) => {
+      if (String(commentedPostId) === String(postId)) {
+        setPost(prev => prev ? { ...prev, comments } : prev);
+      }
+    };
+
     const handleAdminPostAction = ({ postId: updatedPostId, post: updatedPost }) => {
       if (String(updatedPostId) === String(postId)) {
         if (updatedPost.status === "hidden" || updatedPost.status === "deleted") {
@@ -93,10 +111,16 @@ export default function PublicPostView() {
       }
     };
 
+    socket.on("post:deleted", handlePostDeleted);
+    socket.on("post:liked", handlePostLiked);
+    socket.on("post:commented", handlePostCommented);
     socket.on("admin-post-action", handleAdminPostAction);
     socket.on("admin-user-action", handleAdminUserAction);
 
     return () => {
+      socket.off("post:deleted", handlePostDeleted);
+      socket.off("post:liked", handlePostLiked);
+      socket.off("post:commented", handlePostCommented);
       socket.off("admin-post-action", handleAdminPostAction);
       socket.off("admin-user-action", handleAdminUserAction);
     };

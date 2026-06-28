@@ -2598,6 +2598,58 @@ function Dashboard() {
   }, [user?.id, user?._id, fetchTrustStatus]);
 
   useEffect(() => {
+    const handlePostCreated = (newPost) => {
+      setAllFeedPosts(prev => {
+        if (prev.some(p => p._id === newPost._id || p.id === newPost._id)) return prev;
+        return [newPost, ...prev];
+      });
+    };
+
+    const handlePostDeleted = ({ postId }) => {
+      setAllFeedPosts(prev => prev.filter(p => p._id !== postId && p.id !== postId));
+      setProfilePosts(prev => prev.filter(p => p._id !== postId && p.id !== postId));
+      setSelectedPostModal(prev => {
+        if (prev && (prev._id === postId || prev.id === postId)) {
+          return null;
+        }
+        return prev;
+      });
+    };
+
+    const handlePostLiked = ({ postId, likes }) => {
+      const updateFn = p => {
+        if (p._id === postId || p.id === postId) {
+          return { ...p, likes };
+        }
+        return p;
+      };
+      setAllFeedPosts(prev => prev.map(updateFn));
+      setProfilePosts(prev => prev.map(updateFn));
+      setSelectedPostModal(prev => {
+        if (prev && (prev._id === postId || prev.id === postId)) {
+          return { ...prev, likes };
+        }
+        return prev;
+      });
+    };
+
+    const handlePostCommented = ({ postId, comments }) => {
+      const updateFn = p => {
+        if (p._id === postId || p.id === postId) {
+          return { ...p, comments };
+        }
+        return p;
+      };
+      setAllFeedPosts(prev => prev.map(updateFn));
+      setProfilePosts(prev => prev.map(updateFn));
+      setSelectedPostModal(prev => {
+        if (prev && (prev._id === postId || prev.id === postId)) {
+          return { ...prev, comments };
+        }
+        return prev;
+      });
+    };
+
     const handleAdminPostAction = ({ postId, post: updatedPost }) => {
       if (updatedPost && (String(updatedPost.author) === String(user?.id || user?._id) || String(updatedPost.author?._id) === String(user?.id || user?._id))) {
         fetchTrustStatus();
@@ -2675,10 +2727,18 @@ function Dashboard() {
       }
     };
 
+    socket.on("post:created", handlePostCreated);
+    socket.on("post:deleted", handlePostDeleted);
+    socket.on("post:liked", handlePostLiked);
+    socket.on("post:commented", handlePostCommented);
     socket.on("admin-post-action", handleAdminPostAction);
     socket.on("admin-user-action", handleAdminUserAction);
 
     return () => {
+      socket.off("post:created", handlePostCreated);
+      socket.off("post:deleted", handlePostDeleted);
+      socket.off("post:liked", handlePostLiked);
+      socket.off("post:commented", handlePostCommented);
       socket.off("admin-post-action", handleAdminPostAction);
       socket.off("admin-user-action", handleAdminUserAction);
     };
@@ -6611,6 +6671,10 @@ function Dashboard() {
                             notifIcon = <Mail size={14} style={{ color: "var(--ce-primary)" }} />;
                             actionText = `invited you to join workspace "${roomTitle}"`;
                             typeClass = "notif-type-invite";
+                          } else if (notif.type === "MODERATION_ACTION") {
+                            notifIcon = <ShieldAlert size={14} style={{ color: "#ef4444" }} />;
+                            actionText = notif.message || "sent you a moderation alert";
+                            typeClass = "notif-type-moderation";
                           }
 
                           // Follow status mapping for social notifications
@@ -6641,7 +6705,13 @@ function Dashboard() {
                                 </div>
                                 <div className="notif-main-info">
                                   <div className="notif-text-message">
-                                    <strong>{senderName}</strong> {actionText}
+                                    {notif.type === "MODERATION_ACTION" ? (
+                                      <span>{notif.message}</span>
+                                    ) : (
+                                      <>
+                                        <strong>{senderName}</strong> {actionText}
+                                      </>
+                                    )}
                                   </div>
 
                                   {/* Context-aware inline actions inside the details block */}

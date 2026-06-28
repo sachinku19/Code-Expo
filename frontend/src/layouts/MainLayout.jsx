@@ -93,7 +93,7 @@ export default function MainLayout({
         setUnreadNotifCount(res.unreadCount || 0);
         const formatted = (res.notifications || []).map(n => ({
           id: n._id,
-          message: `${n.sender?.username || "Someone"} ${n.type === "FOLLOW" ? "followed you" :
+          message: n.message || `${n.sender?.username || "Someone"} ${n.type === "FOLLOW" ? "followed you" :
               n.type === "LIKE" ? `liked room "${n.targetRoom?.title || "workspace"}"` :
                 n.type === "BOOKMARK" ? `bookmarked room "${n.targetRoom?.title || "workspace"}"` :
                   n.type === "JOIN" ? `wants to join "${n.targetRoom?.title || "workspace"}"` :

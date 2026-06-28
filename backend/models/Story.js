@@ -55,6 +55,19 @@ const storySchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  status: {
+    type: String,
+    enum: ["active", "hidden"],
+    default: "active"
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  viewsCount: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now,

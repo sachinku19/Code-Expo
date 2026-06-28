@@ -541,7 +541,36 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   useEffect(() => {
     fetchPosts();
 
-    // Real-time admin action synchronization
+    // Real-time synchronization
+    const handlePostCreated = (newPost) => {
+      setPosts(prev => {
+        if (prev.some(p => p._id === newPost._id || p.id === newPost._id)) return prev;
+        return [newPost, ...prev];
+      });
+    };
+
+    const handlePostDeleted = ({ postId }) => {
+      setPosts(prev => prev.filter(p => p._id !== postId && p.id !== postId));
+    };
+
+    const handlePostLiked = ({ postId, likes }) => {
+      setPosts(prev => prev.map(p => {
+        if (p._id === postId || p.id === postId) {
+          return { ...p, likes };
+        }
+        return p;
+      }));
+    };
+
+    const handlePostCommented = ({ postId, comments }) => {
+      setPosts(prev => prev.map(p => {
+        if (p._id === postId || p.id === postId) {
+          return { ...p, comments };
+        }
+        return p;
+      }));
+    };
+
     const handleAdminPostAction = ({ postId, post: updatedPost }) => {
       if (updatedPost.status === "hidden" || updatedPost.status === "deleted") {
         setPosts(prev => prev.filter(p => p._id !== postId && p.id !== postId));
@@ -577,10 +606,18 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       }
     };
 
+    socket.on("post:created", handlePostCreated);
+    socket.on("post:deleted", handlePostDeleted);
+    socket.on("post:liked", handlePostLiked);
+    socket.on("post:commented", handlePostCommented);
     socket.on("admin-post-action", handleAdminPostAction);
     socket.on("admin-user-action", handleAdminUserAction);
 
     return () => {
+      socket.off("post:created", handlePostCreated);
+      socket.off("post:deleted", handlePostDeleted);
+      socket.off("post:liked", handlePostLiked);
+      socket.off("post:commented", handlePostCommented);
       socket.off("admin-post-action", handleAdminPostAction);
       socket.off("admin-user-action", handleAdminUserAction);
     };

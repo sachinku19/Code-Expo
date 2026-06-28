@@ -24,7 +24,12 @@ const {
   updateAdminPostStatus,
   getAdminLoginLogs,
   getAdminStories,
-  deleteAdminStory
+  deleteAdminStory,
+  bulkDeletePosts,
+  bulkHidePosts,
+  bulkFeaturePosts,
+  updateAdminStoryStatus,
+  toggleAdminStoryFeature
 } = require("../controllers/adminControllers");
 
 const router = express.Router();
@@ -64,6 +69,9 @@ router.get("/posts", auth_protect, admin_protect, getAdminPosts);
 router.delete("/posts/:id", auth_protect, admin_protect, deleteAdminPost);
 router.delete("/posts/:id/comments/:commentId", auth_protect, admin_protect, deleteAdminPostComment);
 router.put("/posts/:id/status", auth_protect, admin_protect, updateAdminPostStatus);
+router.post("/posts/bulk-delete", auth_protect, admin_protect, bulkDeletePosts);
+router.post("/posts/bulk-hide", auth_protect, admin_protect, bulkHidePosts);
+router.post("/posts/bulk-feature", auth_protect, admin_protect, bulkFeaturePosts);
 
 // Login Logs
 router.get("/login-logs", auth_protect, admin_protect, getAdminLoginLogs);
@@ -71,5 +79,7 @@ router.get("/login-logs", auth_protect, admin_protect, getAdminLoginLogs);
 // Story Moderation
 router.get("/stories", auth_protect, admin_protect, getAdminStories);
 router.delete("/stories/:id", auth_protect, admin_protect, deleteAdminStory);
+router.put("/stories/:id/status", auth_protect, admin_protect, updateAdminStoryStatus);
+router.put("/stories/:id/feature", auth_protect, admin_protect, toggleAdminStoryFeature);
 
 module.exports = router;

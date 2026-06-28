@@ -172,8 +172,8 @@ export const getAdminLoginLogs = async (page = 1, limit = 10, search = "", userI
   return response.data;
 };
 
-export const getAdminStories = async (page = 1, limit = 10, userId = "") => {
-  const response = await API.get(`/admin/stories?page=${page}&limit=${limit}&userId=${userId}`, getHeaders());
+export const getAdminStories = async (page = 1, limit = 10, search = "", status = "all", userId = "") => {
+  const response = await API.get(`/admin/stories?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${status}&userId=${userId}`, getHeaders());
   return response.data;
 };
 
@@ -188,6 +188,31 @@ export const adminIssueUserAction = async (userId, actionType, reason, notes) =>
     { actionType, reason, notes },
     getHeaders()
   );
+  return response.data;
+};
+
+export const bulkDeletePosts = async (postIds) => {
+  const response = await API.post("/admin/posts/bulk-delete", { postIds }, getHeaders());
+  return response.data;
+};
+
+export const bulkHidePosts = async (postIds, hide) => {
+  const response = await API.post("/admin/posts/bulk-hide", { postIds, hide }, getHeaders());
+  return response.data;
+};
+
+export const bulkFeaturePosts = async (postIds, feature) => {
+  const response = await API.post("/admin/posts/bulk-feature", { postIds, feature }, getHeaders());
+  return response.data;
+};
+
+export const updateAdminStoryStatus = async (storyId, status) => {
+  const response = await API.put(`/admin/stories/${storyId}/status`, { status }, getHeaders());
+  return response.data;
+};
+
+export const toggleAdminStoryFeature = async (storyId, isFeatured) => {
+  const response = await API.put(`/admin/stories/${storyId}/feature`, { isFeatured }, getHeaders());
   return response.data;
 };
 

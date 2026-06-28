@@ -119,9 +119,15 @@ const socketHandler = (io) => {
 
       try {
         const User = require("../models/User");
-        await User.findByIdAndUpdate(userId, {
+        const userObj = await User.findByIdAndUpdate(userId, {
           isOnline: true
-        });
+        }, { new: true });
+
+        if (!userObj) {
+          console.error(`User not found for socket registration: ${userId}`);
+          return;
+        }
+
         console.log(`📡 Updated DB status to online for user: ${userId}`);
 
         // Track session (come & go) - create a new LoginLog if none is active
@@ -140,6 +146,8 @@ const socketHandler = (io) => {
           
           await LoginLog.create({
             user: userId,
+            username: userObj.username,
+            email: userObj.email,
             loginTime: new Date(),
             ipAddress: ipAddress
           });

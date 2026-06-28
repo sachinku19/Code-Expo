@@ -129,6 +129,16 @@ const createPost = async (req, res) => {
     // Increment user contribution score for activity
     await User.findByIdAndUpdate(req.user._id, { $inc: { contributionScore: 5 } });
 
+    // Emit real-time socket event
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("post:created", populatedPost);
+      }
+    } catch (e) {
+      console.error("Failed to emit post:created event:", e.message);
+    }
+
     // Clean up local temp files if Multer ever writes to disk
     if (req.files) {
       if (req.files.images) {
@@ -216,6 +226,20 @@ const toggleLikePost = async (req, res) => {
       User.findByIdAndUpdate(post.author, { $inc: { reputationScore: isLiked ? -2 : 2 } })
     ]);
 
+    // Emit real-time socket event
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("post:liked", {
+          postId,
+          likes: updatedPost.likes,
+          likesCount: updatedPost.likes.length
+        });
+      }
+    } catch (e) {
+      console.error("Failed to emit post:liked event:", e.message);
+    }
+
     res.status(200).json({ success: true, likes: updatedPost.likes, isLiked: !isLiked });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -247,6 +271,20 @@ const addComment = async (req, res) => {
 
     if (!updatedPost) {
       return res.status(404).json({ success: false, message: "Post not found" });
+    }
+
+    // Emit real-time socket event
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("post:commented", {
+          postId,
+          comments: updatedPost.comments,
+          commentsCount: updatedPost.comments.length
+        });
+      }
+    } catch (e) {
+      console.error("Failed to emit post:commented event:", e.message);
     }
 
     res.status(200).json({ success: true, comments: updatedPost.comments });
@@ -282,6 +320,17 @@ const deletePost = async (req, res) => {
     }
 
     await Post.deleteOne({ _id: postId });
+
+    // Emit real-time socket event
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("post:deleted", { postId });
+      }
+    } catch (e) {
+      console.error("Failed to emit post:deleted event:", e.message);
+    }
+
     res.status(200).json({ success: true, message: "Post deleted successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

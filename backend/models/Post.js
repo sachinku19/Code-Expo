@@ -65,6 +65,10 @@ const postSchema = new mongoose.Schema({
     enum: ["active", "flagged", "hidden", "deleted"],
     default: "active"
   },
+  viewsCount: {
+    type: Number,
+    default: 0
+  },
   legalCase: {
     caseId: {
       type: String,
