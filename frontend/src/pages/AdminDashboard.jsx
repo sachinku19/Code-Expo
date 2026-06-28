@@ -1070,8 +1070,11 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    const theme = localStorage.getItem("codeExpoHomeTheme");
+    localStorage.clear();
+    if (theme) {
+      localStorage.setItem("codeExpoHomeTheme", theme);
+    }
     window.location.href = "/login";
   };
 

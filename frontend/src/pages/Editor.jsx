@@ -1433,9 +1433,11 @@ function Editor() {
 
   const handleLogout = () => {
     logoutUser().catch(err => console.error("Logout error:", err));
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("ceLastActiveRoomId");
+    const theme = localStorage.getItem("codeExpoHomeTheme");
+    localStorage.clear();
+    if (theme) {
+      localStorage.setItem("codeExpoHomeTheme", theme);
+    }
     window.location.href = "/login";
   };
 

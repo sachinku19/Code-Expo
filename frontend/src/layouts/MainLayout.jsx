@@ -747,8 +747,11 @@ export default function MainLayout({
 
   const handleLogout = () => {
     logoutUser().catch(err => console.error("Logout error:", err));
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    const theme = localStorage.getItem("codeExpoHomeTheme");
+    localStorage.clear();
+    if (theme) {
+      localStorage.setItem("codeExpoHomeTheme", theme);
+    }
     window.location.href = "/login";
   };
 
