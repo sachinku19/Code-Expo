@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Play, Rocket } from "lucide-react";
 import "./CTA.css";
 
-function CTA() {
+function CTA({ onWatchDemo }) {
   const navigate = useNavigate();
 
   return (
@@ -38,7 +38,7 @@ function CTA() {
               <ArrowRight size={18} />
             </button>
 
-            <button className="cta-secondary">
+            <button className="cta-secondary" onClick={onWatchDemo}>
               <Play size={16} />
               Watch Demo
             </button>

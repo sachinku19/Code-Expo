@@ -593,7 +593,17 @@ function Auth({ mode }) {
                           onChange={(e) => setAgreeTerms(e.target.checked)}
                         />
                         <span className="checkbox-custom"></span>
-                        <span className="checkbox-label">I agree to the terms & privacy policy</span>
+                        <span className="checkbox-label">
+                          I agree to the{" "}
+                          <a 
+                            href="/terms-and-conditions.pdf" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ color: "var(--accent, #aa3bff)", textDecoration: "underline", fontWeight: "700" }}
+                          >
+                            Terms & Conditions
+                          </a>
+                        </span>
                       </label>
                     </div>
 

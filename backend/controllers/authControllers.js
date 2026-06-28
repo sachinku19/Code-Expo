@@ -132,12 +132,19 @@ const loginUser=async(req,res)=>{
         );
 
         // Create new LoginLog entry
+        let clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || "";
+        if (clientIp.startsWith("::ffff:")) {
+            clientIp = clientIp.replace("::ffff:", "");
+        }
+        if (clientIp === "::1") {
+            clientIp = "127.0.0.1";
+        }
         await LoginLog.create({
             user: user._id,
             username: user.username,
             email: user.email,
             loginTime: new Date(),
-            ipAddress: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || "",
+            ipAddress: clientIp,
             userAgent: req.headers['user-agent'] || ""
         });
 
@@ -441,12 +448,19 @@ const googleLogin = async (req, res) => {
     );
 
     // Create new LoginLog entry
+    let clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || "";
+    if (clientIp.startsWith("::ffff:")) {
+        clientIp = clientIp.replace("::ffff:", "");
+    }
+    if (clientIp === "::1") {
+        clientIp = "127.0.0.1";
+    }
     await LoginLog.create({
         user: user._id,
         username: user.username,
         email: user.email,
         loginTime: new Date(),
-        ipAddress: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || "",
+        ipAddress: clientIp,
         userAgent: req.headers['user-agent'] || ""
     });
 

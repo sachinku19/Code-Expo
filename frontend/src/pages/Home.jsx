@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import Navbar from "../components/navbar/Navbar";
 import Hero from "../components/hero/Hero";
 import TrustedTech from "../components/trusted/TrustedTech";
@@ -98,6 +99,16 @@ function Home() {
     };
   }, []);
 
+  // Framer Motion animation variants for sections
+  const sectionVariants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.65, ease: "easeOut" }
+    }
+  };
+
   return (
     <main className={`home-page ${theme === "light" ? "light-theme" : "dark-theme"}`}>
       <Navbar activeSection={activeSection} theme={theme} onThemeToggle={toggleTheme} onScrollToSection={handleScrollToSection} />
@@ -106,37 +117,101 @@ function Home() {
         <Hero onWatchDemo={() => setIsVideoModalOpen(true)} />
       </div>
 
-      <TrustedTech />
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
+        <TrustedTech />
+      </motion.div>
 
-      <div id="demo">
+      <motion.div
+        id="demo"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
         <VideoShowcase videoSrc="/make_it_more_convenience_and_m.mp4" onWatchDemo={() => setIsVideoModalOpen(true)} />
-      </div>
+      </motion.div>
 
-      <div id="features">
-        <Features />
-      </div>
-
-      <div id="collaboration">
+      <motion.div
+        id="collaboration"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
         <CollaborationDemo />
-      </div>
+      </motion.div>
 
-      <div id="whiteboard">
+      <motion.div
+        id="whiteboard"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
         <WhiteboardShowcase />
-      </div>
+      </motion.div>
 
-      <div id="ai">
+      <motion.div
+        id="ai"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
         <AIShowcase />
-      </div>
+      </motion.div>
 
-      <div id="social-hub">
+      <motion.div
+        id="social-hub"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
         <SocialHubShowcase />
-      </div>
+      </motion.div>
 
-      <Stats />
+      <motion.div
+        id="features"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
+        <Features />
+      </motion.div>
 
-      <Testimonials />
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
+        <Stats />
+      </motion.div>
 
-      <CTA />
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
+        <Testimonials />
+      </motion.div>
+
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-120px" }}
+        variants={sectionVariants}
+      >
+        <CTA onWatchDemo={() => setIsVideoModalOpen(true)} />
+      </motion.div>
 
       <Footer />
 

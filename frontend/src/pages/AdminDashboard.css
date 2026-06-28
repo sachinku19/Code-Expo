@@ -3102,3 +3102,191 @@
   box-shadow: 0 0 8px var(--accent-glow);
   transform: scale(1.05);
 }
+
+/* Redesigned Premium Top Stats Cards for Feed Tab */
+.feed-stats-dashboard-row {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 20px !important;
+  margin-bottom: 24px !important;
+}
+
+.feed-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px !important;
+  border-radius: 12px !important;
+  background: rgba(30, 30, 40, 0.4) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease, box-shadow 0.25s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.feed-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.feed-stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Neon Glow borders for Stats Cards */
+.feed-stat-card.purple {
+  border-left: 4px solid #aa3bff !important;
+}
+.feed-stat-card.purple:hover {
+  border-color: rgba(170, 59, 255, 0.4) !important;
+  box-shadow: 0 0 15px rgba(170, 59, 255, 0.15), 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+.feed-stat-card.yellow {
+  border-left: 4px solid #f59e0b !important;
+}
+.feed-stat-card.yellow:hover {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.15), 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+.feed-stat-card.red {
+  border-left: 4px solid #ef4444 !important;
+}
+.feed-stat-card.red:hover {
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.15), 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+.feed-stat-card.blue {
+  border-left: 4px solid #3b82f6 !important;
+}
+.feed-stat-card.blue:hover {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.15), 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+.feed-stat-card .stat-icon-wrapper {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.feed-stat-card:hover .stat-icon-wrapper {
+  transform: scale(1.1);
+}
+
+.feed-stat-card.purple .stat-icon-wrapper {
+  background: rgba(170, 59, 255, 0.1);
+  color: #aa3bff;
+  box-shadow: 0 0 10px rgba(170, 59, 255, 0.1);
+}
+
+.feed-stat-card.yellow .stat-icon-wrapper {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);
+}
+
+.feed-stat-card.red .stat-icon-wrapper {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+}
+
+.feed-stat-card.blue .stat-icon-wrapper {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+}
+
+.feed-stat-card .stat-info {
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+}
+
+.feed-stat-card .stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.75px;
+  color: var(--admin-text-muted);
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+
+.feed-stat-card .stat-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--admin-text-h);
+  line-height: 1.2;
+}
+
+/* Redesigned Premium Developer Stories Section */
+.admin-stories-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  gap: 24px !important;
+}
+
+.admin-stories-moderation-pane .admin-post-card {
+  background: rgba(25, 25, 35, 0.55) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2) !important;
+}
+
+.admin-stories-moderation-pane .admin-post-card:hover {
+  border-color: rgba(170, 59, 255, 0.25) !important;
+  box-shadow: 0 8px 30px rgba(170, 59, 255, 0.08), 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-2px);
+}
+
+.story-media-preview-frame {
+  margin-top: 12px !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  position: relative;
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+.story-media-preview-frame img, 
+.story-media-preview-frame video {
+  transition: transform 0.3s ease;
+}
+
+.admin-stories-moderation-pane .admin-post-card:hover .story-media-preview-frame img {
+  transform: scale(1.03);
+}
+
+/* Tab indicator highlight for toggle buttons */
+.feed-subtab-btn {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.feed-subtab-btn:hover {
+  color: var(--admin-text-h) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+.feed-subtab-btn.active {
+  box-shadow: 0 0 12px rgba(170, 59, 255, 0.15) !important;
+  text-shadow: 0 0 8px rgba(170, 59, 255, 0.25) !important;
+}

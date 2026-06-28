@@ -16,11 +16,11 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
   const navLinks = [
     { label: "Home", id: "hero" },
     { label: "Demo", id: "demo" },
-    { label: "Features", id: "features" },
     { label: "Editor", id: "collaboration" },
     { label: "Whiteboard", id: "whiteboard" },
     { label: "Expo AI", id: "ai" },
     { label: "Social Hub", id: "social-hub" },
+    { label: "Features", id: "features" },
   ];
 
   const handleScroll = (id) => {

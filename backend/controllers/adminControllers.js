@@ -37,8 +37,18 @@ const formatUser = (user) => ({
 // 1. Overview Analytics Stats
 const getAdminOverviewStats = async (req, res) => {
   try {
+    // Get actual online user IDs from Socket.io active rooms
+    const activeUserIds = [];
+    if (req.io && req.io.sockets && req.io.sockets.adapter && req.io.sockets.adapter.rooms) {
+      for (const [roomId, room] of req.io.sockets.adapter.rooms.entries()) {
+        if (roomId.match(/^[0-9a-fA-F]{24}$/) && room && room.size > 0) {
+          activeUserIds.push(roomId);
+        }
+      }
+    }
+
     const totalUsers = await User.countDocuments();
-    const onlineUsers = await User.countDocuments({ isOnline: { $in: [true, "true"] } });
+    const onlineUsers = activeUserIds.length;
     const totalRooms = await Room.countDocuments();
     const totalMessages = await Message.countDocuments();
 
@@ -93,6 +103,24 @@ const getAdminOverviewStats = async (req, res) => {
       createdAt: { $gte: oneDayAgo }
     });
 
+    // Fetch detailed info of online users for tracking
+    const activeUsers = await User.find({ _id: { $in: activeUserIds } })
+      .select("username email avatar lastSeene")
+      .sort({ lastSeene: -1 });
+
+    const onlineUsersList = [];
+    for (const u of activeUsers) {
+      const latestLog = await LoginLog.findOne({ user: u._id, logoutTime: null }).sort({ loginTime: -1 });
+      onlineUsersList.push({
+        id: u._id,
+        username: u.username,
+        email: u.email,
+        avatar: u.avatar,
+        lastSeene: u.lastSeene,
+        ipAddress: latestLog ? latestLog.ipAddress : "Unknown"
+      });
+    }
+
     res.status(200).json({
       success: true,
       stats: {
@@ -105,7 +133,8 @@ const getAdminOverviewStats = async (req, res) => {
         totalRatings,
         ratingDistribution: distribution,
         recentExecutions,
-        recentRoomsCreated
+        recentRoomsCreated,
+        onlineUsersList
       }
     });
   } catch (error) {
@@ -756,6 +785,9 @@ const getAdminPosts = async (req, res) => {
     const skip = (page - 1) * limit;
 
     let query = {};
+    if (req.query.userId) {
+      query.author = req.query.userId;
+    }
     if (req.query.status && req.query.status !== "all") {
       query.status = req.query.status;
     }
@@ -765,24 +797,23 @@ const getAdminPosts = async (req, res) => {
       }).select("_id");
       const userIds = matchingUsers.map(u => u._id);
 
-      if (query.status) {
-        query.$and = [
-          { status: query.status },
-          {
-            $or: [
-              { text: { $regex: search, $options: "i" } },
-              { techStack: { $regex: search, $options: "i" } },
-              { author: { $in: userIds } }
-            ]
-          }
-        ];
-        delete query.status;
-      } else {
-        query.$or = [
+      const searchConditions = {
+        $or: [
           { text: { $regex: search, $options: "i" } },
           { techStack: { $regex: search, $options: "i" } },
           { author: { $in: userIds } }
+        ]
+      };
+
+      if (query.author || query.status) {
+        query.$and = [
+          { ...query },
+          searchConditions
         ];
+        delete query.author;
+        delete query.status;
+      } else {
+        query = searchConditions;
       }
     }
 
@@ -1055,6 +1086,98 @@ const getAdminLoginLogs = async (req, res) => {
   }
 };
 
+// 20. Get Admin Stories
+const getAdminStories = async (req, res) => {
+  try {
+    const Story = require("../models/Story");
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    if (req.query.userId) {
+      query.user = req.query.userId;
+    }
+
+    const total = await Story.countDocuments(query);
+    const stories = await Story.find(query)
+      .populate("user", "avatar username email role title isOnline lastSeene")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      success: true,
+      stories: stories.map(story => ({
+        id: story._id,
+        user: story.user ? {
+          id: story.user._id,
+          username: story.user.username,
+          email: story.user.email,
+          avatar: story.user.avatar,
+          role: story.user.role,
+          title: story.user.title,
+          isOnline: story.user.isOnline === "true" || story.user.isOnline === true,
+          lastSeene: story.user.lastSeene
+        } : {
+          username: story.username,
+          avatar: story.avatar
+        },
+        text: story.text,
+        mediaUrl: story.mediaUrl,
+        likesCount: story.likes.length,
+        commentsCount: story.comments.length,
+        createdAt: story.createdAt
+      })),
+      pagination: {
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        totalStories: total
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch stories"
+    });
+  }
+};
+
+// 21. Delete Admin Story
+const deleteAdminStory = async (req, res) => {
+  try {
+    const Story = require("../models/Story");
+    const { id } = req.params;
+    const story = await Story.findById(id);
+
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found"
+      });
+    }
+
+    // Clean up story media files from storage
+    if (story.mediaMetadata || story.mediaUrl) {
+      await MediaService.deleteMedia(story.mediaMetadata || story.mediaUrl).catch((e) => {
+        console.error("Failed to delete story media from storage:", e.message);
+      });
+    }
+
+    await Story.findByIdAndDelete(id);
+    res.status(200).json({
+      success: true,
+      message: "Story moderated and deleted successfully"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete story"
+    });
+  }
+};
+
 module.exports = {
   getAdminOverviewStats,
   getAllUsers,
@@ -1069,11 +1192,14 @@ module.exports = {
   toggleUserSuspension,
   getRecentMessages,
   deleteChatMessage,
+  getMainMaintenanceStatus: getMaintenanceStatus, // Keep compatibility if needed
   getMaintenanceStatus,
   toggleMaintenanceMode,
   getAdminPosts,
   deleteAdminPost,
   deleteAdminPostComment,
   updateAdminPostStatus,
-  getAdminLoginLogs
+  getAdminLoginLogs,
+  getAdminStories,
+  deleteAdminStory
 };

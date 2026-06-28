@@ -116,6 +116,45 @@ const socketHandler = (io) => {
       socket.userId = userId;
       socket.join(String(userId));
       console.log(`👤 User registered for notifications: ${userId} (${socket.id})`);
+
+      try {
+        const User = require("../models/User");
+        await User.findByIdAndUpdate(userId, {
+          isOnline: true
+        });
+        console.log(`📡 Updated DB status to online for user: ${userId}`);
+
+        // Track session (come & go) - create a new LoginLog if none is active
+        const LoginLog = require("../models/LoginLog");
+        const activeLog = await LoginLog.findOne({ user: userId, logoutTime: null }).sort({ loginTime: -1 });
+        
+        if (!activeLog) {
+          // Extract client IP address from socket handshake
+          let ipAddress = socket.handshake.address || "127.0.0.1";
+          // Clean IPv6 loopback and mapped prefixes
+          if (ipAddress === "::1") {
+            ipAddress = "127.0.0.1";
+          } else if (ipAddress.startsWith("::ffff:")) {
+            ipAddress = ipAddress.replace("::ffff:", "");
+          }
+          
+          await LoginLog.create({
+            user: userId,
+            loginTime: new Date(),
+            ipAddress: ipAddress
+          });
+          console.log(`📝 Created new session LoginLog for user: ${userId} from IP: ${ipAddress}`);
+
+          // Rotate logs (keep only last 10)
+          const allLogs = await LoginLog.find({ user: userId }).sort({ loginTime: -1 });
+          if (allLogs.length > 10) {
+            const logsToDelete = allLogs.slice(10);
+            await LoginLog.deleteMany({ _id: { $in: logsToDelete.map(l => l._id) } });
+          }
+        }
+      } catch (err) {
+        console.error("Error updating online status or session log in socket register-user:", err);
+      }
       
       // Join all group rooms the user belongs to
       try {
@@ -1656,10 +1695,33 @@ const socketHandler = (io) => {
       }
 
       if (socket.userId) {
+        const userId = socket.userId;
         // Broadcast offline status to all other users in real-time if all connections closed
-        const activeSockets = io.sockets.adapter.rooms.get(String(socket.userId));
+        const activeSockets = io.sockets.adapter.rooms.get(String(userId));
         if (!activeSockets || activeSockets.size === 0) {
-          socket.broadcast.emit("user:status", { userId: socket.userId, isOnline: false });
+          socket.broadcast.emit("user:status", { userId, isOnline: false });
+
+          // Update DB status to offline & close active login session
+          (async () => {
+            try {
+              const User = require("../models/User");
+              const LoginLog = require("../models/LoginLog");
+
+              await User.findByIdAndUpdate(userId, {
+                isOnline: false,
+                lastSeene: Date.now()
+              });
+
+              await LoginLog.findOneAndUpdate(
+                { user: userId, logoutTime: null },
+                { $set: { logoutTime: new Date() } },
+                { sort: { loginTime: -1 } }
+              );
+              console.log(`📡 Updated DB status to offline for user: ${userId}`);
+            } catch (err) {
+              console.error("Error updating offline status in socket disconnect:", err);
+            }
+          })();
         }
       }
     });

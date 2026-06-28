@@ -90,7 +90,7 @@ const deleteStory = async (req, res) => {
       return res.status(404).json({ success: false, message: "Story not found" });
     }
 
-    if (story.user.toString() !== req.user._id.toString()) {
+    if (story.user.toString() !== req.user._id.toString() && req.user.role !== "admin") {
       return res.status(403).json({ success: false, message: "Not authorized to delete this story" });
     }
 

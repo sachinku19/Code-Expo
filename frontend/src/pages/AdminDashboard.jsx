@@ -28,7 +28,9 @@ import {
   deleteAdminPost,
   deleteAdminPostComment,
   updateAdminPostStatus,
-  getAdminLoginLogs
+  getAdminLoginLogs,
+  getAdminStories,
+  deleteAdminStory
 } from "../services/adminService";
 import {
   Users,
@@ -67,7 +69,8 @@ import {
   Menu,
   X,
   Megaphone,
-  HelpCircle
+  HelpCircle,
+  Sparkles
 } from "lucide-react";
 import Logo from "../components/shared/Logo";
 import {
@@ -276,10 +279,22 @@ const AdminDashboard = () => {
   const [loginLogPage, setLoginLogPage] = useState(1);
   const [loginLogPagination, setLoginLogPagination] = useState({ totalPages: 1, totalLogs: 0 });
 
+  // Stories State
+  const [stories, setStories] = useState([]);
+  const [loadingStories, setLoadingStories] = useState(true);
+  const [storyPage, setStoryPage] = useState(1);
+  const [storyPagination, setStoryPagination] = useState({ totalPages: 1, totalStories: 0 });
+  const [feedSubTab, setFeedSubTab] = useState("posts");
+
   // Developer Profile & Auth logs modal states
   const [selectedUserLogs, setSelectedUserLogs] = useState(null);
   const [userLogsForModal, setUserLogsForModal] = useState([]);
   const [loadingModalLogs, setLoadingModalLogs] = useState(false);
+  const [modalActiveTab, setModalActiveTab] = useState("sessions");
+  const [userPostsForModal, setUserPostsForModal] = useState([]);
+  const [userStoriesForModal, setUserStoriesForModal] = useState([]);
+  const [loadingModalPosts, setLoadingModalPosts] = useState(false);
+  const [loadingModalStories, setLoadingModalStories] = useState(false);
 
   // Feed Moderation states
   const [postStatusFilter, setPostStatusFilter] = useState("all");
@@ -546,7 +561,12 @@ const AdminDashboard = () => {
   const handleViewUserLogs = async (targetUser) => {
     setSelectedUserLogs(targetUser);
     setLoadingModalLogs(true);
+    setLoadingModalPosts(true);
+    setLoadingModalStories(true);
     setUserLogsForModal([]);
+    setUserPostsForModal([]);
+    setUserStoriesForModal([]);
+    setModalActiveTab("sessions");
     try {
       const data = await getAdminLoginLogs(1, 10, "", targetUser.id);
       if (data.success) {
@@ -556,6 +576,26 @@ const AdminDashboard = () => {
       addToast("Failed to load developer session history", "error");
     } finally {
       setLoadingModalLogs(false);
+    }
+    try {
+      const postData = await getAdminPosts(1, 20, "", "all", targetUser.id);
+      if (postData.success) {
+        setUserPostsForModal(postData.posts);
+      }
+    } catch (err) {
+      addToast("Failed to load developer posts", "error");
+    } finally {
+      setLoadingModalPosts(false);
+    }
+    try {
+      const storyData = await getAdminStories(1, 20, targetUser.id);
+      if (storyData.success) {
+        setUserStoriesForModal(storyData.stories);
+      }
+    } catch (err) {
+      addToast("Failed to load developer stories", "error");
+    } finally {
+      setLoadingModalStories(false);
     }
   };
 
@@ -654,6 +694,21 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchStories = async () => {
+    setLoadingStories(true);
+    try {
+      const data = await getAdminStories(storyPage, 12);
+      if (data.success) {
+        setStories(data.stories);
+        setStoryPagination(data.pagination);
+      }
+    } catch (err) {
+      addToast("Failed to fetch user stories", "error");
+    } finally {
+      setLoadingStories(false);
+    }
+  };
+
   const handleSaveCompliance = async (postId, status, legalData) => {
     setSavingCompliance(prev => ({ ...prev, [postId]: true }));
     try {
@@ -691,17 +746,27 @@ const AdminDashboard = () => {
     } else if (activeTab === "tickets") {
       fetchAdminTickets();
     } else if (activeTab === "feed") {
-      fetchPosts();
+      if (feedSubTab === "posts") {
+        fetchPosts();
+      } else {
+        fetchStories();
+      }
     } else if (activeTab === "loginLogs") {
       fetchLoginLogs();
     }
-  }, [activeTab]);
+  }, [activeTab, feedSubTab]);
 
   useEffect(() => {
-    if (activeTab === "feed") {
+    if (activeTab === "feed" && feedSubTab === "posts") {
       fetchPosts();
     }
   }, [postPage, postSearch, postStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab === "feed" && feedSubTab === "stories") {
+      fetchStories();
+    }
+  }, [storyPage]);
 
   useEffect(() => {
     if (activeTab === "loginLogs") {
@@ -805,6 +870,15 @@ const AdminDashboard = () => {
     });
   };
 
+  const handleDeleteStoryClick = (storyId, username) => {
+    setConfirmModal({
+      isOpen: true,
+      type: "deleteStory",
+      targetId: storyId,
+      targetName: username
+    });
+  };
+
   const handleMaintenanceToggleClick = () => {
     setConfirmModal({
       isOpen: true,
@@ -893,6 +967,13 @@ const AdminDashboard = () => {
         if (res.success) {
           addToast(res.message, "success");
           setPosts(prev => prev.map(p => p.id === targetId ? { ...p, comments: res.comments } : p));
+        }
+      } else if (type === "deleteStory") {
+        const res = await deleteAdminStory(targetId);
+        if (res.success) {
+          addToast(res.message, "success");
+          fetchStories();
+          fetchStats();
         }
       }
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -1239,6 +1320,12 @@ const AdminDashboard = () => {
                   This will permanently delete the post content, associated media files, and all comments on it.
                 </p>
               )}
+              {confirmModal.type === "deleteStory" && (
+                <p>
+                  <strong>CRITICAL CONTENT MODERATION:</strong> Are you sure you want to delete this story by <strong>{confirmModal.targetName}</strong>?<br />
+                  This will permanently delete the story and its associated media files from storage.
+                </p>
+              )}
               {confirmModal.type === "deleteComment" && (
                 <p>
                   Are you sure you want to delete this comment by <strong>{confirmModal.targetName}</strong>?<br />
@@ -1317,49 +1404,208 @@ const AdminDashboard = () => {
                 </div>
               </div>
               
-              {/* Session logs panel */}
-              <div className="sessions-list-panel glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "360px" }}>
-                <h5 style={{ margin: "0 0 15px", color: "var(--admin-text-h)" }}>Auth Sessions History (Max 10)</h5>
-                
-                {loadingModalLogs ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: "1", padding: "40px 0" }}>
-                    <Loader className="spinner" size={20} />
-                    <span style={{ fontSize: "0.85rem", marginTop: "10px", color: "var(--admin-text-muted)" }}>Loading session history...</span>
+              {/* Tabbed panel for Sessions, Posts, and Stories */}
+              <div className="sessions-list-panel glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", minHeight: "380px", flex: 1 }}>
+                {/* Modal Tab Headers */}
+                <div style={{ display: "flex", gap: "10px", borderBottom: "1px solid var(--admin-border)", paddingBottom: "10px", marginBottom: "15px" }}>
+                  <button
+                    onClick={() => setModalActiveTab("sessions")}
+                    className={`feed-subtab-btn ${modalActiveTab === "sessions" ? "active" : ""}`}
+                    style={{
+                      background: modalActiveTab === "sessions" ? "var(--admin-btn-active-bg)" : "none",
+                      border: `1px solid ${modalActiveTab === "sessions" ? "var(--admin-btn-active-border)" : "transparent"}`,
+                      color: modalActiveTab === "sessions" ? "var(--accent)" : "var(--admin-text-muted)",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "0.78rem",
+                      fontWeight: "700"
+                    }}
+                  >
+                    Sessions ({userLogsForModal.length})
+                  </button>
+                  <button
+                    onClick={() => setModalActiveTab("posts")}
+                    className={`feed-subtab-btn ${modalActiveTab === "posts" ? "active" : ""}`}
+                    style={{
+                      background: modalActiveTab === "posts" ? "var(--admin-btn-active-bg)" : "none",
+                      border: `1px solid ${modalActiveTab === "posts" ? "var(--admin-btn-active-border)" : "transparent"}`,
+                      color: modalActiveTab === "posts" ? "var(--accent)" : "var(--admin-text-muted)",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "0.78rem",
+                      fontWeight: "700"
+                    }}
+                  >
+                    Posts ({userPostsForModal.length})
+                  </button>
+                  <button
+                    onClick={() => setModalActiveTab("stories")}
+                    className={`feed-subtab-btn ${modalActiveTab === "stories" ? "active" : ""}`}
+                    style={{
+                      background: modalActiveTab === "stories" ? "var(--admin-btn-active-bg)" : "none",
+                      border: `1px solid ${modalActiveTab === "stories" ? "var(--admin-btn-active-border)" : "transparent"}`,
+                      color: modalActiveTab === "stories" ? "var(--accent)" : "var(--admin-text-muted)",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "0.78rem",
+                      fontWeight: "700"
+                    }}
+                  >
+                    Stories ({userStoriesForModal.length})
+                  </button>
+                </div>
+
+                {/* TAB 1: SESSIONS */}
+                {modalActiveTab === "sessions" && (
+                  <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "300px", flex: 1 }}>
+                    {loadingModalLogs ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", flex: 1 }}>
+                        <Loader className="spinner" size={20} />
+                      </div>
+                    ) : userLogsForModal.length === 0 ? (
+                      <div style={{ textAlign: "center", color: "var(--admin-text-muted)", fontStyle: "italic", padding: "40px 0" }}>No session logs found.</div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {userLogsForModal.map((log, index) => {
+                          let durationStr = "Running...";
+                          if (log.logoutTime) {
+                            const durationMs = new Date(log.logoutTime) - new Date(log.loginTime);
+                            if (durationMs > 0) {
+                              const secs = Math.floor(durationMs / 1000);
+                              const mins = Math.floor(secs / 60);
+                              const hours = Math.floor(mins / 60);
+                              if (hours > 0) durationStr = `${hours}h ${mins % 60}m`;
+                              else if (mins > 0) durationStr = `${mins}m ${secs % 60}s`;
+                              else durationStr = `${secs}s`;
+                            } else {
+                              durationStr = "0s";
+                            }
+                          }
+                          
+                          return (
+                            <div key={log.id || index} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "10px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "4px" }}>
+                                <span style={{ fontWeight: "700", color: "var(--accent)" }}>Session #{index + 1}</span>
+                                <span style={{ fontFamily: "monospace", color: "var(--admin-text-muted)" }}>{log.ipAddress || "Unknown IP"}</span>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "0.78rem", color: "var(--admin-text)" }}>
+                                <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Login:</span> <span>{new Date(log.loginTime).toLocaleString()}</span></div>
+                                <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Logout:</span> <span>{log.logoutTime ? new Date(log.logoutTime).toLocaleString() : <span style={{ color: "var(--chart-green-color, #10b981)", fontWeight: "600" }}>Active Session</span>}</span></div>
+                                <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Duration:</span> <span style={{ fontWeight: !log.logoutTime ? "600" : "normal" }}>{durationStr}</span></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                ) : userLogsForModal.length === 0 ? (
-                  <div style={{ textAlign: "center", color: "var(--admin-text-muted)", fontStyle: "italic", padding: "40px 0" }}>No authentication logs found.</div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {userLogsForModal.map((log, index) => {
-                      let durationStr = "Running...";
-                      if (log.logoutTime) {
-                        const durationMs = new Date(log.logoutTime) - new Date(log.loginTime);
-                        if (durationMs > 0) {
-                          const secs = Math.floor(durationMs / 1000);
-                          const mins = Math.floor(secs / 60);
-                          const hours = Math.floor(mins / 60);
-                          if (hours > 0) durationStr = `${hours}h ${mins % 60}m`;
-                          else if (mins > 0) durationStr = `${mins}m ${secs % 60}s`;
-                          else durationStr = `${secs}s`;
-                        } else {
-                          durationStr = "0s";
-                        }
-                      }
-                      
-                      return (
-                        <div key={log.id || index} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "10px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "4px" }}>
-                            <span style={{ fontWeight: "700", color: "var(--accent)" }}>Session #{index + 1}</span>
-                            <span style={{ fontFamily: "monospace", color: "var(--admin-text-muted)" }}>{log.ipAddress || "Unknown IP"}</span>
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "0.78rem", color: "var(--admin-text)" }}>
-                            <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Login:</span> <span>{new Date(log.loginTime).toLocaleString()}</span></div>
-                            <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Logout:</span> <span>{log.logoutTime ? new Date(log.logoutTime).toLocaleString() : <span style={{ color: "var(--chart-green-color, #10b981)", fontWeight: "600" }}>Active Session</span>}</span></div>
-                            <div style={{ display: "flex" }}><span style={{ width: "60px", color: "var(--admin-text-muted)" }}>Duration:</span> <span style={{ fontWeight: !log.logoutTime ? "600" : "normal" }}>{durationStr}</span></div>
-                          </div>
+                )}
+
+                {/* TAB 2: POSTS */}
+                {modalActiveTab === "posts" && (
+                  <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "300px", flex: 1, gap: "12px" }}>
+                    {loadingModalPosts ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", flex: 1 }}>
+                        <Loader className="spinner" size={20} />
+                      </div>
+                    ) : userPostsForModal.length === 0 ? (
+                      <div style={{ textAlign: "center", color: "var(--admin-text-muted)", fontStyle: "italic", padding: "40px 0" }}>No posts found for this user.</div>
+                    ) : (
+                      userPostsForModal.map((p) => (
+                        <div key={p.id} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                             <span style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>{new Date(p.createdAt).toLocaleString()}</span>
+                             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                               <select
+                                 value={p.status || "active"}
+                                 onChange={async (e) => {
+                                   await handleStatusChange(p.id, e.target.value);
+                                   const postData = await getAdminPosts(1, 20, "", "all", selectedUserLogs.id);
+                                   if (postData.success) setUserPostsForModal(postData.posts);
+                                 }}
+                                 style={{ background: "var(--admin-input-bg)", border: "1px solid var(--admin-border)", borderRadius: "4px", fontSize: "0.7rem", color: "var(--admin-text-h)", padding: "2px 6px", outline: "none" }}
+                               >
+                                 <option value="active">Active</option>
+                                 <option value="flagged">Flagged</option>
+                                 <option value="hidden">Hidden</option>
+                               </select>
+                               <button
+                                 onClick={async () => {
+                                   if (window.confirm("Are you sure you want to delete this post?")) {
+                                     const res = await deleteAdminPost(p.id);
+                                     if (res.success) {
+                                       addToast(res.message, "success");
+                                       const postData = await getAdminPosts(1, 20, "", "all", selectedUserLogs.id);
+                                       if (postData.success) setUserPostsForModal(postData.posts);
+                                       fetchPosts();
+                                     }
+                                   }
+                                 }}
+                                 style={{ background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
+                               >
+                                 <Trash2 size={12} />
+                               </button>
+                             </div>
+                           </div>
+                           <p style={{ margin: "0", fontSize: "0.8rem", color: "var(--admin-text-h)", whiteSpace: "pre-wrap" }}>{p.text}</p>
+                           {p.image && (
+                             <div style={{ width: "60px", height: "45px", borderRadius: "4px", overflow: "hidden", border: "1px solid var(--admin-border-subtle)" }}>
+                               <img src={p.image} alt="Attached Media" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                             </div>
+                           )}
                         </div>
-                      );
-                    })}
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 3: STORIES */}
+                {modalActiveTab === "stories" && (
+                  <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "300px", flex: 1, gap: "12px" }}>
+                    {loadingModalStories ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", flex: 1 }}>
+                        <Loader className="spinner" size={20} />
+                      </div>
+                    ) : userStoriesForModal.length === 0 ? (
+                      <div style={{ textAlign: "center", color: "var(--admin-text-muted)", fontStyle: "italic", padding: "40px 0" }}>No stories found for this user.</div>
+                    ) : (
+                      userStoriesForModal.map((s) => (
+                        <div key={s.id} style={{ borderBottom: "1px solid var(--admin-border-subtle)", paddingBottom: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                             <span style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>{new Date(s.createdAt).toLocaleString()}</span>
+                             <button
+                               onClick={async () => {
+                                 if (window.confirm("Are you sure you want to delete this story?")) {
+                                   const res = await deleteAdminStory(s.id);
+                                   if (res.success) {
+                                     addToast(res.message, "success");
+                                     const storyData = await getAdminStories(1, 20, selectedUserLogs.id);
+                                     if (storyData.success) setUserStoriesForModal(storyData.stories);
+                                     fetchStories();
+                                   }
+                                 }
+                               }}
+                               style={{ background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
+                             >
+                               <Trash2 size={12} />
+                             </button>
+                           </div>
+                           {s.text && <p style={{ margin: "0", fontSize: "0.8rem", color: "var(--admin-text-h)" }}>{s.text}</p>}
+                           {s.mediaUrl && (
+                             <div style={{ width: "60px", height: "60px", borderRadius: "4px", overflow: "hidden", background: "rgba(0,0,0,0.2)" }}>
+                               {s.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || s.mediaUrl.includes("video") ? (
+                                 <video src={s.mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                               ) : (
+                                 <img src={s.mediaUrl} alt="Story Media" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                               )}
+                             </div>
+                           )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
@@ -1680,6 +1926,66 @@ const AdminDashboard = () => {
                       colorClass="blue"
                       labels={getPastDates()}
                     />
+                  </div>
+
+                  {/* LIVE PRESENCE & TRACKING PANEL */}
+                  <div className="live-presence-card glass-panel" style={{ marginTop: "24px", marginBottom: "24px" }}>
+                    <div className="console-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--admin-border)", paddingBottom: "12px", marginBottom: "16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span className="online-pulse-live" style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px #10b981" }}></span>
+                        <h4 style={{ margin: "0", fontSize: "0.95rem", fontWeight: "750", color: "var(--admin-text-h)" }}>Live Presence & Session Tracking (Come & Go)</h4>
+                      </div>
+                      <span style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: "12px", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+                        {stats.onlineUsersList ? stats.onlineUsersList.length : 0} Developers Online
+                      </span>
+                    </div>
+
+                    <div className="live-presence-body">
+                      {(!stats.onlineUsersList || stats.onlineUsersList.length === 0) ? (
+                        <div style={{ padding: "40px", textAlign: "center", color: "var(--admin-text-muted)", fontStyle: "italic" }}>
+                          No developers are currently active on the platform.
+                        </div>
+                      ) : (
+                        <div className="live-presence-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+                          {stats.onlineUsersList.map((onlineUser) => {
+                            // Calculate online duration
+                            let activeSince = "Just now";
+                            if (onlineUser.lastSeene) {
+                              const diffMs = Date.now() - new Date(onlineUser.lastSeene);
+                              const diffMins = Math.floor(diffMs / 60000);
+                              if (diffMins > 60) {
+                                const hours = Math.floor(diffMins / 60);
+                                activeSince = `Active for ${hours}h ${diffMins % 60}m`;
+                              } else if (diffMins > 0) {
+                                activeSince = `Active for ${diffMins}m`;
+                              } else {
+                                activeSince = "Active for < 1m";
+                              }
+                            }
+                            return (
+                              <div key={onlineUser.id} className="live-user-session-card glass-panel" style={{ display: "flex", gap: "12px", padding: "12px", background: "rgba(255,255,255,0.01)", border: "1px solid var(--admin-border-subtle)", borderRadius: "10px", transition: "transform 0.2s ease, border-color 0.2s ease" }}>
+                                <div className="user-avatar-wrapper" style={{ width: "40px", height: "40px", position: "relative" }}>
+                                  {onlineUser.avatar ? (
+                                    <img src={onlineUser.avatar} alt={onlineUser.username} className="avatar-img" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                  ) : (
+                                    <div className="avatar-placeholder" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--admin-btn-active-bg)", color: "var(--accent)", fontWeight: "700" }}>{onlineUser.username.substring(0, 2).toUpperCase()}</div>
+                                  )}
+                                  <span style={{ position: "absolute", bottom: "0", right: "0", width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", border: "2px solid var(--admin-panel-bg)" }}></span>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "2px", overflow: "hidden" }}>
+                                  <span style={{ fontWeight: "700", color: "var(--admin-text-h)", fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{onlineUser.username}</span>
+                                  <span style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{onlineUser.email}</span>
+                                  <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "4px" }}>
+                                    <span style={{ fontSize: "0.7rem", fontFamily: "monospace", background: "var(--admin-btn-active-bg)", padding: "1px 6px", borderRadius: "4px", color: "var(--admin-text)" }}>{onlineUser.ipAddress}</span>
+                                    <span style={{ fontSize: "0.68rem", color: "var(--chart-green-color, #10b981)" }}>{activeSince}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* SYSTEM LOGS TERMINAL LOGGER */}
@@ -2392,8 +2698,54 @@ const AdminDashboard = () => {
           {/* TAB 4.5: NETWORK FEED MODERATION */}
           {activeTab === "feed" && (
             <div className="tab-pane-feed-moderation animate-fade-in">
-              {/* FEED STATS BANNER */}
-              <div className="feed-stats-dashboard-row animate-fade-in">
+              {/* FEED TYPE TOGGLE */}
+              <div className="feed-type-toggle-row" style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid var(--admin-border)", paddingBottom: "12px" }}>
+                <button
+                  onClick={() => setFeedSubTab("posts")}
+                  className={`feed-subtab-btn ${feedSubTab === "posts" ? "active" : ""}`}
+                  style={{
+                    background: feedSubTab === "posts" ? "var(--admin-btn-active-bg)" : "none",
+                    border: `1px solid ${feedSubTab === "posts" ? "var(--admin-btn-active-border)" : "transparent"}`,
+                    color: feedSubTab === "posts" ? "var(--accent)" : "var(--admin-text-muted)",
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    fontWeight: "750",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                >
+                  <Zap size={14} />
+                  <span>User Feed Posts</span>
+                </button>
+                <button
+                  onClick={() => setFeedSubTab("stories")}
+                  className={`feed-subtab-btn ${feedSubTab === "stories" ? "active" : ""}`}
+                  style={{
+                    background: feedSubTab === "stories" ? "var(--admin-btn-active-bg)" : "none",
+                    border: `1px solid ${feedSubTab === "stories" ? "var(--admin-btn-active-border)" : "transparent"}`,
+                    color: feedSubTab === "stories" ? "var(--accent)" : "var(--admin-text-muted)",
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    fontWeight: "750",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>Developer Stories</span>
+                </button>
+              </div>
+
+              {feedSubTab === "posts" && (
+                <>
+                  {/* FEED STATS BANNER */}
+                  <div className="feed-stats-dashboard-row animate-fade-in">
                 <div className="feed-stat-card glass-panel purple">
                   <div className="stat-icon-wrapper"><Megaphone size={18} /></div>
                   <div className="stat-info">
@@ -2527,7 +2879,7 @@ const AdminDashboard = () => {
                       <div key={post.id} className={`admin-post-card glass-panel border-${post.status}`}>
                         <div className="post-card-header">
                           <div className="post-author-info">
-                            <div className="author-avatar-wrapper">
+                            <div className="author-avatar-wrapper" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: post.author ? "pointer" : "default" }} title={post.author ? "View Developer Profile & Moderation" : ""}>
                               {post.author?.avatar ? (
                                 <img src={post.author.avatar} alt={post.author.username} className="avatar-img" />
                               ) : (
@@ -2537,7 +2889,7 @@ const AdminDashboard = () => {
                               )}
                             </div>
                             <div className="author-meta">
-                              <div className="author-username-row">
+                              <div className="author-username-row" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: post.author ? "pointer" : "default" }} title={post.author ? "View Developer Profile & Moderation" : ""}>
                                 <span className="author-username">{post.author?.username || "Deleted User"}</span>
                                 <span className={`post-status-badge status-${post.status}`}>
                                   {post.status.toUpperCase()}
@@ -2813,6 +3165,100 @@ const AdminDashboard = () => {
                     <span>Next</span>
                     <ChevronRight size={14} />
                   </button>
+                </div>
+              )}
+              </>)}
+
+              {feedSubTab === "stories" && (
+                <div className="admin-stories-moderation-pane animate-fade-in">
+                  <div className="table-search-row glass-panel" style={{ marginBottom: "20px" }}>
+                    <h4 style={{ margin: "0", fontSize: "0.95rem", fontWeight: "750", color: "var(--admin-text-h)" }}>Developer Stories Moderation</h4>
+                    {loadingStories && <Loader className="spinner table-inline-loader" size={14} />}
+                  </div>
+
+                  <div className="admin-stories-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+                    {stories.length === 0 ? (
+                      <div className="empty-posts-state glass-panel" style={{ gridColumn: "1 / -1" }}>
+                        {loadingStories ? "Fetching developer stories..." : "No active developer stories found."}
+                      </div>
+                    ) : (
+                      stories.map((story) => (
+                        <div key={story.id} className="admin-post-card glass-panel" style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
+                          <div>
+                            <div className="post-card-header" style={{ paddingBottom: "10px", borderBottom: "1px solid var(--admin-border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div className="post-author-info">
+                                <div className="author-avatar-wrapper" onClick={() => story.user && handleViewUserLogs(story.user)} style={{ cursor: story.user ? "pointer" : "default" }} title={story.user ? "View Developer Profile & Moderation" : ""}>
+                                  {story.user?.avatar ? (
+                                    <img src={story.user.avatar} alt={story.user.username} className="avatar-img" />
+                                  ) : (
+                                    <div className="avatar-placeholder">
+                                      {(story.user?.username || story.username || "U").substring(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="author-meta">
+                                  <span className="author-username" onClick={() => story.user && handleViewUserLogs(story.user)} style={{ color: "var(--admin-text-h)", fontWeight: "600", cursor: story.user ? "pointer" : "default" }} title={story.user ? "View Developer Profile & Moderation" : ""}>{story.user?.username || story.username}</span>
+                                  {story.user?.email && <span className="author-email" style={{ fontSize: "0.7rem", color: "var(--admin-text-muted)" }}>{story.user.email}</span>}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteStoryClick(story.id, story.user?.username || story.username)}
+                                className="btn-action-delete"
+                                title="Delete story permanently"
+                                style={{ padding: "6px", background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer" }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+
+                            <div className="post-card-body" style={{ padding: "12px 0" }}>
+                              {story.text && <p className="post-text-content" style={{ margin: "0 0 10px 0", fontSize: "0.85rem", color: "var(--admin-text-h)" }}>{story.text}</p>}
+                              
+                              {story.mediaUrl && (
+                                <div className="story-media-preview-frame" style={{ borderRadius: "6px", overflow: "hidden", maxHeight: "200px", background: "rgba(0,0,0,0.2)", display: "flex", justifyContent: "center" }}>
+                                  {story.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || story.mediaUrl.includes("video") ? (
+                                    <video src={story.mediaUrl} controls style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }} />
+                                  ) : (
+                                    <img src={story.mediaUrl} alt="Story Media" style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }} />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="post-card-footer" style={{ borderTop: "1px solid var(--admin-border-subtle)", paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", color: "var(--admin-text-muted)" }}>
+                            <span>❤️ {story.likesCount} Likes | 💬 {story.commentsCount} Comments</span>
+                            <span>{new Date(story.createdAt).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* STORIES PAGINATION */}
+                  {storyPagination.totalPages > 1 && (
+                    <div className="table-pagination-row" style={{ marginTop: "24px" }}>
+                      <button
+                        disabled={storyPage <= 1}
+                        onClick={() => setStoryPage((prev) => Math.max(1, prev - 1))}
+                        className="btn-page-nav"
+                      >
+                        <ChevronLeft size={14} />
+                        <span>Previous</span>
+                      </button>
+                      <span className="page-indicator">
+                        Page <strong>{storyPage}</strong> of <strong>{storyPagination.totalPages}</strong> ({storyPagination.totalStories} stories)
+                      </span>
+                      <button
+                        disabled={storyPage >= storyPagination.totalPages}
+                        onClick={() => setStoryPage((prev) => Math.min(storyPagination.totalPages, prev + 1))}
+                        className="btn-page-nav"
+                      >
+                        <span>Next</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

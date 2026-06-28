@@ -63,15 +63,17 @@
   min-height: 250px;
   padding: 36px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Subtle mouse hover card effect */
@@ -90,9 +92,10 @@
 }
 
 .feature-card:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(168, 85, 247, 0.35);
-  box-shadow: 0 20px 45px rgba(168, 85, 247, 0.08);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(168, 85, 247, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-8px) scale(1.02);
 }
 
 .feature-card:hover::before {
@@ -102,30 +105,31 @@
 .feature-icon {
   position: relative;
   z-index: 2;
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 16px;
-  color: var(--accent-purple);
-  background: rgba(168, 85, 247, 0.08);
+  color: #a78bfa;
+  background: rgba(168, 85, 247, 0.06);
   border: 1px solid rgba(168, 85, 247, 0.15);
   transition: all 0.3s ease;
 }
 
 .feature-card:hover .feature-icon {
   color: #ffffff;
-  background: var(--grad-primary);
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   border-color: transparent;
-  box-shadow: var(--shadow-neon);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+  transform: rotate(5deg) scale(1.05);
 }
 
 .feature-card h3 {
   position: relative;
   z-index: 2;
   margin: 24px 0 0;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.5px;
@@ -134,10 +138,10 @@
 .feature-card p {
   position: relative;
   z-index: 2;
-  margin-top: 12px;
+  margin-top: 10px;
   color: var(--text-secondary);
-  line-height: 1.65;
-  font-size: 0.95rem;
+  line-height: 1.6;
+  font-size: 0.92rem;
 }
 
 @media (max-width: 768px) {

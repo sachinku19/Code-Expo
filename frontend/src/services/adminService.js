@@ -131,8 +131,8 @@ export const deleteAdminAd = async (id) => {
   return response.data;
 };
 
-export const getAdminPosts = async (page = 1, limit = 10, search = "", status = "all") => {
-  const response = await API.get(`/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${status}`, getHeaders());
+export const getAdminPosts = async (page = 1, limit = 10, search = "", status = "all", userId = "") => {
+  const response = await API.get(`/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${status}&userId=${userId}`, getHeaders());
   return response.data;
 };
 
@@ -153,6 +153,16 @@ export const updateAdminPostStatus = async (postId, status, legalCase = null) =>
 
 export const getAdminLoginLogs = async (page = 1, limit = 10, search = "", userId = "") => {
   const response = await API.get(`/admin/login-logs?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&userId=${userId}`, getHeaders());
+  return response.data;
+};
+
+export const getAdminStories = async (page = 1, limit = 10, userId = "") => {
+  const response = await API.get(`/admin/stories?page=${page}&limit=${limit}&userId=${userId}`, getHeaders());
+  return response.data;
+};
+
+export const deleteAdminStory = async (storyId) => {
+  const response = await API.delete(`/admin/stories/${storyId}`, getHeaders());
   return response.data;
 };
 
