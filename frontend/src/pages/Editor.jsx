@@ -1436,10 +1436,7 @@ function Editor() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("ceLastActiveRoomId");
-    if (typeof setUser === "function") {
-      setUser(null);
-    }
-    navigate("/login");
+    window.location.href = "/login";
   };
 
   const handleSaveCode = () => {

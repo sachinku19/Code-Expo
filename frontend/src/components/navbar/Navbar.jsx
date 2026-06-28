@@ -39,8 +39,7 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
     logoutUser().catch(err => console.error("Logout error:", err));
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    setUser(null);
-    navigate("/login");
+    window.location.href = "/login";
   };
 
   return (

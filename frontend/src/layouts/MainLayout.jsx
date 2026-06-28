@@ -749,8 +749,7 @@ export default function MainLayout({
     logoutUser().catch(err => console.error("Logout error:", err));
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    setUser(null);
-    navigate("/login");
+    window.location.href = "/login";
   };
 
   const lastRoomId = localStorage.getItem("ceLastActiveRoomId") || "default";
