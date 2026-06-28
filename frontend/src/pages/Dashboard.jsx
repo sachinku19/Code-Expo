@@ -3235,6 +3235,10 @@ function Dashboard() {
       };
     });
 
+  if (!localStorage.getItem("token")) {
+    return null;
+  }
+
   if (isMaintenance) {
     return (
       <div className="maintenance-lockout-overlay" style={{

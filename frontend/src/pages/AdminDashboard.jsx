@@ -1155,6 +1155,10 @@ const AdminDashboard = () => {
     ]
     : [5, 8, 12, 15, 18, 22, 25];
 
+  if (!localStorage.getItem("token")) {
+    return null;
+  }
+
   return (
     <div className={`admin-backoffice-layout ${theme}`}>
       {/* Dynamic Toasts Banners */}
