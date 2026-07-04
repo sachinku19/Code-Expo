@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { logoutUser } from "../services/authService";
 import {
   LayoutDashboard, Code2, DoorOpen, History, User, Settings,
@@ -43,6 +44,10 @@ export default function MainLayout({
   const location = useLocation();
   const { user, setUser } = useAuth();
 
+  const displayXP = userXP !== undefined && userXP !== 0 ? userXP : (user?.executionsCount || 0);
+  const displayLevel = Math.floor(displayXP / 100) + 1;
+  const displayRank = userRank !== "Junior Coder" ? userRank : (user?.title || "Developer");
+
   const handleConfirmNavigate = async (path) => {
     if (location.pathname.startsWith("/editor/")) {
       if (path !== location.pathname && !path.startsWith(location.pathname + "?") && !path.startsWith(location.pathname + "#")) {
@@ -63,9 +68,7 @@ export default function MainLayout({
     localStorage.getItem("ceSidebarPinned") === "true"
   );
   const [isHovered, setIsHovered] = useState(false);
-  const [theme, setTheme] = useState(
-    localStorage.getItem("codeExpoHomeTheme") || "system"
-  );
+  const { theme, setTheme } = useTheme();
   const [activeDropdownView, setActiveDropdownView] = useState("main");
   const [participantsDropdownOpen, setParticipantsDropdownOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -681,50 +684,7 @@ export default function MainLayout({
 
   const { sections, flatItems } = getFilteredItems();
 
-  // Sync theme to document element
-  useEffect(() => {
-    const applyTheme = () => {
-      let resolvedTheme = theme;
-      if (theme === "system") {
-        const isSystemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        resolvedTheme = isSystemDark ? "dark" : "light";
-      }
-      document.documentElement.className = resolvedTheme;
-      document.documentElement.setAttribute("data-theme-mode", theme);
-    };
 
-    applyTheme();
-    localStorage.setItem("codeExpoHomeTheme", theme);
-
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const handleChange = () => applyTheme();
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-  }, [theme]);
-
-  // Sync theme state if updated elsewhere (e.g. from Settings tab)
-  useEffect(() => {
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === "class") {
-          const currentTheme = document.documentElement.className;
-          const cleanTheme = currentTheme.includes("light") ? "light" : "dark";
-          const resolvedTheme = theme === "system"
-            ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-            : theme;
-          if (cleanTheme !== resolvedTheme) {
-            if (theme !== "system") {
-              setTheme(cleanTheme);
-            }
-          }
-        }
-      });
-    });
-    observer.observe(document.documentElement, { attributes: true });
-    return () => observer.disconnect();
-  }, [theme]);
 
   // Sync last active room ID
   useEffect(() => {
@@ -1177,18 +1137,18 @@ export default function MainLayout({
                     </div>
                     <div className="profile-header-info">
                       <span className="profile-header-username">@{user?.username || "developer"}</span>
-                      <span className="profile-header-rank">{userRank}</span>
+                      <span className="profile-header-rank">{displayRank}</span>
                     </div>
                   </div>
 
                   {/* Slim Premium Progress Bar */}
                   <div className="dropdown-xp-progress">
                     <div className="dropdown-xp-bar-container">
-                      <div className="dropdown-xp-bar" style={{ width: `${(userXP % 100)}%` }} />
+                      <div className="dropdown-xp-bar" style={{ width: `${(displayXP % 100)}%` }} />
                     </div>
                     <div className="dropdown-xp-labels">
-                      <span>Lvl {Math.floor(userXP / 100) + 1}</span>
-                      <span>{userXP} XP</span>
+                      <span>Lvl {displayLevel}</span>
+                      <span>{displayXP} XP</span>
                     </div>
                   </div>
                 </div>

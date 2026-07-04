@@ -1,6 +1,7 @@
 const Room = require("../models/Room");
 const Message = require("../models/Message");
 const WorkspaceItem = require("../models/WorkspaceItem");
+const User = require("../models/User");
 const { executeCode } = require("../services/jdoodleService");
 
 // Import Collaboration models
@@ -118,21 +119,21 @@ const socketHandler = (io) => {
       console.log(`👤 User registered for notifications: ${userId} (${socket.id})`);
 
       try {
-        const User = require("../models/User");
-        const userObj = await User.findByIdAndUpdate(userId, {
-          isOnline: true
-        }, { new: true });
+        const userObj = await User.findById(userId);
 
         if (!userObj) {
           console.error(`User not found for socket registration: ${userId}`);
           return;
         }
 
-        console.log(`📡 Updated DB status to online for user: ${userId}`);
+        userObj.isOnline = true;
 
-        // Track session (come & go) - create a new LoginLog if none is active
-        const LoginLog = require("../models/LoginLog");
-        const activeLog = await LoginLog.findOne({ user: userId, logoutTime: null }).sort({ loginTime: -1 });
+        if (!userObj.loginHistory) {
+          userObj.loginHistory = [];
+        }
+
+        // Track session (come & go) - create a new entry in loginHistory if none is active
+        const activeLog = userObj.loginHistory.find(log => log.logoutTime === null);
         
         if (!activeLog) {
           // Extract client IP address from socket handshake
@@ -144,22 +145,21 @@ const socketHandler = (io) => {
             ipAddress = ipAddress.replace("::ffff:", "");
           }
           
-          await LoginLog.create({
-            user: userId,
-            username: userObj.username,
-            email: userObj.email,
+          userObj.loginHistory.unshift({
             loginTime: new Date(),
-            ipAddress: ipAddress
+            logoutTime: null,
+            ipAddress: ipAddress,
+            userAgent: socket.handshake.headers['user-agent'] || ""
           });
-          console.log(`📝 Created new session LoginLog for user: ${userId} from IP: ${ipAddress}`);
+          console.log(`📝 Created new session loginHistory for user: ${userId} from IP: ${ipAddress}`);
 
           // Rotate logs (keep only last 10)
-          const allLogs = await LoginLog.find({ user: userId }).sort({ loginTime: -1 });
-          if (allLogs.length > 10) {
-            const logsToDelete = allLogs.slice(10);
-            await LoginLog.deleteMany({ _id: { $in: logsToDelete.map(l => l._id) } });
+          if (userObj.loginHistory.length > 10) {
+            userObj.loginHistory = userObj.loginHistory.slice(0, 10);
           }
         }
+        await userObj.save();
+        console.log(`📡 Updated DB status to online for user: ${userId}`);
       } catch (err) {
         console.error("Error updating online status or session log in socket register-user:", err);
       }
@@ -1712,19 +1712,18 @@ const socketHandler = (io) => {
           // Update DB status to offline & close active login session
           (async () => {
             try {
-              const User = require("../models/User");
-              const LoginLog = require("../models/LoginLog");
-
-              await User.findByIdAndUpdate(userId, {
-                isOnline: false,
-                lastSeene: Date.now()
-              });
-
-              await LoginLog.findOneAndUpdate(
-                { user: userId, logoutTime: null },
-                { $set: { logoutTime: new Date() } },
-                { sort: { loginTime: -1 } }
-              );
+              const userObj = await User.findById(userId);
+              if (userObj) {
+                userObj.isOnline = false;
+                userObj.lastSeene = Date.now();
+                if (userObj.loginHistory && Array.isArray(userObj.loginHistory)) {
+                  const activeLog = userObj.loginHistory.find(log => log.logoutTime === null);
+                  if (activeLog) {
+                    activeLog.logoutTime = new Date();
+                  }
+                }
+                await userObj.save();
+              }
               console.log(`📡 Updated DB status to offline for user: ${userId}`);
             } catch (err) {
               console.error("Error updating offline status in socket disconnect:", err);

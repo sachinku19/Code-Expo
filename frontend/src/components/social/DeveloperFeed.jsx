@@ -1655,7 +1655,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       <div className="post-name-section">
                         <div className="post-username-row" style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
                           <span className="post-username-text">@{post.author.username}</span>
-                          <span className="post-badge-lvl">Lvl {post.author.developerLevel || 1}</span>
+                          <span className="post-badge-lvl">Lvl {Math.floor((post.author.executionsCount || 0) / 100) + 1}</span>
                           {post.author.status === "Coding" && (
                             <span className="post-dot-online" style={{ width: "6px", height: "6px" }} />
                           )}
@@ -1669,7 +1669,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                             <span className="post-badge-sensitive-indicator" title="Flagged as Sensitive Content">⚠️ Sensitive</span>
                           )}
                         </div>
-                        <span className="post-author-role">{post.author.title || "Full Stack Developer"} &bull; {post.author.reputationScore || 0} XP</span>
+                        <span className="post-author-role">{post.author.title || "Full Stack Developer"} &bull; {post.author.executionsCount || 0} XP</span>
                       </div>
                     </div>
 

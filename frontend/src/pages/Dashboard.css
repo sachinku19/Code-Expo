@@ -10553,5 +10553,96 @@ tier-badge.master {
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
 }
 
+/* --- Maintenance Lockout Overlay Styles --- */
+.maintenance-lockout-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--ce-fog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  font-family: var(--font-sans);
+  color: var(--ce-text-h);
+  backdrop-filter: blur(8px);
+}
+
+.maintenance-lockout-card {
+  max-width: 450px;
+  width: 90%;
+  padding: 40px 30px;
+  background: var(--ce-surface);
+  border: 1px solid var(--ce-border);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--ce-card-shadow);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Light theme overrides for high contrast and premium feel */
+.light .maintenance-lockout-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.02) !important;
+}
+
+.lockout-pulse-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--ce-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px auto;
+  animation: pulse-lockout 2s infinite ease-in-out;
+}
+
+@keyframes pulse-lockout {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.maintenance-lockout-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--ce-text-h);
+  margin: 0 0 10px 0;
+  letter-spacing: -0.5px;
+}
+
+.maintenance-lockout-desc {
+  font-size: 0.88rem;
+  color: var(--ce-text);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.maintenance-lockout-footer {
+  border-top: 1px solid var(--ce-border);
+  padding-top: 20px;
+  font-size: 0.8rem;
+  color: var(--ce-danger);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
 
 

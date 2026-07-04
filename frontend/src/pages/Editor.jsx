@@ -17,6 +17,7 @@ import * as workspaceService from "../services/workspaceService";
 import * as collabService from "../services/collaborationService";
 import MainLayout from "../layouts/MainLayout";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { logoutUser } from "../services/authService";
 import {
   FolderOpen,
@@ -1399,9 +1400,7 @@ function Editor() {
   // Mobile tab select state
   const [mobileTab, setMobileTab] = useState("editor"); // 'editor' | 'whiteboard' | 'chat' | 'console' | 'participants'
 
-  const [editorTheme, setEditorTheme] = useState(
-    localStorage.getItem("codeExpoHomeTheme") || "dark"
-  );
+  const { resolvedTheme: editorTheme, setTheme: setGlobalTheme } = useTheme();
   const [editorFontSize, setEditorFontSize] = useState(
     Number(localStorage.getItem("editor_fontSize")) || 14
   );
@@ -1413,23 +1412,6 @@ function Editor() {
       setRightSidebarCollapsed(true);
     }
   }, []);
-
-
-
-  const handleThemeChange = (e) => {
-    const selectedTheme = e.target.value;
-    const newTheme = selectedTheme === "vs-light" ? "light" : "dark";
-    document.documentElement.className = newTheme;
-    localStorage.setItem("codeExpoHomeTheme", newTheme);
-    setEditorTheme(newTheme);
-  };
-
-  const toggleTheme = () => {
-    const nextTheme = editorTheme === "dark" ? "light" : "dark";
-    document.documentElement.className = nextTheme;
-    localStorage.setItem("codeExpoHomeTheme", nextTheme);
-    setEditorTheme(nextTheme);
-  };
 
   const handleLogout = () => {
     logoutUser().catch(err => console.error("Logout error:", err));
@@ -1783,27 +1765,7 @@ function Editor() {
     return { charCount, wordCount };
   };
 
-  useEffect(() => {
-    const handleStorageChange = () => {
-      setEditorTheme(localStorage.getItem("codeExpoHomeTheme") || "dark");
-    };
-    window.addEventListener("storage", handleStorageChange);
 
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === "class") {
-          const currentTheme = document.documentElement.className;
-          setEditorTheme(currentTheme.includes("light") ? "light" : "dark");
-        }
-      });
-    });
-    observer.observe(document.documentElement, { attributes: true });
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      observer.disconnect();
-    };
-  }, []);
 
   const formatMessageTime = (timestamp) => {
     if (!timestamp) return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -3781,10 +3743,7 @@ function Editor() {
                           className="ce-select-box"
                           value={editorTheme}
                           onChange={(e) => {
-                            const newTheme = e.target.value;
-                            document.documentElement.className = newTheme;
-                            localStorage.setItem("codeExpoHomeTheme", newTheme);
-                            setEditorTheme(newTheme);
+                            setGlobalTheme(e.target.value);
                           }}
                         >
                           <option value="dark">GitHub Dark</option>

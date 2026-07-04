@@ -14,12 +14,13 @@ import CTA from "../components/cta/CTA";
 import Footer from "../components/footer/Footer";
 import VideoShowcase from "../components/shared/VideoShowcase";
 import VideoModal from "../components/shared/VideoModal";
+import { useTheme } from "../context/ThemeContext";
 import "./Home.css";
 
 
 function Home() {
   const [activeSection, setActiveSection] = useState("hero");
-  const [theme, setTheme] = useState("dark");
+  const { resolvedTheme: theme, toggleTheme } = useTheme();
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const isProgrammaticScrollRef = useRef(false);
 
@@ -44,27 +45,10 @@ function Home() {
   };
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("codeExpoHomeTheme");
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setTheme(savedTheme);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!window.location.hash) {
       window.scrollTo(0, 0);
     }
   }, []);
-
-
-
-  const toggleTheme = () => {
-    setTheme((currentTheme) => {
-      const nextTheme = currentTheme === "dark" ? "light" : "dark";
-      localStorage.setItem("codeExpoHomeTheme", nextTheme);
-      return nextTheme;
-    });
-  };
 
   useEffect(() => {
     const sections = ["hero", "demo", "features", "collaboration", "whiteboard", "ai", "social-hub"];

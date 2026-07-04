@@ -131,8 +131,8 @@ export const deleteAdminAd = async (id) => {
   return response.data;
 };
 
-export const getAdminPosts = async (page = 1, limit = 10, search = "", status = "all", userId = "") => {
-  const response = await API.get(`/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${status}&userId=${userId}`, getHeaders());
+export const getAdminPosts = async (page = 1, limit = 10, search = "", status = "all", userId = "", grouped = false) => {
+  const response = await API.get(`/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${status}&userId=${userId}&grouped=${grouped}`, getHeaders());
   return response.data;
 };
 

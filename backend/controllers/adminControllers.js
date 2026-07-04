@@ -12,7 +12,6 @@ const Post = require("../models/Post");
 const DirectMessage = require("../models/DirectMessage");
 const GroupChat = require("../models/GroupChat");
 const MediaService = require("../services/MediaService");
-const LoginLog = require("../models/LoginLog");
 
 // Helper to sanitize/format user responses
 const formatUser = (user) => ({
@@ -208,7 +207,7 @@ const getAdminOverviewStats = async (req, res) => {
         createdAt: { $gte: oneDayAgo }
       }),
       User.find({ _id: { $in: activeUserIds } })
-        .select("username email avatar lastSeene")
+        .select("username email avatar lastSeene loginHistory")
         .sort({ lastSeene: -1 })
         .lean()
     ]);
@@ -225,23 +224,20 @@ const getAdminOverviewStats = async (req, res) => {
       }
     });
 
-    // Fetch detailed info of online users for tracking in parallel
-    const onlineUsersList = await Promise.all(
-      activeUsers.map(async (u) => {
-        const latestLog = await LoginLog.findOne({ user: u._id, logoutTime: null })
-          .sort({ loginTime: -1 })
-          .select("ipAddress")
-          .lean();
-        return {
-          id: u._id,
-          username: u.username,
-          email: u.email,
-          avatar: u.avatar,
-          lastSeene: u.lastSeene,
-          ipAddress: latestLog ? latestLog.ipAddress : "Unknown"
-        };
-      })
-    );
+    // Fetch detailed info of online users for tracking
+    const onlineUsersList = activeUsers.map((u) => {
+      const activeLog = u.loginHistory && Array.isArray(u.loginHistory)
+        ? (u.loginHistory.find((log) => log.logoutTime === null) || u.loginHistory[0])
+        : null;
+      return {
+        id: u._id,
+        username: u.username,
+        email: u.email,
+        avatar: u.avatar,
+        lastSeene: u.lastSeene,
+        ipAddress: activeLog ? activeLog.ipAddress : "Unknown"
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -978,6 +974,112 @@ const getAdminPosts = async (req, res) => {
     const search = req.query.search || "";
     const skip = (page - 1) * limit;
 
+    if (req.query.grouped === "true") {
+      // Find all unique authors who have posts or stories
+      const postAuthors = await Post.distinct("author");
+      const Story = require("../models/Story");
+      const storyAuthors = await Story.distinct("user");
+      
+      const authorIds = Array.from(new Set([
+        ...postAuthors.map(String), 
+        ...storyAuthors.map(String)
+      ].filter(Boolean)));
+
+      const userQuery = { _id: { $in: authorIds } };
+      if (search) {
+        userQuery.$or = [
+          { username: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } }
+        ];
+      }
+
+      const total = await User.countDocuments(userQuery);
+      const users = await User.find(userQuery)
+        .select("username email avatar role title isOnline")
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      const usersWithContent = await Promise.all(users.map(async (u) => {
+        const posts = await Post.find({ author: u._id }).sort({ createdAt: -1 }).lean();
+        const stories = await Story.find({ user: u._id }).sort({ createdAt: -1 }).lean();
+        return {
+          id: u._id,
+          username: u.username,
+          email: u.email,
+          avatar: u.avatar,
+          role: u.role,
+          title: u.title,
+          isOnline: u.isOnline === "true" || u.isOnline === true,
+          posts: posts.map(p => ({
+            id: p._id,
+            text: p.text,
+            techStack: p.techStack || [],
+            image: p.image || "",
+            images: p.images || [],
+            likesCount: p.likes ? p.likes.length : 0,
+            comments: p.comments || [],
+            status: p.status || "active",
+            isPinned: p.isPinned || false,
+            isFeatured: p.isFeatured || false,
+            viewsCount: p.viewsCount || 0,
+            createdAt: p.createdAt
+          })),
+          stories: stories.map(s => ({
+            id: s._id,
+            text: s.text,
+            mediaUrl: s.mediaUrl || "",
+            likesCount: s.likes ? s.likes.length : 0,
+            viewsCount: s.viewsCount || 0,
+            status: s.status || "active",
+            isFeatured: s.isFeatured || false,
+            createdAt: s.createdAt
+          }))
+        };
+      }));
+
+      // Also get overall overview stats for the stats cards
+      const [
+        totalPosts,
+        flaggedPosts,
+        hiddenPosts,
+        featuredPosts,
+        pinnedPosts,
+        totalStories,
+        hiddenStories
+      ] = await Promise.all([
+        Post.countDocuments(),
+        Post.countDocuments({ status: "flagged" }),
+        Post.countDocuments({ status: "hidden" }),
+        Post.countDocuments({ isFeatured: true }),
+        Post.countDocuments({ isPinned: true }),
+        Story.countDocuments(),
+        Story.countDocuments({ status: "hidden" })
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        grouped: true,
+        users: usersWithContent,
+        stats: {
+          totalPosts,
+          flaggedPosts,
+          hiddenPosts,
+          featuredPosts,
+          pinnedPosts,
+          totalStories,
+          hiddenStories
+        },
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          totalUsers: total
+        }
+      });
+    }
+
     let query = {};
     if (req.query.userId) {
       query.author = req.query.userId;
@@ -1335,50 +1437,77 @@ const getAdminLoginLogs = async (req, res) => {
     const search = req.query.search || "";
     const skip = (page - 1) * limit;
 
-    const query = {};
-
+    // 1. Single user details modal: return flat log array under `logs` for backwards compatibility
     if (req.query.userId) {
-      query.user = req.query.userId;
-    } else if (search) {
+      const user = await User.findById(req.query.userId).select("username email avatar role title executionsCount createdAt isOnline loginHistory");
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+      
+      const logs = (user.loginHistory || []).map(log => ({
+        id: log._id,
+        loginTime: log.loginTime,
+        logoutTime: log.logoutTime,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent
+      }));
+
+      return res.status(200).json({
+        success: true,
+        logs: logs,
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: logs.length,
+          pages: 1
+        }
+      });
+    }
+
+    // 2. Paginated overall logs list: group/separate by user!
+    const query = {};
+    if (search) {
       query.$or = [
         { username: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } }
       ];
     }
+    // Only query users who have at least one session in history
+    query["loginHistory.0"] = { $exists: true };
 
-    const total = await LoginLog.countDocuments(query);
-    const logs = await LoginLog.find(query)
-      .populate("user", "avatar username email role title executionsCount createdAt isOnline")
-      .sort({ loginTime: -1 })
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .select("username email avatar role title executionsCount createdAt isOnline loginHistory")
+      .sort({ updatedAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     res.status(200).json({
       success: true,
-      logs: logs.map(log => ({
-        id: log._id,
-        user: log.user ? {
-          id: log.user._id,
-          username: log.user.username,
-          email: log.user.email,
-          avatar: log.user.avatar,
-          role: log.user.role,
-          title: log.user.title,
-          executionsCount: log.user.executionsCount,
-          createdAt: log.user.createdAt,
-          isOnline: log.user.isOnline === "true" || log.user.isOnline === true
-        } : null,
-        username: log.username,
-        email: log.email,
-        loginTime: log.loginTime,
-        logoutTime: log.logoutTime,
-        ipAddress: log.ipAddress,
-        userAgent: log.userAgent,
-        createdAt: log.createdAt
+      users: users.map(u => ({
+        id: u._id,
+        username: u.username,
+        email: u.email,
+        avatar: u.avatar,
+        role: u.role,
+        title: u.title,
+        executionsCount: u.executionsCount,
+        createdAt: u.createdAt,
+        isOnline: u.isOnline === "true" || u.isOnline === true,
+        loginHistory: (u.loginHistory || []).map(log => ({
+          id: log._id,
+          loginTime: log.loginTime,
+          logoutTime: log.logoutTime,
+          ipAddress: log.ipAddress,
+          userAgent: log.userAgent
+        }))
       })),
       pagination: {
         page,
         limit,
+        total,
+        pages: Math.ceil(total / limit),
         totalPages: Math.ceil(total / limit),
         totalLogs: total
       }

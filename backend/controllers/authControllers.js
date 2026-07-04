@@ -6,7 +6,6 @@ const validator=require("validator");
 const mongoose=require("mongoose");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
-const LoginLog = require("../models/LoginLog");
 
 
 //function of token creation
@@ -120,18 +119,18 @@ const loginUser=async(req,res)=>{
             });
         }
 
-        user.isOnline=true;
-        user.lastSeene=Date.now();
-
-        await user.save();
-
         // Close any dangling open sessions for this user
-        await LoginLog.updateMany(
-            { user: user._id, logoutTime: null },
-            { $set: { logoutTime: new Date() } }
-        );
+        if (user.loginHistory && Array.isArray(user.loginHistory)) {
+            user.loginHistory.forEach(log => {
+                if (log.logoutTime === null) {
+                    log.logoutTime = new Date();
+                }
+            });
+        } else {
+            user.loginHistory = [];
+        }
 
-        // Create new LoginLog entry
+        // Create new LoginLog entry inside user object
         let clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || "";
         if (clientIp.startsWith("::ffff:")) {
             clientIp = clientIp.replace("::ffff:", "");
@@ -139,22 +138,22 @@ const loginUser=async(req,res)=>{
         if (clientIp === "::1") {
             clientIp = "127.0.0.1";
         }
-        await LoginLog.create({
-            user: user._id,
-            username: user.username,
-            email: user.email,
+        user.loginHistory.unshift({
             loginTime: new Date(),
+            logoutTime: null,
             ipAddress: clientIp,
             userAgent: req.headers['user-agent'] || ""
         });
 
         // Cap to 10 logs per user: delete older logs beyond the top 10
-        const userLogs = await LoginLog.find({ user: user._id }).sort({ loginTime: -1 });
-        if (userLogs.length > 10) {
-            const logsToDelete = userLogs.slice(10);
-            const logIdsToDelete = logsToDelete.map(log => log._id);
-            await LoginLog.deleteMany({ _id: { $in: logIdsToDelete } });
+        if (user.loginHistory.length > 10) {
+            user.loginHistory = user.loginHistory.slice(0, 10);
         }
+
+        user.isOnline = true;
+        user.lastSeene = Date.now();
+
+        await user.save();
 
         // send responses
         res.status(201).json({
@@ -237,20 +236,18 @@ const logoutUser=async(req,res)=>{
 
     try{
    
-         await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        isOnline: false,
-        lastSeen: Date.now()
-      }
-    );
-
-    // Update the latest active LoginLog entry
-    await LoginLog.findOneAndUpdate(
-      { user: req.user._id, logoutTime: null },
-      { $set: { logoutTime: new Date() } },
-      { sort: { loginTime: -1 } }
-    );
+         const user = await User.findById(req.user._id);
+         if (user) {
+             user.isOnline = false;
+             user.lastSeene = Date.now();
+             if (user.loginHistory && Array.isArray(user.loginHistory)) {
+                 const activeLog = user.loginHistory.find(log => log.logoutTime === null);
+                 if (activeLog) {
+                     activeLog.logoutTime = new Date();
+                 }
+             }
+             await user.save();
+         }
 
     res.status(200).json({
       success: true,
@@ -437,17 +434,18 @@ const googleLogin = async (req, res) => {
       });
     }
 
-    user.isOnline = true;
-    user.lastSeene = Date.now();
-    await user.save();
-
     // Close any dangling open sessions for this user
-    await LoginLog.updateMany(
-        { user: user._id, logoutTime: null },
-        { $set: { logoutTime: new Date() } }
-    );
+    if (user.loginHistory && Array.isArray(user.loginHistory)) {
+        user.loginHistory.forEach(log => {
+            if (log.logoutTime === null) {
+                log.logoutTime = new Date();
+            }
+        });
+    } else {
+        user.loginHistory = [];
+    }
 
-    // Create new LoginLog entry
+    // Create new LoginLog entry inside user object
     let clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || "";
     if (clientIp.startsWith("::ffff:")) {
         clientIp = clientIp.replace("::ffff:", "");
@@ -455,22 +453,21 @@ const googleLogin = async (req, res) => {
     if (clientIp === "::1") {
         clientIp = "127.0.0.1";
     }
-    await LoginLog.create({
-        user: user._id,
-        username: user.username,
-        email: user.email,
+    user.loginHistory.unshift({
         loginTime: new Date(),
+        logoutTime: null,
         ipAddress: clientIp,
         userAgent: req.headers['user-agent'] || ""
     });
 
     // Cap to 10 logs per user: delete older logs beyond the top 10
-    const userGoogleLogs = await LoginLog.find({ user: user._id }).sort({ loginTime: -1 });
-    if (userGoogleLogs.length > 10) {
-        const logsToDelete = userGoogleLogs.slice(10);
-        const logIdsToDelete = logsToDelete.map(log => log._id);
-        await LoginLog.deleteMany({ _id: { $in: logIdsToDelete } });
+    if (user.loginHistory.length > 10) {
+        user.loginHistory = user.loginHistory.slice(0, 10);
     }
+
+    user.isOnline = true;
+    user.lastSeene = Date.now();
+    await user.save();
 
     res.status(200).json({
       success: true,

@@ -210,6 +210,15 @@ const userSchema=new mongoose.Schema({
         type: Date,
         default: null
     },
+    loginHistory: {
+        type: [{
+            loginTime: { type: Date, default: Date.now },
+            logoutTime: { type: Date, default: null },
+            ipAddress: { type: String, default: "" },
+            userAgent: { type: String, default: "" }
+        }],
+        default: []
+    },
     resetPasswordToken:String,
     resetPasswordExpire:Date
 },{timestamps:true});

@@ -123,7 +123,7 @@ const createPost = async (req, res) => {
     });
 
     const populatedPost = await Post.findById(newPost._id)
-      .populate("author", "username email avatar title developerLevel status reputationScore")
+      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
       .lean();
 
     // Increment user contribution score for activity
@@ -194,7 +194,7 @@ const getPosts = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const posts = await Post.find({ status: { $ne: "hidden" } })
-      .populate("author", "username email avatar title developerLevel status reputationScore")
+      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -341,7 +341,7 @@ const getPostById = async (req, res) => {
   try {
     const postId = req.params.id;
     const post = await Post.findById(postId)
-      .populate("author", "username email avatar title developerLevel status reputationScore")
+      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
       .lean();
 
     if (!post) {

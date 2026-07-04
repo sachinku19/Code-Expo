@@ -56,6 +56,7 @@ import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBan
 import { getTrustSafetyStatus } from "../services/trustSafetyService";
 import "./Dashboard.css";
 import MainLayout from "../layouts/MainLayout";
+import { useTheme } from "../context/ThemeContext";
 import ProfileAvatar from "../components/ProfileAvatar";
 import DirectMessages from "../components/chat/DirectMessages";
 import StoriesSystem from "../components/social/StoriesSystem";
@@ -1174,23 +1175,10 @@ function Dashboard() {
   const [settingsTab, setSettingsTab] = useState("account");
 
   // Theme synchronization state
-  const [activeTheme, setActiveTheme] = useState(
-    localStorage.getItem("codeExpoHomeTheme") || "dark"
-  );
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const currentTheme = document.documentElement.className.includes("light") ? "light" : "dark";
-      setActiveTheme(currentTheme);
-    });
-    observer.observe(document.documentElement, { attributes: true });
-    return () => observer.disconnect();
-  }, []);
+  const { resolvedTheme: activeTheme, setTheme: setGlobalTheme } = useTheme();
 
   const handleThemeChange = (newTheme) => {
-    document.documentElement.className = newTheme;
-    localStorage.setItem("codeExpoHomeTheme", newTheme);
-    setActiveTheme(newTheme);
+    setGlobalTheme(newTheme);
   };
 
   // Working states for Editor Settings
@@ -3693,55 +3681,16 @@ function Dashboard() {
 
   if (isMaintenance) {
     return (
-      <div className="maintenance-lockout-overlay" style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        background: "var(--ce-fog)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 100000,
-        fontFamily: "var(--sans)",
-        color: "var(--ce-text-h)"
-      }}>
-        <div className="maintenance-lockout-card glass-panel" style={{
-          maxWidth: "450px",
-          padding: "40px 30px",
-          background: "var(--ce-surface)",
-          border: "1px solid var(--ce-border)",
-          borderRadius: "12px",
-          backdropFilter: "blur(20px)",
-          boxShadow: "var(--ce-card-shadow)",
-          textAlign: "center"
-        }}>
-          <div className="lockout-pulse-icon" style={{
-            width: "60px",
-            height: "60px",
-            borderRadius: "50%",
-            background: "rgba(239, 68, 68, 0.1)",
-            border: "1px solid rgba(239, 68, 68, 0.3)",
-            color: "var(--ce-danger)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 24px auto"
-          }}>
+      <div className="maintenance-lockout-overlay">
+        <div className="maintenance-lockout-card glass-panel">
+          <div className="lockout-pulse-icon">
             <Lock size={28} />
           </div>
-          <h2 style={{ fontSize: "1.4rem", fontWeight: "750", color: "var(--ce-text-h)", margin: "0 0 10px 0" }}>System Under Maintenance</h2>
-          <p style={{ fontSize: "0.85rem", color: "var(--ce-text)", margin: "0 0 24px 0", lineHeight: "1.45" }}>
+          <h2 className="maintenance-lockout-title">System Under Maintenance</h2>
+          <p className="maintenance-lockout-desc">
             CodeExpo is currently undergoing scheduled platform diagnostics and service optimization.
           </p>
-          <div style={{
-            borderTop: "1px solid var(--ce-border)",
-            paddingTop: "20px",
-            fontSize: "0.78rem",
-            color: "var(--ce-danger)",
-            fontWeight: "600"
-          }}>
+          <div className="maintenance-lockout-footer">
             Please check back in a few minutes. We apologize for the inconvenience.
           </div>
         </div>

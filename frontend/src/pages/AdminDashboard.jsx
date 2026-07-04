@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   getAdminStats,
   getAdminUsers,
@@ -583,7 +584,7 @@ const AdminDashboard = () => {
   const { user, setUser } = useAuth();
   const isSuperAdmin = user?.email === "adminsachin@gmail.com";
   const [activeTab, setActiveTab] = useState("overview");
-  const [theme, setTheme] = useState(localStorage.getItem("codeExpoHomeTheme") || "dark");
+  const { resolvedTheme: theme, toggleTheme } = useTheme();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Loading states
@@ -605,6 +606,7 @@ const AdminDashboard = () => {
 
   // Login Logs State
   const [loginLogs, setLoginLogs] = useState([]);
+  const [expandedUserLogs, setExpandedUserLogs] = useState({});
   const [loadingLoginLogs, setLoadingLoginLogs] = useState(true);
   const [loginLogSearch, setLoginLogSearch] = useState("");
   const [loginLogPage, setLoginLogPage] = useState(1);
@@ -734,6 +736,14 @@ const AdminDashboard = () => {
   const [editingPostText, setEditingPostText] = useState("");
   const [expandedPosts, setExpandedPosts] = useState({});
   const [feedStats, setFeedStats] = useState({ totalPosts: 0, flaggedPosts: 0, hiddenPosts: 0, totalComments: 0 });
+
+  // Grouped Feed states
+  const [feedUsers, setFeedUsers] = useState([]);
+  const [feedSearch, setFeedSearch] = useState("");
+  const [feedPage, setFeedPage] = useState(1);
+  const [feedPagination, setFeedPagination] = useState({ totalPages: 1, totalUsers: 0 });
+  const [expandedUserFeed, setExpandedUserFeed] = useState({});
+  const [expandedUserSubTab, setExpandedUserSubTab] = useState({});
 
 
 
@@ -910,15 +920,7 @@ const AdminDashboard = () => {
     };
   }, []);
 
-  // Sync theme to document element
-  useEffect(() => {
-    document.documentElement.className = theme;
-    localStorage.setItem("codeExpoHomeTheme", theme);
-  }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
 
   // CPU/RAM Live simulation oscillations
   useEffect(() => {
@@ -1059,7 +1061,7 @@ const AdminDashboard = () => {
     try {
       const data = await getAdminLoginLogs(loginLogPage, 10, loginLogSearch);
       if (data.success) {
-        setLoginLogs(data.logs);
+        setLoginLogs(data.users || []);
         setLoginLogPagination(data.pagination);
       }
     } catch (err) {
@@ -1187,37 +1189,32 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchFeedContent = async () => {
     setLoadingPosts(true);
+    setLoadingStories(true);
     try {
-      const data = await getAdminPosts(postPage, 10, postSearch, postStatusFilter);
+      const data = await getAdminPosts(feedPage, 10, feedSearch, "all", "", true);
       if (data.success) {
-        setPosts(data.posts);
-        setPostPagination(data.pagination);
+        setFeedUsers(data.users || []);
+        setFeedPagination(data.pagination);
         if (data.stats) {
           setFeedStats(data.stats);
         }
       }
     } catch (err) {
-      addToast("Failed to fetch feed posts", "error");
+      addToast("Failed to fetch grouped feed content", "error");
     } finally {
       setLoadingPosts(false);
+      setLoadingStories(false);
     }
   };
 
+  const fetchPosts = async () => {
+    await fetchFeedContent();
+  };
+
   const fetchStories = async () => {
-    setLoadingStories(true);
-    try {
-      const data = await getAdminStories(storyPage, 12, storySearch, storyStatusFilter);
-      if (data.success) {
-        setStories(data.stories);
-        setStoryPagination(data.pagination);
-      }
-    } catch (err) {
-      addToast("Failed to fetch user stories", "error");
-    } finally {
-      setLoadingStories(false);
-    }
+    await fetchFeedContent();
   };
 
   const handleSaveCompliance = async (postId, status, legalData) => {
@@ -1522,16 +1519,10 @@ const AdminDashboard = () => {
   }, [activeTab, feedSubTab]);
 
   useEffect(() => {
-    if (activeTab === "feed" && feedSubTab === "posts") {
-      fetchPosts();
+    if (activeTab === "feed") {
+      fetchFeedContent();
     }
-  }, [postPage, postSearch, postStatusFilter]);
-
-  useEffect(() => {
-    if (activeTab === "feed" && feedSubTab === "stories") {
-      fetchStories();
-    }
-  }, [storyPage, storySearch, storyStatusFilter]);
+  }, [activeTab, feedPage, feedSearch]);
 
   useEffect(() => {
     if (activeTab === "loginLogs") {
@@ -3363,106 +3354,174 @@ const AdminDashboard = () => {
                     <tr>
                       <th>Developer</th>
                       <th>Email</th>
-                      <th>Login Date/Time</th>
-                      <th>Logout Date/Time</th>
-                      <th>Session Duration</th>
-                      <th>IP Address</th>
-                      <th>Client Info</th>
+                      <th>Designation</th>
+                      <th>Total Sessions</th>
+                      <th style={{ textAlign: "right", paddingRight: "24px" }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loginLogs.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="empty-table-row">
+                        <td colSpan="5" className="empty-table-row">
                           {loadingLoginLogs ? "Loading session history..." : "No authentication logs found."}
                         </td>
                       </tr>
                     ) : (
-                      loginLogs.map((log) => {
-                        // Calculate duration
-                        let durationStr = "Running...";
-                        if (log.logoutTime) {
-                          const durationMs = new Date(log.logoutTime) - new Date(log.loginTime);
-                          if (durationMs > 0) {
-                            const secs = Math.floor(durationMs / 1000);
-                            const mins = Math.floor(secs / 60);
-                            const hours = Math.floor(mins / 60);
-
-                            if (hours > 0) {
-                              durationStr = `${hours}h ${mins % 60}m`;
-                            } else if (mins > 0) {
-                              durationStr = `${mins}m ${secs % 60}s`;
-                            } else {
-                              durationStr = `${secs}s`;
-                            }
-                          } else {
-                            durationStr = "0s";
-                          }
-                        }
-
-                        // Parse simple user agent description
-                        let deviceStr = "Unknown Browser";
-                        const ua = log.userAgent;
-                        if (ua) {
-                          if (ua.includes("Chrome") && !ua.includes("Edg")) deviceStr = "Google Chrome";
-                          else if (ua.includes("Safari") && !ua.includes("Chrome")) deviceStr = "Safari";
-                          else if (ua.includes("Firefox")) deviceStr = "Mozilla Firefox";
-                          else if (ua.includes("Edg")) deviceStr = "Microsoft Edge";
-                          else if (ua.includes("Postman")) deviceStr = "Postman Runtime";
-                          else deviceStr = ua.split(" ")[0] || "Browser Client";
-
-                          if (ua.includes("Windows")) deviceStr += " (Windows)";
-                          else if (ua.includes("Macintosh")) deviceStr += " (macOS)";
-                          else if (ua.includes("Linux")) deviceStr += " (Linux)";
-                          else if (ua.includes("Android")) deviceStr += " (Android)";
-                          else if (ua.includes("iPhone")) deviceStr += " (iPhone)";
-                        }
-
+                      loginLogs.map((developer) => {
+                        const isExpanded = !!expandedUserLogs[developer.id];
                         return (
-                          <tr key={log.id}>
-                            <td className="user-details-cell clickable-cell" onClick={() => log.user && handleViewUserLogs(log.user)} style={{ cursor: log.user ? "pointer" : "default" }} title={log.user ? "Click to view profile & authentication history" : ""}>
-                              <div className="user-avatar-wrapper">
-                                {log.user?.avatar ? (
-                                  <img src={log.user.avatar} alt={log.username} className="avatar-img" />
-                                ) : (
-                                  <div className="avatar-placeholder">{log.username.substring(0, 2).toUpperCase()}</div>
-                                )}
-                              </div>
-                              <span className="username-text">{log.username}</span>
-                            </td>
-                            <td>
-                              <div className="email-flex">
-                                <Mail size={12} className="muted-icon" />
-                                <span>{log.email}</span>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="date-flex">
-                                <Calendar size={12} className="muted-icon" />
-                                <span>{new Date(log.loginTime).toLocaleString()}</span>
-                              </div>
-                            </td>
-                            <td>
-                              {log.logoutTime ? (
-                                <div className="date-flex">
-                                  <Calendar size={12} className="muted-icon" />
-                                  <span>{new Date(log.logoutTime).toLocaleString()}</span>
+                          <Fragment key={developer.id}>
+                            <tr 
+                              className={`developer-log-row ${isExpanded ? 'row-expanded' : ''}`}
+                              onClick={() => {
+                                setExpandedUserLogs(prev => ({
+                                  ...prev,
+                                  [developer.id]: !prev[developer.id]
+                                }));
+                              }}
+                            >
+                              <td className="user-details-cell">
+                                <div className="user-avatar-wrapper">
+                                  {developer.avatar ? (
+                                    <img src={developer.avatar} alt={developer.username} className="avatar-img" />
+                                  ) : (
+                                    <div className="avatar-placeholder">{developer.username.substring(0, 2).toUpperCase()}</div>
+                                  )}
                                 </div>
-                              ) : (
-                                <span className="status-badge-dot online">
-                                  <span className="dot"></span>
-                                  <span className="label">Active Session</span>
+                                <span className="username-text">{developer.username}</span>
+                                {developer.isOnline && (
+                                  <span className="online-badge-dot" />
+                                )}
+                              </td>
+                              <td>
+                                <div className="email-flex">
+                                  <Mail size={12} className="muted-icon" />
+                                  <span>{developer.email}</span>
+                                </div>
+                              </td>
+                              <td className="developer-designation-cell">
+                                {developer.title || "Developer"}
+                              </td>
+                              <td>
+                                <span className="session-count-badge">
+                                  {developer.loginHistory?.length || 0} Sessions
                                 </span>
-                              )}
-                            </td>
-                            <td className="monospaced-text" style={{ fontWeight: !log.logoutTime ? "600" : "normal", color: !log.logoutTime ? "var(--chart-green-color, #10b981)" : "inherit" }}>
-                              {durationStr}
-                            </td>
-                            <td className="monospaced-text">{log.ipAddress || "N/A"}</td>
-                            <td className="client-info-cell" title={ua}>
-                              {deviceStr}
-                            </td>
-                          </tr>
+                              </td>
+                              <td className="expand-action-cell">
+                                <button
+                                  className="btn-expand-logs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedUserLogs(prev => ({
+                                      ...prev,
+                                      [developer.id]: !prev[developer.id]
+                                    }));
+                                  }}
+                                >
+                                  {isExpanded ? "Hide Logs" : "View Logs"}
+                                </button>
+                              </td>
+                            </tr>
+                            
+                            {isExpanded && (
+                              <tr className="expanded-logs-subrow">
+                                <td colSpan="5">
+                                  <div className="nested-logs-container animate-fade-in">
+                                    <table className="admin-data-table nested-table">
+                                      <thead>
+                                        <tr>
+                                          <th>Login Date/Time</th>
+                                          <th>Logout Date/Time</th>
+                                          <th>Duration</th>
+                                          <th>IP Address</th>
+                                          <th>Client Info</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {(!developer.loginHistory || developer.loginHistory.length === 0) ? (
+                                          <tr>
+                                            <td colSpan="5" className="empty-nested-row">No history entries found.</td>
+                                          </tr>
+                                        ) : (
+                                          developer.loginHistory.map((log) => {
+                                            // Calculate duration
+                                            let durationStr = "Running...";
+                                            if (log.logoutTime) {
+                                              const durationMs = new Date(log.logoutTime) - new Date(log.loginTime);
+                                              if (durationMs > 0) {
+                                                const secs = Math.floor(durationMs / 1000);
+                                                const mins = Math.floor(secs / 60);
+                                                const hours = Math.floor(mins / 60);
+
+                                                if (hours > 0) {
+                                                  durationStr = `${hours}h ${mins % 60}m`;
+                                                } else if (mins > 0) {
+                                                  durationStr = `${mins}m ${secs % 60}s`;
+                                                } else {
+                                                  durationStr = `${secs}s`;
+                                                }
+                                              } else {
+                                                durationStr = "0s";
+                                              }
+                                            }
+
+                                            // Parse simple user agent description
+                                            let deviceStr = "Unknown Browser";
+                                            const ua = log.userAgent;
+                                            if (ua) {
+                                              if (ua.includes("Chrome") && !ua.includes("Edg")) deviceStr = "Google Chrome";
+                                              else if (ua.includes("Safari") && !ua.includes("Chrome")) deviceStr = "Safari";
+                                              else if (ua.includes("Firefox")) deviceStr = "Mozilla Firefox";
+                                              else if (ua.includes("Edg")) deviceStr = "Microsoft Edge";
+                                              else if (ua.includes("Postman")) deviceStr = "Postman Runtime";
+                                              else deviceStr = ua.split(" ")[0] || "Browser Client";
+
+                                              if (ua.includes("Windows")) deviceStr += " (Windows)";
+                                              else if (ua.includes("Macintosh")) deviceStr += " (macOS)";
+                                              else if (ua.includes("Linux")) deviceStr += " (Linux)";
+                                              else if (ua.includes("Android")) deviceStr += " (Android)";
+                                              else if (ua.includes("iPhone")) deviceStr += " (iPhone)";
+                                            }
+
+                                            return (
+                                              <tr key={log.id}>
+                                                <td>
+                                                  <div className="date-flex">
+                                                    <Calendar size={12} className="muted-icon" />
+                                                    <span>{new Date(log.loginTime).toLocaleString()}</span>
+                                                  </div>
+                                                </td>
+                                                <td>
+                                                  {log.logoutTime ? (
+                                                    <div className="date-flex">
+                                                      <Calendar size={12} className="muted-icon" />
+                                                      <span>{new Date(log.logoutTime).toLocaleString()}</span>
+                                                    </div>
+                                                  ) : (
+                                                    <span className="status-badge-dot online">
+                                                      <span className="dot"></span>
+                                                      <span className="label">Active Session</span>
+                                                    </span>
+                                                  )}
+                                                </td>
+                                                <td className={`monospaced-text ${!log.logoutTime ? "active-session-duration" : ""}`}>
+                                                  {durationStr}
+                                                </td>
+                                                <td className="monospaced-text">{log.ipAddress || "N/A"}</td>
+                                                <td className="client-info-cell" title={ua}>
+                                                  {deviceStr}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
                         );
                       })
                     )}
@@ -3862,425 +3921,334 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* FEED TYPE TOGGLE */}
-              <div className="feed-type-toggle-row" style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid var(--admin-border)", paddingBottom: "12px", marginTop: "10px" }}>
-                <button
-                  onClick={() => setFeedSubTab("posts")}
-                  className={`feed-subtab-btn ${feedSubTab === "posts" ? "active" : ""}`}
-                  style={{
-                    background: feedSubTab === "posts" ? "var(--admin-btn-active-bg)" : "none",
-                    border: `1px solid ${feedSubTab === "posts" ? "var(--admin-btn-active-border)" : "transparent"}`,
-                    color: feedSubTab === "posts" ? "var(--accent)" : "var(--admin-text-muted)",
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                    fontWeight: "750",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px"
-                  }}
-                >
-                  <Zap size={14} />
-                  <span>User Feed Posts</span>
-                </button>
-                <button
-                  onClick={() => setFeedSubTab("stories")}
-                  className={`feed-subtab-btn ${feedSubTab === "stories" ? "active" : ""}`}
-                  style={{
-                    background: feedSubTab === "stories" ? "var(--admin-btn-active-bg)" : "none",
-                    border: `1px solid ${feedSubTab === "stories" ? "var(--admin-btn-active-border)" : "transparent"}`,
-                    color: feedSubTab === "stories" ? "var(--accent)" : "var(--admin-text-muted)",
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                    fontWeight: "750",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px"
-                  }}
-                >
-                  <Sparkles size={14} />
-                  <span>Developer Stories</span>
-                </button>
+              {/* FEED CONTENT SEARCH BAR */}
+              <div className="feed-filters-bar glass-panel" style={{ marginBottom: "20px", marginTop: "10px" }}>
+                <div className="search-wrapper">
+                  <Search size={14} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search creators by username or email..."
+                    value={feedSearch}
+                    onChange={(e) => {
+                      setFeedSearch(e.target.value);
+                      setFeedPage(1);
+                    }}
+                  />
+                  {loadingPosts && <Loader className="spinner" size={14} />}
+                </div>
               </div>
 
-              {/* POSTS TAB CONTENT */}
-              {feedSubTab === "posts" && (
-                <>
-                  {/* Search and Filters Bar */}
-                  <div className="feed-filters-bar glass-panel" style={{ marginBottom: "20px" }}>
-                    <div className="search-wrapper">
-                      <Search size={14} className="search-icon" />
-                      <input
-                        type="text"
-                        placeholder="Search posts by text, tags, or author..."
-                        value={postSearch}
-                        onChange={(e) => {
-                          setPostSearch(e.target.value);
-                          setPostPage(1);
-                        }}
-                      />
-                      {loadingPosts && <Loader className="spinner" size={14} />}
-                    </div>
-
-                    <div className="filters-group" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                      <button
-                        onClick={() => { setPostStatusFilter("all"); setPostPage(1); }}
-                        className={`filter-chip ${postStatusFilter === "all" ? "active" : ""}`}
-                      >
-                        All
-                      </button>
-                      <button
-                        onClick={() => { setPostStatusFilter("active"); setPostPage(1); }}
-                        className={`filter-chip active-chip ${postStatusFilter === "active" ? "active" : ""}`}
-                      >
-                        Active
-                      </button>
-                      <button
-                        onClick={() => { setPostStatusFilter("flagged"); setPostPage(1); }}
-                        className={`filter-chip flagged-chip ${postStatusFilter === "flagged" ? "active" : ""}`}
-                      >
-                        Flagged
-                      </button>
-                      <button
-                        onClick={() => { setPostStatusFilter("hidden"); setPostPage(1); }}
-                        className={`filter-chip hidden-chip ${postStatusFilter === "hidden" ? "active" : ""}`}
-                      >
-                        Hidden
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Bulk Actions Floating Bar */}
-                  {selectedPostsBulk.length > 0 && (
-                    <div className="bulk-action-bar glass-panel animate-slide-up" style={{ marginBottom: "20px" }}>
-                      <div className="bulk-info">
-                        <input
-                          type="checkbox"
-                          checked={selectedPostsBulk.length === posts.length}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedPostsBulk(posts.map(p => p.id || p._id));
-                            } else {
-                              setSelectedPostsBulk([]);
-                            }
-                          }}
-                        />
-                        <span className="bulk-count">{selectedPostsBulk.length} posts selected</span>
-                      </div>
-                      <div className="bulk-buttons">
-                        <button onClick={() => handleBulkHide(true)} className="btn-bulk hide">Hide</button>
-                        <button onClick={() => handleBulkHide(false)} className="btn-bulk show">Unhide</button>
-                        <button onClick={() => handleBulkFeature(true)} className="btn-bulk feature">Feature</button>
-                        <button onClick={() => handleBulkFeature(false)} className="btn-bulk unfeature">Unfeature</button>
-                        <button onClick={handleBulkDeleteClick} className="btn-bulk delete">Delete</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* POSTS LISTING */}
-                  <div className="admin-posts-list">
-                    {loadingPosts && posts.length === 0 ? (
-                      /* Loading Skeletons */
-                      <div className="loading-skeletons">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="skeleton-card glass-panel" style={{ height: "140px", marginBottom: "16px" }}></div>
-                        ))}
-                      </div>
-                    ) : posts.length === 0 ? (
-                      <div className="empty-state-card glass-panel animate-fade-in">
-                        <FileText size={36} className="empty-icon" />
-                        <h4>No posts found</h4>
-                        <p>No posts match the current search query or status filter.</p>
-                      </div>
+              {/* DEVELOPERS GRID TABLE */}
+              <div className="table-wrapper-responsive">
+                <table className="admin-data-table">
+                  <thead>
+                    <tr>
+                      <th>Developer</th>
+                      <th>Email</th>
+                      <th>Designation</th>
+                      <th>Platform Content</th>
+                      <th style={{ textAlign: "right", paddingRight: "24px" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {feedUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="empty-table-row">
+                          {loadingPosts ? "Loading content creators..." : "No developers found with feed posts or stories."}
+                        </td>
+                      </tr>
                     ) : (
-                      posts.map((post) => {
-                        const isSelected = selectedPostsBulk.includes(post.id || post._id);
-                        const postType = post.video ? "video" : post.images && post.images.length > 0 ? "image" : "text";
-
+                      feedUsers.map((developer) => {
+                        const isExpanded = !!expandedUserFeed[developer.id];
+                        const activeSubTab = expandedUserSubTab[developer.id] || "posts";
+                        
                         return (
-                          <div key={post.id || post._id} className={`admin-post-card-premium glass-panel ${post.status}`}>
-                            {/* Card Sidebar - Checkbox */}
-                            <div className="card-selector-column">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedPostsBulk(prev => [...prev, post.id || post._id]);
-                                  } else {
-                                    setSelectedPostsBulk(prev => prev.filter(id => id !== (post.id || post._id)));
-                                  }
-                                }}
-                              />
-                            </div>
-
-                            {/* Card Content */}
-                            <div className="card-main-content">
-                              {/* Header */}
-                              <div className="post-header-row">
-                                <div className="post-author-info" onClick={() => post.author && handleViewUserLogs(post.author)} style={{ cursor: "pointer" }}>
-                                  {post.author?.avatar ? (
-                                    <img src={post.author.avatar} alt={post.author.username} className="author-avatar" />
+                          <Fragment key={developer.id}>
+                            <tr 
+                              className={`developer-log-row ${isExpanded ? 'row-expanded' : ''}`}
+                              onClick={() => {
+                                setExpandedUserFeed(prev => ({
+                                  ...prev,
+                                  [developer.id]: !prev[developer.id]
+                                }));
+                              }}
+                            >
+                              <td className="user-details-cell">
+                                <div className="user-avatar-wrapper">
+                                  {developer.avatar ? (
+                                    <img src={developer.avatar} alt={developer.username} className="avatar-img" />
                                   ) : (
-                                    <div className="author-avatar-placeholder">
-                                      {(post.author?.username || "U").substring(0, 2).toUpperCase()}
-                                    </div>
+                                    <div className="avatar-placeholder">{developer.username.substring(0, 2).toUpperCase()}</div>
                                   )}
-                                  <div className="author-meta">
-                                    <span className="author-name">{post.author?.username || "Deleted User"}</span>
-                                    <span className="post-date">{new Date(post.createdAt).toLocaleString()}</span>
-                                  </div>
                                 </div>
-
-                                <div className="post-badges">
-                                  {post.isPinned && <span className="badge badge-pinned"><Pin size={10} fill="#818cf8" /> Pinned</span>}
-                                  {post.isFeatured && <span className="badge badge-featured"><Sparkles size={10} fill="#c084fc" /> Featured</span>}
-                                  <span className="badge badge-type">{postType.toUpperCase()}</span>
-                                  <span className={`badge badge-status ${post.status}`}>{post.status.toUpperCase()}</span>
+                                <span className="username-text">{developer.username}</span>
+                                {developer.isOnline && (
+                                  <span className="online-badge-dot" />
+                                )}
+                              </td>
+                              <td>
+                                <div className="email-flex">
+                                  <Mail size={12} className="muted-icon" />
+                                  <span>{developer.email}</span>
                                 </div>
-                              </div>
+                              </td>
+                              <td className="developer-designation-cell">
+                                {developer.title || "Developer"}
+                              </td>
+                              <td>
+                                <span className="session-count-badge">
+                                  {developer.posts?.length || 0} Posts / {developer.stories?.length || 0} Stories
+                                </span>
+                              </td>
+                              <td className="expand-action-cell">
+                                <button
+                                  className="btn-expand-logs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedUserFeed(prev => ({
+                                      ...prev,
+                                      [developer.id]: !prev[developer.id]
+                                    }));
+                                  }}
+                                >
+                                  {isExpanded ? "Hide Feed" : "View Feed"}
+                                </button>
+                              </td>
+                            </tr>
 
-                              {/* Body */}
-                              <div className="post-body-row">
-                                {editingPostId === (post.id || post._id) ? (
-                                  <div className="edit-post-inline">
-                                    <textarea
-                                      value={editingPostText}
-                                      onChange={(e) => setEditingPostText(e.target.value)}
-                                      className="edit-textarea"
-                                    />
-                                    <div className="edit-actions">
-                                      <button onClick={() => handleSaveEditedText(post.id || post._id, editingPostText, post.status)} className="btn-save">Save</button>
-                                      <button onClick={() => setEditingPostId(null)} className="btn-cancel">Cancel</button>
+                            {isExpanded && (
+                              <tr className="expanded-logs-subrow">
+                                <td colSpan="5">
+                                  <div className="nested-logs-container animate-fade-in" style={{ padding: "20px" }}>
+                                    {/* Sub-tab selection */}
+                                    <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+                                      <button
+                                        onClick={() => setExpandedUserSubTab(prev => ({ ...prev, [developer.id]: "posts" }))}
+                                        className={`feed-subtab-btn ${activeSubTab === "posts" ? "active" : ""}`}
+                                        style={{
+                                          background: activeSubTab === "posts" ? "var(--admin-btn-active-bg)" : "none",
+                                          border: `1px solid ${activeSubTab === "posts" ? "var(--admin-btn-active-border)" : "rgba(255,255,255,0.05)"}`,
+                                          color: activeSubTab === "posts" ? "var(--accent)" : "var(--admin-text-muted)",
+                                          padding: "6px 12px",
+                                          borderRadius: "6px",
+                                          cursor: "pointer",
+                                          fontSize: "0.8rem",
+                                          fontWeight: "600"
+                                        }}
+                                      >
+                                        Posts ({developer.posts?.length || 0})
+                                      </button>
+                                      <button
+                                        onClick={() => setExpandedUserSubTab(prev => ({ ...prev, [developer.id]: "stories" }))}
+                                        className={`feed-subtab-btn ${activeSubTab === "stories" ? "active" : ""}`}
+                                        style={{
+                                          background: activeSubTab === "stories" ? "var(--admin-btn-active-bg)" : "none",
+                                          border: `1px solid ${activeSubTab === "stories" ? "var(--admin-btn-active-border)" : "rgba(255,255,255,0.05)"}`,
+                                          color: activeSubTab === "stories" ? "var(--accent)" : "var(--admin-text-muted)",
+                                          padding: "6px 12px",
+                                          borderRadius: "6px",
+                                          cursor: "pointer",
+                                          fontSize: "0.8rem",
+                                          fontWeight: "600"
+                                        }}
+                                      >
+                                        Stories ({developer.stories?.length || 0})
+                                      </button>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className="post-text-snippet">
-                                    {renderPostContent(post.text, addToast)}
-                                  </div>
-                                )}
 
-                                {post.techStack && post.techStack.length > 0 && (
-                                  <div className="post-tags">
-                                    {post.techStack.map((tech, idx) => (
-                                      <span key={idx} className="tech-tag">{tech}</span>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Media Preview if any */}
-                                {(post.image || (post.images && post.images.length > 0) || post.video) && (
-                                  <div className="post-media-preview-row">
-                                    {post.video ? (
-                                      <video src={post.video} className="media-preview-thumb" muted />
+                                    {/* Active Tab View */}
+                                    {activeSubTab === "posts" ? (
+                                      <div className="admin-posts-list">
+                                        {(!developer.posts || developer.posts.length === 0) ? (
+                                          <div style={{ textAlign: "center", fontStyle: "italic", padding: "20px", color: "var(--admin-text-muted)" }}>
+                                            No posts created by this developer yet.
+                                          </div>
+                                        ) : (
+                                          developer.posts.map((post) => {
+                                            const postType = post.video ? "video" : post.images && post.images.length > 0 ? "image" : "text";
+                                            return (
+                                              <div key={post.id || post._id} className={`admin-post-card-premium glass-panel ${post.status}`} style={{ margin: "10px 0" }}>
+                                                <div className="card-main-content" style={{ width: "100%", paddingLeft: "10px" }}>
+                                                  {/* Post Header */}
+                                                  <div className="post-header-row">
+                                                    <div className="post-author-info">
+                                                      {developer.avatar ? (
+                                                        <img src={developer.avatar} alt={developer.username} className="author-avatar" />
+                                                      ) : (
+                                                        <div className="author-avatar-placeholder">
+                                                          {developer.username.substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                      )}
+                                                      <div className="author-meta">
+                                                        <span className="author-name">{developer.username}</span>
+                                                        <span className="post-date">{new Date(post.createdAt).toLocaleString()}</span>
+                                                      </div>
+                                                    </div>
+                                                    <div className="post-badges">
+                                                      {post.isPinned && <span className="badge badge-pinned"><Pin size={10} fill="#818cf8" /> Pinned</span>}
+                                                      {post.isFeatured && <span className="badge badge-featured"><Sparkles size={10} fill="#c084fc" /> Featured</span>}
+                                                      <span className="badge badge-type">{postType.toUpperCase()}</span>
+                                                      <span className={`badge badge-status ${post.status}`}>{post.status.toUpperCase()}</span>
+                                                    </div>
+                                                  </div>
+                                                  {/* Post Body */}
+                                                  <div className="post-body-row">
+                                                    {editingPostId === (post.id || post._id) ? (
+                                                      <div className="edit-post-inline">
+                                                        <textarea
+                                                          value={editingPostText}
+                                                          onChange={(e) => setEditingPostText(e.target.value)}
+                                                          className="edit-textarea"
+                                                        />
+                                                        <div className="edit-actions">
+                                                          <button onClick={() => handleSaveEditedText(post.id || post._id, editingPostText, post.status)} className="btn-save">Save</button>
+                                                          <button onClick={() => setEditingPostId(null)} className="btn-cancel">Cancel</button>
+                                                        </div>
+                                                      </div>
+                                                    ) : (
+                                                      <div className="post-text-snippet">
+                                                        {renderPostContent(post.text, addToast)}
+                                                      </div>
+                                                    )}
+                                                    {post.techStack && post.techStack.length > 0 && (
+                                                      <div className="post-tags">
+                                                        {post.techStack.map((tech, idx) => (
+                                                          <span key={idx} className="tech-tag">{tech}</span>
+                                                        ))}
+                                                      </div>
+                                                    )}
+                                                    {(post.image || (post.images && post.images.length > 0) || post.video) && (
+                                                      <div className="post-media-preview-row">
+                                                        {post.video ? (
+                                                          <video src={post.video} className="media-preview-thumb" muted />
+                                                        ) : (
+                                                          <img src={post.image || post.images[0]} alt="Preview" className="media-preview-thumb" />
+                                                        )}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                  {/* Post Footer */}
+                                                  <div className="post-footer-row">
+                                                    <div className="post-metrics">
+                                                      <span className="metric-item" title="Views"><Eye size={12} /> {post.viewsCount || 0}</span>
+                                                      <span className="metric-item" title="Likes"><Heart size={12} /> {post.likesCount}</span>
+                                                      <span className="metric-item" title="Comments"><MessageSquare size={12} /> {post.comments?.length || 0}</span>
+                                                    </div>
+                                                    <div className="post-actions-group">
+                                                      <button onClick={() => window.open(`/post/${post.id || post._id}`, "_blank")} className="btn-post-action" title="View Post"><Eye size={12}/></button>
+                                                      <button onClick={() => { setEditingPostId(post.id || post._id); setEditingPostText(post.text); }} className="btn-post-action" title="Edit Post"><Edit size={12}/></button>
+                                                      <button onClick={() => handleStatusChange(post.id || post._id, post.status === "hidden" ? "active" : "hidden")} className="btn-post-action" title={post.status === "hidden" ? "Unhide" : "Hide"}><EyeOff size={12} style={{ color: post.status === "hidden" ? "#10b981" : "inherit" }} /></button>
+                                                      <button onClick={() => handleTogglePin(post)} className="btn-post-action" title={post.isPinned ? "Unpin" : "Pin"}><Pin size={12} style={{ color: post.isPinned ? "#818cf8" : "inherit" }} /></button>
+                                                      <button onClick={() => handleToggleFeature(post)} className="btn-post-action" title={post.isFeatured ? "Unfeature" : "Feature"}><Sparkles size={12} style={{ color: post.isFeatured ? "#c084fc" : "inherit" }} /></button>
+                                                      <button onClick={() => handleCopyPostLink(post.id || post._id)} className="btn-post-action" title="Copy Link"><Link size={12}/></button>
+                                                      <button onClick={() => setSelectedPostAnalytics(post)} className="btn-post-action" title="View Analytics"><BarChart2 size={12}/></button>
+                                                      <button onClick={() => handleDeletePostClick(post.id || post._id, developer.username)} className="btn-post-action btn-delete" title="Delete Post"><Trash2 size={12}/></button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })
+                                        )}
+                                      </div>
                                     ) : (
-                                      <img src={post.image || post.images[0]} alt="Preview" className="media-preview-thumb" />
+                                      <div className="admin-stories-grid-premium" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
+                                        {(!developer.stories || developer.stories.length === 0) ? (
+                                          <div style={{ gridColumn: "1 / -1", textAlign: "center", fontStyle: "italic", padding: "20px", color: "var(--admin-text-muted)" }}>
+                                            No stories uploaded by this developer yet.
+                                          </div>
+                                        ) : (
+                                          developer.stories.map((story) => {
+                                            const storyType = story.mediaUrl && (story.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || story.mediaUrl.includes("video")) ? "video" : story.mediaUrl ? "image" : "text";
+                                            const expiryDate = new Date(new Date(story.createdAt).getTime() + 24 * 60 * 60 * 1000);
+                                            const hoursRemaining = Math.max(0, Math.round((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60)));
+                                            
+                                            return (
+                                              <div key={story.id} className={`admin-story-card-premium glass-panel ${story.status || "active"}`}>
+                                                <div className="story-card-header">
+                                                  <div className="story-author-info">
+                                                    {developer.avatar ? (
+                                                      <img src={developer.avatar} alt={developer.username} className="story-avatar" />
+                                                    ) : (
+                                                      <div className="story-avatar-placeholder">
+                                                        {developer.username.substring(0, 2).toUpperCase()}
+                                                      </div>
+                                                    )}
+                                                    <div className="story-author-meta">
+                                                      <span className="story-author-name">{developer.username}</span>
+                                                      <span className="story-expiry-time">Expires in {hoursRemaining}h</span>
+                                                    </div>
+                                                  </div>
+                                                  <div className="story-badges">
+                                                    {story.isFeatured && <span className="badge badge-featured"><Sparkles size={8} fill="#c084fc" /> Featured</span>}
+                                                    <span className="badge badge-type">{storyType.toUpperCase()}</span>
+                                                    <span className={`badge badge-status ${story.status || "active"}`}>{story.status || "active"}</span>
+                                                  </div>
+                                                </div>
+                                                <div className="story-card-body">
+                                                  {story.text && <p className="story-text-preview">{story.text}</p>}
+                                                  {story.mediaUrl && (
+                                                    <div className="story-media-frame">
+                                                      {storyType === "video" ? (
+                                                        <video src={story.mediaUrl} controls className="story-media-thumb" />
+                                                      ) : (
+                                                        <img src={story.mediaUrl} alt="Story Media" className="story-media-thumb" />
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <div className="story-card-footer">
+                                                  <div className="story-metrics">
+                                                    <span className="metric-item"><Eye size={10} /> {story.viewsCount || 0}</span>
+                                                    <span className="metric-item"><Heart size={10} /> {story.likesCount || 0}</span>
+                                                  </div>
+                                                  <div className="story-actions">
+                                                    <button onClick={() => handleToggleStoryHide(story.id, story.status)} className="btn-story-action" title={story.status === "hidden" ? "Unhide" : "Hide"}><EyeOff size={12} style={{ color: story.status === "hidden" ? "#10b981" : "inherit" }} /></button>
+                                                    <button onClick={() => handleToggleStoryFeature(story.id, story.isFeatured)} className="btn-story-action" title={story.isFeatured ? "Unfeature" : "Feature"}><Sparkles size={12} style={{ color: story.isFeatured ? "#c084fc" : "inherit" }} /></button>
+                                                    <button onClick={() => handleDeleteStoryClick(story.id, developer.username)} className="btn-story-action btn-delete" title="Delete"><Trash2 size={12} /></button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })
+                                        )}
+                                      </div>
                                     )}
                                   </div>
-                                )}
-                              </div>
-
-                              {/* Footer Metrics & Actions */}
-                              <div className="post-footer-row">
-                                <div className="post-metrics">
-                                  <span className="metric-item" title="Views"><Eye size={12} /> {post.viewsCount || 0}</span>
-                                  <span className="metric-item" title="Likes"><Heart size={12} /> {post.likesCount}</span>
-                                  <span className="metric-item" title="Comments"><MessageSquare size={12} /> {post.comments?.length || 0}</span>
-                                </div>
-
-                                <div className="post-actions-group">
-                                  <button onClick={() => window.open(`/posts/${post.id || post._id}`, "_blank")} className="btn-post-action" title="View Post"><Eye size={12} /></button>
-                                  <button onClick={() => { setEditingPostId(post.id || post._id); setEditingPostText(post.text); }} className="btn-post-action" title="Edit Post"><Edit size={12} /></button>
-                                  <button onClick={() => handleStatusChange(post.id || post._id, post.status === "hidden" ? "active" : "hidden")} className="btn-post-action" title={post.status === "hidden" ? "Unhide" : "Hide"}><EyeOff size={12} style={{ color: post.status === "hidden" ? "#10b981" : "inherit" }} /></button>
-                                  <button onClick={() => handleTogglePin(post)} className="btn-post-action" title={post.isPinned ? "Unpin" : "Pin"}><Pin size={12} style={{ color: post.isPinned ? "#818cf8" : "inherit" }} /></button>
-                                  <button onClick={() => handleToggleFeature(post)} className="btn-post-action" title={post.isFeatured ? "Unfeature" : "Feature"}><Sparkles size={12} style={{ color: post.isFeatured ? "#c084fc" : "inherit" }} /></button>
-                                  <button onClick={() => handleCopyPostLink(post.id || post._id)} className="btn-post-action" title="Copy Link"><Link size={12} /></button>
-                                  <button onClick={() => setSelectedPostAnalytics(post)} className="btn-post-action" title="View Analytics"><BarChart2 size={12} /></button>
-                                  <button onClick={() => handleDeletePostClick(post.id || post._id, post.author?.username || "Someone")} className="btn-post-action btn-delete" title="Delete Post"><Trash2 size={12} /></button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
                         );
                       })
                     )}
-                  </div>
+                  </tbody>
+                </table>
+              </div>
 
-                  {/* Pagination */}
-                  {postPagination.totalPages > 1 && (
-                    <div className="table-pagination-row" style={{ marginTop: "24px" }}>
-                      <button
-                        disabled={postPage <= 1}
-                        onClick={() => setPostPage((prev) => Math.max(1, prev - 1))}
-                        className="btn-page-nav"
-                      >
-                        <ChevronLeft size={14} />
-                        <span>Previous</span>
-                      </button>
-                      <span className="page-indicator">
-                        Page <strong>{postPage}</strong> of <strong>{postPagination.totalPages}</strong> ({postPagination.totalPosts} posts)
-                      </span>
-                      <button
-                        disabled={postPage >= postPagination.totalPages}
-                        onClick={() => setPostPage((prev) => Math.min(postPagination.totalPages, prev + 1))}
-                        className="btn-page-nav"
-                      >
-                        <span>Next</span>
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* STORIES TAB CONTENT */}
-              {feedSubTab === "stories" && (
-                <>
-                  {/* Search and Filter bar */}
-                  <div className="feed-filters-bar glass-panel" style={{ marginBottom: "20px" }}>
-                    <div className="search-wrapper">
-                      <Search size={14} className="search-icon" />
-                      <input
-                        type="text"
-                        placeholder="Search stories by text or owner..."
-                        value={storySearch}
-                        onChange={(e) => {
-                          setStorySearch(e.target.value);
-                          setStoryPage(1);
-                        }}
-                      />
-                      {loadingStories && <Loader className="spinner" size={14} />}
-                    </div>
-
-                    <div className="filters-group" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                      <button
-                        onClick={() => { setStoryStatusFilter("all"); setStoryPage(1); }}
-                        className={`filter-chip ${storyStatusFilter === "all" ? "active" : ""}`}
-                      >
-                        All
-                      </button>
-                      <button
-                        onClick={() => { setStoryStatusFilter("active"); setStoryPage(1); }}
-                        className={`filter-chip active-chip ${storyStatusFilter === "active" ? "active" : ""}`}
-                      >
-                        Active
-                      </button>
-                      <button
-                        onClick={() => { setStoryStatusFilter("hidden"); setStoryPage(1); }}
-                        className={`filter-chip hidden-chip ${storyStatusFilter === "hidden" ? "active" : ""}`}
-                      >
-                        Hidden
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* STORIES GRID */}
-                  <div className="admin-stories-grid-premium">
-                    {loadingStories && stories.length === 0 ? (
-                      /* Loading Skeletons */
-                      <div className="loading-skeletons-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="skeleton-card glass-panel" style={{ height: "260px" }}></div>
-                        ))}
-                      </div>
-                    ) : stories.length === 0 ? (
-                      <div className="empty-state-card glass-panel animate-fade-in" style={{ gridColumn: "1 / -1" }}>
-                        <Sparkles size={36} className="empty-icon" />
-                        <h4>No stories found</h4>
-                        <p>No active stories match the current search query or status filter.</p>
-                      </div>
-                    ) : (
-                      stories.map((story) => {
-                        const storyType = story.mediaUrl && (story.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || story.mediaUrl.includes("video")) ? "video" : story.mediaUrl ? "image" : "text";
-                        const expiryDate = new Date(new Date(story.createdAt).getTime() + 24 * 60 * 60 * 1000);
-                        const hoursRemaining = Math.max(0, Math.round((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60)));
-
-                        return (
-                          <div key={story.id} className={`admin-story-card-premium glass-panel ${story.status || "active"}`}>
-                            {/* Header */}
-                            <div className="story-card-header">
-                              <div className="story-author-info" onClick={() => story.user && handleViewUserLogs(story.user)} style={{ cursor: "pointer" }}>
-                                {story.user?.avatar ? (
-                                  <img src={story.user.avatar} alt={story.user.username} className="story-avatar" />
-                                ) : (
-                                  <div className="story-avatar-placeholder">
-                                    {(story.user?.username || story.username || "U").substring(0, 2).toUpperCase()}
-                                  </div>
-                                )}
-                                <div className="story-author-meta">
-                                  <span className="story-author-name">{story.user?.username || story.username}</span>
-                                  <span className="story-expiry-time">Expires in {hoursRemaining}h</span>
-                                </div>
-                              </div>
-
-                              <div className="story-badges">
-                                {story.isFeatured && <span className="badge badge-featured"><Sparkles size={8} fill="#c084fc" /> Featured</span>}
-                                <span className="badge badge-type">{storyType.toUpperCase()}</span>
-                                <span className={`badge badge-status ${story.status || "active"}`}>{story.status || "active"}</span>
-                              </div>
-                            </div>
-
-                            {/* Body Preview */}
-                            <div className="story-card-body">
-                              {story.text && <p className="story-text-preview">{story.text}</p>}
-                              {story.mediaUrl && (
-                                <div className="story-media-frame">
-                                  {storyType === "video" ? (
-                                    <video src={story.mediaUrl} controls className="story-media-thumb" />
-                                  ) : (
-                                    <img src={story.mediaUrl} alt="Story Media" className="story-media-thumb" />
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Footer */}
-                            <div className="story-card-footer">
-                              <div className="story-metrics">
-                                <span className="metric-item"><Eye size={10} /> {story.viewsCount || 0}</span>
-                                <span className="metric-item"><Heart size={10} /> {story.likesCount || 0}</span>
-                              </div>
-
-                              <div className="story-actions">
-                                <button onClick={() => handleToggleStoryHide(story.id, story.status)} className="btn-story-action" title={story.status === "hidden" ? "Unhide" : "Hide"}><EyeOff size={12} style={{ color: story.status === "hidden" ? "#10b981" : "inherit" }} /></button>
-                                <button onClick={() => handleToggleStoryFeature(story.id, story.isFeatured)} className="btn-story-action" title={story.isFeatured ? "Unfeature" : "Feature"}><Sparkles size={12} style={{ color: story.isFeatured ? "#c084fc" : "inherit" }} /></button>
-                                <button onClick={() => handleDeleteStoryClick(story.id, story.user?.username || story.username)} className="btn-story-action btn-delete" title="Delete"><Trash2 size={12} /></button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Stories Pagination */}
-                  {storyPagination.totalPages > 1 && (
-                    <div className="table-pagination-row" style={{ marginTop: "24px" }}>
-                      <button
-                        disabled={storyPage <= 1}
-                        onClick={() => setStoryPage((prev) => Math.max(1, prev - 1))}
-                        className="btn-page-nav"
-                      >
-                        <ChevronLeft size={14} />
-                        <span>Previous</span>
-                      </button>
-                      <span className="page-indicator">
-                        Page <strong>{storyPage}</strong> of <strong>{storyPagination.totalPages}</strong> ({storyPagination.totalStories} stories)
-                      </span>
-                      <button
-                        disabled={storyPage >= storyPagination.totalPages}
-                        onClick={() => setStoryPage((prev) => Math.min(storyPagination.totalPages, prev + 1))}
-                        className="btn-page-nav"
-                      >
-                        <span>Next</span>
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
-                  )}
-                </>
+              {/* PAGINATION PANEL */}
+              {feedPagination.totalPages > 1 && (
+                <div className="table-pagination-row" style={{ marginTop: "24px" }}>
+                  <button
+                    disabled={feedPage <= 1}
+                    onClick={() => setFeedPage((prev) => Math.max(1, prev - 1))}
+                    className="btn-page-nav"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Previous</span>
+                  </button>
+                  <span className="page-indicator">
+                    Page <strong>{feedPage}</strong> of <strong>{feedPagination.totalPages}</strong> ({feedPagination.totalUsers} content creators)
+                  </span>
+                  <button
+                    disabled={feedPage >= feedPagination.totalPages}
+                    onClick={() => setFeedPage((prev) => Math.min(feedPagination.totalPages, prev + 1))}
+                    className="btn-page-nav"
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
               )}
 
               {/* POST ANALYTICS MODAL */}

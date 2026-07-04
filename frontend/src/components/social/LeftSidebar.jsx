@@ -3,8 +3,8 @@ import "./PremiumFeed.css";
 
 export default function LeftSidebar({ user, activeSection, setActiveTab, setTab }) {
   // Safe stats
-  const devLvl = user?.developerLevel || 1;
-  const reputation = user?.reputationScore || 0;
+  const reputation = user?.executionsCount || 0;
+  const devLvl = Math.floor(reputation / 100) + 1;
   const streak = user?.contributionScore || 5;
 
   return (
