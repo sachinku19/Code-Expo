@@ -74,6 +74,11 @@ export const markNotificationsRead = async (notificationId = null) => {
   return response.data;
 };
 
+export const deleteNotifications = async () => {
+  const response = await API.delete("/notifications", getHeaders());
+  return response.data;
+};
+
 export const getLikedRooms = async () => {
   const response = await API.get("/rooms/liked", getHeaders());
   return response.data;
@@ -105,8 +110,11 @@ export const createPost = async (postData) => {
   return response.data;
 };
 
-export const getPosts = async (page = 1, limit = 10) => {
-  const response = await API.get(`/posts?page=${page}&limit=${limit}`, getHeaders());
+export const getPosts = async (page = 1, limit = 10, authorId = null) => {
+  const url = authorId 
+    ? `/posts?page=${page}&limit=${limit}&author=${authorId}` 
+    : `/posts?page=${page}&limit=${limit}`;
+  const response = await API.get(url, getHeaders());
   return response.data;
 };
 

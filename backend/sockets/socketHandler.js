@@ -539,6 +539,8 @@ const socketHandler = (io) => {
       }
     });
 
+
+
     // CHANGE MEMBER ROLE SOCKET EVENT
     socket.on("change-member-role", async ({ roomId, userId, role }) => {
       try {

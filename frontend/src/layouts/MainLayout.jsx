@@ -250,12 +250,13 @@ export default function MainLayout({
 
   const handleClearAll = async () => {
     try {
+      await socialService.deleteNotifications();
+      setDbNotifications([]);
+      setLocalNotifs([]);
+      setUnreadNotifCount(0);
       if (clearNotifications) {
         clearNotifications();
       }
-      await socialService.markNotificationsRead();
-      setDbNotifications([]);
-      setUnreadNotifCount(0);
     } catch (err) {
       console.error("Failed to clear notifications:", err);
     }

@@ -193,12 +193,29 @@ const getPosts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const posts = await Post.find({ status: { $ne: "hidden" } })
+    const query = { status: { $ne: "hidden" } };
+    if (req.query.author) {
+      query.author = req.query.author;
+    }
+
+    const posts = await Post.find(query)
       .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
+
+    if (posts.length > 0) {
+      const postIds = posts.map(p => p._id);
+      // Increment views count in the DB
+      Post.updateMany({ _id: { $in: postIds } }, { $inc: { viewsCount: 1 } }).exec().catch(err => {
+        console.error("Failed to increment viewsCount in bulk:", err.message);
+      });
+      // Update returned objects
+      posts.forEach(p => {
+        p.viewsCount = (p.viewsCount || 0) + 1;
+      });
+    }
 
     res.status(200).json({ success: true, posts });
   } catch (error) {
@@ -340,7 +357,11 @@ const deletePost = async (req, res) => {
 const getPostById = async (req, res) => {
   try {
     const postId = req.params.id;
-    const post = await Post.findById(postId)
+    const post = await Post.findByIdAndUpdate(
+      postId,
+      { $inc: { viewsCount: 1 } },
+      { new: true }
+    )
       .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
       .lean();
 

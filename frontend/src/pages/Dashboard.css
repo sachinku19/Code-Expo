@@ -9606,6 +9606,17 @@ tier-badge.master {
   color: var(--ce-text-muted);
 }
 
+/* Light mode overrides for analytics dashboard */
+.light .chart-card-wrapper {
+  background: var(--ce-surface-card, #f8fafc);
+  border: 1px solid var(--ce-border, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+}
+
+.light .chart-header-row h5 {
+  color: var(--ce-text-h, #0f172a);
+}
+
 
 
 /* Upgraded Profile Drawer Overlay */

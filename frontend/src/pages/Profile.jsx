@@ -15,12 +15,55 @@ import {
   toggleBookmarkRoom
 } from "../services/socialService";
 import { updateUserProfile } from "../services/userService";
+import { useTheme } from "../context/ThemeContext";
 import {
   X, Heart, Bookmark, Users, Sparkles, Terminal,
-  Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn
+  Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin
 } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
 import "./Profile.css";
+
+const INDIA_STATES = [
+  { name: "J&K", d: "M 195,15 L 210,32 L 202,72 L 175,72 L 182,45 Z", labelX: 192, labelY: 42 },
+  { name: "Rajasthan", d: "M 158,82 L 175,72 L 185,92 L 160,95 Z", labelX: 172, labelY: 86 },
+  { name: "Gujarat", d: "M 138,122 L 142,108 L 160,95 L 160,112 L 152,125 Z", labelX: 147, labelY: 114 },
+  { name: "Maharashtra", d: "M 152,125 L 160,112 L 175,130 L 182,145 L 168,145 Z", labelX: 168, labelY: 132 },
+  { name: "Karnataka", d: "M 168,145 L 182,145 L 180,175 L 164,170 Z", labelX: 172, labelY: 160 },
+  { name: "Kerala", d: "M 180,175 L 182,195 L 192,192 Z", labelX: 184, labelY: 186 },
+  { name: "Tamil Nadu", d: "M 182,195 L 220,205 L 208,178 L 180,175 Z", labelX: 202, labelY: 190 },
+  { name: "Andhra & TG", d: "M 180,175 L 208,178 L 212,145 L 182,145 Z", labelX: 198, labelY: 156 },
+  { name: "Madhya Pradesh", d: "M 160,95 L 185,92 L 220,115 L 175,130 Z", labelX: 188, labelY: 112 },
+  { name: "Uttar Pradesh", d: "M 175,72 L 198,45 L 225,92 L 185,92 Z", labelX: 204, labelY: 76 },
+  { name: "West Bengal", d: "M 225,92 L 255,94 L 268,114 L 240,115 Z", labelX: 244, labelY: 104 },
+  { name: "North East", d: "M 255,94 L 285,102 L 310,100 L 320,112 L 272,132 L 260,122 Z", labelX: 288, labelY: 112 }
+];
+
+const INDIA_CITIES = [
+  { name: "Delhi", lat: 28.61, lon: 77.20, x: 195, y: 70 },
+  { name: "Mumbai", lat: 19.07, lon: 72.87, x: 168, y: 135 },
+  { name: "Bengaluru", lat: 12.97, lon: 77.59, x: 195, y: 172 },
+  { name: "Hyderabad", lat: 17.38, lon: 78.48, x: 204, y: 142 },
+  { name: "Chennai", lat: 13.08, lon: 80.27, x: 212, y: 178 },
+  { name: "Kolkata", lat: 22.57, lon: 88.36, x: 268, y: 114 },
+  { name: "Ahmedabad", lat: 23.02, lon: 72.57, x: 160, y: 112 },
+  { name: "Pune", lat: 18.52, lon: 73.85, x: 172, y: 142 },
+  { name: "Jaipur", lat: 26.91, lon: 75.78, x: 180, y: 92 },
+  { name: "Kochi", lat: 9.93, lon: 76.26, x: 192, y: 192 },
+  { name: "Guwahati", lat: 26.14, lon: 91.73, x: 295, y: 102 }
+];
+
+const findNearestCity = (lat, lon) => {
+  let nearest = null;
+  let minDist = Infinity;
+  INDIA_CITIES.forEach(c => {
+    const dist = Math.pow(c.lat - lat, 2) + Math.pow(c.lon - lon, 2);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = c;
+    }
+  });
+  return nearest;
+};
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -47,7 +90,9 @@ const Profile = () => {
 
   const [bioInput, setBioInput] = useState("");
   const [langsInput, setLangsInput] = useState("");
+  const [locationInput, setLocationInput] = useState("");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const { resolvedTheme } = useTheme();
   const [profileTab, setProfileTab] = useState("rooms");
   const [copiedId, setCopiedId] = useState(null);
   const [toasts, setToasts] = useState([]);
@@ -61,6 +106,42 @@ const Profile = () => {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4000);
+  };
+
+  const handleAutoLocate = () => {
+    if (!navigator.geolocation) {
+      addToast("Geolocation is not supported by your browser", "error");
+      return;
+    }
+    addToast("Locating your device...", "info");
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.suburb;
+          const state = data.address?.state;
+          let formatted = "";
+          if (city && state) {
+            formatted = `${city}, ${state}`;
+          } else {
+            const nearest = findNearestCity(latitude, longitude);
+            formatted = nearest ? `${nearest.name}, India` : "Bengaluru, India";
+          }
+          setLocationInput(formatted);
+          addToast(`Located: ${formatted}`, "success");
+        } catch (err) {
+          const nearest = findNearestCity(position.coords.latitude, position.coords.longitude);
+          const formatted = nearest ? `${nearest.name}, India` : "Bengaluru, India";
+          setLocationInput(formatted);
+          addToast(`Located (nearest hub): ${formatted}`, "success");
+        }
+      },
+      (error) => {
+        addToast("Permission denied or failed to locate: " + error.message, "error");
+      }
+    );
   };
 
   const handleCopyId = (e, id) => {
@@ -105,6 +186,7 @@ const Profile = () => {
   const startEditingProfile = () => {
     setBioInput(profileUser?.bio || "");
     setLangsInput((profileUser?.programmingLanguages || []).join(", "));
+    setLocationInput(profileUser?.location || "");
     setIsEditingProfile(true);
   };
 
@@ -113,7 +195,8 @@ const Profile = () => {
     try {
       const res = await updateUserProfile({
         bio: bioInput,
-        programmingLanguages: langsInput
+        programmingLanguages: langsInput,
+        location: locationInput
       });
       if (res.success) {
         addToast("Profile updated successfully", "success");
@@ -452,6 +535,12 @@ const Profile = () => {
             <ProfileAvatar />
             <h2>{profileUser.username}</h2>
             <span className="profile-email">{profileUser.email}</span>
+            {profileUser.location && (
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "var(--ce-text-muted)", marginTop: "4px", marginBottom: "4px" }}>
+                <MapPin size={12} style={{ color: "var(--ce-accent)" }} />
+                <span>{profileUser.location}</span>
+              </div>
+            )}
             <span
               className="profile-badge"
               style={getBadgeStyle(profileUser.title)}
@@ -488,6 +577,100 @@ const Profile = () => {
                     onChange={(e) => setLangsInput(e.target.value)}
                     placeholder="e.g. JavaScript, Python"
                   />
+                </div>
+                <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--ce-text-muted)" }}>Location</label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      placeholder="e.g. Bengaluru, Karnataka"
+                      style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--ce-border)", borderRadius: "6px", background: resolvedTheme === "light" ? "#fff" : "rgba(255,255,255,0.03)", color: "var(--ce-text)", fontSize: "0.82rem" }}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleAutoLocate}
+                      style={{
+                        padding: "8px 12px",
+                        background: "var(--ce-accent)",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "0.75rem",
+                        fontWeight: "600",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      <MapPin size={12} /> Locate Me
+                    </button>
+                  </div>
+                  {/* Interactive SVG India Selector Map */}
+                  <div style={{ position: "relative", width: "100%", height: "200px", background: resolvedTheme === "light" ? "rgba(0,0,0,0.01)" : "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "8px", overflow: "hidden", marginTop: "4px" }}>
+                    <span style={{ position: "absolute", top: "6px", left: "8px", fontSize: "0.6rem", fontWeight: "750", color: "var(--ce-text-muted)" }}>
+                      CLICK ANY HUB TO CHOOSE LOCATION
+                    </span>
+                    <svg viewBox="120 10 220 200" style={{ width: "100%", height: "100%" }}>
+                      {/* Indian States with Borders */}
+                      {INDIA_STATES.map((state) => (
+                        <path
+                          key={state.name}
+                          d={state.d}
+                          fill={resolvedTheme === "light" ? "rgba(15, 23, 42, 0.04)" : "rgba(255, 255, 255, 0.02)"}
+                          stroke={resolvedTheme === "light" ? "rgba(15, 23, 42, 0.15)" : "rgba(255, 255, 255, 0.12)"}
+                          strokeWidth="0.8"
+                        />
+                      ))}
+                      {/* Indian States Labels */}
+                      {INDIA_STATES.map((state) => (
+                        <text
+                          key={state.name}
+                          x={state.labelX}
+                          y={state.labelY}
+                          fill={resolvedTheme === "light" ? "rgba(15, 23, 42, 0.35)" : "rgba(255, 255, 255, 0.25)"}
+                          fontSize="5"
+                          fontWeight="650"
+                          textAnchor="middle"
+                          pointerEvents="none"
+                        >
+                          {state.name}
+                        </text>
+                      ))}
+                      {INDIA_CITIES.map(city => {
+                        const isSelected = locationInput.toLowerCase().includes(city.name.toLowerCase());
+                        return (
+                          <g key={city.name} style={{ cursor: "pointer" }} onClick={() => setLocationInput(`${city.name}, India`)}>
+                            <circle
+                              cx={city.x}
+                              cy={city.y}
+                              r={isSelected ? "6" : "3.5"}
+                              fill={isSelected ? "var(--ce-accent)" : (resolvedTheme === "light" ? "rgba(15, 23, 42, 0.4)" : "rgba(255, 255, 255, 0.4)")}
+                              style={{ transition: "all 0.2s" }}
+                            />
+                            {isSelected && (
+                              <circle cx={city.x} cy={city.y} r="12" fill="var(--ce-accent)" opacity="0.2">
+                                <animate attributeName="r" values="6;14" dur="1.2s" repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0.7;0" dur="1.2s" repeatCount="indefinite" />
+                              </circle>
+                            )}
+                            <text
+                              x={city.x}
+                              y={city.y - 7}
+                              fill={isSelected ? "var(--ce-accent)" : "var(--ce-text-muted)"}
+                              fontSize="6.5"
+                              fontWeight="750"
+                              textAnchor="middle"
+                            >
+                              {city.name}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
                 </div>
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button className="profile-edit-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile}>

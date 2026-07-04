@@ -111,6 +111,7 @@ const updateProfile = async (req, res) => {
     }
 
     if (bio !== undefined) user.bio = bio;
+    if (req.body.location !== undefined) user.location = req.body.location;
     if (programmingLanguages !== undefined) {
       if (Array.isArray(programmingLanguages)) {
         user.programmingLanguages = programmingLanguages;
@@ -145,7 +146,8 @@ const updateProfile = async (req, res) => {
         bio: user.bio,
         programmingLanguages: user.programmingLanguages,
         followersCount: user.followersCount,
-        followingCount: user.followingCount
+        followingCount: user.followingCount,
+        location: user.location || ""
       }
     });
   } catch (error) {

@@ -21,7 +21,8 @@ const {
 } = require("../controllers/socialControllers");
 const {
   getNotifications,
-  markNotificationsRead
+  markNotificationsRead,
+  deleteNotifications
 } = require("../controllers/notificationControllers");
 const {
   createPost,
@@ -85,6 +86,7 @@ router.get("/users/profile/:id", auth_protect, getUserPublicProfile);
 // Notifications
 router.get("/notifications", auth_protect, getNotifications);
 router.post("/notifications/read", auth_protect, markNotificationsRead);
+router.delete("/notifications", auth_protect, deleteNotifications);
 
 // Posts
 router.post("/posts", auth_protect, upload.fields([{ name: "images", maxCount: 10 }, { name: "video", maxCount: 1 }]), createPost);
