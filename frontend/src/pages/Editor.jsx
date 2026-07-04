@@ -1851,10 +1851,10 @@ function Editor() {
       // Privacy authorization check
       if (data.room.isPrivate) {
         const roomCreatorId = data.room.createdBy?._id || data.room.createdBy;
-        const isOwner = String(roomCreatorId) === String(user.id);
+        const isOwner = String(roomCreatorId) === String(user.id || user._id);
         const isParticipant = data.room.participants?.some((p) => {
-          const pId = p._id || p;
-          return String(pId) === String(user.id);
+          const pUserId = p.user?._id || p.user;
+          return String(pUserId) === String(user.id || user._id);
         });
         if (!isOwner && !isParticipant) {
           alert("You are not authorized to access this private room without approval.");

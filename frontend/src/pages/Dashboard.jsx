@@ -1588,7 +1588,7 @@ function Dashboard() {
         if (!prev || prev.roomId !== targetRoomId) return prev;
         return {
           ...prev,
-          participants: (prev.participants || []).filter(p => String(p._id || p) !== String(userId))
+          participants: (prev.participants || []).filter(p => String(p.user?._id || p.user || p._id || p) !== String(userId))
         };
       });
     } catch (error) {
@@ -3907,13 +3907,13 @@ function Dashboard() {
                           (() => {
                             const myActive = liveRooms.filter(room => {
                               const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                              const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
+                              const isParticipant = room.participants?.some(p => String(p.user?._id || p.user || p._id || p) === String(user?.id || user?._id));
                               return isOwner || isParticipant;
                             });
 
                             const otherActive = liveRooms.filter(room => {
                               const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                              const isParticipant = room.participants?.some(p => String(p._id || p) === String(user?.id || user?._id));
+                              const isParticipant = room.participants?.some(p => String(p.user?._id || p.user || p._id || p) === String(user?.id || user?._id));
                               return !(isOwner || isParticipant);
                             });
 
