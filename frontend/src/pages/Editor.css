@@ -5108,7 +5108,8 @@ body.resizing-console * {
 }
 
 .ce-invite-card {
-  width: 400px;
+  width: 90%;
+  max-width: 400px;
   background: #0f0f15;
   border: 1px solid var(--ce-border);
   border-radius: 12px;
@@ -5198,4 +5199,32 @@ body.resizing-console * {
 
 .ce-invite-candidate-item.selected {
   background-color: rgba(170, 59, 255, 0.08);
+}
+
+/* Light mode overrides for Invite Followers Modal */
+.light .ce-invite-card {
+  background: var(--ce-bg-sidebar, #ffffff);
+  border: 1px solid var(--ce-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.light .ce-invite-modal-header h3 {
+  color: var(--ce-text-h, #0f172a);
+}
+
+.light .ce-invite-close-btn:hover {
+  color: var(--ce-text-h, #0f172a);
+}
+
+.light .ce-invite-search-bar input {
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--ce-text, #0f172a);
+}
+
+.light .ce-invite-search-bar input:focus {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.light .ce-invite-candidate-item.selected {
+  background-color: rgba(139, 92, 246, 0.08);
 }

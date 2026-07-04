@@ -342,12 +342,12 @@ const Profile = () => {
     try {
       const data = await joinRoom(targetRoomId);
       if (data.requiresApproval) {
-        alert("Join request sent to room owner for approval");
+        addToast("Join request sent to room owner for approval", "success");
         return;
       }
       navigate(`/editor/${targetRoomId}`);
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      addToast(error.response?.data?.message || error.message, "error");
     }
   };
 

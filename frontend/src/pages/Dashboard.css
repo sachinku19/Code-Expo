@@ -90,6 +90,7 @@
   --ce-search-btn-gradient: linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%);
   --ce-search-btn-glow: rgba(139, 92, 246, 0.25);
   --ce-search-btn-hover-glow: rgba(139, 92, 246, 0.45);
+  --ce-surface-overlay: #ffffff;
 }
 
 /* Base Layout Container */
@@ -10457,6 +10458,17 @@ tier-badge.master {
   transform: translateY(-2px);
   border-color: rgba(245, 158, 11, 0.5);
   box-shadow: 0 6px 16px rgba(245, 158, 11, 0.1);
+}
+
+.light .join-request-card {
+  background: var(--ce-surface-overlay, #ffffff);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+.light .join-request-card:hover {
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.12);
 }
 
 .request-user-info {

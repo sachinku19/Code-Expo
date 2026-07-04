@@ -5440,12 +5440,12 @@ function Editor() {
                 )}
               </div>
 
-              <div style={{ padding: "12px 16px", borderTop: "1px solid var(--ce-border)", display: "flex", justifyContent: "flex-end", gap: "10px", background: "rgba(0, 0, 0, 0.1)" }}>
+              <div style={{ padding: "12px 16px", borderTop: "1px solid var(--ce-border)", display: "flex", justifyContent: "flex-end", gap: "10px", background: editorTheme === "light" ? "rgba(0, 0, 0, 0.02)" : "rgba(0, 0, 0, 0.1)" }}>
                 <button
                   type="button"
                   onClick={() => setIsInviteModalOpen(false)}
                   style={{
-                    background: "rgba(255, 255, 255, 0.05)",
+                    background: editorTheme === "light" ? "rgba(0, 0, 0, 0.03)" : "rgba(255, 255, 255, 0.05)",
                     border: "1px solid var(--ce-border)",
                     borderRadius: "6px",
                     color: "var(--ce-text-muted)",
@@ -5462,7 +5462,9 @@ function Editor() {
                   onClick={handleSendInvites}
                   disabled={selectedFollowers.size === 0 || sendingInvites}
                   style={{
-                    background: selectedFollowers.size > 0 ? "var(--ce-primary)" : "rgba(170, 59, 255, 0.3)",
+                    background: selectedFollowers.size > 0 
+                      ? "var(--ce-primary)" 
+                      : (editorTheme === "light" ? "rgba(139, 92, 246, 0.25)" : "rgba(170, 59, 255, 0.3)"),
                     color: "#ffffff",
                     border: "none",
                     borderRadius: "6px",

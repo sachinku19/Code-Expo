@@ -3102,12 +3102,12 @@ function Dashboard() {
           username: user?.username,
         });
         playNotificationSound();
-        alert("Join request sent to room owner for approval");
+        addToast("Join request sent to room owner for approval", "success");
         return;
       }
       triggerGateAndNavigate(targetRoomId);
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      addToast(error.response?.data?.message || error.message, "error");
     }
   };
 
@@ -3121,17 +3121,36 @@ function Dashboard() {
     setShowJoinConfirmModal(true);
   };
   const handleRespondRequest = async (roomId, requesterId, action) => {
+    // 1. Optimistic UI update: immediately remove from state and cache
+    setJoinRequests(prev => {
+      const updated = prev.filter(req => !(req.roomId === roomId && (req.user?._id || req.user) === requesterId));
+      localStorage.setItem("ce_cache_joinRequests", JSON.stringify(updated));
+      return updated;
+    });
+
+    addToast(action === "accept" ? "Accepting request..." : "Rejecting request...", "info");
+
     try {
-      await respondToJoinRequest(roomId, requesterId, action);
       if (action === "accept") {
         socket.emit("approve-request", { roomId, userId: requesterId });
         playNotificationSound();
       } else {
         socket.emit("reject-request", { roomId, userId: requesterId });
       }
-      fetchDashboardData();
+
+      respondToJoinRequest(roomId, requesterId, action)
+        .then(() => {
+          addToast(`Request ${action}ed successfully`, "success");
+          fetchDashboardData();
+        })
+        .catch(error => {
+          console.error("Error responding to join request:", error);
+          addToast(error.response?.data?.message || error.message, "error");
+          fetchDashboardData(); // Restore correct state on failure
+        });
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      addToast(error.message, "error");
+      fetchDashboardData();
     }
   };
 
@@ -6208,7 +6227,7 @@ function Dashboard() {
                                 className="social-activity-card"
                                 style={{
                                   padding: "16px",
-                                  background: "rgba(255, 255, 255, 0.02)",
+                                  background: activeTheme === "light" ? "var(--ce-surface-card)" : "rgba(255, 255, 255, 0.02)",
                                   border: "1px solid var(--ce-border)",
                                   borderRadius: "8px",
                                   display: "flex",
@@ -6223,7 +6242,7 @@ function Dashboard() {
                                     <span className="room-title-text" style={{ fontSize: "0.95rem", fontWeight: "700", color: "var(--ce-text)" }}>
                                       {req.title}
                                     </span>
-                                    <span className="lang-badge" style={{ fontSize: "0.65rem", padding: "2px 6px", background: "rgba(255, 255, 255, 0.05)", borderRadius: "4px", textTransform: "uppercase", color: "var(--ce-text-muted)" }}>
+                                    <span className="lang-badge" style={{ fontSize: "0.65rem", padding: "2px 6px", background: activeTheme === "light" ? "rgba(0, 0, 0, 0.05)" : "rgba(255, 255, 255, 0.05)", borderRadius: "4px", textTransform: "uppercase", color: "var(--ce-text-muted)" }}>
                                       {req.language}
                                     </span>
                                   </div>
