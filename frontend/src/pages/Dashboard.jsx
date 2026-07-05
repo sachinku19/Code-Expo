@@ -50,6 +50,7 @@ import {
   getUserPublicProfile,
   getLeaderboard,
   getPosts,
+  getPostById,
   toggleLikePost,
   addCommentPost,
   deletePost
@@ -1076,6 +1077,7 @@ function Dashboard() {
   const [bioInput, setBioInput] = useState("");
   const [langsInput, setLangsInput] = useState("");
   const [locationInput, setLocationInput] = useState("");
+  const [titleInput, setTitleInput] = useState("");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileTab, setProfileTab] = useState(() => localStorage.getItem("ce_profileTab") || "rooms");
   useEffect(() => {
@@ -1197,10 +1199,22 @@ function Dashboard() {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const postId = searchParams.get("post");
-    if (postId && allFeedPosts.length > 0) {
+    if (postId) {
       const matchedPost = allFeedPosts.find(p => p._id === postId);
       if (matchedPost) {
         setSelectedPostModal(matchedPost);
+      } else {
+        const fetchPostDirectly = async () => {
+          try {
+            const res = await getPostById(postId);
+            if (res.success && res.post) {
+              setSelectedPostModal(res.post);
+            }
+          } catch (err) {
+            console.error("Error fetching single post by url query:", err);
+          }
+        };
+        fetchPostDirectly();
       }
     }
   }, [location.search, allFeedPosts]);
@@ -2433,6 +2447,7 @@ function Dashboard() {
     setBioInput(user?.bio || "");
     setLangsInput((user?.programmingLanguages || []).join(", "));
     setLocationInput(user?.location || "");
+    setTitleInput(user?.title || "");
     setIsEditingProfile(true);
   };
 
@@ -2442,7 +2457,8 @@ function Dashboard() {
       const res = await updateUserProfile({
         bio: bioInput,
         programmingLanguages: langsInput,
-        location: locationInput
+        location: locationInput,
+        title: titleInput
       });
       if (res.success) {
         addToast("Profile updated successfully", "success");
@@ -2718,62 +2734,7 @@ function Dashboard() {
     }
   }, []);
 
-  const renderTrustSafetyHeaderCards = () => {
-    if (!trustStatus) return null;
-    return (
-      <div 
-        className="ce-trust-safety-cards-row"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
-          gap: "10px",
-          marginBottom: "16px",
-          width: "100%"
-        }}
-      >
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Account Status</span>
-          <span style={{
-            fontSize: "0.78rem",
-            fontWeight: "750",
-            color: trustStatus.accountStatus === "Active" ? "#10b981" : "#f59e0b"
-          }}>{trustStatus.accountStatus}</span>
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Account Health</span>
-          <span style={{
-            fontSize: "0.8rem",
-            fontWeight: "750",
-            color: trustStatus.accountHealth >= 80 ? "#10b981" : trustStatus.accountHealth >= 50 ? "#f59e0b" : "#ef4444"
-          }}>{trustStatus.accountHealth}%</span>
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Active Restrictions</span>
-          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#f43f5e" }}>{trustStatus.counters?.activeRestrictionsCount || 0}</span>
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Open Appeals</span>
-          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "var(--accent)" }}>{trustStatus.counters?.openAppealsCount || 0}</span>
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Open Tickets</span>
-          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#10b981" }}>{trustStatus.counters?.openSupportTicketsCount || 0}</span>
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Total Warnings</span>
-          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#f59e0b" }}>{trustStatus.totalWarnings || 0}</span>
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Removed Posts</span>
-          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#ef4444" }}>{trustStatus.counters?.removedPostsCount || 0}</span>
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <span style={{ fontSize: "0.62rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Hidden Posts</span>
-          <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#ef4444" }}>{trustStatus.counters?.hiddenPostsCount || 0}</span>
-        </div>
-      </div>
-    );
-  };
+
 
   const handleDismissAnnouncement = (id) => {
     const nextDismissed = [...dismissedAnnouncements, id];
@@ -2976,6 +2937,7 @@ function Dashboard() {
     if (user && !isEditingProfile) {
       setBioInput(user.bio || "");
       setLangsInput((user.programmingLanguages || []).join(", "));
+      setTitleInput(user.title || "");
     }
   }, [user, isEditingProfile]);
 
@@ -3963,7 +3925,6 @@ function Dashboard() {
               style={{ width: "100%", height: "100%" }}
             >
               <div className="dashboard-home-section">
-                {renderTrustSafetyHeaderCards()}
                 {/* SYSTEM ANNOUNCEMENTS BROADCAST FEED */}
                 {activeAnnouncements.filter(ann => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
                   <div className="ce-announcements-banner-wrapper">
@@ -7225,6 +7186,17 @@ function Dashboard() {
                               />
                             </div>
                             <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Professional Title</label>
+                              <input
+                                type="text"
+                                value={titleInput}
+                                onChange={(e) => setTitleInput(e.target.value)}
+                                placeholder="e.g. Full Stack Developer, UI Designer"
+                                className="profile-edit-input"
+                                style={{ width: "100%", background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
+                              />
+                            </div>
+                            <div className="form-field" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                               <label style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Languages</label>
                               <input
                                 type="text"
@@ -7955,6 +7927,15 @@ function Dashboard() {
                             placeholder="Tell us about your coding identity..."
                             value={bioInput}
                             onChange={(e) => setBioInput(e.target.value)}
+                          />
+                        </div>
+                        <div className="settings-form-field">
+                          <label>Professional Title</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Full Stack Developer, Technical Architect"
+                            value={titleInput}
+                            onChange={(e) => setTitleInput(e.target.value)}
                           />
                         </div>
                         <div className="settings-form-field">
@@ -9250,9 +9231,10 @@ function Dashboard() {
         {selectedPostModal && (() => {
           const postImages = selectedPostModal.images && selectedPostModal.images.length > 0 ? selectedPostModal.images : (selectedPostModal.image ? [selectedPostModal.image] : []);
           const hasImage = postImages.length > 0;
+          const hasVideo = !!selectedPostModal.video;
           const codeDetails = extractCodeBlock(selectedPostModal.text);
           const hasCode = !!codeDetails;
-          const isSplit = hasImage || hasCode;
+          const isSplit = hasImage || hasCode || hasVideo;
 
           return createPortal(
             <div className="ce-modal-overlay" onClick={handleClosePostModal} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -9277,8 +9259,19 @@ function Dashboard() {
                 }}
               >
                 <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: isSplit ? "row" : "column" }} className={selectedPostModal.isSensitive && !modalRevealedSensitive ? "sensitive-blur-active" : ""}>
-                {/* Left Column: Image Carousel or Code Snippet */}
-                {hasImage && (
+                {/* Left Column: Video, Image Carousel or Code Snippet */}
+                {hasVideo && (
+                  <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                    <video 
+                      src={selectedPostModal.video} 
+                      controls 
+                      autoPlay 
+                      style={{ width: "100%", height: "100%", objectFit: "contain" }} 
+                    />
+                  </div>
+                )}
+
+                {(!hasVideo && hasImage) && (
                   <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                     <div style={{ display: "flex", height: "100%", width: "100%", transition: "transform 0.3s ease", transform: `translateX(-${modalActiveImageIdx * 100}%)` }}>
                       {postImages.map((src, i) => (
@@ -9326,7 +9319,7 @@ function Dashboard() {
                   </div>
                 )}
 
-                {(!hasImage && hasCode) && (
+                {(!hasVideo && !hasImage && hasCode) && (
                   <div style={{ flex: 1, height: "100%", background: "#09090f", display: "flex", flexDirection: "column", borderRight: "1px solid var(--ce-border)" }}>
                     {/* Mac style window header */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "#11111b", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>

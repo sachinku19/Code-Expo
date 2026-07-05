@@ -336,7 +336,7 @@ const getDeveloperSuggestions = async (req, res) => {
     const excludedIds = new Set([...followingIds, String(userId)]);
 
     const users = await User.find({ _id: { $nin: Array.from(excludedIds) } })
-      .select("username avatar bio programmingLanguages followersCount coverBanner")
+      .select("username avatar bio programmingLanguages followersCount coverBanner title")
       .limit(100)
       .lean();
 
@@ -531,7 +531,7 @@ const searchUsers = async (req, res) => {
         { email: { $regex: query, $options: "i" } }
       ]
     })
-      .select("username email avatar bio programmingLanguages followersCount followingCount coverBanner")
+      .select("username email avatar bio programmingLanguages followersCount followingCount coverBanner title")
       .limit(10);
 
     res.status(200).json({ success: true, users });
@@ -546,7 +546,7 @@ const getUserPublicProfile = async (req, res) => {
     const currentUserId = req.user._id;
 
     const [targetUser, rawRooms, rawLikedRooms, activitiesList] = await Promise.all([
-      User.findById(targetUserId).select("username email avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner followers following"),
+      User.findById(targetUserId).select("username email avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner followers following title"),
       Room.find({ createdBy: targetUserId, isPrivate: false }).populate("createdBy", "username avatar").populate("likes", "username avatar email bio").sort({ createdAt: -1 }),
       Room.find({ likes: targetUserId, isPrivate: false }).populate("createdBy", "username avatar").populate("likes", "username avatar email bio").sort({ createdAt: -1 }),
       Activity.find({ user: targetUserId, activityType: { $ne: "VIEW_PROFILE" } })

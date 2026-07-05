@@ -272,7 +272,7 @@ const ExpandableText = ({ htmlContent }) => {
             alignItems: "center"
           }}
         >
-          {isExpanded ? "Show Less" : "Read More"}
+          {isExpanded ? "Read Less" : "Read More"}
         </button>
       )}
     </div>
@@ -1851,7 +1851,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                             <span className="post-badge-sensitive-indicator" title="Flagged as Sensitive Content">⚠️ Sensitive</span>
                           )}
                         </div>
-                        <span className="post-author-role">{post.author.title || "Full Stack Developer"}</span>
+                        <span className="post-author-role">{post.author.title || "Developer"}</span>
                       </div>
                     </div>
 

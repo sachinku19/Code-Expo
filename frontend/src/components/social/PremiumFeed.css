@@ -2684,7 +2684,9 @@ html {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Media Query for responsive public post page */
@@ -2692,24 +2694,24 @@ html {
   .public-post-content-area {
     padding: 20px 10px;
   }
-  
+
   .public-post-card {
     flex-direction: column !important;
     height: auto;
     max-height: none;
     max-width: 500px;
   }
-  
+
   .public-post-image-column {
     width: 100%;
     height: 350px;
   }
-  
+
   .public-post-details-column {
     width: 100% !important;
     height: auto;
   }
-  
+
   .post-scrollable-body {
     max-height: 250px;
   }
@@ -2738,7 +2740,8 @@ html {
 .post-card-content pre {
   margin: 8px 0 !important;
   padding: 10px !important;
-  max-height: 220px !important; /* Make code blocks slightly more compact in feed */
+  max-height: 220px !important;
+  /* Make code blocks slightly more compact in feed */
 }
 
 .post-card-tags {
@@ -2881,6 +2884,7 @@ html {
     opacity: 0;
     transform: translateY(-4px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);

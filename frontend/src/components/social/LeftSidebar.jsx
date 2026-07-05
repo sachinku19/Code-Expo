@@ -23,7 +23,7 @@ export default function LeftSidebar({ user, activeSection, setActiveTab, setTab 
             )}
           </div>
           <h3 className="premium-profile-name">@{user?.username || "developer"}</h3>
-          <p className="premium-profile-username">{user?.title || "Full Stack Developer"}</p>
+          <p className="premium-profile-username">{user?.title || "Developer"}</p>
           
           <div className="streak-container">
             <Flame size={14} fill="#f87171" />

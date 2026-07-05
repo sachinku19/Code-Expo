@@ -3,15 +3,27 @@ import {
   EyeOff, Eye, Trash2, Sparkles, Pin, Search, Filter, ArrowUpDown, AlertCircle, Clock
 } from "lucide-react";
 import socket from "../../socket/socket";
-import { getModerationHistory } from "../../services/trustSafetyService";
+import { getModerationHistory, getTrustSafetyStatus } from "../../services/trustSafetyService";
 import "./TrustSafety.css";
 
 export default function TrustSafety({ user, addToast }) {
   const [history, setHistory] = useState([]);
+  const [trustStatus, setTrustStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+
+  const fetchStatus = async () => {
+    try {
+      const res = await getTrustSafetyStatus();
+      if (res.success) {
+        setTrustStatus(res.status);
+      }
+    } catch (err) {
+      console.error("Failed to load trust safety status in user action page:", err);
+    }
+  };
 
   const fetchHistory = async () => {
     try {
@@ -29,6 +41,7 @@ export default function TrustSafety({ user, addToast }) {
 
   useEffect(() => {
     fetchHistory();
+    fetchStatus();
   }, []);
 
   // Real-time update listeners
@@ -37,6 +50,7 @@ export default function TrustSafety({ user, addToast }) {
 
     const handleUpdate = () => {
       fetchHistory();
+      fetchStatus();
     };
 
     socket.on("admin-user-action", handleUpdate);
@@ -98,6 +112,24 @@ export default function TrustSafety({ user, addToast }) {
         badgeClass: "badge-pinned"
       };
     }
+    if (action.includes("warning")) {
+      return {
+        icon: <AlertCircle size={16} />,
+        color: "#f59e0b",
+        bg: "rgba(245, 158, 11, 0.08)",
+        border: "rgba(245, 158, 11, 0.15)",
+        badgeClass: "badge-warning"
+      };
+    }
+    if (action.includes("suspend") || action.includes("ban") || action.includes("restrict")) {
+      return {
+        icon: <AlertCircle size={16} />,
+        color: "#ef4444",
+        bg: "rgba(239, 68, 68, 0.08)",
+        border: "rgba(239, 68, 68, 0.15)",
+        badgeClass: "badge-ban"
+      };
+    }
     return {
       icon: <AlertCircle size={16} />,
       color: "#f59e0b",
@@ -118,6 +150,7 @@ export default function TrustSafety({ user, addToast }) {
         if (actionFilter === "deleted" && !type.includes("delete")) return false;
         if (actionFilter === "featured" && !type.includes("feature")) return false;
         if (actionFilter === "pinned" && !type.includes("pin")) return false;
+        if (actionFilter === "warnings" && !type.includes("warning") && !type.includes("restrict") && !type.includes("suspend") && !type.includes("ban")) return false;
       }
 
       // Search query filter (search by content text, title, or reason)
@@ -148,6 +181,52 @@ export default function TrustSafety({ user, addToast }) {
         </div>
       </div>
 
+      {trustStatus && (
+        <div 
+          className="ce-trust-safety-cards-row"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+            gap: "10px",
+            marginBottom: "16px",
+            width: "100%"
+          }}
+        >
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Account Status</span>
+            <span style={{
+              fontSize: "0.78rem",
+              fontWeight: "750",
+              color: trustStatus.accountStatus === "Active" ? "#10b981" : "#f59e0b"
+            }}>{trustStatus.accountStatus}</span>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Active Restrictions</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#f43f5e" }}>{trustStatus.counters?.activeRestrictionsCount || 0}</span>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Open Appeals</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "var(--accent)" }}>{trustStatus.counters?.openAppealsCount || 0}</span>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Open Tickets</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#10b981" }}>{trustStatus.counters?.openSupportTicketsCount || 0}</span>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Total Warnings</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#f59e0b" }}>{trustStatus.totalWarnings || 0}</span>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Removed Posts</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#ef4444" }}>{trustStatus.counters?.removedPostsCount || 0}</span>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Hidden Posts</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#ef4444" }}>{trustStatus.counters?.hiddenPostsCount || 0}</span>
+          </div>
+        </div>
+      )}
+
       {/* Filter Bar */}
       <div className="activity-filter-bar glass-panel">
         <div className="search-wrapper">
@@ -165,6 +244,7 @@ export default function TrustSafety({ user, addToast }) {
             <Filter size={12} className="select-icon" />
             <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
               <option value="all">All Actions</option>
+              <option value="warnings">Warnings & Standings</option>
               <option value="hidden">Hidden Content</option>
               <option value="restored">Restored Content</option>
               <option value="deleted">Deleted Content</option>
@@ -243,6 +323,21 @@ export default function TrustSafety({ user, addToast }) {
                   <p className="activity-content-preview">
                     <strong>Content affected:</strong> {contentSnippet.length > 120 ? `${contentSnippet.substring(0, 120)}...` : contentSnippet}
                   </p>
+
+                  {item.postId && (
+                    <div style={{ marginTop: "4px", marginBottom: "4px" }}>
+                      <a 
+                        href={`/dashboard?post=${item.postId._id || item.postId}`}
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ fontSize: "0.76rem", color: "#60a5fa", textDecoration: "none", fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                        onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
+                        onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
+                      >
+                        <Eye size={12} /> View Affected Post
+                      </a>
+                    </div>
+                  )}
 
                   {item.reason && (
                     <div className="activity-admin-reason">

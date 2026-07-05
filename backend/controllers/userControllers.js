@@ -104,7 +104,7 @@ const deleteAvatar = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { bio, programmingLanguages } = req.body;
+    const { bio, programmingLanguages, title } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -112,6 +112,7 @@ const updateProfile = async (req, res) => {
 
     if (bio !== undefined) user.bio = bio;
     if (req.body.location !== undefined) user.location = req.body.location;
+    if (title !== undefined) user.title = title.trim() || "Developer";
     if (programmingLanguages !== undefined) {
       if (Array.isArray(programmingLanguages)) {
         user.programmingLanguages = programmingLanguages;
@@ -144,6 +145,7 @@ const updateProfile = async (req, res) => {
         avatar: user.avatar,
         coverBanner: user.coverBanner,
         bio: user.bio,
+        title: user.title,
         programmingLanguages: user.programmingLanguages,
         followersCount: user.followersCount,
         followingCount: user.followingCount,

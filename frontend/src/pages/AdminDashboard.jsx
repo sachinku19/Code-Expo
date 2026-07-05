@@ -356,7 +356,7 @@ const ExpandableText = ({ htmlContent }) => {
             alignItems: "center"
           }}
         >
-          {isExpanded ? "Show Less" : "Read More"}
+          {isExpanded ? "Read Less" : "Read More"}
         </button>
       )}
     </div>
@@ -656,6 +656,8 @@ const AdminDashboard = () => {
   const [loadingReports, setLoadingReports] = useState(false);
   const [selectedReportGroup, setSelectedReportGroup] = useState(null);
   const [reportResolutionNotes, setReportResolutionNotes] = useState("");
+  const [attachedReportReasons, setAttachedReportReasons] = useState([]);
+  const [reportsStatusFilter, setReportsStatusFilter] = useState("pending");
 
   // Manual User Penalty Form State
   const [issueActionType, setIssueActionType] = useState("Warning Issued");
@@ -1085,7 +1087,7 @@ const AdminDashboard = () => {
   const fetchReports = async () => {
     setLoadingReports(true);
     try {
-      const data = await getAdminReports("pending");
+      const data = await getAdminReports(reportsStatusFilter);
       if (data.success) {
         setReportGroups(data.groups || []);
       }
@@ -1570,6 +1572,12 @@ const AdminDashboard = () => {
       fetchLoginLogs();
     }
   }, [loginLogPage, loginLogSearch]);
+
+  useEffect(() => {
+    if (activeTab === "reports") {
+      fetchReports();
+    }
+  }, [activeTab, reportsStatusFilter]);
 
   // Initial runs
   useEffect(() => {
@@ -5109,13 +5117,29 @@ const AdminDashboard = () => {
                   <ShieldAlert size={16} style={{ color: "#ef4444" }} /> Reported Developers
                 </h4>
                 
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "4px" }}>
+                  <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Filter by Status</label>
+                  <select
+                    value={reportsStatusFilter}
+                    onChange={(e) => {
+                      setReportsStatusFilter(e.target.value);
+                      setSelectedReportGroup(null);
+                    }}
+                    style={{ background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--admin-border)", borderRadius: "6px", padding: "6px 8px", fontSize: "0.75rem", outline: "none", cursor: "pointer" }}
+                  >
+                    <option value="pending">Pending Reports</option>
+                    <option value="resolved">Resolved (Completed)</option>
+                    <option value="dismissed">Dismissed (Completed)</option>
+                  </select>
+                </div>
+                
                 {loadingReports ? (
                   <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
                     <Loader className="spinner" size={24} />
                   </div>
                 ) : reportGroups.length === 0 ? (
                   <div style={{ textAlign: "center", color: "var(--admin-text-muted)", fontSize: "0.85rem", padding: "40px 0" }}>
-                    No pending user reports.
+                    No {reportsStatusFilter} user reports found.
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -5127,6 +5151,8 @@ const AdminDashboard = () => {
                           onClick={() => {
                             setSelectedReportGroup(group);
                             setReportResolutionNotes("");
+                            const uniqueReasons = group.reports.map(r => r.reason).filter((v, i, self) => self.indexOf(v) === i);
+                            setAttachedReportReasons(uniqueReasons);
                           }}
                           style={{
                             padding: "12px",
@@ -5241,8 +5267,11 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* Timeline of Reports */}
+                    {/* Timeline of Reports */}
                     <div>
-                      <h4 style={{ color: "#fff", fontSize: "0.95rem", margin: "0 0 10px 0" }}>Pending Abuse Reports ({selectedReportGroup.reports.length})</h4>
+                      <h4 style={{ color: "#fff", fontSize: "0.95rem", margin: "0 0 10px 0" }}>
+                        {reportsStatusFilter === "pending" ? "Pending" : reportsStatusFilter === "resolved" ? "Resolved" : "Dismissed"} Abuse Reports ({selectedReportGroup.reports.length})
+                      </h4>
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {selectedReportGroup.reports.map((report) => (
                           <div key={report.id} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.04)", padding: "12px", borderRadius: "8px" }}>
@@ -5262,109 +5291,221 @@ const AdminDashboard = () => {
                                 Context: {report.evidenceType} {report.evidenceId && `(${report.evidenceId})`}
                               </span>
                             </div>
-                            <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--admin-text-muted)", lineHeight: "1.4" }}>
-                              {report.details}
+                            <p style={{ margin: "0 0 8px 0", fontSize: "0.8rem", color: "var(--admin-text-muted)", lineHeight: "1.4" }}>
+                              <strong>Details:</strong> {report.details}
                             </p>
+
+                            {/* Actual Reported Content Preview */}
+                            {report.evidenceContent && (
+                              <div style={{ marginTop: "10px", padding: "10px", background: "rgba(0,0,0,0.3)", borderLeft: "3px solid #8b5cf6", borderRadius: "4px" }}>
+                                <div style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", marginBottom: "4px", fontWeight: "700", textTransform: "uppercase" }}>
+                                  Reported Content Preview
+                                </div>
+                                {report.evidenceType === "POST" && (
+                                  <div>
+                                    <div style={{ fontSize: "0.8rem", fontWeight: "600", color: "#fff", marginBottom: "2px" }}>{report.evidenceContent.title}</div>
+                                    <div style={{ fontSize: "0.78rem", color: "var(--admin-text-muted)", whiteSpace: "pre-wrap" }}>{report.evidenceContent.text}</div>
+                                  </div>
+                                )}
+                                {report.evidenceType === "COMMENT" && (
+                                  <div>
+                                    <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)", marginBottom: "2px" }}>
+                                      Comment by <strong>@{report.evidenceContent.author}</strong> on Post: <em>{report.evidenceContent.postTitle || "Post Title"}</em>
+                                    </div>
+                                    <div style={{ fontSize: "0.78rem", color: "#fff" }}>"{report.evidenceContent.text}"</div>
+                                  </div>
+                                )}
+                                {report.evidenceType === "ROOM" && (
+                                  <div>
+                                    <div style={{ fontSize: "0.8rem", fontWeight: "600", color: "#fff" }}>Workspace Title: {report.evidenceContent.title}</div>
+                                    <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>Language: {report.evidenceContent.language}</div>
+                                  </div>
+                                )}
+                                {report.evidenceType === "MESSAGE" && (
+                                  <div>
+                                    <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)", marginBottom: "2px" }}>
+                                      Message by <strong>@{report.evidenceContent.author || "User"}</strong>:
+                                    </div>
+                                    <div style={{ fontSize: "0.78rem", color: "#fff" }}>"{report.evidenceContent.text}"</div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Resolution Section */}
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--admin-border)", padding: "16px", borderRadius: "8px", marginTop: "auto" }}>
-                      <h4 style={{ color: "#fff", fontSize: "0.9rem", margin: "0 0 10px 0" }}>Resolution & Moderation Panel</h4>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <div>
-                          <label style={{ display: "block", color: "var(--admin-text-muted)", fontSize: "0.74rem", marginBottom: "4px" }}>
-                            Moderator Decision Notes
-                          </label>
-                          <textarea
-                            value={reportResolutionNotes}
-                            onChange={(e) => setReportResolutionNotes(e.target.value)}
-                            placeholder="Add compliance resolution findings or reasons for warnings/ban..."
-                            rows={3}
-                            style={{
-                              width: "100%",
-                              padding: "8px",
-                              borderRadius: "6px",
-                              border: "1px solid var(--admin-border)",
-                              background: "rgba(0,0,0,0.2)",
-                              color: "#fff",
-                              fontSize: "0.8rem",
-                              outline: "none",
-                              resize: "none"
-                            }}
-                          />
-                        </div>
+                    {/* Resolution Section for pending reports */}
+                    {reportsStatusFilter === "pending" ? (
+                      <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--admin-border)", padding: "16px", borderRadius: "8px", marginTop: "auto" }}>
+                        <h4 style={{ color: "#fff", fontSize: "0.9rem", margin: "0 0 10px 0" }}>Resolution & Moderation Panel</h4>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          <div>
+                            <label style={{ display: "block", color: "var(--admin-text-muted)", fontSize: "0.74rem", marginBottom: "6px" }}>
+                              Attach Reported Violations to Warning:
+                            </label>
+                            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
+                              {selectedReportGroup.reports
+                                .map((r) => r.reason)
+                                .filter((v, i, self) => self.indexOf(v) === i)
+                                .map((reason) => (
+                                  <label key={reason} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.76rem", color: "#fff", cursor: "pointer", userSelect: "none" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={attachedReportReasons.includes(reason)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setAttachedReportReasons([...attachedReportReasons, reason]);
+                                        } else {
+                                          setAttachedReportReasons(attachedReportReasons.filter(r => r !== reason));
+                                        }
+                                      }}
+                                    />
+                                    <span style={{ background: "rgba(239, 68, 68, 0.12)", color: "#f87171", padding: "2px 6px", borderRadius: "4px", fontWeight: "600", fontSize: "0.72rem" }}>
+                                      {reason}
+                                    </span>
+                                  </label>
+                                ))}
+                            </div>
 
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            {/* Warn developer button */}
-                            <button
-                              onClick={async () => {
-                                if (!reportResolutionNotes.trim()) {
-                                  addToast("Please provide resolution notes explaining the warning", "error");
-                                  return;
-                                }
-                                try {
-                                  const res = await adminIssueUserAction(selectedReportGroup.user.id, "Warning Issued", reportResolutionNotes);
-                                  if (res.success) {
-                                    addToast(`Warning successfully issued to ${selectedReportGroup.user.username}`, "success");
-                                    await handleResolveReports(selectedReportGroup.user.id, "resolve");
-                                  }
-                                } catch (err) {
-                                  addToast(err.response?.data?.message || err.message, "error");
-                                }
+                            <label style={{ display: "block", color: "var(--admin-text-muted)", fontSize: "0.74rem", marginBottom: "4px", marginTop: "10px" }}>
+                              Moderator Decision Notes
+                            </label>
+                            <textarea
+                              value={reportResolutionNotes}
+                              onChange={(e) => setReportResolutionNotes(e.target.value)}
+                              placeholder="Add compliance resolution findings or reasons for warnings/ban..."
+                              rows={3}
+                              style={{
+                                width: "100%",
+                                padding: "8px",
+                                borderRadius: "6px",
+                                border: "1px solid var(--admin-border)",
+                                background: "rgba(0,0,0,0.2)",
+                                color: "#fff",
+                                fontSize: "0.8rem",
+                                outline: "none",
+                                resize: "none"
                               }}
-                              className="btn-action promote"
-                              style={{ padding: "8px 12px", fontSize: "0.78rem" }}
-                            >
-                              Warn Developer
-                            </button>
-
-                            {/* Suspend developer button */}
-                            <button
-                              onClick={async () => {
-                                if (!window.confirm(`Are you sure you want to ban/suspend ${selectedReportGroup.user.username}?`)) return;
-                                try {
-                                  const res = await toggleUserSuspension(selectedReportGroup.user.id);
-                                  if (res.success) {
-                                    addToast(res.message, "success");
-                                    await handleResolveReports(selectedReportGroup.user.id, "resolve");
-                                  }
-                                } catch (err) {
-                                  addToast(err.response?.data?.message || err.message, "error");
-                                }
-                              }}
-                              className="btn-action-delete"
-                              style={{ padding: "8px 12px", fontSize: "0.78rem" }}
-                            >
-                              {selectedReportGroup.user.isSuspended ? "Unban Developer" : "Ban Developer"}
-                            </button>
+                            />
                           </div>
 
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            {/* Dismiss Reports */}
-                            <button
-                              onClick={() => handleResolveReports(selectedReportGroup.user.id, "dismiss")}
-                              className="btn-action"
-                              style={{ padding: "8px 12px", fontSize: "0.78rem", border: "1px solid var(--admin-border)", background: "rgba(255,255,255,0.02)", color: "#fff" }}
-                            >
-                              Dismiss Reports
-                            </button>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              {/* Warn developer button */}
+                              <button
+                                onClick={async () => {
+                                  if (!reportResolutionNotes.trim()) {
+                                    addToast("Please provide resolution notes explaining the warning", "error");
+                                    return;
+                                  }
+                                  try {
+                                    const combinedReason = attachedReportReasons.length > 0
+                                      ? `Reported violation: ${attachedReportReasons.join(", ")}. Moderator decision notes: ${reportResolutionNotes}`
+                                      : reportResolutionNotes;
 
-                            {/* Resolve Reports */}
-                            <button
-                              onClick={() => handleResolveReports(selectedReportGroup.user.id, "resolve")}
-                              className="btn-action promote"
-                              style={{ padding: "8px 12px", fontSize: "0.78rem", background: "#10b981", border: "none", color: "#fff" }}
-                            >
-                              Resolve Reports
-                            </button>
+                                    let firstPostId = null;
+                                    const postReport = selectedReportGroup.reports.find(r => r.evidenceType === "POST");
+                                    const commentReport = selectedReportGroup.reports.find(r => r.evidenceType === "COMMENT");
+                                    if (postReport) {
+                                      firstPostId = postReport.evidenceId;
+                                    } else if (commentReport && commentReport.evidenceContent?.postId) {
+                                      firstPostId = commentReport.evidenceContent.postId;
+                                    }
+
+                                    const res = await adminIssueUserAction(selectedReportGroup.user.id, "Warning Issued", combinedReason, firstPostId);
+                                    if (res.success) {
+                                      addToast(`Warning successfully issued to ${selectedReportGroup.user.username}`, "success");
+                                      await handleResolveReports(selectedReportGroup.user.id, "resolve");
+                                    }
+                                  } catch (err) {
+                                    addToast(err.response?.data?.message || err.message, "error");
+                                  }
+                                }}
+                                className="btn-action promote"
+                                style={{ padding: "8px 12px", fontSize: "0.78rem" }}
+                              >
+                                Warn Developer
+                              </button>
+
+                              {/* Suspend developer button */}
+                              <button
+                                onClick={async () => {
+                                  if (!window.confirm(`Are you sure you want to ban/suspend ${selectedReportGroup.user.username}?`)) return;
+                                  try {
+                                    const res = await toggleUserSuspension(selectedReportGroup.user.id);
+                                    if (res.success) {
+                                      addToast(res.message, "success");
+                                      await handleResolveReports(selectedReportGroup.user.id, "resolve");
+                                    }
+                                  } catch (err) {
+                                    addToast(err.response?.data?.message || err.message, "error");
+                                  }
+                                }}
+                                className="btn-action-delete"
+                                style={{ padding: "8px 12px", fontSize: "0.78rem" }}
+                              >
+                                {selectedReportGroup.user.isSuspended ? "Unban Developer" : "Ban Developer"}
+                              </button>
+                            </div>
+
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              {/* Dismiss Reports */}
+                              <button
+                                onClick={() => handleResolveReports(selectedReportGroup.user.id, "dismiss")}
+                                className="btn-action"
+                                style={{ padding: "8px 12px", fontSize: "0.78rem", border: "1px solid var(--admin-border)", background: "rgba(255,255,255,0.02)", color: "#fff" }}
+                              >
+                                Dismiss Reports
+                              </button>
+
+                              {/* Resolve Reports */}
+                              <button
+                                onClick={() => handleResolveReports(selectedReportGroup.user.id, "resolve")}
+                                className="btn-action promote"
+                                style={{ padding: "8px 12px", fontSize: "0.78rem", background: "#10b981", border: "none", color: "#fff" }}
+                              >
+                                Resolve Reports
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* Read-only Resolution Summary for completed cases */
+                      <div style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "16px", borderRadius: "10px", marginTop: "auto" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                          <Shield size={18} style={{ color: reportsStatusFilter === "resolved" ? "#10b981" : "#9ca3af" }} />
+                          <h4 style={{ color: "#fff", fontSize: "0.95rem", margin: 0, fontWeight: "600" }}>
+                            Moderation Case: {reportsStatusFilter === "resolved" ? "Resolved & Completed" : "Dismissed & Closed"}
+                          </h4>
+                        </div>
+                        <div style={{ fontSize: "0.8rem", color: "var(--admin-text-muted)", display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <div>
+                            <strong>Decision:</strong> {reportsStatusFilter === "resolved" ? "Penalties Issued / Action Taken" : "Cleared / No Violations Found"}
+                          </div>
+                          {selectedReportGroup.reports[0]?.resolvedBy && (
+                            <div>
+                              <strong>Audited by:</strong> @{selectedReportGroup.reports[0].resolvedBy}
+                            </div>
+                          )}
+                          {selectedReportGroup.reports[0]?.resolvedAt && (
+                            <div>
+                              <strong>Action Date:</strong> {new Date(selectedReportGroup.reports[0].resolvedAt).toLocaleString()}
+                            </div>
+                          )}
+                          {selectedReportGroup.reports[0]?.resolutionNotes && (
+                            <div style={{ marginTop: "8px", padding: "8px", background: "rgba(0,0,0,0.2)", borderRadius: "6px", borderLeft: "3px solid #10b981" }}>
+                              <div style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)", textTransform: "uppercase", fontWeight: "700" }}>Moderator Action Notes</div>
+                              <div style={{ color: "#fff", fontSize: "0.78rem", fontStyle: "italic", marginTop: "2px" }}>
+                                "{selectedReportGroup.reports[0].resolutionNotes}"
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", color: "var(--admin-text-muted)" }}>

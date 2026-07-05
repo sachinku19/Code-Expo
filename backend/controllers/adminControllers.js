@@ -808,7 +808,7 @@ const toggleUserSuspension = async (req, res) => {
 const adminIssueUserAction = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { actionType, reason } = req.body; // "Warning Issued", "Temporary Restriction", "Suspension", "Ban", "Account Reactivated"
+    const { actionType, reason, postId } = req.body; // "Warning Issued", "Temporary Restriction", "Suspension", "Ban", "Account Reactivated"
 
     if (!actionType || !["Warning Issued", "Temporary Restriction", "Suspension", "Ban", "Account Reactivated"].includes(actionType)) {
       return res.status(400).json({ success: false, message: "Invalid action type." });
@@ -831,7 +831,7 @@ const adminIssueUserAction = async (req, res) => {
     await logModerationAction(
       user._id,
       actionType,
-      null,
+      postId || null,
       reason || `Administrative action: ${actionType}`,
       req.user?.username || "Admin"
     );
@@ -1833,13 +1833,14 @@ const adminGetReports = async (req, res) => {
     const reports = await Report.find({ status })
       .populate("reporter", "username email avatar")
       .populate("reportedUser", "username email avatar isSuspended accountStatus accountHealth loginHistory totalWarnings totalViolations")
+      .populate("resolvedBy", "username")
       .sort({ createdAt: -1 });
 
     // Group reports by reported user
     const grouped = {};
-    reports.forEach(report => {
+    for (const report of reports) {
       const user = report.reportedUser;
-      if (!user) return;
+      if (!user) continue;
       
       const userIdStr = String(user._id);
       if (!grouped[userIdStr]) {
@@ -1860,6 +1861,61 @@ const adminGetReports = async (req, res) => {
           count: 0
         };
       }
+
+      // Fetch actual reported content details
+      let evidenceContent = null;
+      try {
+        if (report.evidenceId) {
+          if (report.evidenceType === "POST") {
+            const Post = require("../models/Post");
+            const post = await Post.findById(report.evidenceId).select("title text");
+            if (post) {
+              evidenceContent = {
+                title: post.title,
+                text: post.text
+              };
+            }
+          } else if (report.evidenceType === "COMMENT") {
+            const Post = require("../models/Post");
+            const post = await Post.findOne({ "comments._id": report.evidenceId }).select("comments title");
+            if (post) {
+              const comment = post.comments.id(report.evidenceId);
+              if (comment) {
+                evidenceContent = {
+                  postTitle: post.title,
+                  postId: post._id,
+                  text: comment.text,
+                  author: comment.username
+                };
+              }
+            }
+          } else if (report.evidenceType === "ROOM") {
+            const Room = require("../models/Room");
+            const room = await Room.findById(report.evidenceId).select("title language");
+            if (room) {
+              evidenceContent = {
+                title: room.title,
+                language: room.language
+              };
+            }
+          } else if (report.evidenceType === "MESSAGE") {
+            const Message = require("../models/Message");
+            const DirectMessage = require("../models/DirectMessage");
+            let msg = await Message.findById(report.evidenceId).select("message username");
+            if (!msg) {
+              msg = await DirectMessage.findById(report.evidenceId).select("message");
+            }
+            if (msg) {
+              evidenceContent = {
+                text: msg.message || msg.content,
+                author: msg.username
+              };
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching report evidence content:", err);
+      }
       
       grouped[userIdStr].reports.push({
         id: report._id,
@@ -1872,10 +1928,15 @@ const adminGetReports = async (req, res) => {
         details: report.details,
         evidenceType: report.evidenceType,
         evidenceId: report.evidenceId,
+        evidenceContent: evidenceContent,
+        status: report.status,
+        resolutionNotes: report.resolutionNotes,
+        resolvedBy: report.resolvedBy ? report.resolvedBy.username : null,
+        resolvedAt: report.resolvedAt,
         createdAt: report.createdAt
       });
       grouped[userIdStr].count++;
-    });
+    }
 
     const groupedList = Object.values(grouped).sort((a, b) => b.count - a.count);
 
