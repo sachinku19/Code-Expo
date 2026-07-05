@@ -14,6 +14,7 @@ const formatTime = (seconds) => {
 
 function RemoteVideoFeed({ remoteFeed }) {
   const videoRef = useRef(null);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     if (videoRef.current && remoteFeed.stream) {
@@ -21,8 +22,20 @@ function RemoteVideoFeed({ remoteFeed }) {
     }
   }, [remoteFeed.stream]);
 
+  useEffect(() => {
+    if (audioRef.current && remoteFeed.stream) {
+      audioRef.current.srcObject = remoteFeed.stream;
+    }
+  }, [remoteFeed.stream]);
+
   return (
     <div className="video-box remote-video animate-fade-in">
+      {/* Hidden audio feed to guarantee uninterrupted sound output when minimized or when peer camera is off */}
+      <audio
+        ref={audioRef}
+        autoPlay
+        style={{ display: "none" }}
+      />
       {remoteFeed.isCameraOff ? (
         <div className="local-video-placeholder">
           <User size={32} />
@@ -33,6 +46,7 @@ function RemoteVideoFeed({ remoteFeed }) {
           ref={videoRef}
           autoPlay
           playsInline
+          muted
           className="remote-video-element"
         />
       )}

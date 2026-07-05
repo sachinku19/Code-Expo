@@ -585,7 +585,10 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const isSuperAdmin = user?.email === "adminsachin@gmail.com";
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem("ce_admin_activeTab") || "overview");
+  useEffect(() => {
+    localStorage.setItem("ce_admin_activeTab", activeTab);
+  }, [activeTab]);
   const { resolvedTheme: theme, toggleTheme } = useTheme();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
@@ -1957,26 +1960,40 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    const theme = localStorage.getItem("codeExpoHomeTheme");
-
-    // Preserve read stories cache for all users
-    const readStoriesKeys = [];
+    // Preserve local preferences, read stories, and dismissed ads cache
+    const preservedKeys = [];
+    const prefixesToPreserve = [
+      "codeexpo_read_stories",
+      "ce_dismissed_ad",
+      "editor_",
+      "git_",
+      "whiteboard_",
+      "default_language",
+      "notif_approvalAlerts",
+      "notif_mentionAlerts",
+      "codeExpoHomeTheme",
+      "ceSidebarPinned",
+      "ce_editor_",
+      "ce_profileTab",
+      "ce_settingsTab",
+      "ce_roomsTab",
+      "ce_activeRoomsTab",
+      "ce_adminActiveTab"
+    ];
+    
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith("codeexpo_read_stories")) {
-        readStoriesKeys.push({ key, value: localStorage.getItem(key) });
+      if (key && prefixesToPreserve.some(prefix => key.startsWith(prefix))) {
+        preservedKeys.push({ key, value: localStorage.getItem(key) });
       }
     }
-
+    
     localStorage.clear();
-
-    if (theme) {
-      localStorage.setItem("codeExpoHomeTheme", theme);
-    }
-    readStoriesKeys.forEach(item => {
+    
+    preservedKeys.forEach(item => {
       localStorage.setItem(item.key, item.value);
     });
-
+    
     window.location.href = "/login";
   };
 

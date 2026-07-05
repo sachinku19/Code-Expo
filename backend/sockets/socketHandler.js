@@ -119,47 +119,53 @@ const socketHandler = (io) => {
       console.log(`👤 User registered for notifications: ${userId} (${socket.id})`);
 
       try {
-        const userObj = await User.findById(userId);
-
-        if (!userObj) {
-          console.error(`User not found for socket registration: ${userId}`);
-          return;
-        }
-
-        userObj.isOnline = true;
-
-        if (!userObj.loginHistory) {
-          userObj.loginHistory = [];
-        }
-
-        // Track session (come & go) - create a new entry in loginHistory if none is active
-        const activeLog = userObj.loginHistory.find(log => log.logoutTime === null);
-        
-        if (!activeLog) {
-          // Extract client IP address from socket handshake
-          let ipAddress = socket.handshake.address || "127.0.0.1";
-          // Clean IPv6 loopback and mapped prefixes
-          if (ipAddress === "::1") {
-            ipAddress = "127.0.0.1";
-          } else if (ipAddress.startsWith("::ffff:")) {
-            ipAddress = ipAddress.replace("::ffff:", "");
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            const userObj = await User.findById(userId);
+            if (!userObj) {
+              console.error(`User not found for socket registration: ${userId}`);
+              break;
+            }
+            userObj.isOnline = true;
+            if (!userObj.loginHistory) {
+              userObj.loginHistory = [];
+            }
+            const activeLog = userObj.loginHistory.find(log => log.logoutTime === null);
+            if (!activeLog) {
+              let ipAddress = socket.handshake.address || "127.0.0.1";
+              if (ipAddress === "::1") {
+                ipAddress = "127.0.0.1";
+              } else if (ipAddress.startsWith("::ffff:")) {
+                ipAddress = ipAddress.replace("::ffff:", "");
+              }
+              userObj.loginHistory.unshift({
+                loginTime: new Date(),
+                logoutTime: null,
+                ipAddress: ipAddress,
+                userAgent: socket.handshake.headers['user-agent'] || ""
+              });
+              if (userObj.loginHistory.length > 10) {
+                userObj.loginHistory = userObj.loginHistory.slice(0, 10);
+              }
+            }
+            await userObj.save();
+            console.log(`📡 Updated DB status to online for user: ${userId}`);
+            break;
+          } catch (saveErr) {
+            if (saveErr.name === "VersionError") {
+              retries--;
+              if (retries === 0) {
+                console.error(`Failed to register-user after 3 retries due to VersionError: ${userId}`);
+                await User.findByIdAndUpdate(userId, { $set: { isOnline: true } });
+              } else {
+                console.warn(`VersionError during socket register-user save, retrying... (${3 - retries} retry)`);
+              }
+            } else {
+              throw saveErr;
+            }
           }
-          
-          userObj.loginHistory.unshift({
-            loginTime: new Date(),
-            logoutTime: null,
-            ipAddress: ipAddress,
-            userAgent: socket.handshake.headers['user-agent'] || ""
-          });
-          console.log(`📝 Created new session loginHistory for user: ${userId} from IP: ${ipAddress}`);
-
-          // Rotate logs (keep only last 10)
-          if (userObj.loginHistory.length > 10) {
-            userObj.loginHistory = userObj.loginHistory.slice(0, 10);
-          }
         }
-        await userObj.save();
-        console.log(`📡 Updated DB status to online for user: ${userId}`);
       } catch (err) {
         console.error("Error updating online status or session log in socket register-user:", err);
       }
@@ -1729,19 +1735,37 @@ const socketHandler = (io) => {
           // Update DB status to offline & close active login session
           (async () => {
             try {
-              const userObj = await User.findById(userId);
-              if (userObj) {
-                userObj.isOnline = false;
-                userObj.lastSeene = Date.now();
-                if (userObj.loginHistory && Array.isArray(userObj.loginHistory)) {
-                  const activeLog = userObj.loginHistory.find(log => log.logoutTime === null);
-                  if (activeLog) {
-                    activeLog.logoutTime = new Date();
+              let retries = 3;
+              while (retries > 0) {
+                try {
+                  const userObj = await User.findById(userId);
+                  if (userObj) {
+                    userObj.isOnline = false;
+                    userObj.lastSeene = Date.now();
+                    if (userObj.loginHistory && Array.isArray(userObj.loginHistory)) {
+                      const activeLog = userObj.loginHistory.find(log => log.logoutTime === null);
+                      if (activeLog) {
+                        activeLog.logoutTime = new Date();
+                      }
+                    }
+                    await userObj.save();
+                  }
+                  console.log(`📡 Updated DB status to offline for user: ${userId}`);
+                  break;
+                } catch (saveErr) {
+                  if (saveErr.name === "VersionError") {
+                    retries--;
+                    if (retries === 0) {
+                      console.error(`Failed to disconnect-user after 3 retries due to VersionError: ${userId}`);
+                      await User.findByIdAndUpdate(userId, { $set: { isOnline: false, lastSeene: Date.now() } });
+                    } else {
+                      console.warn(`VersionError during socket disconnect save, retrying... (${3 - retries} retry)`);
+                    }
+                  } else {
+                    throw saveErr;
                   }
                 }
-                await userObj.save();
               }
-              console.log(`📡 Updated DB status to offline for user: ${userId}`);
             } catch (err) {
               console.error("Error updating offline status in socket disconnect:", err);
             }

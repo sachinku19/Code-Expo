@@ -32,7 +32,7 @@
 
 .premium-layout-wrapper {
   display: grid;
-  grid-template-columns: 80px 540px 320px;
+  grid-template-columns: 80px 1fr 320px;
   gap: 32px;
   width: 100%;
   max-width: 1040px;
@@ -95,7 +95,7 @@
 }
 
 /* Media Queries & Responsive Adjustments */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .premium-layout-wrapper {
     grid-template-columns: 1fr;
     max-width: 540px;
@@ -1330,19 +1330,22 @@
 }
 
 .presence-action-btn {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.16);
+  color: #8b5cf6;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s ease;
+  padding: 0;
 }
 
 .presence-action-btn:hover {
-  background: #3b82f6;
+  background: #8b5cf6;
   color: #fff;
   border-color: transparent;
 }

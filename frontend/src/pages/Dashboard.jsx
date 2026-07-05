@@ -174,7 +174,7 @@ const timeAgo = (dateStr) => {
 };
 
 // Reusable styled ProfilePostCard component for the profile grid
-const ProfilePostCard = ({ post, onOpen, user, onDelete }) => {
+const ProfilePostCard = ({ post, onOpen, user, onDelete, onReport }) => {
   const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
   const hasImage = postImages.length > 0;
   const codeDetails = extractCodeBlock(post.text);
@@ -265,7 +265,10 @@ const ProfilePostCard = ({ post, onOpen, user, onDelete }) => {
             {renderBadge()}
             {onDelete && (
               <button
-                onClick={onDelete}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(e);
+                }}
                 className="profile-post-delete-btn"
                 title="Delete Post"
                 style={{
@@ -290,6 +293,38 @@ const ProfilePostCard = ({ post, onOpen, user, onDelete }) => {
                 }}
               >
                 <Trash2 size={15} />
+              </button>
+            )}
+            {onReport && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReport(e);
+                }}
+                className="profile-post-report-btn"
+                title="Report Post"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#eab308",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "4px",
+                  borderRadius: "50%",
+                  transition: "all 0.2s ease"
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "rgba(234, 179, 8, 0.1)";
+                  e.currentTarget.style.transform = "scale(1.08)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                <ShieldAlert size={15} />
               </button>
             )}
           </div>
@@ -1042,7 +1077,10 @@ function Dashboard() {
   const [langsInput, setLangsInput] = useState("");
   const [locationInput, setLocationInput] = useState("");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileTab, setProfileTab] = useState("rooms");
+  const [profileTab, setProfileTab] = useState(() => localStorage.getItem("ce_profileTab") || "rooms");
+  useEffect(() => {
+    localStorage.setItem("ce_profileTab", profileTab);
+  }, [profileTab]);
   const [likedRooms, setLikedRooms] = useState(() => loadFromCache("ce_cache_likedRooms", []));
   const [savedRooms, setSavedRooms] = useState(() => loadFromCache("ce_cache_savedRooms", []));
   const [notificationsList, setNotificationsList] = useState(() => loadFromCache("ce_cache_notificationsList", []));
@@ -1255,7 +1293,10 @@ function Dashboard() {
   const [historySortBy, setHistorySortBy] = useState("recent");
 
   // Settings tab state
-  const [settingsTab, setSettingsTab] = useState("account");
+  const [settingsTab, setSettingsTab] = useState(() => localStorage.getItem("ce_settingsTab") || "account");
+  useEffect(() => {
+    localStorage.setItem("ce_settingsTab", settingsTab);
+  }, [settingsTab]);
 
   // Theme synchronization state
   const { resolvedTheme: activeTheme, setTheme: setGlobalTheme } = useTheme();
@@ -1574,7 +1615,12 @@ function Dashboard() {
     isPrivate: false
   });
   const [roomId, setRoomId] = useState("");
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const [activeSection, setActiveSection] = useState(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlTab = searchParams.get("tab");
+    if (urlTab) return urlTab === "feed-action" ? "trust-safety" : urlTab;
+    return "dashboard";
+  });
   const [selectedRoomDetails, setSelectedRoomDetails] = useState(null);
   const [selectedRoomLikes, setSelectedRoomLikes] = useState([]);
   const [isLoadingRoomLikes, setIsLoadingRoomLikes] = useState(false);
@@ -1614,8 +1660,14 @@ function Dashboard() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [publicRoomsSearch, setPublicRoomsSearch] = useState("");
   const [showAllPublicRooms, setShowAllPublicRooms] = useState(false);
-  const [roomsTab, setRoomsTab] = useState("public");
-  const [activeRoomsTab, setActiveRoomsTab] = useState("my-active");
+  const [roomsTab, setRoomsTab] = useState(() => localStorage.getItem("ce_roomsTab") || "public");
+  useEffect(() => {
+    localStorage.setItem("ce_roomsTab", roomsTab);
+  }, [roomsTab]);
+  const [activeRoomsTab, setActiveRoomsTab] = useState(() => localStorage.getItem("ce_activeRoomsTab") || "my-active");
+  useEffect(() => {
+    localStorage.setItem("ce_activeRoomsTab", activeRoomsTab);
+  }, [activeRoomsTab]);
   const [myRoomsTabSearch, setMyRoomsTabSearch] = useState("");
   const [bookmarkSearch, setBookmarkSearch] = useState("");
   const [followingSearch, setFollowingSearch] = useState("");
@@ -2891,25 +2943,28 @@ function Dashboard() {
     if (activeAds.length > 0 && !hasShownPopup) {
       const popupAd = activeAds.find(ad => ad.format === "POPUP");
       if (popupAd) {
-        const isDismissed = localStorage.getItem(`ce_dismissed_ad_${popupAd._id}`);
+        const userKey = user?.id || user?._id || "guest";
+        const isDismissed = localStorage.getItem(`ce_dismissed_ad_${userKey}_${popupAd._id}`);
         if (!isDismissed) {
           setCurrentPopupAd(popupAd);
           setHasShownPopup(true);
         }
       }
     }
-  }, [activeAds, hasShownPopup]);
+  }, [activeAds, hasShownPopup, user]);
 
   const handleClosePopupAd = () => {
     if (currentPopupAd) {
-      localStorage.setItem(`ce_dismissed_ad_${currentPopupAd._id}`, "true");
+      const userKey = user?.id || user?._id || "guest";
+      localStorage.setItem(`ce_dismissed_ad_${userKey}_${currentPopupAd._id}`, "true");
     }
     setCurrentPopupAd(null);
   };
 
   const handlePopupAdClick = () => {
     if (currentPopupAd) {
-      localStorage.setItem(`ce_dismissed_ad_${currentPopupAd._id}`, "true");
+      const userKey = user?.id || user?._id || "guest";
+      localStorage.setItem(`ce_dismissed_ad_${userKey}_${currentPopupAd._id}`, "true");
       if (currentPopupAd.redirectUrl) {
         window.open(currentPopupAd.redirectUrl, "_blank", "noopener,noreferrer");
       }
@@ -7567,18 +7622,32 @@ function Dashboard() {
                                 <p className="profile-rooms-empty-text">No posts shared yet.</p>
                               ) : (
                                 <div className="profile-post-card-grid">
-                                  {profilePosts.map(post => (
-                                    <ProfilePostCard 
-                                      key={post._id} 
-                                      post={post} 
-                                      onOpen={() => setSelectedPostModal(post)} 
-                                      user={viewingUserProfile || user}
-                                      onDelete={( (!viewingUserProfile || String(viewingUserProfile._id || viewingUserProfile.id) === String(user?._id || user?.id)) || user?.role === "admin" || user?.role === "moderator" ) ? (e) => {
-                                        e.stopPropagation();
-                                        handleDeleteProfilePost(post._id);
-                                      } : null}
-                                    />
-                                  ))}
+                                  {profilePosts.map(post => {
+                                    const postAuthorId = post.author?._id || post.author?.id || post.author || viewingUserProfile?._id || viewingUserProfile?.id || user?._id || user?.id;
+                                    const isMyPost = String(postAuthorId) === String(user?._id || user?.id);
+                                    const showDelete = isMyPost || user?.role === "admin" || user?.role === "moderator";
+                                    return (
+                                      <ProfilePostCard 
+                                        key={post._id} 
+                                        post={post} 
+                                        onOpen={() => setSelectedPostModal(post)} 
+                                        user={viewingUserProfile || user}
+                                        onDelete={showDelete ? (e) => {
+                                          e.stopPropagation();
+                                          handleDeleteProfilePost(post._id);
+                                        } : null}
+                                        onReport={!isMyPost ? () => {
+                                          setReportedTargetUser({
+                                            _id: postAuthorId,
+                                            username: post.author?.username || viewingUserProfile?.username || "developer"
+                                          });
+                                          setReportEvidenceType("POST");
+                                          setReportEvidenceId(post._id);
+                                          setReportModalOpen(true);
+                                        } : null}
+                                      />
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -7593,14 +7662,32 @@ function Dashboard() {
                                 }
                                 return (
                                   <div className="profile-post-card-grid">
-                                    {savedPostsList.map(post => (
-                                      <ProfilePostCard 
-                                        key={post._id} 
-                                        post={post} 
-                                        onOpen={() => setSelectedPostModal(post)} 
-                                        user={post.author}
-                                      />
-                                    ))}
+                                    {savedPostsList.map(post => {
+                                      const postAuthorId = post.author?._id || post.author?.id || post.author;
+                                      const isMyPost = String(postAuthorId) === String(user?._id || user?.id);
+                                      const showDelete = isMyPost || user?.role === "admin" || user?.role === "moderator";
+                                      return (
+                                        <ProfilePostCard 
+                                          key={post._id} 
+                                          post={post} 
+                                          onOpen={() => setSelectedPostModal(post)} 
+                                          user={post.author}
+                                          onDelete={showDelete ? (e) => {
+                                            e.stopPropagation();
+                                            handleDeleteProfilePost(post._id);
+                                          } : null}
+                                          onReport={!isMyPost ? () => {
+                                            setReportedTargetUser({
+                                              _id: postAuthorId,
+                                              username: post.author?.username || "developer"
+                                            });
+                                            setReportEvidenceType("POST");
+                                            setReportEvidenceId(post._id);
+                                            setReportModalOpen(true);
+                                          } : null}
+                                        />
+                                      );
+                                    })}
                                   </div>
                                 );
                               })()}
@@ -9290,12 +9377,47 @@ function Dashboard() {
                       <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{selectedPostModal.author?.title || "Developer"}</span>
                     </div>
                   </div>
-                  <button 
-                    onClick={handleClosePostModal} 
-                    style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  >
-                    <X size={18} />
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    {selectedPostModal.author && String(selectedPostModal.author._id || selectedPostModal.author.id || selectedPostModal.author) !== String(user?.id || user?._id) && (
+                      <button
+                        onClick={() => {
+                          setReportedTargetUser({
+                            _id: selectedPostModal.author?._id || selectedPostModal.author.id || selectedPostModal.author,
+                            username: selectedPostModal.author?.username || "developer"
+                          });
+                          setReportEvidenceType("POST");
+                          setReportEvidenceId(selectedPostModal._id);
+                          setReportModalOpen(true);
+                        }}
+                        title="Report Post"
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#eab308",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          marginRight: "12px",
+                          transition: "all 0.2s ease"
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.transform = "scale(1.08)";
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.transform = "scale(1)";
+                        }}
+                      >
+                        <ShieldAlert size={18} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={handleClosePostModal} 
+                      style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Content & Comments scroll section */}

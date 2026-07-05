@@ -1121,8 +1121,14 @@ function Editor() {
     };
   }, []);
 
-  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
-  const [leftActiveTab, setLeftActiveTab] = useState("files"); // 'files' | 'notes' | 'activity' | 'settings'
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(() => localStorage.getItem("ce_editor_leftSidebarCollapsed") === "true");
+  useEffect(() => {
+    localStorage.setItem("ce_editor_leftSidebarCollapsed", leftSidebarCollapsed);
+  }, [leftSidebarCollapsed]);
+  const [leftActiveTab, setLeftActiveTab] = useState(() => localStorage.getItem("ce_editor_leftActiveTab") || "files");
+  useEffect(() => {
+    localStorage.setItem("ce_editor_leftActiveTab", leftActiveTab);
+  }, [leftActiveTab]);
   const [sidebarWidth, setSidebarWidth] = useState(320); // Left sidebar width in pixels
   const [isResizing, setIsResizing] = useState(false); // Global resizing lock state
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
@@ -1442,23 +1448,38 @@ function Editor() {
 
   const handleLogout = () => {
     logoutUser().catch(err => console.error("Logout error:", err));
-    const theme = localStorage.getItem("codeExpoHomeTheme");
     
-    // Preserve read stories cache for all users
-    const readStoriesKeys = [];
+    // Preserve local preferences, read stories, and dismissed ads cache
+    const preservedKeys = [];
+    const prefixesToPreserve = [
+      "codeexpo_read_stories",
+      "ce_dismissed_ad",
+      "editor_",
+      "git_",
+      "whiteboard_",
+      "default_language",
+      "notif_approvalAlerts",
+      "notif_mentionAlerts",
+      "codeExpoHomeTheme",
+      "ceSidebarPinned",
+      "ce_editor_",
+      "ce_profileTab",
+      "ce_settingsTab",
+      "ce_roomsTab",
+      "ce_activeRoomsTab",
+      "ce_adminActiveTab"
+    ];
+    
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith("codeexpo_read_stories")) {
-        readStoriesKeys.push({ key, value: localStorage.getItem(key) });
+      if (key && prefixesToPreserve.some(prefix => key.startsWith(prefix))) {
+        preservedKeys.push({ key, value: localStorage.getItem(key) });
       }
     }
     
     localStorage.clear();
     
-    if (theme) {
-      localStorage.setItem("codeExpoHomeTheme", theme);
-    }
-    readStoriesKeys.forEach(item => {
+    preservedKeys.forEach(item => {
       localStorage.setItem(item.key, item.value);
     });
     
@@ -5042,9 +5063,9 @@ function Editor() {
         )}
 
         {/* Floating Draggable WebRTC Call Panel */}
-        {inCall && !isCallPanelMinimized && createPortal(
+        {inCall && createPortal(
           <div
-            className={`ce-floating-call-panel mode-${callLayoutMode}`}
+            className={`ce-floating-call-panel mode-${callLayoutMode} ${isCallPanelMinimized ? "minimized-hidden" : ""}`}
             style={callLayoutMode === "floating" ? {
               left: `${callPanelPos.x}px`,
               top: `${callPanelPos.y}px`,

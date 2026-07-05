@@ -3218,6 +3218,10 @@ body.resizing-console * {
   transition: border-color var(--transition-fast);
 }
 
+.ce-floating-call-panel.minimized-hidden {
+  display: none !important;
+}
+
 .ce-floating-call-panel:hover {
   border-color: rgba(88, 166, 255, 0.3);
 }

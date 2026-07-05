@@ -40,8 +40,16 @@ export default function NetworkSidebar({
                   </div>
                   <div className="presence-name-col">
                     <span className="presence-username">@{dev.username}</span>
-                    <span className="presence-activity-text">
-                      {dev.status === "Coding" ? "💻 Coding Live" : "🟢 Available"}
+                    <span className="presence-activity-text" style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                      {dev.status === "Coding" ? (
+                        <>
+                          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#ef4444", display: "inline-block", flexShrink: 0 }} /> Coding Live
+                        </>
+                      ) : (
+                        <>
+                          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", display: "inline-block", flexShrink: 0 }} /> Available
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>
