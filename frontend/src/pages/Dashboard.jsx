@@ -1771,7 +1771,7 @@ function Dashboard() {
         getSocialFeed(1, 10).catch(() => ({ success: false, activities: [], totalPages: 1 })),
         getLikedRooms().catch(() => ({ success: false, rooms: [] })),
         getBookmarkedRooms().catch(() => ({ success: false, rooms: [] })),
-        getNotifications(1, 10).catch(() => ({ success: false, notifications: [], unreadCount: 0 })),
+        getNotifications(1, 20).catch(() => ({ success: false, notifications: [], unreadCount: 0 })),
         getUserProfile().catch(() => ({ success: false }))
       ]);
 
@@ -1901,7 +1901,7 @@ function Dashboard() {
     setNotifLoading(true);
     try {
       const nextPage = notifPage + 1;
-      const notifRes = await getNotifications(nextPage, 10);
+      const notifRes = await getNotifications(nextPage, 20);
       if (notifRes.success) {
         setNotificationsList(prev => [...prev, ...(notifRes.notifications || [])]);
         setNotifPage(nextPage);
@@ -2197,7 +2197,7 @@ function Dashboard() {
     try {
       const res = await toggleLikeRoom(roomId);
       if (res.success) {
-        const notifRes = await getNotifications(1, 10).catch(() => ({ success: false, notifications: [], unreadCount: 0 }));
+        const notifRes = await getNotifications(1, 20).catch(() => ({ success: false, notifications: [], unreadCount: 0 }));
         if (notifRes.success) {
           setNotificationsList(notifRes.notifications || []);
           setUnreadNotificationsCount(notifRes.unreadCount || 0);
@@ -7250,7 +7250,7 @@ function Dashboard() {
                           {/* Switcher 1: Rooms Hub */}
                           <div style={{ flex: "1 1 300px", minWidth: "280px" }}>
                             <h4 style={{ fontSize: "0.82rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "1px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                              💻 Rooms Hub
+                              <Laptop size={14} style={{ color: "var(--ce-primary)" }} /> Rooms Hub
                             </h4>
                             {(() => {
                               const roomsTabs = [
@@ -7264,11 +7264,11 @@ function Dashboard() {
                               const activeIdx = Math.max(0, roomsTabs.findIndex(t => t.id === profileTab));
                               const tabWidth = 100 / roomsTabs.length;
 
-                              const getTabIcon = (id) => {
+                              const getTabIcon = (id, active) => {
                                 switch (id) {
-                                  case "rooms": return <LayoutGrid size={14} style={{ marginRight: "6px" }} />;
-                                  case "liked": return <Heart size={14} style={{ marginRight: "6px" }} />;
-                                  case "saved": return <Bookmark size={14} style={{ marginRight: "6px" }} />;
+                                  case "rooms": return <LayoutGrid size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px" }} />;
+                                  case "liked": return <Heart size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px", fill: active ? "currentColor" : "none" }} />;
+                                  case "saved": return <Bookmark size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px", fill: active ? "currentColor" : "none" }} />;
                                   default: return null;
                                 }
                               };
@@ -7294,7 +7294,7 @@ function Dashboard() {
                                         onClick={() => setProfileTab(tab.id)}
                                         style={{ flex: 1, textAlign: "center" }}
                                       >
-                                        {getTabIcon(tab.id)} {tab.label} {tab.count !== null ? `(${tab.count})` : ""}
+                                        {getTabIcon(tab.id, profileTab === tab.id)} {tab.label} {tab.count !== null ? `(${tab.count})` : ""}
                                       </button>
                                     ))}
                                   </div>
@@ -7306,7 +7306,7 @@ function Dashboard() {
                           {/* Switcher 2: Feed Activity */}
                           <div style={{ flex: "1 1 300px", minWidth: "280px" }}>
                             <h4 style={{ fontSize: "0.82rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "1px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                              📣 Feed & Social
+                              <Megaphone size={14} style={{ color: "var(--ce-primary)" }} /> Feed & Social
                             </h4>
                             {(() => {
                               const feedTabs = [
@@ -7323,11 +7323,11 @@ function Dashboard() {
                               const activeIdx = Math.max(0, feedTabs.findIndex(t => t.id === profileTab));
                               const tabWidth = 100 / feedTabs.length;
 
-                              const getTabIcon = (id) => {
+                              const getTabIcon = (id, active) => {
                                 switch (id) {
-                                  case "posts": return <Image size={14} style={{ marginRight: "6px" }} />;
-                                  case "saved_posts": return <Bookmark size={14} style={{ marginRight: "6px" }} />;
-                                  case "activity": return <Activity size={14} style={{ marginRight: "6px" }} />;
+                                  case "posts": return <Image size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px" }} />;
+                                  case "saved_posts": return <Bookmark size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px", fill: active ? "currentColor" : "none" }} />;
+                                  case "activity": return <Activity size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px" }} />;
                                   default: return null;
                                 }
                               };
@@ -7353,7 +7353,7 @@ function Dashboard() {
                                         onClick={() => setProfileTab(tab.id)}
                                         style={{ flex: 1, textAlign: "center" }}
                                       >
-                                        {getTabIcon(tab.id)} {tab.label} {tab.count !== null ? `(${tab.count})` : ""}
+                                        {getTabIcon(tab.id, profileTab === tab.id)} {tab.label} {tab.count !== null ? `(${tab.count})` : ""}
                                       </button>
                                     ))}
                                   </div>

@@ -307,8 +307,8 @@ const getLiveRooms = async (req, res) => {
 
         const filteredRooms = rooms.filter(room => {
             if (!room.isPrivate) return true;
-            const isOwner = room.createdBy?._id.toString() === req.user._id.toString();
-            const isParticipant = room.participants?.some(p => p.user && p.user._id.toString() === req.user._id.toString());
+            const isOwner = room.createdBy?._id?.toString() === req.user._id.toString();
+            const isParticipant = room.participants?.some(p => p.user?._id?.toString() === req.user._id.toString());
             return isOwner || isParticipant;
         });
 

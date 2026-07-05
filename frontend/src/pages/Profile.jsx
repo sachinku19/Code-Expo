@@ -18,7 +18,8 @@ import { updateUserProfile } from "../services/userService";
 import { useTheme } from "../context/ThemeContext";
 import {
   X, Heart, Bookmark, Users, Sparkles, Terminal,
-  Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin
+  Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin,
+  LayoutGrid, Activity
 } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
 import "./Profile.css";
@@ -778,28 +779,28 @@ const Profile = () => {
                     className={`ce-pill-btn ${profileTab === "rooms" ? "active" : ""}`}
                     onClick={() => setProfileTab("rooms")}
                   >
-                    My Rooms ({myCreatedRooms.length})
+                    <LayoutGrid size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px" }} /> My Rooms ({myCreatedRooms.length})
                   </button>
                   <button
                     type="button"
                     className={`ce-pill-btn ${profileTab === "liked" ? "active" : ""}`}
                     onClick={() => setProfileTab("liked")}
                   >
-                    Liked ({likedRooms.length})
+                    <Heart size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px", fill: profileTab === "liked" ? "currentColor" : "none" }} /> Liked ({likedRooms.length})
                   </button>
                   <button
                     type="button"
                     className={`ce-pill-btn ${profileTab === "saved" ? "active" : ""}`}
                     onClick={() => setProfileTab("saved")}
                   >
-                    Saved ({savedRooms.length})
+                    <Bookmark size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px", fill: profileTab === "saved" ? "currentColor" : "none" }} /> Saved ({savedRooms.length})
                   </button>
                   <button
                     type="button"
                     className={`ce-pill-btn ${profileTab === "activity" ? "active" : ""}`}
                     onClick={() => setProfileTab("activity")}
                   >
-                    Recent Logs
+                    <Activity size={14} className="ce-pill-tab-icon" style={{ marginRight: "6px" }} /> Recent Logs
                   </button>
                 </div>
               </div>

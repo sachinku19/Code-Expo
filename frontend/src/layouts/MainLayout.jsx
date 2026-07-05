@@ -91,10 +91,20 @@ export default function MainLayout({
 
   const fetchDbNotifications = async () => {
     try {
-      const res = await socialService.getNotifications(1, 10);
+      const res = await socialService.getNotifications(1, 20);
       if (res && res.success) {
-        setUnreadNotifCount(res.unreadCount || 0);
-        const formatted = (res.notifications || []).map(n => ({
+        const clearedAtStr = localStorage.getItem("ce_dropdown_cleared_at");
+        const clearedAt = clearedAtStr ? new Date(clearedAtStr) : null;
+
+        const filteredNotifications = (res.notifications || []).filter(n => {
+          if (!clearedAt) return true;
+          return new Date(n.createdAt) > clearedAt;
+        });
+
+        const unreadCountFiltered = filteredNotifications.filter(n => !n.isRead).length;
+        setUnreadNotifCount(unreadCountFiltered);
+
+        const formatted = filteredNotifications.map(n => ({
           id: n._id,
           message: n.message || `${n.sender?.username || "Someone"} ${n.type === "FOLLOW" ? "followed you" :
               n.type === "LIKE" ? `liked room "${n.targetRoom?.title || "workspace"}"` :
@@ -250,13 +260,16 @@ export default function MainLayout({
 
   const handleClearAll = async () => {
     try {
-      await socialService.deleteNotifications();
+      if (clearNotifications) {
+        await clearNotifications();
+      } else {
+        await socialService.markNotificationsRead();
+      }
+      localStorage.setItem("ce_dropdown_cleared_at", new Date().toISOString());
       setDbNotifications([]);
       setLocalNotifs([]);
       setUnreadNotifCount(0);
-      if (clearNotifications) {
-        clearNotifications();
-      }
+      window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
     } catch (err) {
       console.error("Failed to clear notifications:", err);
     }

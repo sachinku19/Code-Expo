@@ -3884,6 +3884,19 @@
   color: var(--ce-text-h);
 }
 
+/* Micro-animations and transitions for switcher tab icons */
+.ce-pill-tab-icon {
+  transition: transform var(--transition-fast, 0.15s) cubic-bezier(0.4, 0, 0.2, 1), fill var(--transition-fast, 0.15s) ease;
+}
+
+.ce-pill-btn:hover .ce-pill-tab-icon {
+  transform: translateY(-1px) scale(1.08);
+}
+
+.ce-pill-btn.active .ce-pill-tab-icon {
+  transform: scale(1.05);
+}
+
 
 /* ==========================================================================
    Modal Dialog Overlays & Interactive Panels
