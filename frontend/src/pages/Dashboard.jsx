@@ -7178,7 +7178,7 @@ function Dashboard() {
                               )}
                             </div>
                           ) : (
-                            <div style={{ border: "4px solid var(--ce-surface-card)", borderRadius: "50%", background: "var(--ce-surface-card)" }}>
+                            <div>
                               <ProfileAvatar />
                             </div>
                           )}

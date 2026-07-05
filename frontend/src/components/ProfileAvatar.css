@@ -15,7 +15,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid var(--ce-primary, #2dd4bf);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 4px var(--ce-surface-card, var(--ce-card-bg, #0f172a)), 0 8px 24px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   background: var(--ce-card-bg, #0d1117);
   display: flex;
@@ -27,7 +27,7 @@
 .avatar-container:hover {
   transform: scale(1.03);
   border-color: var(--ce-primary-hover, #14b8a6);
-  box-shadow: 0 12px 30px rgba(45, 212, 191, 0.2);
+  box-shadow: 0 0 0 4px var(--ce-surface-card, var(--ce-card-bg, #0f172a)), 0 12px 30px rgba(45, 212, 191, 0.2);
 }
 
 .avatar-image {
