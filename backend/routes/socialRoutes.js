@@ -17,7 +17,8 @@ const {
   getUserPublicProfile,
   getLeaderboard,
   updateStatus,
-  getNetworkAnalytics
+  getNetworkAnalytics,
+  reportUser
 } = require("../controllers/socialControllers");
 const {
   getNotifications,
@@ -82,6 +83,7 @@ router.get("/leaderboard", auth_protect, getLeaderboard);
 // User Search & Public Profile
 router.get("/users/search", auth_protect, searchUsers);
 router.get("/users/profile/:id", auth_protect, getUserPublicProfile);
+router.post("/users/:id/report", auth_protect, reportUser);
 
 // Notifications
 router.get("/notifications", auth_protect, getNotifications);

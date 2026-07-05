@@ -11,6 +11,7 @@ const WorkspaceItem = require("../models/WorkspaceItem");
 const Post = require("../models/Post");
 const DirectMessage = require("../models/DirectMessage");
 const GroupChat = require("../models/GroupChat");
+const Report = require("../models/Report");
 const MediaService = require("../services/MediaService");
 
 // Helper to sanitize/format user responses
@@ -1826,6 +1827,93 @@ const toggleAdminStoryFeature = async (req, res) => {
   }
 };
 
+const adminGetReports = async (req, res) => {
+  try {
+    const status = req.query.status || "pending";
+    const reports = await Report.find({ status })
+      .populate("reporter", "username email avatar")
+      .populate("reportedUser", "username email avatar isSuspended accountStatus accountHealth loginHistory totalWarnings totalViolations")
+      .sort({ createdAt: -1 });
+
+    // Group reports by reported user
+    const grouped = {};
+    reports.forEach(report => {
+      const user = report.reportedUser;
+      if (!user) return;
+      
+      const userIdStr = String(user._id);
+      if (!grouped[userIdStr]) {
+        grouped[userIdStr] = {
+          user: {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            avatar: user.avatar,
+            isSuspended: user.isSuspended,
+            accountStatus: user.accountStatus,
+            accountHealth: user.accountHealth,
+            totalWarnings: user.totalWarnings || 0,
+            totalViolations: user.totalViolations || 0,
+            loginHistory: user.loginHistory || []
+          },
+          reports: [],
+          count: 0
+        };
+      }
+      
+      grouped[userIdStr].reports.push({
+        id: report._id,
+        reporter: report.reporter ? {
+          id: report.reporter._id,
+          username: report.reporter.username,
+          email: report.reporter.email
+        } : null,
+        reason: report.reason,
+        details: report.details,
+        evidenceType: report.evidenceType,
+        evidenceId: report.evidenceId,
+        createdAt: report.createdAt
+      });
+      grouped[userIdStr].count++;
+    });
+
+    const groupedList = Object.values(grouped).sort((a, b) => b.count - a.count);
+
+    res.status(200).json({
+      success: true,
+      groups: groupedList
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const adminResolveReports = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { actionType, resolutionNotes } = req.body; // dismiss or resolve
+
+    const statusValue = actionType === "dismiss" ? "dismissed" : "resolved";
+
+    await Report.updateMany(
+      { reportedUser: userId, status: "pending" },
+      {
+        status: statusValue,
+        resolutionNotes: resolutionNotes || `Reports closed as ${statusValue}`,
+        resolvedBy: req.user._id,
+        resolvedAt: Date.now()
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `All pending reports for the user have been successfully ${statusValue}.`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAdminOverviewStats,
   getAllUsers,
@@ -1855,5 +1943,7 @@ module.exports = {
   bulkHidePosts,
   bulkFeaturePosts,
   updateAdminStoryStatus,
-  toggleAdminStoryFeature
+  toggleAdminStoryFeature,
+  adminGetReports,
+  adminResolveReports
 };

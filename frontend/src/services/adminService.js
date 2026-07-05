@@ -216,3 +216,13 @@ export const toggleAdminStoryFeature = async (storyId, isFeatured) => {
   return response.data;
 };
 
+export const getAdminReports = async (status = "pending") => {
+  const response = await API.get(`/admin/reports?status=${status}`, getHeaders());
+  return response.data;
+};
+
+export const resolveAdminReports = async (userId, actionType, resolutionNotes = "") => {
+  const response = await API.put(`/admin/reports/${userId}/resolve`, { actionType, resolutionNotes }, getHeaders());
+  return response.data;
+};
+

@@ -4,6 +4,7 @@ const Room = require("../models/Room");
 const RoomLike = require("../models/RoomLike");
 const Bookmark = require("../models/Bookmark");
 const Activity = require("../models/Activity");
+const Report = require("../models/Report");
 const { createAndSendNotification } = require("./notificationControllers");
 const { logActivity, getPointsForAction, calculateCodingMinutes } = require("./activityControllers");
 
@@ -929,6 +930,69 @@ const getNetworkAnalytics = async (req, res) => {
   }
 };
 
+const reportUser = async (req, res) => {
+  try {
+    const reportedUserId = req.params.id;
+    const reporterId = req.user._id;
+    const { reason, details, evidenceType, evidenceId } = req.body;
+
+    if (String(reportedUserId) === String(reporterId)) {
+      return res.status(400).json({ success: false, message: "You cannot report yourself." });
+    }
+
+    if (!reason || !details || !evidenceType) {
+      return res.status(400).json({ success: false, message: "Reason, details and evidence type are required." });
+    }
+
+    // Rate Limiting / Fraud Prevention: Limit reports from a single user to 5 per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentReportCount = await Report.countDocuments({
+      reporter: reporterId,
+      createdAt: { $gt: oneHourAgo }
+    });
+
+    if (recentReportCount >= 5) {
+      return res.status(429).json({
+        success: false,
+        message: "You have submitted too many reports recently. Please try again later."
+      });
+    }
+
+    // Duplicate Check: Check if a report for this user and evidence already exists from this reporter
+    const existingReport = await Report.findOne({
+      reporter: reporterId,
+      reportedUser: reportedUserId,
+      evidenceType,
+      evidenceId: evidenceId || ""
+    });
+
+    if (existingReport) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already submitted a report for this specific item/user."
+      });
+    }
+
+    const report = await Report.create({
+      reporter: reporterId,
+      reportedUser: reportedUserId,
+      reason,
+      details,
+      evidenceType,
+      evidenceId: evidenceId || "",
+      status: "pending"
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "User report submitted successfully. Our safety team will review it shortly.",
+      report
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   toggleFollowUser,
   removeFollower,
@@ -946,6 +1010,7 @@ module.exports = {
   getUserPublicProfile,
   getLeaderboard,
   updateStatus,
-  getNetworkAnalytics
+  getNetworkAnalytics,
+  reportUser
 };
 

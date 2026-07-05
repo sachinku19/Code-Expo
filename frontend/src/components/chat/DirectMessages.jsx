@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import socket from "../../socket/socket";
 import { getFollowers, getFollowing, searchUsers } from "../../services/socialService";
@@ -19,10 +20,11 @@ import {
 import {
   Send, User, MessageSquare, Search, Plus, ArrowLeft,
   Phone, Video, X, ArrowUpRight, ArrowDownLeft,
-  Check, CheckCheck, Trash2, Image, Code2, Sliders, MoreVertical, Info, Users, Ban
+  Check, CheckCheck, Trash2, Image, Code2, Sliders, MoreVertical, Info, Users, Ban, ShieldAlert
 } from "lucide-react";
 import { useCall } from "../../context/CallContext";
 import "./DirectMessages.css";
+import ReportUserModal from "../social/ReportUserModal";
 
 const formatChatDate = (dateString) => {
   const messageDate = new Date(dateString);
@@ -95,9 +97,18 @@ const renderCallHistory = (msg, currentUserId) => {
   );
 };
 
-export default function DirectMessages({ preselectedUser, onChatLoaded, onViewProfile }) {
+export default function DirectMessages({ preselectedUser, onChatLoaded, onViewProfile, addToast }) {
   const { user } = useAuth();
   const currentUserId = user?.id || user?._id;
+
+  // Report user states
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportedTargetUser, setReportedTargetUser] = useState(null);
+  const [reportEvidenceType, setReportEvidenceType] = useState("");
+  const [reportEvidenceId, setReportEvidenceId] = useState("");
+  const [activeMessageMenuId, setActiveMessageMenuId] = useState(null);
+  const [messageToDelete, setMessageToDelete] = useState(null);
+  const [isDeletingMessage, setIsDeletingMessage] = useState(false);
 
   // Conversations list & active chat state
   const [conversations, setConversations] = useState([]);
@@ -654,12 +665,17 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     }
   };
 
-  const handleDeleteMessage = async (messageId) => {
-    if (!window.confirm("Are you sure you want to delete this message?")) return;
+  const handleDeleteMessage = (messageId) => {
+    setMessageToDelete(messageId);
+  };
+
+  const confirmDeleteMessage = async () => {
+    if (!messageToDelete) return;
+    setIsDeletingMessage(true);
     try {
-      await deleteDirectMessage(messageId);
+      await deleteDirectMessage(messageToDelete);
       setMessages((prev) => {
-        const next = prev.filter((m) => m._id !== messageId);
+        const next = prev.filter((m) => m._id !== messageToDelete);
         if (activeChatId) {
           chatHistoryCacheRef.current[activeChatId] = next;
         }
@@ -668,6 +684,9 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       fetchConversations();
     } catch (err) {
       console.error("Error deleting message:", err);
+    } finally {
+      setIsDeletingMessage(false);
+      setMessageToDelete(null);
     }
   };
 
@@ -1411,6 +1430,20 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                           <Ban size={14} />
                           <span>{isChatBlocked ? "Unblock User" : "Block User"}</span>
                         </button>
+                        <button
+                          type="button"
+                          className="dropdown-action-item danger"
+                          onClick={() => {
+                            setReportedTargetUser(activeChat);
+                            setReportEvidenceType("USER");
+                            setReportEvidenceId(activeChat._id);
+                            setReportModalOpen(true);
+                            setShowChatMenu(false);
+                          }}
+                        >
+                          <ShieldAlert size={14} style={{ color: "#ef4444" }} />
+                          <span style={{ color: "#ef4444" }}>Report User</span>
+                        </button>
                       </>
                     )}
                   </div>
@@ -1474,6 +1507,83 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                   >
                                     <Trash2 size={12} />
                                   </button>
+                                </div>
+                              )}
+                              {!isMe && (
+                                <div
+                                  className="message-bubble-actions"
+                                  style={{
+                                    position: "relative",
+                                    display: "flex",
+                                    gap: "4px",
+                                    opacity: activeMessageMenuId === msg._id ? 1 : undefined,
+                                    pointerEvents: activeMessageMenuId === msg._id ? "auto" : undefined,
+                                    transform: activeMessageMenuId === msg._id ? "scale(1)" : undefined
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveMessageMenuId(activeMessageMenuId === msg._id ? null : msg._id);
+                                    }}
+                                    className="bubble-action-btn delete-btn"
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+                                    title="Options"
+                                  >
+                                    <MoreVertical size={12} />
+                                  </button>
+                                  {activeMessageMenuId === msg._id && (
+                                    <div
+                                      style={{
+                                        position: "absolute",
+                                        right: "100%",
+                                        top: 0,
+                                        background: "rgba(10, 10, 18, 0.96)",
+                                        backdropFilter: "blur(16px)",
+                                        border: "1px solid var(--ce-border)",
+                                        borderRadius: "6px",
+                                        boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
+                                        zIndex: 1000,
+                                        minWidth: "125px",
+                                        width: "max-content",
+                                        whiteSpace: "nowrap",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        padding: "4px"
+                                      }}
+                                    >
+                                      <button
+                                        onClick={() => {
+                                          setActiveMessageMenuId(null);
+                                          setReportedTargetUser(msg.sender || activeChat);
+                                          setReportEvidenceType("MESSAGE");
+                                          setReportEvidenceId(msg._id);
+                                          setReportModalOpen(true);
+                                        }}
+                                        style={{
+                                          background: "transparent",
+                                          border: "none",
+                                          color: "#ef4444",
+                                          fontSize: "0.74rem",
+                                          fontWeight: "600",
+                                          padding: "8px 12px",
+                                          textAlign: "left",
+                                          cursor: "pointer",
+                                          width: "100%",
+                                          borderRadius: "4px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          transition: "background 0.2s ease"
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                      >
+                                        ⚠️ Report Msg
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               
@@ -2159,6 +2269,57 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           </div>
         </div>
       )}
+      {/* Report User Modal */}
+      <ReportUserModal
+        isOpen={reportModalOpen}
+        onClose={() => {
+          setReportModalOpen(false);
+          setReportedTargetUser(null);
+          setReportEvidenceType("");
+          setReportEvidenceId("");
+        }}
+        reportedUser={reportedTargetUser}
+        evidenceType={reportEvidenceType}
+        evidenceId={reportEvidenceId}
+        addToast={addToast}
+      />
+      {/* Delete Direct Message Confirmation Modal */}
+      <AnimatePresence>
+        {messageToDelete && (
+          <div className="ce-modal-overlay" onClick={() => setMessageToDelete(null)} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="ce-modal-card"
+              style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center", background: "#0a0a0f", border: "1px solid var(--ce-premium-border)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.1rem", fontWeight: "700" }}>Delete Message?</h3>
+              <p style={{ margin: "0 0 20px 0", color: "var(--ce-premium-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
+                Are you sure you want to delete this message? This action will permanently remove it from your chat history.
+              </p>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setMessageToDelete(null)}
+                  style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#fff", fontSize: "0.75rem", fontWeight: "600", cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteMessage}
+                  disabled={isDeletingMessage}
+                  style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer" }}
+                >
+                  {isDeletingMessage ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -22,6 +22,7 @@ import {
 import socket from "../socket/socket";
 import { useAuth } from "../context/AuthContext";
 import { getUserProfile, changePassword } from "../services/authService";
+import ReportUserModal from "../components/social/ReportUserModal";
 import {
   Plus, LogIn, History as HistoryIcon, User,
   Sun, Moon, Sparkles, Globe, Lock, Settings as SettingsIcon,
@@ -29,7 +30,7 @@ import {
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
-  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin
+  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -50,7 +51,8 @@ import {
   getLeaderboard,
   getPosts,
   toggleLikePost,
-  addCommentPost
+  addCommentPost,
+  deletePost
 } from "../services/socialService";
 import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBanner, deleteCoverBanner } from "../services/userService";
 import { getTrustSafetyStatus } from "../services/trustSafetyService";
@@ -172,7 +174,7 @@ const timeAgo = (dateStr) => {
 };
 
 // Reusable styled ProfilePostCard component for the profile grid
-const ProfilePostCard = ({ post, onOpen, user }) => {
+const ProfilePostCard = ({ post, onOpen, user, onDelete }) => {
   const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
   const hasImage = postImages.length > 0;
   const codeDetails = extractCodeBlock(post.text);
@@ -259,7 +261,38 @@ const ProfilePostCard = ({ post, onOpen, user }) => {
               <span className="profile-card-time">{timeAgo(post.createdAt)}</span>
             </div>
           </div>
-          {renderBadge()}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {renderBadge()}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="profile-post-delete-btn"
+                title="Delete Post"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#ef4444",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "4px",
+                  borderRadius: "50%",
+                  transition: "all 0.2s ease"
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                  e.currentTarget.style.transform = "scale(1.08)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Body */}
@@ -928,6 +961,13 @@ function Dashboard() {
   const pendingFollowsRef = useRef(new Set());
   const pendingBookmarksRef = useRef(new Set());
   const followingSearchInputRef = useRef(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportedTargetUser, setReportedTargetUser] = useState(null);
+  const [reportEvidenceType, setReportEvidenceType] = useState("");
+  const [reportEvidenceId, setReportEvidenceId] = useState("");
+  const [activeRoomMemberMenuId, setActiveRoomMemberMenuId] = useState(null);
+  const [postToDeleteFromProfile, setPostToDeleteFromProfile] = useState(null);
+  const [isDeletingProfilePost, setIsDeletingProfilePost] = useState(false);
 
   const [stats, setStats] = useState(() => loadFromCache("ce_cache_stats", {
     totalCreated: 0,
@@ -2113,6 +2153,31 @@ function Dashboard() {
       // Rollback to previous states on failure
       setFollowersList(prevFollowersList);
       if (prevUser) setUser(prevUser);
+    }
+  };
+
+  const handleDeleteProfilePost = (postId) => {
+    setPostToDeleteFromProfile(postId);
+  };
+
+  const confirmDeleteProfilePost = async () => {
+    if (!postToDeleteFromProfile) return;
+    setIsDeletingProfilePost(true);
+    try {
+      const res = await deletePost(postToDeleteFromProfile);
+      if (res.success) {
+        addToast(res.message || "Post deleted successfully.", "success");
+        setProfilePosts(prev => prev.filter(p => p._id !== postToDeleteFromProfile && p.id !== postToDeleteFromProfile));
+        setAllFeedPosts(prev => prev.filter(p => p._id !== postToDeleteFromProfile && p.id !== postToDeleteFromProfile));
+      } else {
+        addToast(res.message || "Failed to delete post.", "error");
+      }
+    } catch (err) {
+      console.error("Delete post error:", err);
+      addToast(err.response?.data?.message || "Failed to delete post", "error");
+    } finally {
+      setIsDeletingProfilePost(false);
+      setPostToDeleteFromProfile(null);
     }
   };
 
@@ -4131,10 +4196,7 @@ function Dashboard() {
                           {isLoadingDashboard && historyRooms.length === 0 ? (
                             <ActivityFeedSkeleton count={3} />
                           ) : (() => {
-                            const joinedRooms = historyRooms.filter(room => {
-                              const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                              return !isOwner;
-                            });
+                            const joinedRooms = historyRooms;
 
                             if (joinedRooms.length === 0) {
                               return (
@@ -6567,6 +6629,7 @@ function Dashboard() {
                 preselectedUser={preselectedChatPartner}
                 onChatLoaded={() => setPreselectedChatPartner(null)}
                 onViewProfile={handleViewUserProfile}
+                addToast={addToast}
               />
             </motion.div>
           )}
@@ -6770,7 +6833,15 @@ function Dashboard() {
                                 <div className="notif-category-icon-container">
                                   {notifIcon}
                                 </div>
-                                <div className="notif-sender-avatar-container" style={{ backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName) }}>
+                                <div 
+                                  className="notif-sender-avatar-container" 
+                                  style={{ backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName), cursor: "pointer" }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const senderId = notif.sender?._id || notif.sender?.id;
+                                    if (senderId) handleViewUserProfile(senderId);
+                                  }}
+                                >
                                   {senderAvatar ? (
                                     <img src={senderAvatar} alt={senderName} className="notif-sender-img" />
                                   ) : (
@@ -6783,7 +6854,16 @@ function Dashboard() {
                                       <span>{notif.message}</span>
                                     ) : (
                                       <>
-                                        <strong>{senderName}</strong> {actionText}
+                                        <strong 
+                                          className="notif-sender-name-link"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const senderId = notif.sender?._id || notif.sender?.id;
+                                            if (senderId) handleViewUserProfile(senderId);
+                                          }}
+                                        >
+                                          {senderName}
+                                        </strong> {actionText}
                                       </>
                                     )}
                                   </div>
@@ -7493,6 +7573,10 @@ function Dashboard() {
                                       post={post} 
                                       onOpen={() => setSelectedPostModal(post)} 
                                       user={viewingUserProfile || user}
+                                      onDelete={( (!viewingUserProfile || String(viewingUserProfile._id || viewingUserProfile.id) === String(user?._id || user?.id)) || user?.role === "admin" || user?.role === "moderator" ) ? (e) => {
+                                        e.stopPropagation();
+                                        handleDeleteProfilePost(post._id);
+                                      } : null}
                                     />
                                   ))}
                                 </div>
@@ -8427,6 +8511,73 @@ function Dashboard() {
                               Kick
                             </button>
                           )}
+                          {!isSelf && (
+                            <div style={{ position: "relative", marginLeft: "6px" }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveRoomMemberMenuId(activeRoomMemberMenuId === uId ? null : uId);
+                                }}
+                                className="modal-kick-member-btn"
+                                style={{ background: "none", border: "1px solid var(--ce-border)", color: "var(--ce-text-muted)", padding: "2px 6px", display: "flex", alignItems: "center" }}
+                                title="Options"
+                              >
+                                <MoreVertical size={12} />
+                              </button>
+                              {activeRoomMemberMenuId === uId && (
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    right: 0,
+                                    top: "calc(100% + 4px)",
+                                    background: "rgba(10, 10, 18, 0.96)",
+                                    backdropFilter: "blur(16px)",
+                                    border: "1px solid var(--ce-border)",
+                                    borderRadius: "6px",
+                                    boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
+                                    zIndex: 1000,
+                                    minWidth: "135px",
+                                    width: "max-content",
+                                    whiteSpace: "nowrap",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    padding: "4px",
+                                    gap: "2px"
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => {
+                                      setActiveRoomMemberMenuId(null);
+                                      setReportedTargetUser({ _id: uId, username });
+                                      setReportEvidenceType("ROOM");
+                                      setReportEvidenceId(selectedRoomDetails._id || selectedRoomDetails.roomId);
+                                      setReportModalOpen(true);
+                                    }}
+                                    style={{
+                                      background: "transparent",
+                                      border: "none",
+                                      color: "#ef4444",
+                                      fontSize: "0.74rem",
+                                      fontWeight: "600",
+                                      padding: "8px 12px",
+                                      textAlign: "left",
+                                      cursor: "pointer",
+                                      width: "100%",
+                                      borderRadius: "4px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                      transition: "background 0.2s ease"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                  >
+                                    ⚠️ Report User
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     });
@@ -9304,7 +9455,7 @@ function Dashboard() {
                               }}
                               style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}
                             >
-                              📋 Copy Link
+                              <Copy size={13} style={{ color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon" /> Copy Link
                             </button>
                             <a 
                               href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out this post on CodeExpo: " + window.location.origin + "/post/" + selectedPostModal._id)}`} 
@@ -9312,7 +9463,9 @@ function Dashboard() {
                               rel="noopener noreferrer"
                               onClick={() => setModalShareOpen(false)}
                             >
-                              💬 WhatsApp
+                              <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: "13px", height: "13px", color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.46h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                              </svg> WhatsApp
                             </a>
                           </div>
                         )}
@@ -9379,6 +9532,59 @@ function Dashboard() {
           </div>,
           document.body
         )}
+
+      {/* Report User Modal */}
+      <ReportUserModal
+        isOpen={reportModalOpen}
+        onClose={() => {
+          setReportModalOpen(false);
+          setReportedTargetUser(null);
+          setReportEvidenceType("");
+          setReportEvidenceId("");
+        }}
+        reportedUser={reportedTargetUser}
+        evidenceType={reportEvidenceType}
+        evidenceId={reportEvidenceId}
+        addToast={addToast}
+      />
+
+      {/* Profile Post Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postToDeleteFromProfile && (
+          <div className="ce-modal-overlay" onClick={() => setPostToDeleteFromProfile(null)} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="ce-modal-card"
+              style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center", background: "#0a0a0f", border: "1px solid var(--ce-premium-border)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.1rem", fontWeight: "700" }}>Delete Activity?</h3>
+              <p style={{ margin: "0 0 20px 0", color: "var(--ce-premium-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
+                Are you sure you want to delete this activity? This will permanently remove it from the global feed.
+              </p>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setPostToDeleteFromProfile(null)}
+                  style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#fff", fontSize: "0.75rem", fontWeight: "600", cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteProfilePost}
+                  disabled={isDeletingProfilePost}
+                  style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer" }}
+                >
+                  {isDeletingProfilePost ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       </div>
     </MainLayout>

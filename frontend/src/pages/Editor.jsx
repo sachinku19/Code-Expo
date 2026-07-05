@@ -13,6 +13,7 @@ import { runCode } from "../services/compilerService";
 import { getMessage } from "../services/messageService";
 import Whiteboard from "../components/Whiteboard";
 import FileExplorer from "../components/FileExplorer";
+import ReportUserModal from "../components/social/ReportUserModal";
 import * as workspaceService from "../services/workspaceService";
 import * as collabService from "../services/collaborationService";
 import MainLayout from "../layouts/MainLayout";
@@ -20,6 +21,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { logoutUser } from "../services/authService";
 import {
+  ShieldAlert,
   FolderOpen,
   Folder,
   BookOpen,
@@ -128,6 +130,37 @@ function Editor() {
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsDropdownOpen, setNotificationsDropdownOpen] = useState(false);
+
+  // Report user states
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportedTargetUser, setReportedTargetUser] = useState(null);
+  const [reportEvidenceType, setReportEvidenceType] = useState("");
+  const [reportEvidenceId, setReportEvidenceId] = useState("");
+  
+  // Dropdown menu states
+  const [activeWorkspaceMemberMenuId, setActiveWorkspaceMemberMenuId] = useState(null);
+  const [activeWorkspaceMessageMenuId, setActiveWorkspaceMessageMenuId] = useState(null);
+
+  const addToast = (message, type = "success") => {
+    const notification = document.createElement("div");
+    notification.style.position = "fixed";
+    notification.style.bottom = "20px";
+    notification.style.right = "20px";
+    notification.style.backgroundColor = type === "success" ? "#10b981" : "#ef4444";
+    notification.style.color = "#fff";
+    notification.style.padding = "10px 20px";
+    notification.style.borderRadius = "8px";
+    notification.style.zIndex = "999999";
+    notification.style.fontSize = "0.85rem";
+    notification.style.fontWeight = "600";
+    notification.style.boxShadow = "0 10px 30px rgba(0,0,0,0.3)";
+    notification.innerText = message;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  };
+
   const location = useLocation();
   const fromTransition = location.state?.fromTransition;
   const [showGateOpenAnimation, setShowGateOpenAnimation] = useState(!fromTransition);
@@ -1295,15 +1328,9 @@ function Editor() {
   };
 
   const handleUserRowClick = (e, participant) => {
-    const myParticipant = room?.participants?.find(
-      (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
-    );
-    const myRole = myParticipant ? myParticipant.role : "MEMBER";
+    const isSelf = String(participant.user?._id || participant.user) === String(user.id || user._id);
 
-    const isTargetPrivileged = participant.role === "OWNER" || participant.role === "MODERATOR";
-    const canIControlTarget = myRole === "OWNER" || (myRole === "MODERATOR" && !isTargetPrivileged);
-
-    if (canIControlTarget && String(participant.user?._id || participant.user) !== String(user.id || user._id)) {
+    if (!isSelf) {
       e.stopPropagation();
       const rect = e.currentTarget.getBoundingClientRect();
       const menuWidth = 200;
@@ -4426,13 +4453,14 @@ function Editor() {
                           </div>
 
                           {/* Right Column: Actions and Mute Status */}
-                          <div className="user-pane-actions">
+                          {/* Right Column: Actions and Mute Status */}
+                          <div className="user-pane-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                             {p.isMuted && (
                               <span className="user-mute-status" title="Muted">
                                 <MicOff size={11} className="mute-icon-red" />
                               </span>
                             )}
-                            {canIControlTarget && (
+                            {!isSelf && (
                               <button
                                 type="button"
                                 className="user-pane-more-btn"
@@ -4440,7 +4468,8 @@ function Editor() {
                                   e.stopPropagation();
                                   handleUserRowClick(e, p);
                                 }}
-                                title="Manage User"
+                                style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", cursor: "pointer", color: "var(--ce-premium-muted)" }}
+                                title="Options"
                               >
                                 <MoreVertical size={14} />
                               </button>
@@ -4591,6 +4620,69 @@ function Editor() {
                                     <Trash2 size={12} />
                                   </button>
                                 )}
+                                {!isSelf && (
+                                  <div style={{ position: "relative" }}>
+                                    <button
+                                      type="button"
+                                      className="msg-delete-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveWorkspaceMessageMenuId(activeWorkspaceMessageMenuId === msg._id ? null : msg._id);
+                                      }}
+                                      style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", cursor: "pointer", color: "var(--ce-premium-muted)" }}
+                                      title="Options"
+                                    >
+                                      <MoreVertical size={12} />
+                                    </button>
+                                    {activeWorkspaceMessageMenuId === msg._id && (
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          right: 0,
+                                          top: "100%",
+                                          background: "#0d0d15",
+                                          border: "1px solid var(--ce-border)",
+                                          borderRadius: "6px",
+                                          boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                                          zIndex: 100,
+                                          minWidth: "110px",
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          padding: "2px"
+                                        }}
+                                      >
+                                        <button
+                                          onClick={() => {
+                                            setActiveWorkspaceMessageMenuId(null);
+                                            const participantObj = room?.participants?.find(p => String(p.user?.username || p.username || "") === String(msg.username));
+                                            const reportedUserObj = participantObj?.user || { _id: msg.userId, username: msg.username };
+                                            setReportedTargetUser(reportedUserObj);
+                                            setReportEvidenceType("MESSAGE");
+                                            setReportEvidenceId(msg._id);
+                                            setReportModalOpen(true);
+                                          }}
+                                          style={{
+                                            background: "none",
+                                            border: "none",
+                                            color: "#ef4444",
+                                            fontSize: "0.74rem",
+                                            fontWeight: "600",
+                                            padding: "6px 10px",
+                                            textAlign: "left",
+                                            cursor: "pointer",
+                                            width: "100%",
+                                            borderRadius: "4px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "6px"
+                                          }}
+                                        >
+                                          ⚠️ Report Msg
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             {isSelf && (
@@ -4653,6 +4745,75 @@ function Editor() {
                                     >
                                       <Trash2 size={12} />
                                     </button>
+                                  )}
+                                  {!isSelf && (
+                                    <div style={{ position: "relative" }}>
+                                      <button
+                                        type="button"
+                                        className="msg-delete-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveWorkspaceMessageMenuId(activeWorkspaceMessageMenuId === msg._id ? null : msg._id);
+                                        }}
+                                        style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", cursor: "pointer", color: "var(--ce-premium-muted)" }}
+                                        title="Options"
+                                      >
+                                        <MoreVertical size={12} />
+                                      </button>
+                                      {activeWorkspaceMessageMenuId === msg._id && (
+                                        <div
+                                          style={{
+                                            position: "absolute",
+                                            right: 0,
+                                            top: "calc(100% + 4px)",
+                                            background: "rgba(10, 10, 18, 0.96)",
+                                            backdropFilter: "blur(16px)",
+                                            border: "1px solid var(--ce-border)",
+                                            borderRadius: "6px",
+                                            boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
+                                            zIndex: 1000,
+                                            minWidth: "125px",
+                                            width: "max-content",
+                                            whiteSpace: "nowrap",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            padding: "4px"
+                                          }}
+                                        >
+                                          <button
+                                            onClick={() => {
+                                              setActiveWorkspaceMessageMenuId(null);
+                                              const participantObj = room?.participants?.find(p => String(p.user?.username || p.username || "") === String(msg.username));
+                                              const reportedUserObj = participantObj?.user || { _id: msg.userId, username: msg.username };
+                                              setReportedTargetUser(reportedUserObj);
+                                              setReportEvidenceType("MESSAGE");
+                                              setReportEvidenceId(msg._id);
+                                              setReportModalOpen(true);
+                                            }}
+                                            style={{
+                                              background: "transparent",
+                                              border: "none",
+                                              color: "#ef4444",
+                                              fontSize: "0.74rem",
+                                              fontWeight: "600",
+                                              padding: "8px 12px",
+                                              textAlign: "left",
+                                              cursor: "pointer",
+                                              width: "100%",
+                                              borderRadius: "4px",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "8px",
+                                              transition: "background 0.2s ease"
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                          >
+                                            ⚠️ Report Msg
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -5326,26 +5487,49 @@ function Editor() {
                 </>
               )}
 
-              <button
-                className={`context-menu-item ${contextMenu.participant.isMuted ? "unmute" : "mute"}`}
-                onClick={() => {
-                  handleActionMute(contextMenu.participant.user._id || contextMenu.participant.user, !contextMenu.participant.isMuted);
-                  setContextMenu(null);
-                }}
-              >
-                <MicOff size={14} />
-                <span>{contextMenu.participant.isMuted ? "Unmute Chat" : "Mute Chat"}</span>
-              </button>
+              {(() => {
+                const targetUser = contextMenu.participant;
+                const isTargetPrivileged = targetUser.role === "OWNER" || targetUser.role === "MODERATOR";
+                const canIControlTarget = currentUserRole === "OWNER" || (currentUserRole === "MODERATOR" && !isTargetPrivileged);
+                return canIControlTarget && (
+                  <>
+                    <button
+                      className={`context-menu-item ${targetUser.isMuted ? "unmute" : "mute"}`}
+                      onClick={() => {
+                        handleActionMute(targetUser.user._id || targetUser.user, !targetUser.isMuted);
+                        setContextMenu(null);
+                      }}
+                    >
+                      <MicOff size={14} />
+                      <span>{targetUser.isMuted ? "Unmute Chat" : "Mute Chat"}</span>
+                    </button>
+
+                    <button
+                      className="context-menu-item danger"
+                      onClick={() => {
+                        handleRemoveUser(targetUser.user._id || targetUser.user, targetUser.user.username);
+                        setContextMenu(null);
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      <span>Kick from Room</span>
+                    </button>
+                  </>
+                );
+              })()}
 
               <button
                 className="context-menu-item danger"
                 onClick={() => {
-                  handleRemoveUser(contextMenu.participant.user._id || contextMenu.participant.user, contextMenu.participant.user.username);
+                  setReportedTargetUser(contextMenu.participant.user);
+                  setReportEvidenceType("ROOM");
+                  setReportEvidenceId(room?._id || room?.roomId);
+                  setReportModalOpen(true);
                   setContextMenu(null);
                 }}
               >
-                <Trash2 size={14} />
-                <span>Kick from Room</span>
+                <ShieldAlert size={14} />
+                <span>Report User</span>
               </button>
             </div>
           </div>,
@@ -5480,6 +5664,21 @@ function Editor() {
             </div>
           </div>
         )}
+
+        {/* Report User Modal */}
+        <ReportUserModal
+          isOpen={reportModalOpen}
+          onClose={() => {
+            setReportModalOpen(false);
+            setReportedTargetUser(null);
+            setReportEvidenceType("");
+            setReportEvidenceId("");
+          }}
+          reportedUser={reportedTargetUser}
+          evidenceType={reportEvidenceType}
+          evidenceId={reportEvidenceId}
+          addToast={addToast}
+        />
       </div>
     </MainLayout>
   );

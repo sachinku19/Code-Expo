@@ -618,6 +618,8 @@
   align-items: center;
   padding: 0 24px;
   background: rgba(10, 10, 15, 0.3);
+  position: relative;
+  z-index: 10;
 }
 
 .header-user-info {

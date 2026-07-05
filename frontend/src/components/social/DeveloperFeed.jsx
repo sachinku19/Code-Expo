@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play } from "lucide-react";
-import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost } from "../../services/socialService";
+import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play, Search, MoreVertical, Copy } from "lucide-react";
+import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost, searchUsers } from "../../services/socialService";
 import { createPortal } from "react-dom";
 import socket from "../../socket/socket";
 import ProfileAvatar from "../ProfileAvatar";
 import ImageCropper from "./ImageCropper";
+import ReportUserModal from "./ReportUserModal";
 import "./PremiumFeed.css";
 const FeedPortal = ({ children }) => {
   return createPortal(children, document.body);
@@ -443,6 +444,22 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const [composerTab, setComposerTab] = useState("write");
   const [visibility, setVisibility] = useState("public");
 
+  // Search states
+  const [searchQueryInput, setSearchQueryInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchedUsers, setSearchedUsers] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Report modal states
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportedTargetUser, setReportedTargetUser] = useState(null);
+  const [reportEvidenceType, setReportEvidenceType] = useState("");
+  const [reportEvidenceId, setReportEvidenceId] = useState("");
+  
+  // Dropdown menu states
+  const [activePostMenuId, setActivePostMenuId] = useState(null);
+  const [activeCommentMenuId, setActiveCommentMenuId] = useState(null);
+
   // Custom Attachments states
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [attachedCode, setAttachedCode] = useState("");
@@ -536,6 +553,43 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearchSubmit = async (e) => {
+    e.preventDefault();
+    if (!searchQueryInput.trim()) return;
+
+    setSearchQuery(searchQueryInput);
+    setIsSearching(true);
+    setIsLoading(true);
+
+    try {
+      const postsRes = await getPosts(1, 40, null, searchQueryInput);
+      if (postsRes.success) {
+        setPosts(postsRes.posts || []);
+      }
+
+      const usersRes = await searchUsers(searchQueryInput);
+      if (usersRes.success) {
+        setSearchedUsers(usersRes.users || []);
+      }
+
+      setActiveFeedTab("search-results");
+    } catch (err) {
+      console.error("Search error:", err);
+      if (addToast) addToast("Failed to perform search", "error");
+    } finally {
+      setIsLoading(false);
+      setIsSearching(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQueryInput("");
+    setSearchQuery("");
+    setSearchedUsers([]);
+    setActiveFeedTab("for-you");
+    fetchPosts();
   };
 
   useEffect(() => {
@@ -1192,6 +1246,8 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         return posts.filter(p => bookmarkedPostIds.has(p._id));
       case "trending":
         return [...posts].sort((a, b) => b.likes.length - a.likes.length);
+      case "search-results":
+        return posts;
       default:
         return posts;
     }
@@ -1552,42 +1608,159 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       />
 
       {/* Horizontal Feed Filters */}
-      <div className="premium-feed-tabs" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {[
-            { id: "for-you", label: "For You" },
-            { id: "following", label: "Following" },
-            { id: "trending", label: "Trending" },
-            { id: "saved", label: "Saved" }
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveFeedTab(t.id)}
-              className={`premium-feed-tab ${activeFeedTab === t.id ? "active" : ""}`}
-            >
-              {t.label}
-            </button>
-          ))}
+      {/* Horizontal Feed Filters */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+        {/* Row 1: Tabs on Left, Create Post on Right */}
+        <div className="premium-feed-tabs" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", width: "100%" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+            {[
+              { id: "for-you", label: "For You" },
+              { id: "following", label: "Following" },
+              { id: "trending", label: "Trending" },
+              { id: "saved", label: "Saved" }
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setActiveFeedTab(t.id);
+                  setSearchQueryInput("");
+                  setSearchQuery("");
+                  setSearchedUsers([]);
+                  fetchPosts();
+                }}
+                className={`premium-feed-tab ${activeFeedTab === t.id && !searchQuery ? "active" : ""}`}
+              >
+                {t.label}
+              </button>
+            ))}
+            {activeFeedTab === "search-results" && (
+              <button className="premium-feed-tab active">
+                Search Results
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsComposerOpen(true)}
+            className="premium-feed-tab active"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "8px 16px",
+              borderRadius: "20px",
+              border: "none",
+              fontWeight: "600",
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <Plus size={14} /> Create Post
+          </button>
         </div>
-        <button
-          onClick={() => setIsComposerOpen(true)}
-          className="premium-feed-tab active"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "8px 16px",
-            borderRadius: "20px",
-            border: "none",
-            fontWeight: "600",
-            fontSize: "0.82rem",
-            cursor: "pointer",
-            transition: "all 0.2s ease"
-          }}
-        >
-          <Plus size={14} /> Create Post
-        </button>
+
+        {/* Row 2: Search Bar aligned to the Right (directly under Create Post) */}
+        <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%", maxWidth: "340px", position: "relative" }}>
+            <div style={{ position: "relative", width: "100%" }}>
+              <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--ce-premium-muted)" }} />
+              <input
+                type="text"
+                placeholder="Search posts or users..."
+                value={searchQueryInput}
+                onChange={(e) => setSearchQueryInput(e.target.value)}
+                className="premium-feed-search-input"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px 8px 32px",
+                  borderRadius: "20px",
+                  fontSize: "0.82rem",
+                  outline: "none",
+                  transition: "all 0.2s ease"
+                }}
+              />
+              {searchQueryInput && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer", padding: 0 }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="premium-feed-tab active"
+              style={{
+                padding: "8px 14px",
+                borderRadius: "20px",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: "600",
+                fontSize: "0.82rem",
+                background: "var(--ce-accent)",
+                color: "#fff"
+              }}
+            >
+              Search
+            </button>
+          </form>
+        </div>
       </div>
+
+      {activeFeedTab === "search-results" && (
+        <div style={{ marginBottom: "16px", color: "var(--ce-premium-text)", fontSize: "0.9rem" }}>
+          Showing search results for <strong style={{ color: "#8b5cf6" }}>"{searchQuery}"</strong>
+        </div>
+      )}
+
+      {/* Searched Users Row */}
+      {activeFeedTab === "search-results" && searchedUsers.length > 0 && (
+        <div className="premium-glass-card" style={{ padding: "16px", marginBottom: "20px", background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)" }}>
+          <h4 style={{ color: "var(--ce-premium-text)", margin: "0 0 12px 0", fontSize: "0.9rem", fontWeight: "600" }}>Matching Users ({searchedUsers.length})</h4>
+          <div style={{ display: "flex", gap: "12px", overflowX: "auto", paddingBottom: "8px" }} className="ce-horizontal-scroll">
+            {searchedUsers.map(dev => {
+              const isFollowed = followingList.some(f => String(f._id || f) === String(dev._id || dev.id));
+              return (
+                <div key={dev._id || dev.id} className="ce-search-user-card">
+                  <img
+                    src={dev.avatar || "/default-avatar.png"}
+                    alt={dev.username}
+                    style={{ width: "50px", height: "50px", borderRadius: "50%", objectFit: "cover", marginBottom: "8px", border: "2px solid #8b5cf6" }}
+                  />
+                  <span style={{ color: "var(--ce-premium-text)", fontSize: "0.82rem", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", cursor: "pointer" }} onClick={() => onViewProfile(dev._id || dev.id)}>
+                    {dev.username}
+                  </span>
+                  <span style={{ color: "var(--ce-premium-muted)", fontSize: "0.7rem", marginBottom: "8px", height: "16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>
+                    {dev.bio || "No bio"}
+                  </span>
+                  <button
+                    onClick={() => handleFollowToggle(dev._id || dev.id)}
+                    className={`follow-btn-mini ${isFollowed ? "following" : ""}`}
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: "20px",
+                      border: isFollowed ? "1px solid var(--ce-premium-border)" : "1px solid rgba(139, 92, 246, 0.25)",
+                      fontSize: "0.72rem",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      background: isFollowed ? "rgba(139, 92, 246, 0.05)" : "rgba(139, 92, 246, 0.1)",
+                      color: isFollowed ? "var(--ce-premium-muted)" : "#8b5cf6",
+                      transition: "all 0.2s ease",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {isFollowed ? "Following" : "Follow"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Posts Feed list */}
       <div className="feed-posts-list">
@@ -1608,9 +1781,19 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
           ))
         ) : filteredPostsList.length === 0 ? (
           <div className="premium-glass-card" style={{ textAlign: "center", padding: "40px 20px" }}>
-            <Sparkles size={32} style={{ color: "var(--ce-premium-muted)", marginBottom: "16px" }} />
-            <h4 style={{ color: "#fff", margin: "0 0 6px 0" }}>No activities found</h4>
-            <p style={{ color: "var(--ce-premium-muted)", fontSize: "0.82rem", margin: 0 }}>Be the first to share an update on CodeExpo!</p>
+            {activeFeedTab === "search-results" ? (
+              <>
+                <Search size={32} style={{ color: "var(--ce-premium-muted)", marginBottom: "16px" }} />
+                <h4 style={{ color: "#fff", margin: "0 0 6px 0" }}>No search results found</h4>
+                <p style={{ color: "var(--ce-premium-muted)", fontSize: "0.82rem", margin: 0 }}>We couldn't find any posts matching "{searchQuery}"</p>
+              </>
+            ) : (
+              <>
+                <Sparkles size={32} style={{ color: "var(--ce-premium-muted)", marginBottom: "16px" }} />
+                <h4 style={{ color: "#fff", margin: "0 0 6px 0" }}>No activities found</h4>
+                <p style={{ color: "var(--ce-premium-muted)", fontSize: "0.82rem", margin: 0 }}>Be the first to share an update on CodeExpo!</p>
+              </>
+            )}
           </div>
         ) : (
           <AnimatePresence>
@@ -1655,7 +1838,6 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       <div className="post-name-section">
                         <div className="post-username-row" style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
                           <span className="post-username-text">@{post.author.username}</span>
-                          <span className="post-badge-lvl">Lvl {Math.floor((post.author.executionsCount || 0) / 100) + 1}</span>
                           {post.author.status === "Coding" && (
                             <span className="post-dot-online" style={{ width: "6px", height: "6px" }} />
                           )}
@@ -1669,33 +1851,77 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                             <span className="post-badge-sensitive-indicator" title="Flagged as Sensitive Content">⚠️ Sensitive</span>
                           )}
                         </div>
-                        <span className="post-author-role">{post.author.title || "Full Stack Developer"} &bull; {post.author.executionsCount || 0} XP</span>
+                        <span className="post-author-role">{post.author.title || "Full Stack Developer"}</span>
                       </div>
                     </div>
 
-                    <div className="post-meta-details">
+                    <div className="post-meta-details" style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+                      <span title={new Date(post.createdAt).toLocaleString()} style={{ color: "var(--ce-premium-muted)", fontSize: "0.74rem", whiteSpace: "nowrap" }}>{formatPostTime(post.createdAt)}</span>
                       {!isOwner && (
                         <button
                           onClick={() => handleFollowToggle(post.author._id)}
                           style={{
-                            background: "none",
-                            border: "none",
+                            background: isFollowed ? "rgba(255, 255, 255, 0.05)" : "rgba(96, 165, 250, 0.08)",
+                            border: isFollowed ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(96, 165, 250, 0.25)",
                             color: isFollowed ? "var(--ce-premium-muted)" : "#60a5fa",
-                            fontSize: "0.78rem",
-                            fontWeight: "700",
+                            fontSize: "0.75rem",
+                            fontWeight: "600",
                             cursor: "pointer",
-                            marginRight: "10px"
+                            padding: "4px 12px",
+                            borderRadius: "20px",
+                            transition: "all 0.2s ease",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            whiteSpace: "nowrap"
                           }}
                         >
                           {isFollowed ? "Following" : "+ Follow"}
                         </button>
                       )}
-                      <span title={new Date(post.createdAt).toLocaleString()}>{formatPostTime(post.createdAt)}</span>
-                      {isOwner && (
-                        <button onClick={() => handleDeletePostClick(post._id)} className="post-dropdown-trigger" title="Delete post">
-                          <Trash2 size={13} />
+                      
+                      {/* Post 3-dot Options Menu */}
+                      <div className="post-options-dropdown-container" style={{ position: "relative" }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActivePostMenuId(activePostMenuId === post._id ? null : post._id);
+                          }}
+                          className="post-dropdown-trigger"
+                          style={{ background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer", display: "flex", alignItems: "center", padding: "4px" }}
+                          title="Options"
+                        >
+                          <MoreVertical size={14} />
                         </button>
-                      )}
+                        {activePostMenuId === post._id && (
+                          <div className="ce-options-dropdown">
+                            {isOwner ? (
+                              <button
+                                onClick={() => {
+                                  setActivePostMenuId(null);
+                                  handleDeletePostClick(post._id);
+                                }}
+                                className="ce-options-dropdown-item danger"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete Post</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setActivePostMenuId(null);
+                                  setReportedTargetUser(post.author);
+                                  setReportEvidenceType("POST");
+                                  setReportEvidenceId(post._id);
+                                  setReportModalOpen(true);
+                                }}
+                                className="ce-options-dropdown-item danger"
+                              >
+                                ⚠️ <span>Report Post</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1889,7 +2115,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                               }}
                               style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}
                             >
-                              📋 Copy Link
+                              <Copy size={13} style={{ color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon" /> Copy Link
                             </button>
                             <a 
                               href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out this post on CodeExpo: " + window.location.origin + "/post/" + post._id)}`} 
@@ -1897,7 +2123,9 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                               rel="noopener noreferrer"
                               onClick={() => setOpenSharePostId(null)}
                             >
-                              💬 WhatsApp
+                              <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: "13px", height: "13px", color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.46h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                              </svg> WhatsApp
                             </a>
                           </div>
                         )}
@@ -1919,9 +2147,50 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                               </div>
                             )}
                             <div className="comment-bubble-body">
-                              <div className="comment-meta-row">
-                                <span className="comment-author-name">@{c.username}</span>
-                                <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                              <div className="comment-meta-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                  <span className="comment-author-name">@{c.username}</span>
+                                  <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                {String(c.user || c.sender || "") !== String(user?.id || user?._id) && (
+                                  <div style={{ position: "relative" }}>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveCommentMenuId(activeCommentMenuId === c._id ? null : c._id);
+                                      }}
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        color: "var(--ce-premium-muted)",
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        padding: "2px"
+                                      }}
+                                      title="Options"
+                                    >
+                                      <MoreVertical size={12} />
+                                    </button>
+                                    {activeCommentMenuId === c._id && (
+                                      <div className="ce-options-dropdown" style={{ top: "-8px", right: "20px" }}>
+                                        <button
+                                          onClick={() => {
+                                            setActiveCommentMenuId(null);
+                                            setReportedTargetUser({ _id: c.user, username: c.username });
+                                            setReportEvidenceType("COMMENT");
+                                            setReportEvidenceId(c._id);
+                                            setReportModalOpen(true);
+                                          }}
+                                          className="ce-options-dropdown-item danger"
+                                        >
+                                          ⚠️ <span>Report Comment</span>
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <p className="comment-text-content">{c.text}</p>
                             </div>
@@ -2076,6 +2345,21 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
           />
         </FeedPortal>
       )}
+
+      {/* Report User Modal */}
+      <ReportUserModal
+        isOpen={reportModalOpen}
+        onClose={() => {
+          setReportModalOpen(false);
+          setReportedTargetUser(null);
+          setReportEvidenceType("");
+          setReportEvidenceId("");
+        }}
+        reportedUser={reportedTargetUser}
+        evidenceType={reportEvidenceType}
+        evidenceId={reportEvidenceId}
+        addToast={addToast}
+      />
     </div>
   );
 }

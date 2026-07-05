@@ -37,7 +37,9 @@ import {
   bulkHidePosts,
   bulkFeaturePosts,
   updateAdminStoryStatus,
-  toggleAdminStoryFeature
+  toggleAdminStoryFeature,
+  getAdminReports,
+  resolveAdminReports
 } from "../services/adminService";
 import socket from "../socket/socket";
 import { adminGetAppeals, adminResolveAppeal } from "../services/trustSafetyService";
@@ -646,6 +648,12 @@ const AdminDashboard = () => {
   const [appealAdminNotes, setAppealAdminNotes] = useState("");
   const [resolvingAppeal, setResolvingAppeal] = useState(false);
 
+  // Reported Users State
+  const [reportGroups, setReportGroups] = useState([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [selectedReportGroup, setSelectedReportGroup] = useState(null);
+  const [reportResolutionNotes, setReportResolutionNotes] = useState("");
+
   // Manual User Penalty Form State
   const [issueActionType, setIssueActionType] = useState("Warning Issued");
   const [issueReason, setIssueReason] = useState("");
@@ -1068,6 +1076,34 @@ const AdminDashboard = () => {
       addToast("Failed to fetch login logs", "error");
     } finally {
       setLoadingLoginLogs(false);
+    }
+  };
+
+  const fetchReports = async () => {
+    setLoadingReports(true);
+    try {
+      const data = await getAdminReports("pending");
+      if (data.success) {
+        setReportGroups(data.groups || []);
+      }
+    } catch (err) {
+      addToast("Failed to fetch reported users list", "error");
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  const handleResolveReports = async (userId, actionType) => {
+    try {
+      const res = await resolveAdminReports(userId, actionType, reportResolutionNotes);
+      if (res.success) {
+        addToast(res.message, "success");
+        setReportResolutionNotes("");
+        setSelectedReportGroup(null);
+        fetchReports();
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message, "error");
     }
   };
 
@@ -1515,6 +1551,8 @@ const AdminDashboard = () => {
       fetchLoginLogs();
     } else if (activeTab === "appeals") {
       fetchAppealsList();
+    } else if (activeTab === "reports") {
+      fetchReports();
     }
   }, [activeTab, feedSubTab]);
 
@@ -2821,6 +2859,14 @@ const AdminDashboard = () => {
           >
             <ShieldAlert size={16} />
             <span>Appeals Review</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab("reports"); setIsMobileSidebarOpen(false); }}
+            className={`sidebar-nav-item-btn ${activeTab === "reports" ? "active" : ""}`}
+          >
+            <ShieldAlert size={16} style={{ color: "#ef4444" }} />
+            <span style={{ color: "#ef4444", fontWeight: "600" }}>Reported Users</span>
           </button>
         </nav>
 
@@ -5033,6 +5079,282 @@ const AdminDashboard = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 12: REPORTED USERS AND SAFETY PATROL */}
+          {activeTab === "reports" && (
+            <div className="tab-pane-reports animate-fade-in" style={{ display: "flex", gap: "20px", height: "calc(100vh - 120px)" }}>
+              {/* Left pane: list of reported developers */}
+              <div className="reports-sidebar glass-panel" style={{ width: "320px", display: "flex", flexDirection: "column", padding: "16px", gap: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", borderRadius: "12px", height: "100%", overflowY: "auto" }}>
+                <h4 style={{ margin: 0, color: "#fff", fontSize: "1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <ShieldAlert size={16} style={{ color: "#ef4444" }} /> Reported Developers
+                </h4>
+                
+                {loadingReports ? (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
+                    <Loader className="spinner" size={24} />
+                  </div>
+                ) : reportGroups.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "var(--admin-text-muted)", fontSize: "0.85rem", padding: "40px 0" }}>
+                    No pending user reports.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {reportGroups.map((group) => {
+                      const isSelected = selectedReportGroup?.user?.id === group.user.id;
+                      return (
+                        <div
+                          key={group.user.id}
+                          onClick={() => {
+                            setSelectedReportGroup(group);
+                            setReportResolutionNotes("");
+                          }}
+                          style={{
+                            padding: "12px",
+                            borderRadius: "8px",
+                            background: isSelected ? "rgba(239, 68, 68, 0.08)" : "rgba(255,255,255,0.02)",
+                            border: isSelected ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid var(--admin-border)",
+                            cursor: "pointer",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+                            {group.user.avatar ? (
+                              <img src={group.user.avatar} alt={group.user.username} style={{ width: "32px", height: "32px", borderRadius: "50%", objectFit: "cover" }} />
+                            ) : (
+                              <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ef4444", color: "#fff", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "0.85rem", fontWeight: "700" }}>
+                                {group.user.username.substring(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+                              <span style={{ color: "#fff", fontSize: "0.85rem", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {group.user.username}
+                              </span>
+                              <span style={{ fontSize: "0.72rem", color: group.user.isSuspended ? "#ef4444" : "var(--admin-text-muted)" }}>
+                                {group.user.isSuspended ? "Suspended / Banned" : group.user.accountStatus}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.74rem" }}>
+                            <span style={{ color: "#ef4444", fontWeight: "600" }}>{group.count} reports</span>
+                            <span style={{ color: "var(--admin-text-muted)" }}>Health: {group.user.accountHealth}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Right pane: details of the selected reported developer */}
+              <div className="reports-content glass-panel" style={{ flex: 1, display: "flex", flexDirection: "column", padding: "20px", gap: "20px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", borderRadius: "12px", height: "100%", overflowY: "auto" }}>
+                {selectedReportGroup ? (
+                  <>
+                    {/* Header info */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid var(--admin-border)", paddingBottom: "16px" }}>
+                      <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
+                        {selectedReportGroup.user.avatar ? (
+                          <img src={selectedReportGroup.user.avatar} alt={selectedReportGroup.user.username} style={{ width: "56px", height: "56px", borderRadius: "50%", objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#ef4444", color: "#fff", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "1.2rem", fontWeight: "700" }}>
+                            {selectedReportGroup.user.username.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <h3 style={{ margin: 0, color: "#fff", fontSize: "1.2rem", fontWeight: "600" }}>
+                            {selectedReportGroup.user.username}
+                          </h3>
+                          <span style={{ fontSize: "0.82rem", color: "var(--admin-text-muted)" }}>
+                            {selectedReportGroup.user.email}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>Account Health</div>
+                          <div style={{ fontSize: "1.2rem", fontWeight: "700", color: selectedReportGroup.user.accountHealth > 70 ? "#10b981" : selectedReportGroup.user.accountHealth > 40 ? "#f59e0b" : "#ef4444" }}>
+                            {selectedReportGroup.user.accountHealth}%
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", borderLeft: "1px solid var(--admin-border)", paddingLeft: "12px" }}>
+                          <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)" }}>Warnings / Violations</div>
+                          <div style={{ fontSize: "1.1rem", fontWeight: "700", color: "#fff" }}>
+                            {selectedReportGroup.user.totalWarnings || 0} / {selectedReportGroup.user.totalViolations || 0}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Login History / Diagnostics section */}
+                    <div>
+                      <h4 style={{ color: "#fff", fontSize: "0.95rem", margin: "0 0 10px 0" }}>Login Diagnostics & Session History</h4>
+                      <div style={{ background: "rgba(0,0,0,0.15)", border: "1px solid var(--admin-border)", borderRadius: "8px", overflow: "hidden" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+                          <thead>
+                            <tr style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid var(--admin-border)" }}>
+                              <th style={{ padding: "8px 12px", color: "var(--admin-text-h)" }}>Login Time</th>
+                              <th style={{ padding: "8px 12px", color: "var(--admin-text-h)" }}>IP Address</th>
+                              <th style={{ padding: "8px 12px", color: "var(--admin-text-h)" }}>Device / User Agent</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedReportGroup.user.loginHistory && selectedReportGroup.user.loginHistory.length > 0 ? (
+                              selectedReportGroup.user.loginHistory.slice(0, 5).map((log, index) => (
+                                <tr key={index} style={{ borderBottom: index < 4 ? "1px solid rgba(255,255,255,0.02)" : "none" }}>
+                                  <td style={{ padding: "8px 12px", color: "var(--admin-text-muted)" }}>{new Date(log.loginTime).toLocaleString()}</td>
+                                  <td style={{ padding: "8px 12px", color: "#fff", fontWeight: "600" }}>{log.ipAddress || "Unknown IP"}</td>
+                                  <td style={{ padding: "8px 12px", color: "var(--admin-text-muted)", maxWidth: "250px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={log.userAgent}>
+                                    {log.userAgent || "Unknown Device"}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan="3" style={{ padding: "12px", textAlign: "center", color: "var(--admin-text-muted)", fontStyle: "italic" }}>
+                                  No session log history recorded for this developer.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Timeline of Reports */}
+                    <div>
+                      <h4 style={{ color: "#fff", fontSize: "0.95rem", margin: "0 0 10px 0" }}>Pending Abuse Reports ({selectedReportGroup.reports.length})</h4>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {selectedReportGroup.reports.map((report) => (
+                          <div key={report.id} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.04)", padding: "12px", borderRadius: "8px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                              <span style={{ fontSize: "0.82rem", color: "var(--admin-text-h)" }}>
+                                Reported by: <strong style={{ color: "var(--admin-accent)" }}>@{report.reporter?.username || "Deleted"}</strong>
+                              </span>
+                              <span style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)" }}>
+                                {new Date(report.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <div style={{ marginBottom: "6px" }}>
+                              <span style={{ fontSize: "0.74rem", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", padding: "2px 6px", borderRadius: "4px", fontWeight: "600", marginRight: "8px" }}>
+                                {report.reason}
+                              </span>
+                              <span style={{ fontSize: "0.74rem", background: "rgba(255,255,255,0.05)", color: "#fff", padding: "2px 6px", borderRadius: "4px" }}>
+                                Context: {report.evidenceType} {report.evidenceId && `(${report.evidenceId})`}
+                              </span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--admin-text-muted)", lineHeight: "1.4" }}>
+                              {report.details}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Resolution Section */}
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--admin-border)", padding: "16px", borderRadius: "8px", marginTop: "auto" }}>
+                      <h4 style={{ color: "#fff", fontSize: "0.9rem", margin: "0 0 10px 0" }}>Resolution & Moderation Panel</h4>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <div>
+                          <label style={{ display: "block", color: "var(--admin-text-muted)", fontSize: "0.74rem", marginBottom: "4px" }}>
+                            Moderator Decision Notes
+                          </label>
+                          <textarea
+                            value={reportResolutionNotes}
+                            onChange={(e) => setReportResolutionNotes(e.target.value)}
+                            placeholder="Add compliance resolution findings or reasons for warnings/ban..."
+                            rows={3}
+                            style={{
+                              width: "100%",
+                              padding: "8px",
+                              borderRadius: "6px",
+                              border: "1px solid var(--admin-border)",
+                              background: "rgba(0,0,0,0.2)",
+                              color: "#fff",
+                              fontSize: "0.8rem",
+                              outline: "none",
+                              resize: "none"
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            {/* Warn developer button */}
+                            <button
+                              onClick={async () => {
+                                if (!reportResolutionNotes.trim()) {
+                                  addToast("Please provide resolution notes explaining the warning", "error");
+                                  return;
+                                }
+                                try {
+                                  const res = await adminIssueUserAction(selectedReportGroup.user.id, "Warning Issued", reportResolutionNotes);
+                                  if (res.success) {
+                                    addToast(`Warning successfully issued to ${selectedReportGroup.user.username}`, "success");
+                                    await handleResolveReports(selectedReportGroup.user.id, "resolve");
+                                  }
+                                } catch (err) {
+                                  addToast(err.response?.data?.message || err.message, "error");
+                                }
+                              }}
+                              className="btn-action promote"
+                              style={{ padding: "8px 12px", fontSize: "0.78rem" }}
+                            >
+                              Warn Developer
+                            </button>
+
+                            {/* Suspend developer button */}
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm(`Are you sure you want to ban/suspend ${selectedReportGroup.user.username}?`)) return;
+                                try {
+                                  const res = await toggleUserSuspension(selectedReportGroup.user.id);
+                                  if (res.success) {
+                                    addToast(res.message, "success");
+                                    await handleResolveReports(selectedReportGroup.user.id, "resolve");
+                                  }
+                                } catch (err) {
+                                  addToast(err.response?.data?.message || err.message, "error");
+                                }
+                              }}
+                              className="btn-action-delete"
+                              style={{ padding: "8px 12px", fontSize: "0.78rem" }}
+                            >
+                              {selectedReportGroup.user.isSuspended ? "Unban Developer" : "Ban Developer"}
+                            </button>
+                          </div>
+
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            {/* Dismiss Reports */}
+                            <button
+                              onClick={() => handleResolveReports(selectedReportGroup.user.id, "dismiss")}
+                              className="btn-action"
+                              style={{ padding: "8px 12px", fontSize: "0.78rem", border: "1px solid var(--admin-border)", background: "rgba(255,255,255,0.02)", color: "#fff" }}
+                            >
+                              Dismiss Reports
+                            </button>
+
+                            {/* Resolve Reports */}
+                            <button
+                              onClick={() => handleResolveReports(selectedReportGroup.user.id, "resolve")}
+                              className="btn-action promote"
+                              style={{ padding: "8px 12px", fontSize: "0.78rem", background: "#10b981", border: "none", color: "#fff" }}
+                            >
+                              Resolve Reports
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", color: "var(--admin-text-muted)" }}>
+                    <ShieldAlert size={48} style={{ marginBottom: "12px", opacity: 0.3 }} />
+                    <p style={{ margin: 0 }}>Select a reported user from the sidebar to inspect diagnostic history and reports.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

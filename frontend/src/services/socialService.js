@@ -94,6 +94,11 @@ export const searchUsers = async (query) => {
   return response.data;
 };
 
+export const reportUser = async (userId, reason, details, evidenceType, evidenceId = "") => {
+  const response = await API.post(`/users/${userId}/report`, { reason, details, evidenceType, evidenceId }, getHeaders());
+  return response.data;
+};
+
 export const getUserPublicProfile = async (userId, year) => {
   const url = year && year !== "last12" ? `/users/profile/${userId}?year=${year}` : `/users/profile/${userId}`;
   const response = await API.get(url, getHeaders());
@@ -110,10 +115,14 @@ export const createPost = async (postData) => {
   return response.data;
 };
 
-export const getPosts = async (page = 1, limit = 10, authorId = null) => {
-  const url = authorId 
-    ? `/posts?page=${page}&limit=${limit}&author=${authorId}` 
-    : `/posts?page=${page}&limit=${limit}`;
+export const getPosts = async (page = 1, limit = 10, authorId = null, search = "") => {
+  let url = `/posts?page=${page}&limit=${limit}`;
+  if (authorId) {
+    url += `&author=${authorId}`;
+  }
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
   const response = await API.get(url, getHeaders());
   return response.data;
 };

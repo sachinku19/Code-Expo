@@ -29,7 +29,9 @@ const {
   bulkHidePosts,
   bulkFeaturePosts,
   updateAdminStoryStatus,
-  toggleAdminStoryFeature
+  toggleAdminStoryFeature,
+  adminGetReports,
+  adminResolveReports
 } = require("../controllers/adminControllers");
 
 const router = express.Router();
@@ -47,6 +49,8 @@ router.put("/users/:id/role", auth_protect, admin_protect, updateUserRole);
 router.put("/users/:id/title", auth_protect, admin_protect, updateUserTitle);
 router.put("/users/:id/suspend", auth_protect, admin_protect, toggleUserSuspension);
 router.put("/users/:id/action", auth_protect, admin_protect, adminIssueUserAction);
+router.get("/reports", auth_protect, admin_protect, adminGetReports);
+router.put("/reports/:userId/resolve", auth_protect, admin_protect, adminResolveReports);
 
 // Rooms
 router.get("/rooms", auth_protect, admin_protect, getAllRooms);

@@ -198,6 +198,17 @@ const getPosts = async (req, res) => {
       query.author = req.query.author;
     }
 
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, "i");
+      const matchingUsers = await User.find({ username: searchRegex }).select("_id");
+      const matchingUserIds = matchingUsers.map(u => u._id);
+      query.$or = [
+        { text: searchRegex },
+        { techStack: searchRegex },
+        { author: { $in: matchingUserIds } }
+      ];
+    }
+
     const posts = await Post.find(query)
       .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
       .sort({ createdAt: -1 })

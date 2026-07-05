@@ -1100,6 +1100,8 @@
   margin-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
   padding-top: 16px;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 .nested-comments-list {
@@ -1111,8 +1113,8 @@
 
 .comment-bubble-wrapper {
   display: flex;
-  gap: 10px;
-  align-items: flex-start;
+  gap: 12px;
+  align-items: center;
 }
 
 .comment-avatar-bubble {
@@ -2251,8 +2253,45 @@ html {
 
 .share-dropdown-menu button:hover,
 .share-dropdown-menu a:hover {
-  background: var(--ce-hover) !important;
-  color: #fff !important;
+  background: rgba(139, 92, 246, 0.1) !important;
+  color: #8b5cf6 !important;
+}
+
+.share-dropdown-menu button:hover .share-dropdown-icon,
+.share-dropdown-menu a:hover .share-dropdown-icon {
+  color: #8b5cf6 !important;
+}
+
+/* Searched Users Row Card styling */
+.ce-search-user-card {
+  flex: 0 0 160px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.light .ce-search-user-card {
+  background: rgba(99, 102, 241, 0.03);
+  border: 1px solid rgba(99, 102, 241, 0.08);
+}
+
+.ce-search-user-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.light .ce-search-user-card:hover {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.05);
 }
 
 /* Standalone Public Post Page Styles */
@@ -2811,4 +2850,105 @@ html {
   background: #fff;
   color: #000;
   border-color: #fff;
+}
+
+/* Premium Dropdown Option Menus */
+.ce-options-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: rgba(10, 10, 18, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+  z-index: 10000;
+  min-width: 140px;
+  width: max-content;
+  white-space: nowrap;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: ceDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ceDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ce-options-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: var(--ce-premium-text) !important;
+  padding: 8px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.18s ease;
+}
+
+.ce-options-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ce-options-dropdown-item.danger {
+  color: #ef4444 !important;
+}
+
+.ce-options-dropdown-item.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Light Theme Overrides for Dropdowns */
+.light .ce-options-dropdown {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.light .ce-options-dropdown-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.light .ce-options-dropdown-item.danger:hover {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Responsive Search Input Styles */
+.premium-feed-search-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ce-premium-border);
+  color: var(--ce-premium-text, #fff);
+}
+
+.premium-feed-search-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+
+.light .premium-feed-search-input {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--ce-premium-border);
+  color: var(--ce-premium-text, #1e293b);
+}
+
+.light .premium-feed-search-input:focus {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.1);
 }

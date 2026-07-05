@@ -1549,6 +1549,23 @@
   border: 1.5px solid var(--ce-surface);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.notif-sender-avatar-container:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+  border-color: var(--ce-primary);
+}
+
+.notif-sender-name-link {
+  transition: color 0.15s ease;
+  cursor: pointer;
+}
+
+.notif-sender-name-link:hover {
+  color: var(--ce-primary) !important;
+  text-decoration: underline;
 }
 
 .notif-sender-img {
