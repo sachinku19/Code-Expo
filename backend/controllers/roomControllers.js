@@ -289,6 +289,12 @@ const getUserRoomsHistory = async (req, res) => {
     }
 };
 
+// Cache variables to optimize active rooms listing and prevent DB load under socket-driven refetches
+let cachedRoomsWithCount = null;
+let cachedLiveRoomIdsHash = "";
+let lastCacheTime = 0;
+const CACHE_TTL = 3000; // 3 seconds in-memory cache
+
 const getLiveRooms = async (req, res) => {
     try {
         const socketHandler = require("../sockets/socketHandler");
@@ -298,36 +304,49 @@ const getLiveRooms = async (req, res) => {
             (roomId) => roomUsers[roomId] && roomUsers[roomId].length > 0
         );
 
-        const rooms = await Room.find({
-            roomId: { $in: liveRoomIds }
-        })
-            .populate("createdBy", "username email avatar")
-            .populate("participants.user", "username email avatar")
-            .populate("likes", "username email avatar");
+        // Generate a fast hash to detect if active room list or user counts in those rooms have changed
+        const liveRoomIdsHash = liveRoomIds.sort().join(",") + ":" + liveRoomIds.map(id => roomUsers[id].length).join(",");
+        const now = Date.now();
 
-        const filteredRooms = rooms.filter(room => {
+        let roomsWithCount;
+
+        if (cachedRoomsWithCount && cachedLiveRoomIdsHash === liveRoomIdsHash && (now - lastCacheTime < CACHE_TTL)) {
+            roomsWithCount = cachedRoomsWithCount;
+        } else {
+            const rooms = await Room.find({
+                roomId: { $in: liveRoomIds }
+            })
+                .populate("createdBy", "username avatar")
+                .populate("participants.user", "username avatar");
+
+            roomsWithCount = rooms.map((room) => {
+                const activeUsers = roomUsers[room.roomId] || [];
+                const likesCount = room.likes ? room.likes.length : 0;
+                const likedBy = room.likes || [];
+                return {
+                    ...room.toObject(),
+                    activeUsersCount: activeUsers.length,
+                    activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
+                    likesCount,
+                    likedBy
+                };
+            });
+
+            cachedRoomsWithCount = roomsWithCount;
+            cachedLiveRoomIdsHash = liveRoomIdsHash;
+            lastCacheTime = now;
+        }
+
+        const filteredRooms = roomsWithCount.filter(room => {
             if (!room.isPrivate) return true;
             const isOwner = room.createdBy?._id?.toString() === req.user._id.toString();
             const isParticipant = room.participants?.some(p => p.user?._id?.toString() === req.user._id.toString());
             return isOwner || isParticipant;
         });
 
-        const roomsWithCount = filteredRooms.map((room) => {
-            const activeUsers = roomUsers[room.roomId] || [];
-            const likesCount = room.likes ? room.likes.length : 0;
-            const likedBy = room.likes || [];
-            return {
-                ...room.toObject(),
-                activeUsersCount: activeUsers.length,
-                activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
-                likesCount,
-                likedBy
-            };
-        });
-
         res.status(200).json({
             success: true,
-            rooms: roomsWithCount
+            rooms: filteredRooms
         });
     } catch (error) {
         res.status(500).json({

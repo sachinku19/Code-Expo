@@ -1719,6 +1719,23 @@ function Dashboard() {
       localStorage.setItem("ce_cache_recentRooms", JSON.stringify(recent));
       setLiveRooms(live);
       localStorage.setItem("ce_cache_liveRooms", JSON.stringify(live));
+
+      // Auto-switch active rooms tab based on contents to prevent empty dashboard views
+      const myActive = live.filter(room => {
+        const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+        const isParticipant = room.participants?.some(p => String(p.user?._id || p.user || p._id || p) === String(user?.id || user?._id));
+        return isOwner || isParticipant;
+      });
+      const otherActive = live.filter(room => {
+        const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+        const isParticipant = room.participants?.some(p => String(p.user?._id || p.user || p._id || p) === String(user?.id || user?._id));
+        return !(isOwner || isParticipant);
+      });
+      if (myActive.length === 0 && otherActive.length > 0) {
+        setActiveRoomsTab("other-active");
+      } else {
+        setActiveRoomsTab("my-active");
+      }
       setJoinRequests(requests);
       localStorage.setItem("ce_cache_joinRequests", JSON.stringify(requests));
       setMySentRequests(sentRequests);
@@ -3098,6 +3115,20 @@ function Dashboard() {
       fetchAndAppendSuggestion(followedUserId);
     };
 
+    let debounceTimer = null;
+    const handleLiveRoomsUpdate = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        getLiveRooms().then(res => {
+          if (res.success) {
+            setLiveRooms(res.rooms || []);
+            localStorage.setItem("ce_cache_liveRooms", JSON.stringify(res.rooms || []));
+          }
+        }).catch(err => console.error("Error updating live rooms:", err));
+      }, 400);
+    };
+
+    socket.on("live-rooms-update", handleLiveRoomsUpdate);
     socket.on("room:like-update", handleRoomLikeUpdate);
     socket.on("room:my-likes-update", handleRoomMyLikesUpdate);
     socket.on("room:bookmark-update", handleRoomBookmarkUpdate);
@@ -3122,6 +3153,8 @@ function Dashboard() {
     socket.on("ad:deleted", handleAdDeleted);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      socket.off("live-rooms-update", handleLiveRoomsUpdate);
       socket.off("room:like-update", handleRoomLikeUpdate);
       socket.off("room:my-likes-update", handleRoomMyLikesUpdate);
       socket.off("room:bookmark-update", handleRoomBookmarkUpdate);

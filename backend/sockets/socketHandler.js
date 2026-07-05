@@ -336,6 +336,9 @@ const socketHandler = (io) => {
           roomUsers[roomId]
         );
 
+        // Notify all clients that active rooms list has changed
+        io.emit("live-rooms-update");
+
         // Send active call users list to the joining socket
         socket.emit(
           "active-call-users",
@@ -532,6 +535,11 @@ const socketHandler = (io) => {
               message: `${firstUser.username} was removed from the room.`
             });
             io.to(roomId).emit("user-kicked", { userId });
+
+            if (roomUsers[roomId].length === 0) {
+              delete roomUsers[roomId];
+            }
+            io.emit("live-rooms-update");
           }
         }
       } catch (err) {
@@ -627,6 +635,11 @@ const socketHandler = (io) => {
               message: `${firstUser.username} was removed from the room.`
             });
             io.to(roomId).emit("user-kicked", { userId });
+
+            if (roomUsers[roomId].length === 0) {
+              delete roomUsers[roomId];
+            }
+            io.emit("live-rooms-update");
           }
         }
       } catch (err) {
@@ -715,6 +728,7 @@ const socketHandler = (io) => {
       if (roomUsers[roomId].length === 0) {
         delete roomUsers[roomId];
       }
+      io.emit("live-rooms-update");
     });
 
     // ======================
@@ -1702,6 +1716,7 @@ const socketHandler = (io) => {
         if (roomUsers[roomId].length === 0) {
           delete roomUsers[roomId];
         }
+        io.emit("live-rooms-update");
       }
 
       if (socket.userId) {

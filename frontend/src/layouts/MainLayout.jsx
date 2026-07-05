@@ -8,7 +8,7 @@ import {
   Pin, Search, Bell, Sun, Moon, LogOut, Terminal, Palette,
   Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
-  Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail
+  Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -747,6 +747,7 @@ export default function MainLayout({
     { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard?tab=feed" },
     { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard?tab=rooms&subtab=explore" },
     { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard?tab=myrooms" },
+    { id: "liverooms", label: "Live Rooms", icon: Radio, path: "/dashboard?tab=liverooms" },
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
