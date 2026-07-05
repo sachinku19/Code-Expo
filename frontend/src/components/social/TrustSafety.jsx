@@ -182,47 +182,48 @@ export default function TrustSafety({ user, addToast }) {
       </div>
 
       {trustStatus && (
-        <div 
-          className="ce-trust-safety-cards-row"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
-            gap: "10px",
-            marginBottom: "16px",
-            width: "100%"
-          }}
-        >
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Account Status</span>
-            <span style={{
-              fontSize: "0.78rem",
-              fontWeight: "750",
-              color: trustStatus.accountStatus === "Active" ? "#10b981" : "#f59e0b"
-            }}>{trustStatus.accountStatus}</span>
+        <div className="ce-trust-safety-cards-row">
+          <div className="trust-safety-card">
+            <span className="trust-safety-card-label">Account Status</span>
+            <span className="trust-safety-card-value" style={{ color: trustStatus.accountStatus === "Active" ? "#10b981" : "#f59e0b" }}>
+              {trustStatus.accountStatus}
+            </span>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Active Restrictions</span>
-            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#f43f5e" }}>{trustStatus.counters?.activeRestrictionsCount || 0}</span>
+          <div className="trust-safety-card">
+            <span className="trust-safety-card-label">Active Restrictions</span>
+            <span className="trust-safety-card-value" style={{ color: "#f43f5e" }}>
+              {trustStatus.counters?.activeRestrictionsCount || 0}
+            </span>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Open Appeals</span>
-            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "var(--accent)" }}>{trustStatus.counters?.openAppealsCount || 0}</span>
+          <div className="trust-safety-card">
+            <span className="trust-safety-card-label">Open Appeals</span>
+            <span className="trust-safety-card-value" style={{ color: "var(--accent)" }}>
+              {trustStatus.counters?.openAppealsCount || 0}
+            </span>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Open Tickets</span>
-            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#10b981" }}>{trustStatus.counters?.openSupportTicketsCount || 0}</span>
+          <div className="trust-safety-card">
+            <span className="trust-safety-card-label">Open Tickets</span>
+            <span className="trust-safety-card-value" style={{ color: "#10b981" }}>
+              {trustStatus.counters?.openSupportTicketsCount || 0}
+            </span>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Total Warnings</span>
-            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#f59e0b" }}>{trustStatus.totalWarnings || 0}</span>
+          <div className="trust-safety-card">
+            <span className="trust-safety-card-label">Total Warnings</span>
+            <span className="trust-safety-card-value" style={{ color: "#f59e0b" }}>
+              {trustStatus.totalWarnings || 0}
+            </span>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Removed Posts</span>
-            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#ef4444" }}>{trustStatus.counters?.removedPostsCount || 0}</span>
+          <div className="trust-safety-card">
+            <span className="trust-safety-card-label">Removed Posts</span>
+            <span className="trust-safety-card-value" style={{ color: "#ef4444" }}>
+              {trustStatus.counters?.removedPostsCount || 0}
+            </span>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "0.62rem", color: "#94a3b8", fontWeight: "600" }}>Hidden Posts</span>
-            <span style={{ fontSize: "0.8rem", fontWeight: "750", color: "#ef4444" }}>{trustStatus.counters?.hiddenPostsCount || 0}</span>
+          <div className="trust-safety-card">
+            <span className="trust-safety-card-label">Hidden Posts</span>
+            <span className="trust-safety-card-value" style={{ color: "#ef4444" }}>
+              {trustStatus.counters?.hiddenPostsCount || 0}
+            </span>
           </div>
         </div>
       )}

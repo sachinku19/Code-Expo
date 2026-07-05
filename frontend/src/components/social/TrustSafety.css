@@ -394,3 +394,103 @@
     justify-content: center;
   }
 }
+
+/* Trust standing cards grid */
+.ce-trust-safety-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.trust-safety-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 10px 12px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trust-safety-card-label {
+  font-size: 0.62rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.trust-safety-card-value {
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+/* Light theme overrides */
+.light .trust-safety-card {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.light .trust-safety-card-label {
+  color: var(--text-muted, #64748b);
+}
+
+.light .activity-action-name {
+  color: var(--text-h, #0f172a);
+}
+
+.light .activity-content-preview {
+  color: var(--text, #334155);
+}
+
+.light .activity-content-preview strong {
+  color: var(--text-muted, #64748b);
+}
+
+.light .activity-admin-reason {
+  background: rgba(0, 0, 0, 0.04);
+  border-left-color: var(--accent, #6366f1);
+}
+
+.light .activity-admin-reason .reason-label {
+  color: var(--text-muted, #64748b);
+}
+
+.light .activity-admin-reason .reason-text {
+  color: var(--text, #0f172a);
+}
+
+.light .activity-card-footer {
+  color: var(--text-muted, #64748b);
+}
+
+.light .activity-card {
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.light .activity-card:hover {
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+.light .activity-filter-bar {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.light .activity-filter-bar .search-wrapper,
+.light .activity-filter-bar .select-wrapper {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.light .activity-filter-bar .search-wrapper input,
+.light .activity-filter-bar .select-wrapper select {
+  color: var(--text, #0f172a);
+}
+
+.light .activity-filter-bar .select-wrapper select option {
+  background: #fff;
+  color: #0f172a;
+}
