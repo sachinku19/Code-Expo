@@ -1990,7 +1990,7 @@
 
 /* Stable aspect ratio block for post card carousel images to prevent layout jumps */
 .post-carousel-container {
-  aspect-ratio: 1.2;
+  aspect-ratio: 16 / 9;
   width: 100%;
   position: relative;
   overflow: hidden;

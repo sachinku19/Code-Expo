@@ -219,29 +219,36 @@ const CodeBlock = ({ lang, code, addToast }) => {
 };
 
 // Reusable ExpandableText component for post descriptions to clamp long text
-const ExpandableText = ({ htmlContent }) => {
+const ExpandableText = ({ children, maxHeight = 240 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const textRef = useRef(null);
 
   useEffect(() => {
     if (textRef.current) {
-      setShouldShowButton(textRef.current.scrollHeight > textRef.current.clientHeight);
+      const checkHeight = () => {
+        if (textRef.current) {
+          setShouldShowButton(textRef.current.scrollHeight > maxHeight);
+        }
+      };
+      checkHeight();
+      const timeoutId = setTimeout(checkHeight, 150);
+      return () => clearTimeout(timeoutId);
     }
-  }, [htmlContent]);
+  }, [children, maxHeight]);
 
   return (
     <div style={{ position: "relative", marginBottom: "8px" }}>
       <div 
         ref={textRef}
         style={{ 
-          maxHeight: !isExpanded ? "120px" : "none", 
+          maxHeight: !isExpanded ? `${maxHeight}px` : "none", 
           overflow: "hidden",
           transition: "max-height 0.3s ease",
           position: "relative"
         }}
       >
-        {htmlContent}
+        {children}
         {!isExpanded && shouldShowButton && (
           <div 
             style={{
@@ -249,8 +256,8 @@ const ExpandableText = ({ htmlContent }) => {
               bottom: 0,
               left: 0,
               right: 0,
-              height: "24px",
-              background: "linear-gradient(to top, var(--ce-premium-bg) 10%, transparent 100%)",
+              height: "45px",
+              background: "linear-gradient(to top, var(--ce-premium-bg) 20%, transparent 100%)",
               pointerEvents: "none"
             }}
           />
@@ -263,11 +270,11 @@ const ExpandableText = ({ htmlContent }) => {
             background: "none",
             border: "none",
             color: "#60a5fa",
-            fontSize: "0.8rem",
+            fontSize: "0.82rem",
             fontWeight: "700",
             cursor: "pointer",
             padding: "4px 0",
-            marginTop: "4px",
+            marginTop: "6px",
             display: "inline-flex",
             alignItems: "center"
           }}
@@ -276,6 +283,56 @@ const ExpandableText = ({ htmlContent }) => {
         </button>
       )}
     </div>
+  );
+};
+
+// Reusable AutoplayVideo component using IntersectionObserver (Instagram autoplay style)
+const AutoplayVideo = ({ src }) => {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {
+              // Ensure it is muted to satisfy browser autoplay requirements
+              video.muted = true;
+              video.play().catch(() => {});
+            });
+          } else {
+            video.pause();
+          }
+        });
+      },
+      {
+        threshold: 0.5
+      }
+    );
+
+    observer.observe(video);
+
+    return () => {
+      if (video) {
+        observer.unobserve(video);
+      }
+      observer.disconnect();
+    };
+  }, [src]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      controls
+      loop
+      muted
+      playsInline
+      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+    />
   );
 };
 
@@ -335,10 +392,9 @@ const renderPostContent = (text, addToast) => {
     }
     
     return (
-      <ExpandableText 
-        key={index} 
-        htmlContent={parseMarkdownOnly(part)} 
-      />
+      <span key={index} style={{ display: "block", marginBottom: "8px" }}>
+        {parseMarkdownOnly(part)}
+      </span>
     );
   });
 };
@@ -1966,7 +2022,9 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                     <div className={post.isSensitive && !revealedSensitivePosts[post._id] ? "sensitive-blur-active" : ""}>
                       {/* Post Content */}
                       <div className="post-card-content">
-                        {renderPostContent(post.text, addToast)}
+                        <ExpandableText maxHeight={240}>
+                          {renderPostContent(post.text, addToast)}
+                        </ExpandableText>
                       </div>
 
                       {/* Render Poll section template if present */}
@@ -1981,7 +2039,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       {/* Video Attachment with 16:9 aspect ratio */}
                       {post.video && (
                         <div className="post-video-container" style={{ width: "100%", aspectRatio: "16/9", overflow: "hidden", borderRadius: "12px", background: "#000", marginTop: "12px", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-                          <video src={post.video} controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <AutoplayVideo src={post.video} />
                         </div>
                       )}
 
