@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play, Search, MoreVertical, Copy } from "lucide-react";
+import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play, Search, MoreVertical, Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost, searchUsers } from "../../services/socialService";
 import { createPortal } from "react-dom";
 import socket from "../../socket/socket";
@@ -219,7 +219,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
 };
 
 // Reusable ExpandableText component for post descriptions to clamp long text
-const ExpandableText = ({ children, maxHeight = 240 }) => {
+const ExpandableText = ({ children, maxHeight = 240, onReadMore }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const textRef = useRef(null);
@@ -236,6 +236,13 @@ const ExpandableText = ({ children, maxHeight = 240 }) => {
       return () => clearTimeout(timeoutId);
     }
   }, [children, maxHeight]);
+
+  const handleButtonClick = () => {
+    setIsExpanded(!isExpanded);
+    if (onReadMore) {
+      onReadMore();
+    }
+  };
 
   return (
     <div style={{ position: "relative", marginBottom: "8px" }}>
@@ -265,7 +272,7 @@ const ExpandableText = ({ children, maxHeight = 240 }) => {
       </div>
       {shouldShowButton && (
         <button 
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={handleButtonClick}
           style={{
             background: "none",
             border: "none",
@@ -501,6 +508,189 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const [cropSource, setCropSource] = useState(null);
   const [activeComments, setActiveComments] = useState({}); // postId: true/false
   const [commentInputs, setCommentInputs] = useState({}); // postId: text
+  const [activeCommentsPanelPostId, setActiveCommentsPanelPostId] = useState(null);
+  const [panelCommentInput, setPanelCommentInput] = useState("");
+  const [replyingToComment, setReplyingToComment] = useState(null);
+  const [commentLikes, setCommentLikes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('code_expo_comment_likes_count');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [userLikedComments, setUserLikedComments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('code_expo_liked_comments');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [expandedCommentThreads, setExpandedCommentThreads] = useState({});
+  const [commentsTriggerOrigin, setCommentsTriggerOrigin] = useState(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('code_expo_liked_comments', JSON.stringify(userLikedComments));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [userLikedComments]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('code_expo_comment_likes_count', JSON.stringify(commentLikes));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [commentLikes]);
+
+  const activeCommentsPanelPost = posts.find(p => p._id === activeCommentsPanelPostId);
+  const [visibleCommentsCount, setVisibleCommentsCount] = useState(10);
+  const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
+
+  const [showParentPostModal, setShowParentPostModal] = useState(false);
+
+  const handleCommentsClick = (postId, event) => {
+    if (event) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setCommentsTriggerOrigin({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      });
+    } else {
+      setCommentsTriggerOrigin(null);
+    }
+    setActiveCommentsPanelPostId(postId);
+  };
+
+  const getCommentsPanelTransformOrigin = () => {
+    if (!commentsTriggerOrigin) return "right center";
+    const panelWidth = window.innerWidth >= 1200 ? 400 : window.innerWidth;
+    const panelRight = window.innerWidth >= 1400 ? Math.max(24, (window.innerWidth - 1360) / 2 + 24) : (window.innerWidth >= 1200 ? 24 : 0);
+    const panelLeft = window.innerWidth - panelRight - panelWidth;
+    const panelTop = window.innerWidth >= 1200 ? 90 : 0;
+    return `${commentsTriggerOrigin.x - panelLeft}px ${commentsTriggerOrigin.y - panelTop}px`;
+  };
+
+  useEffect(() => {
+    setVisibleCommentsCount(10);
+    setIsLoadingMoreComments(false);
+    setShowParentPostModal(false);
+  }, [activeCommentsPanelPostId]);
+
+  const handleCommentsScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 40) {
+      const allComments = activeCommentsPanelPost?.comments || [];
+      const mainComments = allComments.filter(c => {
+        const mentionMatch = c.text?.match(/^@\[([^\]]+)\]\s+(.*)/) || c.text?.match(/^@([a-zA-Z0-9_\. ]+)\s+(.*)/);
+        if (!mentionMatch) return true;
+        const targetUsername = mentionMatch[1];
+        const targetExists = allComments.some(other => 
+          other.username === targetUsername && 
+          new Date(other.createdAt) < new Date(c.createdAt)
+        );
+        return !targetExists;
+      });
+      if (activeCommentsPanelPost && !isLoadingMoreComments && visibleCommentsCount < mainComments.length) {
+        setIsLoadingMoreComments(true);
+        setTimeout(() => {
+          setVisibleCommentsCount(prev => prev + 10);
+          setIsLoadingMoreComments(false);
+        }, 400);
+      }
+    }
+  };
+
+  const getStableCommentLikesCount = (commentId) => {
+    return 0;
+  };
+
+  const handleToggleLikeComment = (commentId) => {
+    const wasLiked = !!userLikedComments[commentId];
+    const newLiked = !wasLiked;
+    
+    setUserLikedComments(prev => ({
+      ...prev,
+      [commentId]: newLiked
+    }));
+    
+    setCommentLikes(cPrev => {
+      const startingLikes = getStableCommentLikesCount(commentId);
+      const currentCount = cPrev[commentId] !== undefined ? cPrev[commentId] : startingLikes;
+      return {
+        ...cPrev,
+        [commentId]: Math.max(0, currentCount + (newLiked ? 1 : -1))
+      };
+    });
+  };
+
+  const handlePanelAddComment = async (postId) => {
+    const commentText = panelCommentInput.trim();
+    if (!commentText) return;
+
+    let textToSend = commentText;
+    if (replyingToComment) {
+      textToSend = `@[${replyingToComment.username}] ${commentText}`;
+    }
+
+    setTypingPostIds(prev => {
+      const next = new Set(prev);
+      next.add(postId);
+      return next;
+    });
+
+    const targetParentId = replyingToComment ? replyingToComment.commentId : null;
+
+    setPanelCommentInput("");
+    setReplyingToComment(null);
+
+    if (targetParentId) {
+      setExpandedCommentThreads(prev => ({ ...prev, [targetParentId]: true }));
+    }
+
+    setTimeout(async () => {
+      const tempComment = {
+        _id: String(Date.now()),
+        user: user?.id || user?._id,
+        username: user?.username || "You",
+        avatar: user?.avatar || "",
+        text: textToSend,
+        createdAt: new Date()
+      };
+
+      setPosts(prev => prev.map(post => {
+        if (post._id === postId) {
+          return { ...post, comments: [...post.comments, tempComment] };
+        }
+        return post;
+      }));
+
+      setTypingPostIds(prev => {
+        const next = new Set(prev);
+        next.delete(postId);
+        return next;
+      });
+
+      try {
+        const res = await addCommentPost(postId, textToSend);
+        if (res.success) {
+          setPosts(prev => prev.map(post => {
+            if (post._id === postId) {
+              return { ...post, comments: res.comments };
+            }
+            return post;
+          }));
+        }
+      } catch (err) {
+        fetchPosts();
+        if (addToast) addToast("Failed to submit reply comment", "error");
+      }
+    }, 800);
+  };
+
   const [postToDelete, setPostToDelete] = useState(null); // Custom delete post modal
   const [isDeletingPost, setIsDeletingPost] = useState(false); // Spinner state for deleting post
   const [likedUsersListModal, setLikedUsersListModal] = useState(null);
@@ -2174,7 +2364,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       })()}
 
                       <button
-                        onClick={() => setActiveComments(prev => ({ ...prev, [post._id]: !prev[post._id] }))}
+                        onClick={(e) => handleCommentsClick(post._id, e)}
                         className="reaction-button-trigger"
                       >
                         <MessageSquare size={14} />
@@ -2227,121 +2417,6 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                     </div>
                   </div>
 
-                  {/* Comment Thread */}
-                  {showComments && (
-                    <div className="post-comments-thread">
-                      <div className="nested-comments-list">
-                        {post.comments.map(c => (
-                          <div key={c._id} className="comment-bubble-wrapper">
-                            {c.avatar ? (
-                              <img src={c.avatar} alt={c.username} className="comment-avatar-bubble" />
-                            ) : (
-                              <div className="comment-avatar-bubble-fallback">
-                                {c.username.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <div className="comment-bubble-body">
-                              <div className="comment-meta-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                  <span className="comment-author-name" style={{ display: "inline-flex", alignItems: "center" }}>
-                                    @{c.username}
-                                    {c.user?.subscription?.status === "active" && (
-                                      <span 
-                                        title={`${c.user.subscription.plan} Verified`} 
-                                        style={{
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                          width: "10px",
-                                          height: "10px",
-                                          borderRadius: "50%",
-                                          background: c.user.subscription.plan === "Developer Pro" ? "#10b981" : "#f59e0b",
-                                          color: "#fff",
-                                          marginLeft: "4px",
-                                          fontSize: "6px",
-                                          fontWeight: "bold",
-                                          boxShadow: `0 0 4px ${c.user.subscription.plan === "Developer Pro" ? "rgba(16, 185, 129, 0.4)" : "rgba(245, 158, 11, 0.4)"}`,
-                                          flexShrink: 0
-                                        }}
-                                      >
-                                        ✓
-                                      </span>
-                                    )}
-                                  </span>
-                                  <span>{new Date(c.createdAt).toLocaleDateString()}</span>
-                                </div>
-                                {String(c.user?._id || c.user || c.sender || "") !== String(user?.id || user?._id) && (
-                                  <div style={{ position: "relative" }}>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setActiveCommentMenuId(activeCommentMenuId === c._id ? null : c._id);
-                                      }}
-                                      style={{
-                                        background: "none",
-                                        border: "none",
-                                        color: "var(--ce-premium-muted)",
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        padding: "2px"
-                                      }}
-                                      title="Options"
-                                    >
-                                      <MoreVertical size={12} />
-                                    </button>
-                                    {activeCommentMenuId === c._id && (
-                                      <div className="ce-options-dropdown" style={{ top: "-8px", right: "20px" }}>
-                                        <button
-                                          onClick={() => {
-                                            setActiveCommentMenuId(null);
-                                            setReportedTargetUser({ _id: c.user?._id || c.user, username: c.username });
-                                            setReportEvidenceType("COMMENT");
-                                            setReportEvidenceId(c._id);
-                                            setReportModalOpen(true);
-                                          }}
-                                          className="ce-options-dropdown-item danger"
-                                        >
-                                          ⚠️ <span>Report Comment</span>
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                              <p className="comment-text-content">{c.text}</p>
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* Typing simulation feedback */}
-                        {typingPostIds.has(post._id) && (
-                          <div className="comment-bubble-wrapper" style={{ opacity: 0.65 }}>
-                            <div className="comment-avatar-bubble-fallback">💬</div>
-                            <div className="comment-bubble-body">
-                              <span style={{ fontSize: "0.78rem", color: "var(--ce-premium-muted)" }}>Typing comment update...</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <form onSubmit={(e) => handleAddComment(e, post._id)} className="comment-input-form-row">
-                        <input
-                          type="text"
-                          placeholder={post.commentsLocked ? "Comments are locked for this post." : "Reply to this thread with markdown..."}
-                          value={commentInputs[post._id] || ""}
-                          onChange={(e) => setCommentInputs(prev => ({ ...prev, [post._id]: e.target.value }))}
-                          className="comment-text-input"
-                          disabled={post.commentsLocked}
-                          style={{ cursor: post.commentsLocked ? "not-allowed" : "text" }}
-                        />
-                        <button type="submit" className="comment-send-submit-btn" disabled={post.commentsLocked} style={{ cursor: post.commentsLocked ? "not-allowed" : "pointer" }}>
-                          <Send size={12} />
-                        </button>
-                      </form>
-                    </div>
-                  )}
                 </motion.div>
               );
             })}
@@ -2478,6 +2553,400 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         evidenceId={reportEvidenceId}
         addToast={addToast}
       />
+
+      {/* Sliding Comments Panel */}
+      <AnimatePresence>
+        {activeCommentsPanelPostId && activeCommentsPanelPost && (
+          <FeedPortal>
+            {/* Comments sliding panel */}
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+              style={{ transformOrigin: getCommentsPanelTransformOrigin() }}
+              className="ce-comments-panel"
+            >
+              {/* Neon border lines & glow */}
+              <div className="comments-panel-glow-line" />
+              <div className="comments-panel-bg-details" />
+
+              {/* Panel Header */}
+              <div className="comments-panel-header">
+                <div className="comments-panel-header-title">
+                  <MessageSquare size={18} />
+                  <span>Comments</span>
+                  <span className="count-badge">
+                    {activeCommentsPanelPost.comments?.length || 0}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="comments-panel-close-btn"
+                  onClick={() => {
+                    setActiveCommentsPanelPostId(null);
+                    setReplyingToComment(null);
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Scrollable list of comments */}
+              <div className="comments-panel-body" onScroll={handleCommentsScroll}>
+                {/* Sleek Collapsible Mini Parent Post Detail Card */}
+                {/* Sleek Mini Parent Post Detail Snapshot */}
+                <div 
+                  className="panel-parent-post-snapshot" 
+                  onClick={() => setShowParentPostModal(true)}
+                >
+                  <div className="panel-snapshot-left">
+                    {activeCommentsPanelPost.author.avatar ? (
+                      <img src={activeCommentsPanelPost.author.avatar} alt={activeCommentsPanelPost.author.username} className="panel-snapshot-avatar" />
+                    ) : (
+                      <div className="panel-snapshot-avatar-fallback">
+                        {(activeCommentsPanelPost.author.username || "A").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="panel-snapshot-meta">
+                      <span className="panel-snapshot-author">@{activeCommentsPanelPost.author.username}</span>
+                      <span className="panel-snapshot-label">Original Post</span>
+                    </div>
+                  </div>
+                  <div className="panel-snapshot-right">
+                    <span className="panel-snapshot-action-btn">View Post</span>
+                  </div>
+                </div>
+
+                <div className="panel-divider" />
+
+                {(!activeCommentsPanelPost.comments || activeCommentsPanelPost.comments.length === 0) ? (
+                  <div className="comments-panel-empty-state">
+                    <MessageSquare size={40} />
+                    <h4 style={{ margin: "0 0 4px 0", color: "#fff" }}>No Comments Yet</h4>
+                    <p style={{ margin: 0, fontSize: "0.82rem" }}>Be the first to share your thoughts!</p>
+                  </div>
+                ) : (
+                  <>
+                    {(() => {
+                      const allComments = activeCommentsPanelPost.comments || [];
+                      const mainComments = [];
+                      const replyMapping = {}; // parentCommentId -> replies array
+
+                      allComments.forEach(c => {
+                        const mentionMatch = c.text?.match(/^@\[([^\]]+)\]\s+(.*)/) || c.text?.match(/^@([a-zA-Z0-9_\. ]+)\s+(.*)/);
+                        let parentComment = null;
+                        if (mentionMatch) {
+                          const targetUsername = mentionMatch[1];
+                          parentComment = allComments.find(other => 
+                            other.username === targetUsername && 
+                            new Date(other.createdAt) < new Date(c.createdAt)
+                          );
+                        }
+
+                        if (parentComment) {
+                          const pId = parentComment._id;
+                          if (!replyMapping[pId]) {
+                            replyMapping[pId] = [];
+                          }
+                          replyMapping[pId].push(c);
+                        } else {
+                          mainComments.push(c);
+                        }
+                      });
+
+                      return mainComments.slice(0, visibleCommentsCount).map(c => {
+                        const commentId = c._id;
+                        const isLiked = !!userLikedComments[commentId];
+                        const likesCount = commentLikes[commentId] !== undefined 
+                          ? commentLikes[commentId] 
+                          : getStableCommentLikesCount(commentId);
+
+                        const commentReplies = replyMapping[commentId] || [];
+                        const replyCount = commentReplies.length;
+                        const isThreadExpanded = !!expandedCommentThreads[commentId];
+
+                        return (
+                          <div key={c._id} className="comment-thread-group" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {/* Main Comment Card */}
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.15 }}
+                              className="panel-comment-card"
+                            >
+                              <div className="panel-comment-avatar-container">
+                                {c.avatar ? (
+                                  <img src={c.avatar} alt={c.username} className="panel-comment-avatar" />
+                                ) : (
+                                  <div className="panel-comment-avatar-fallback">
+                                    {(c.username || "U").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="panel-comment-info">
+                                <div className="panel-comment-meta">
+                                  <div className="panel-comment-author-group">
+                                    <span className="panel-comment-author">@{c.username}</span>
+                                  </div>
+                                  <span className="panel-comment-time">
+                                    {formatPostTime(c.createdAt)}
+                                  </span>
+                                </div>
+                                <p className="panel-comment-text">{c.text}</p>
+                                <div className="panel-comment-actions">
+                                  <div className="panel-comment-btn-group">
+                                    <button
+                                      type="button"
+                                      className={`comment-action-btn like-btn ${isLiked ? "liked" : ""}`}
+                                      onClick={() => handleToggleLikeComment(commentId)}
+                                    >
+                                      Like
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="comment-action-btn reply-btn"
+                                      onClick={() => setReplyingToComment({ commentId, username: c.username })}
+                                    >
+                                      Reply
+                                    </button>
+                                  </div>
+                                  <div className={`comment-heart-count ${isLiked ? "active" : ""}`}>
+                                    <Heart 
+                                      size={11} 
+                                      fill={isLiked ? "#ec4899" : "none"} 
+                                      stroke={isLiked ? "#ec4899" : "currentColor"} 
+                                    />
+                                    <span>{likesCount}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </motion.div>
+
+                            {/* Replies Thread Toggle and Nested List */}
+                            {replyCount > 0 && (
+                              <div className="comment-thread-replies-section">
+                                <button
+                                  type="button"
+                                  className="toggle-thread-replies-btn"
+                                  onClick={() => setExpandedCommentThreads(prev => ({ ...prev, [commentId]: !prev[commentId] }))}
+                                >
+                                  {isThreadExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                  <span>{isThreadExpanded ? "Hide replies" : `View ${replyCount} replies`}</span>
+                                </button>
+
+                                {isThreadExpanded && (
+                                  <div className="comment-replies-list" style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
+                                    {commentReplies.map(r => {
+                                      const rId = r._id;
+                                      const rIsLiked = !!userLikedComments[rId];
+                                      const rLikesCount = commentLikes[rId] !== undefined 
+                                        ? commentLikes[rId] 
+                                        : getStableCommentLikesCount(rId);
+
+                                      const rMatch = r.text?.match(/^@\[([^\]]+)\]\s+(.*)/) || r.text?.match(/^@([a-zA-Z0-9_\.]+)\s+(.*)/);
+                                      const rDisplayContent = rMatch ? rMatch[2] : r.text;
+                                      const rToUser = rMatch ? rMatch[1] : "";
+
+                                      return (
+                                        <motion.div
+                                          key={r._id}
+                                          initial={{ opacity: 0 }}
+                                          animate={{ opacity: 1 }}
+                                          transition={{ duration: 0.15 }}
+                                          className="panel-comment-card is-reply"
+                                        >
+                                          <div className="panel-comment-avatar-container">
+                                            {r.avatar ? (
+                                              <img src={r.avatar} alt={r.username} className="panel-comment-avatar" />
+                                            ) : (
+                                              <div className="panel-comment-avatar-fallback">
+                                                {(r.username || "U").charAt(0).toUpperCase()}
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="panel-comment-info">
+                                            <div className="panel-comment-meta">
+                                              <div className="panel-comment-author-group">
+                                                <span className="panel-comment-author">@{r.username}</span>
+                                              </div>
+                                              <span className="panel-comment-time">
+                                                {formatPostTime(r.createdAt)}
+                                              </span>
+                                            </div>
+                                            <p className="panel-comment-text">
+                                              <span className="reply-mention">@{rToUser}</span>
+                                              {rDisplayContent}
+                                            </p>
+                                            <div className="panel-comment-actions">
+                                              <div className="panel-comment-btn-group">
+                                                <button
+                                                  type="button"
+                                                  className={`comment-action-btn like-btn ${rIsLiked ? "liked" : ""}`}
+                                                  onClick={() => handleToggleLikeComment(rId)}
+                                                >
+                                                  Like
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  className="comment-action-btn reply-btn"
+                                                  onClick={() => setReplyingToComment({ commentId: c._id, username: r.username })}
+                                                >
+                                                  Reply
+                                                </button>
+                                              </div>
+                                              <div className={`comment-heart-count ${rIsLiked ? "active" : ""}`}>
+                                                <Heart 
+                                                  size={11} 
+                                                  fill={rIsLiked ? "#ec4899" : "none"} 
+                                                  stroke={rIsLiked ? "#ec4899" : "currentColor"} 
+                                                />
+                                                <span>{rLikesCount}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </motion.div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+
+                    {isLoadingMoreComments && (
+                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "12px", gap: "8px" }}>
+                        <div className="comment-loader-spinner" />
+                        <span style={{ fontSize: "0.78rem", color: "var(--ce-premium-muted)" }}>Loading more comments...</span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Simulated typing feedback */}
+                {typingPostIds.has(activeCommentsPanelPost._id) && (
+                  <div className="panel-comment-card" style={{ opacity: 0.65 }}>
+                    <div className="panel-comment-avatar-fallback">💬</div>
+                    <div className="panel-comment-info">
+                      <span style={{ fontSize: "0.8rem", color: "var(--ce-premium-muted)" }}>Typing comment...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Panel Footer / Comment Input Area */}
+              <div className="comments-panel-footer">
+                {replyingToComment && (
+                  <div className="replying-to-bar">
+                    <span>Replying to <strong>@{replyingToComment.username}</strong></span>
+                    <button type="button" onClick={() => setReplyingToComment(null)}>✕</button>
+                  </div>
+                )}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handlePanelAddComment(activeCommentsPanelPost._id);
+                  }}
+                >
+                  <div className="comment-input-wrapper">
+                    <input
+                      type="text"
+                      placeholder={activeCommentsPanelPost.commentsLocked ? "Comments are locked" : "Write a comment..."}
+                      value={panelCommentInput}
+                      onChange={(e) => setPanelCommentInput(e.target.value)}
+                      className="comment-panel-textarea"
+                      disabled={activeCommentsPanelPost.commentsLocked}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!panelCommentInput.trim() || activeCommentsPanelPost.commentsLocked}
+                      className="comment-panel-send-btn"
+                    >
+                      <Send size={14} />
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </FeedPortal>
+        )}
+      </AnimatePresence>
+
+      {/* Parent Post Detail Modal Popup */}
+      <AnimatePresence>
+        {showParentPostModal && activeCommentsPanelPost && (
+          <FeedPortal>
+            <div className="parent-post-popup-overlay" onClick={() => setShowParentPostModal(false)}>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="parent-post-popup-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close Button */}
+                <button 
+                  type="button"
+                  className="parent-post-popup-close"
+                  onClick={() => setShowParentPostModal(false)}
+                >
+                  <X size={18} />
+                </button>
+
+                {/* Header */}
+                <div className="popup-post-header">
+                  <div className="popup-author-info">
+                    {activeCommentsPanelPost.author.avatar ? (
+                      <img src={activeCommentsPanelPost.author.avatar} alt={activeCommentsPanelPost.author.username} className="popup-author-avatar" />
+                    ) : (
+                      <div className="popup-author-avatar-fallback">
+                        {(activeCommentsPanelPost.author.username || "A").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="popup-author-meta">
+                      <span className="popup-author-name">@{activeCommentsPanelPost.author.username}</span>
+                      <span className="popup-author-time">{formatPostTime(activeCommentsPanelPost.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content scroll area */}
+                <div className="popup-post-content-area">
+                  <p className="popup-post-text">{activeCommentsPanelPost.text}</p>
+                  {activeCommentsPanelPost.image && (
+                    <div className="popup-post-image-wrapper">
+                      <img src={activeCommentsPanelPost.image} alt="Attached content" className="popup-post-image" />
+                    </div>
+                  )}
+                  {activeCommentsPanelPost.video && (
+                    <div className="popup-post-video-wrapper" style={{ width: "100%", aspectRatio: "16/9", overflow: "hidden", borderRadius: "12px", background: "#000", marginTop: "10px", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                      <AutoplayVideo src={activeCommentsPanelPost.video} />
+                    </div>
+                  )}
+                  {activeCommentsPanelPost.code && (
+                    <div className="popup-post-code-snippet">
+                      <span className="popup-post-code-lang">{activeCommentsPanelPost.codeLanguage || "code"}</span>
+                      <pre><code>{activeCommentsPanelPost.code}</code></pre>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer with Likes Info */}
+                <div className="popup-post-footer">
+                  <div className="popup-post-likes">
+                    <Heart size={14} fill="#ec4899" stroke="#ec4899" />
+                    <span style={{ fontSize: "0.85rem", fontWeight: "600", marginLeft: "4px" }}>{activeCommentsPanelPost.likes?.length || 0} Likes</span>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </FeedPortal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
