@@ -194,7 +194,7 @@ const getPosts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const query = { status: { $ne: "hidden" } };
+    const query = { status: { $nin: ["hidden", "deleted"] } };
     if (req.query.author) {
       query.author = req.query.author;
     }
@@ -379,7 +379,9 @@ const getPostById = async (req, res) => {
       .populate({ path: "comments.user", select: "username email avatar subscription" })
       .lean();
 
-    if (!post) {
+    const isAuthor = req.user && String(post.author?._id || post.author) === String(req.user._id);
+    const isAdmin = req.user && req.user.role === "admin";
+    if (!post || ((post.status === "deleted" || post.status === "hidden") && !isAuthor && !isAdmin)) {
       return res.status(404).json({ success: false, message: "Post not found" });
     }
 
