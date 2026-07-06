@@ -3359,6 +3359,8 @@
    ========================================================================== */
 .active-room-card-wrapper {
   perspective: 1000px;
+  content-visibility: auto;
+  contain-intrinsic-size: 240px;
 }
 
 .active-room-card {
@@ -11129,19 +11131,19 @@ tier-badge.master {
 /* Light mode overrides for actions sidebar and form cards */
 .light .action-form-card {
   background: rgba(255, 255, 255, 0.6) !important;
-  border-color: rgba(168, 85, 247, 0.15) !important;
+  border: 1px solid rgba(124, 58, 237, 0.35) !important;
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08),
     inset 0 0 0 1px rgba(255, 255, 255, 0.5) !important;
 }
 
 .light .action-form-card:hover {
-  border-color: rgba(168, 85, 247, 0.4) !important;
-  box-shadow: 0 12px 40px 0 rgba(168, 85, 247, 0.12),
+  border-color: rgba(124, 58, 237, 0.65) !important;
+  box-shadow: 0 12px 40px 0 rgba(124, 58, 237, 0.12),
     inset 0 0 0 1px rgba(255, 255, 255, 0.8) !important;
 }
 
 .light .form-card-header {
-  border-bottom-color: rgba(168, 85, 247, 0.1) !important;
+  border-bottom-color: rgba(124, 58, 237, 0.2) !important;
 }
 
 .light .form-card-header h3 {
@@ -11157,7 +11159,7 @@ tier-badge.master {
 .light .form-field input,
 .light .form-field select {
   background-color: rgba(0, 0, 0, 0.03) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(124, 58, 237, 0.2) !important;
   color: #1f2937 !important;
 }
 
@@ -11216,7 +11218,8 @@ tier-badge.master {
     /* Hide scrollbar for Firefox */
     -ms-overflow-style: none;
     /* Hide scrollbar for IE/Edge */
-    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
   }
 
   .rooms-actions-sidebar::-webkit-scrollbar {
@@ -11248,7 +11251,8 @@ tier-badge.master {
     overflow-y: auto !important;
     padding-right: 12px;
     padding-bottom: 24px;
-    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
   }
 
   /* My rooms split columns scrolling config */
@@ -11257,7 +11261,8 @@ tier-badge.master {
     overflow-y: auto !important;
     padding-right: 12px;
     padding-bottom: 24px;
-    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
   }
 }
 

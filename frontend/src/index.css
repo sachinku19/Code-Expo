@@ -143,14 +143,38 @@ select {
   color-scheme: light !important;
 }
 
-select option {
-  background-color: #151125 !important;
-  color: #f3f4f6 !important;
+/* Force document-level color-schemes on root selectors to guide native control overlays */
+.dark,
+.dark-theme,
+[data-theme="dark"],
+.ce-layout-wrapper.dark {
+  color-scheme: dark !important;
 }
 
-.light select option,
-[data-theme="light"] select option,
-.light-mode select option {
-  background-color: #ffffff !important;
-  color: #1f2937 !important;
+.light,
+.light-theme,
+[data-theme="light"],
+.ce-layout-wrapper.light {
+  color-scheme: light !important;
+}
+
+/* Revert select options for general browsers (Chrome/Edge/Safari) to default native styles to prevent white-on-white issues */
+select option {
+  color: revert !important;
+  background-color: revert !important;
+}
+
+/* Restrict custom select option overrides to Gecko (Firefox), preventing Chrome white-on-white conflicts */
+@supports (-moz-appearance: none) {
+  select option {
+    background-color: #151125 !important;
+    color: #f3f4f6 !important;
+  }
+
+  .light select option,
+  [data-theme="light"] select option,
+  .light-mode select option {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+  }
 }

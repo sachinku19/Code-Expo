@@ -613,10 +613,12 @@ const getAllPublicRooms = async (req, res) => {
         const RoomLike = require("../models/RoomLike");
 
         const rooms = await Room.find({ isPrivate: false })
-            .populate("createdBy", "username email avatar")
-            .populate("participants.user", "username email avatar")
-            .populate("likes", "username email avatar")
-            .sort({ createdAt: -1 });
+            .populate("createdBy", "username avatar")
+            .populate("participants.user", "username avatar")
+            .populate("likes", "username avatar")
+            .select("-__v")
+            .sort({ createdAt: -1 })
+            .limit(100);
 
         const roomsWithCount = rooms.map((room) => {
             const activeUsers = roomUsers[room.roomId] || [];

@@ -2232,9 +2232,11 @@
   box-shadow: 0 0 0 2px var(--ce-bg-active);
 }
 
-.settings-pane option {
-  background-color: var(--ce-bg-sidebar);
-  color: var(--ce-text);
+@supports (-moz-appearance: none) {
+  .settings-pane option {
+    background-color: var(--ce-bg-sidebar);
+    color: var(--ce-text);
+  }
 }
 
 .ce-range-slider {
