@@ -149,9 +149,9 @@ const highlightCode = (lineText) => {
   ];
 
   const regex = new RegExp(
-    `(\\/\\/.*)|` + 
-    `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` + 
-    `\\b(${keywords.join("|")})\\b|` + 
+    `(\\/\\/.*)|` +
+    `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` +
+    `\\b(${keywords.join("|")})\\b|` +
     `\\b(\\d+)\\b`,
     "g"
   );
@@ -178,7 +178,7 @@ const timeAgo = (dateStr) => {
   const date = new Date(dateStr);
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
-  
+
   let interval = Math.floor(seconds / 31536000);
   if (interval >= 1) return `${interval}y ago`;
   interval = Math.floor(seconds / 2592000);
@@ -1011,8 +1011,8 @@ const renderSubscriptionBadge = (profileUser) => {
   const plan = profileUser.subscription.plan;
   if (plan === "Developer Pro") {
     return (
-      <span 
-        title="Developer Pro Verified" 
+      <span
+        title="Developer Pro Verified"
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -1036,8 +1036,8 @@ const renderSubscriptionBadge = (profileUser) => {
   }
   if (plan === "Elite Sponsor") {
     return (
-      <span 
-        title="Elite Sponsor Verified" 
+      <span
+        title="Elite Sponsor Verified"
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -1216,7 +1216,7 @@ function Dashboard() {
 
     const foundInFollowers = followersList.find(f => String(f._id || f.id) === String(targetId));
     if (foundInFollowers) return foundInFollowers;
-    
+
     const foundInFollowing = followingList.find(f => String(f._id || f.id) === String(targetId));
     if (foundInFollowing) return foundInFollowing;
 
@@ -1299,7 +1299,7 @@ function Dashboard() {
 
   const [modalCommentText, setModalCommentText] = useState("");
   const [modalRevealedSensitive, setModalRevealedSensitive] = useState(false);
-  
+
   useEffect(() => {
     setModalRevealedSensitive(false);
   }, [selectedPostModal]);
@@ -1541,7 +1541,7 @@ function Dashboard() {
     addToast(`Message sound effects ${val ? "enabled" : "disabled"}`, "success");
     if (val) {
       const audio = new Audio("/send_message_notification.mp3");
-      audio.play().catch(() => {});
+      audio.play().catch(() => { });
     }
   };
 
@@ -1879,6 +1879,11 @@ function Dashboard() {
     if (tab) {
       if (tab === "feed-action") {
         tab = "trust-safety";
+      }
+      if (tab === "myrooms") {
+        tab = "rooms";
+        setRoomsTab("myrooms");
+        localStorage.setItem("ce_roomsTab", "myrooms");
       }
       setActiveSection(tab);
       if (tab === "profile") {
@@ -3326,6 +3331,67 @@ function Dashboard() {
       fetchAndAppendSuggestion(followedUserId);
     };
 
+    const handleUserPresenceChange = ({ userId, isOnline }) => {
+      setFollowingList(prev => {
+        const next = prev.map(f => {
+          if (String(f._id || f) === String(userId)) {
+            return { ...f, isOnline: isOnline ? "true" : "false" };
+          }
+          return f;
+        });
+        localStorage.setItem("ce_cache_followingList", JSON.stringify(next));
+        return next;
+      });
+
+      setOnlineFollows(prev => {
+        if (isOnline) {
+          if (prev.some(f => String(f._id || f) === String(userId))) return prev;
+          let follows = [];
+          try {
+            const cached = localStorage.getItem("ce_cache_followingList");
+            if (cached) follows = JSON.parse(cached) || [];
+          } catch (e) { }
+          if (follows.length === 0) follows = followingList;
+
+          const userObj = follows.find(f => String(f._id || f) === String(userId));
+          if (userObj) {
+            const next = [...prev, { ...userObj, isOnline: "true" }];
+            localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(next));
+            return next;
+          }
+          return prev;
+        } else {
+          const next = prev.filter(f => String(f._id || f) !== String(userId));
+          localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(next));
+          return next;
+        }
+      });
+    };
+
+    const handleUserCustomStatusChange = ({ userId, status }) => {
+      setFollowingList(prev => {
+        const next = prev.map(f => {
+          if (String(f._id || f) === String(userId)) {
+            return { ...f, status };
+          }
+          return f;
+        });
+        localStorage.setItem("ce_cache_followingList", JSON.stringify(next));
+        return next;
+      });
+
+      setOnlineFollows(prev => {
+        const next = prev.map(f => {
+          if (String(f._id || f) === String(userId)) {
+            return { ...f, status };
+          }
+          return f;
+        });
+        localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(next));
+        return next;
+      });
+    };
+
     let debounceTimer = null;
     const handleLiveRoomsUpdate = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
@@ -3349,6 +3415,8 @@ function Dashboard() {
     socket.on("new-follower", handleNewFollower);
     socket.on("follow-count-updated", handleFollowCountUpdated);
     socket.on("suggestion-refresh", handleSuggestionRefresh);
+    socket.on("user:status", handleUserPresenceChange);
+    socket.on("user:status-update", handleUserCustomStatusChange);
 
     socket.on("join-request", handleJoinRequest);
     socket.on("notification-received", handleRealtimeNotification);
@@ -3375,6 +3443,8 @@ function Dashboard() {
       socket.off("new-follower", handleNewFollower);
       socket.off("follow-count-updated", handleFollowCountUpdated);
       socket.off("suggestion-refresh", handleSuggestionRefresh);
+      socket.off("user:status", handleUserPresenceChange);
+      socket.off("user:status-update", handleUserCustomStatusChange);
 
       socket.off("join-request", handleJoinRequest);
       socket.off("notification-received", handleRealtimeNotification);
@@ -6298,14 +6368,14 @@ function Dashboard() {
 
                   {/* Right Side: Explorer tabs */}
                   <div className="rooms-explorer-content">
-                    {/* Segmented Pill Switcher with Round Sliding Background */}
-                    <div className="ce-pill-switcher-container">
-                      <div className="ce-pill-switcher" style={{ maxWidth: "720px" }}>
+                    {/* Segmented Pill Switcher with Round Sliding Background & Tab Actions */}
+                    <div className="ce-pill-switcher-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
+                      <div className="ce-pill-switcher" style={{ maxWidth: "780px", flexShrink: 0 }}>
                         <div
                           className="ce-pill-bg-slide"
                           style={{
-                            width: "calc(33.333% - 2px)",
-                            transform: `translateX(${(roomsTab === "public" ? 0 : roomsTab === "myrooms" ? 1 : 2) * 100}%)`
+                            width: "calc(25% - 2px)",
+                            transform: `translateX(${(roomsTab === "public" ? 0 : roomsTab === "myrooms" ? 1 : roomsTab === "requests" ? 2 : 3) * 100}%)`
                           }}
                         />
                         <button
@@ -6329,31 +6399,83 @@ function Dashboard() {
                         >
                           My Requests ({mySentRequests.length})
                         </button>
+                        <button
+                          type="button"
+                          className={`ce-pill-btn ${roomsTab === "history" ? "active" : ""}`}
+                          onClick={() => setRoomsTab("history")}
+                        >
+                          Room History ({historyRooms.length})
+                        </button>
+                      </div>
+
+                      {/* Dynamic Tab Controls (Search / Filters) aligned on the right */}
+                      <div className="tab-level-controls" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                        {roomsTab === "public" && publicRooms.length > 0 && (
+                          <div className="section-search-container" style={{ margin: 0 }}>
+                            <Search size={13} className="section-search-icon" />
+                            <input
+                              type="text"
+                              placeholder="Search public rooms..."
+                              value={publicRoomsSearch}
+                              onChange={(e) => setPublicRoomsSearch(e.target.value)}
+                              className="section-search-input"
+                            />
+                          </div>
+                        )}
+
+                        {roomsTab === "myrooms" && historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length > 0 && (
+                          <div className="section-search-container" style={{ margin: 0 }}>
+                            <Search size={13} className="section-search-icon" />
+                            <input
+                              type="text"
+                              placeholder="Search your workspaces..."
+                              value={myRoomsTabSearch}
+                              onChange={(e) => setMyRoomsTabSearch(e.target.value)}
+                              className="section-search-input"
+                            />
+                          </div>
+                        )}
+
+                        {roomsTab === "history" && historyRooms.length > 0 && (
+                          <div className="history-table-controls" style={{ margin: 0, background: "none", border: "none", padding: 0, display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                            <div className="search-bar-container" style={{ margin: 0 }}>
+                              <Search size={14} className="control-search-icon" />
+                              <input
+                                type="text"
+                                placeholder="Search room name or ID..."
+                                value={historySearch}
+                                onChange={(e) => setHistorySearch(e.target.value)}
+                              />
+                            </div>
+
+                            <select
+                              value={historyFilterLang}
+                              onChange={(e) => setHistoryFilterLang(e.target.value)}
+                              style={{ background: activeTheme === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.05)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", padding: "6px 12px", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", height: "36px" }}
+                            >
+                              <option value="all">All Languages</option>
+                              <option value="javascript">JavaScript</option>
+                              <option value="python">Python</option>
+                              <option value="cpp">C++</option>
+                              <option value="java">Java</option>
+                            </select>
+
+                            <select
+                              value={historySortBy}
+                              onChange={(e) => setHistorySortBy(e.target.value)}
+                              style={{ background: activeTheme === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.05)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", padding: "6px 12px", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", height: "36px" }}
+                            >
+                              <option value="recent">Sort by: Recent</option>
+                              <option value="name">Sort by: Name</option>
+                              <option value="created">Sort by: Date Created</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-
-
                     {roomsTab === "public" && (
-                      <div style={{ marginTop: "8px" }}>
-                        <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <Globe size={16} className="brand-logo" />
-                            <h3 className="section-title">Explore Public Workspaces</h3>
-                          </div>
-                          {publicRooms.length > 0 && (
-                            <div className="section-search-container">
-                              <Search size={13} className="section-search-icon" />
-                              <input
-                                type="text"
-                                placeholder="Search public rooms..."
-                                value={publicRoomsSearch}
-                                onChange={(e) => setPublicRoomsSearch(e.target.value)}
-                                className="section-search-input"
-                              />
-                            </div>
-                          )}
-                        </div>
+                      <div className="rooms-explorer-tab-content-wrapper" style={{ marginTop: "8px" }}>
 
                         {publicRooms.length === 0 ? (
                           <div className="empty-state-card">
@@ -6376,48 +6498,33 @@ function Dashboard() {
                           }
 
                           return (
-                            <>
-                              <div className="rooms-grid-explore" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", alignItems: "start" }}>
+                            <div className="public-rooms-scroll-wrapper">
+                              <div className="rooms-grid-explore">
                                 {filteredPublic
                                   .slice(0, showAllPublicRooms ? undefined : 6)
                                   .map(room => renderRoomCard(room))}
                               </div>
                               {filteredPublic.length > 6 && (
-                                <button
-                                  onClick={() => setShowAllPublicRooms(!showAllPublicRooms)}
-                                  className="split-column-toggle-btn"
-                                  style={{ marginTop: "16px" }}
-                                >
-                                  <span>{showAllPublicRooms ? "Show Less" : "Show All"}</span>
-                                  <ChevronDown size={14} style={{ transform: showAllPublicRooms ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                                </button>
+                                <div style={{ display: "flex", justifyContent: "center", width: "100%", marginTop: "16px" }}>
+                                  <button
+                                    onClick={() => setShowAllPublicRooms(!showAllPublicRooms)}
+                                    className="split-column-toggle-btn"
+                                    style={{ margin: "0 auto" }}
+                                  >
+                                    <span>{showAllPublicRooms ? "Show Less" : "Show All"}</span>
+                                    <ChevronDown size={14} style={{ transform: showAllPublicRooms ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                                  </button>
+                                </div>
                               )}
-                            </>
+                            </div>
                           );
                         })()}
                       </div>
                     )}
 
                     {roomsTab === "myrooms" && (
-                      <div style={{ marginTop: "8px" }}>
-                        <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <FolderGit size={16} className="brand-logo" />
-                            <h3 className="section-title">My Workspaces</h3>
-                          </div>
-                          {historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length > 0 && (
-                            <div className="section-search-container">
-                              <Search size={13} className="section-search-icon" />
-                              <input
-                                type="text"
-                                placeholder="Search your workspaces..."
-                                value={myRoomsTabSearch}
-                                onChange={(e) => setMyRoomsTabSearch(e.target.value)}
-                                className="section-search-input"
-                              />
-                            </div>
-                          )}
-                        </div>
+                      <div className="rooms-explorer-tab-content-wrapper" style={{ marginTop: "8px" }}>
+
 
                         {(() => {
                           const ownedRooms = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
@@ -6526,13 +6633,8 @@ function Dashboard() {
                     )}
 
                     {roomsTab === "requests" && (
-                      <div style={{ marginTop: "8px" }}>
-                        <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: "16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <Clock size={16} className="brand-logo" />
-                            <h3 className="section-title">My Sent Requests</h3>
-                          </div>
-                        </div>
+                      <div className="rooms-explorer-tab-content-wrapper" style={{ marginTop: "8px" }}>
+
 
                         {mySentRequests.length === 0 ? (
                           <div className="empty-state-card">
@@ -6540,7 +6642,7 @@ function Dashboard() {
                             <p>You haven't requested to join any private rooms yet.</p>
                           </div>
                         ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          <div className="rooms-requests-list-container" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                             {mySentRequests.map((req) => (
                               <div
                                 key={req.roomId}
@@ -6614,6 +6716,76 @@ function Dashboard() {
                             ))}
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {roomsTab === "history" && (
+                      <div className="rooms-explorer-tab-content-wrapper" style={{ marginTop: "8px" }}>
+
+                        <div className="history-table-wrapper" style={{ overflowX: "auto", background: activeTheme === "light" ? "var(--ce-surface-card)" : "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "12px" }}>
+                          <table className="history-data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                              <tr style={{ borderBottom: "1px solid var(--ce-border)", background: "rgba(255,255,255,0.02)" }}>
+                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Room Workspace</th>
+                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Language</th>
+                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Participants</th>
+                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Owner</th>
+                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Last Activity</th>
+                                <th style={{ padding: "14px 16px", textAlign: "right", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredHistory.length === 0 ? (
+                                <tr>
+                                  <td colSpan="6" style={{ padding: "32px", textAlign: "center", color: "var(--ce-text-muted)", fontSize: "0.85rem" }}>No rooms match your filter.</td>
+                                </tr>
+                              ) : (
+                                filteredHistory.map(room => {
+                                  const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+                                  return (
+                                    <tr key={room.roomId} style={{ borderBottom: "1px solid var(--ce-border)", transition: "background 0.2s" }} className="table-row-hover">
+                                      <td style={{ padding: "14px 16px" }}>
+                                        <div style={{ fontWeight: "700", fontSize: "0.92rem", color: "var(--ce-text)", display: "flex", alignItems: "center", gap: "6px" }}>🚀 {room.title}</div>
+                                        <div style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", marginTop: "2px" }}>{room.roomId}</div>
+                                      </td>
+                                      <td style={{ padding: "14px 16px" }}>
+                                        <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", textTransform: "uppercase", fontWeight: "600", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
+                                      </td>
+                                      <td style={{ padding: "14px 16px" }}>
+                                        <span style={{ fontSize: "0.8rem", color: "var(--ce-text)" }}>{room.participants?.length || 1} online</span>
+                                      </td>
+                                      <td style={{ padding: "14px 16px" }}>
+                                        <span style={{ fontSize: "0.8rem", color: "var(--ce-text)" }}>{isOwner ? "You" : room.createdBy?.username || "Collaborator"}</span>
+                                      </td>
+                                      <td style={{ padding: "14px 16px" }}>
+                                        <span style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)" }}>{new Date(room.updatedAt).toLocaleDateString()}</span>
+                                      </td>
+                                      <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                                        <button
+                                          onClick={() => handleJoinRoomDirect(room.roomId)}
+                                          className="ce-btn-primary"
+                                          style={{
+                                            padding: "6px 16px",
+                                            fontSize: "0.78rem",
+                                            fontWeight: "600",
+                                            background: "var(--ce-primary)",
+                                            color: "#fff",
+                                            border: "none",
+                                            borderRadius: "6px",
+                                            cursor: "pointer",
+                                            boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)"
+                                          }}
+                                        >
+                                          Resume
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -6993,8 +7165,8 @@ function Dashboard() {
                                 <div className="notif-category-icon-container">
                                   {notifIcon}
                                 </div>
-                                <div 
-                                  className="notif-sender-avatar-container" 
+                                <div
+                                  className="notif-sender-avatar-container"
                                   style={{ backgroundColor: senderAvatar ? "transparent" : getAvatarColor(senderName), cursor: "pointer" }}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -7014,7 +7186,7 @@ function Dashboard() {
                                       <span>{notif.message}</span>
                                     ) : (
                                       <>
-                                        <strong 
+                                        <strong
                                           className="notif-sender-name-link"
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -7365,8 +7537,8 @@ function Dashboard() {
                                   className="profile-edit-input"
                                   style={{ flex: 1, background: "var(--ce-surface-card)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", borderRadius: "4px", padding: "8px", fontSize: "0.8rem" }}
                                 />
-                                <button 
-                                  type="button" 
+                                <button
+                                  type="button"
                                   onClick={handleAutoLocate}
                                   style={{
                                     padding: "8px 12px",
@@ -7533,7 +7705,7 @@ function Dashboard() {
                       {/* Dynamic Tab Panels for Liked/Saved Rooms, created Rooms & Logs */}
                       <div className="profile-tabs-container">
                         <div className="profile-switchers-row" style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "20px" }}>
-                          
+
                           {/* Switcher 1: Rooms Hub */}
                           <div style={{ flex: "1 1 300px", minWidth: "280px" }}>
                             <h4 style={{ fontSize: "0.82rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "1px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
@@ -7746,10 +7918,10 @@ function Dashboard() {
                                     const isMyPost = String(postAuthorId) === String(user?._id || user?.id);
                                     const showDelete = isMyPost || user?.role === "admin" || user?.role === "moderator";
                                     return (
-                                      <ProfilePostCard 
-                                        key={post._id} 
-                                        post={post} 
-                                        onOpen={() => setSelectedPostModal(post)} 
+                                      <ProfilePostCard
+                                        key={post._id}
+                                        post={post}
+                                        onOpen={() => setSelectedPostModal(post)}
                                         user={viewingUserProfile || user}
                                         onDelete={showDelete ? (e) => {
                                           e.stopPropagation();
@@ -7786,10 +7958,10 @@ function Dashboard() {
                                       const isMyPost = String(postAuthorId) === String(user?._id || user?.id);
                                       const showDelete = isMyPost || user?.role === "admin" || user?.role === "moderator";
                                       return (
-                                        <ProfilePostCard 
-                                          key={post._id} 
-                                          post={post} 
-                                          onOpen={() => setSelectedPostModal(post)} 
+                                        <ProfilePostCard
+                                          key={post._id}
+                                          post={post}
+                                          onOpen={() => setSelectedPostModal(post)}
                                           user={post.author}
                                           onDelete={showDelete ? (e) => {
                                             e.stopPropagation();
@@ -8274,7 +8446,7 @@ function Dashboard() {
                           </div>
                           <div className="toggle-actions-wrapper" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                             {notifSoundEnabled && (
-                              <button 
+                              <button
                                 className={`ce-sound-test-btn ${isSoundTesting ? "playing" : ""}`}
                                 onClick={handleTestSound}
                                 title="Play Test Sound"
@@ -9388,8 +9560,8 @@ function Dashboard() {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h3 style={{ margin: 0, color: "var(--ce-text-h)", fontSize: "1.1rem", fontWeight: "700" }}>Liked By</h3>
-                <button 
-                  onClick={() => setLikedUsersListModal(null)} 
+                <button
+                  onClick={() => setLikedUsersListModal(null)}
                   style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer" }}
                 >
                   <X size={18} />
@@ -9399,7 +9571,7 @@ function Dashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "300px", overflowY: "auto", paddingRight: "4px" }}>
                 {likedUsersListModal.map((liker, idx) => (
                   <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px", background: "rgba(99, 102, 241, 0.04)", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
-                    <div 
+                    <div
                       style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
                       onClick={() => {
                         setLikedUsersListModal(null);
@@ -9477,379 +9649,379 @@ function Dashboard() {
                 }}
               >
                 <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: isSplit ? "row" : "column" }} className={selectedPostModal.isSensitive && !modalRevealedSensitive ? "sensitive-blur-active" : ""}>
-                {/* Left Column: Video, Image Carousel or Code Snippet */}
-                {hasVideo && (
-                  <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-                    <video 
-                      src={selectedPostModal.video} 
-                      controls 
-                      autoPlay 
-                      style={{ width: "100%", height: "100%", objectFit: "contain" }} 
-                    />
-                  </div>
-                )}
-
-                {(!hasVideo && hasImage) && (
-                  <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-                    <div style={{ display: "flex", height: "100%", width: "100%", transition: "transform 0.3s ease", transform: `translateX(-${modalActiveImageIdx * 100}%)` }}>
-                      {postImages.map((src, i) => (
-                        <img 
-                          key={i} 
-                          src={src} 
-                          alt={`Post media view ${i}`} 
-                          style={{ width: "100%", height: "100%", flexShrink: 0, objectFit: "cover" }} 
-                        />
-                      ))}
+                  {/* Left Column: Video, Image Carousel or Code Snippet */}
+                  {hasVideo && (
+                    <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                      <video
+                        src={selectedPostModal.video}
+                        controls
+                        autoPlay
+                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      />
                     </div>
-                    {/* Carousel Arrow Controls */}
-                    {postImages.length > 1 && (
-                      <>
-                        <button
-                          onClick={() => setModalActiveImageIdx(prev => (prev - 1 + postImages.length) % postImages.length)}
-                          style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        <button
-                          onClick={() => setModalActiveImageIdx(prev => (prev + 1) % postImages.length)}
-                          style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
-                        >
-                          <ChevronRight size={16} />
-                        </button>
+                  )}
 
-                        {/* Carousel Dots indicators */}
-                        <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", zIndex: 5 }}>
-                          {postImages.map((_, i) => (
-                            <div
-                              key={i}
-                              style={{
-                                width: "6px",
-                                height: "6px",
-                                borderRadius: "50%",
-                                background: modalActiveImageIdx === i ? "#fff" : "rgba(255,255,255,0.4)",
-                                transition: "background 0.2s"
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {(!hasVideo && !hasImage && hasCode) && (
-                  <div style={{ flex: 1, height: "100%", background: "#09090f", display: "flex", flexDirection: "column", borderRight: "1px solid var(--ce-border)" }}>
-                    {/* Mac style window header */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "#11111b", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ff5f56" }} />
-                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ffbd2e" }} />
-                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#27c93f" }} />
+                  {(!hasVideo && hasImage) && (
+                    <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                      <div style={{ display: "flex", height: "100%", width: "100%", transition: "transform 0.3s ease", transform: `translateX(-${modalActiveImageIdx * 100}%)` }}>
+                        {postImages.map((src, i) => (
+                          <img
+                            key={i}
+                            src={src}
+                            alt={`Post media view ${i}`}
+                            style={{ width: "100%", height: "100%", flexShrink: 0, objectFit: "cover" }}
+                          />
+                        ))}
                       </div>
-                      <span style={{ fontSize: "0.75rem", color: "#a5b4fc", fontFamily: "monospace", textTransform: "uppercase", fontWeight: "700" }}>
-                        {codeDetails.lang}
-                      </span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(codeDetails.code);
-                          addToast("Code copied to clipboard!", "success");
-                        }}
-                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e8f0", padding: "4px 8px", borderRadius: "4px", fontSize: "0.7rem", cursor: "pointer", fontWeight: "600", transition: "all 0.2s" }}
-                      >
-                        Copy
-                      </button>
-                    </div>
-                    
-                    {/* Code Content */}
-                    <div style={{ flex: 1, overflow: "auto", padding: "16px", margin: 0 }}>
-                      <pre style={{ margin: 0, padding: 0, background: "none", border: "none", fontFamily: "'Fira Code', monospace", fontSize: "0.82rem", lineHeight: "1.5", color: "#e2e8f0", whiteSpace: "pre" }}>
-                        <code dangerouslySetInnerHTML={{ __html: highlightCode(codeDetails.code) }} />
-                      </pre>
-                    </div>
-                  </div>
-                )}
+                      {/* Carousel Arrow Controls */}
+                      {postImages.length > 1 && (
+                        <>
+                          <button
+                            onClick={() => setModalActiveImageIdx(prev => (prev - 1 + postImages.length) % postImages.length)}
+                            style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <button
+                            onClick={() => setModalActiveImageIdx(prev => (prev + 1) % postImages.length)}
+                            style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
+                          >
+                            <ChevronRight size={16} />
+                          </button>
 
-                {/* Right/Main Column: Post Details */}
-                <div style={{ width: isSplit ? "380px" : "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--ce-surface-card)" }}>
-                {/* Header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderBottom: "1px solid var(--ce-border)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", overflow: "hidden" }}>
-                      {selectedPostModal.author?.avatar ? (
-                        <img src={selectedPostModal.author.avatar} alt={selectedPostModal.author.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.8rem", fontWeight: "600" }}>
-                          {(selectedPostModal.author?.username || "D").charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ce-text)" }}>@{selectedPostModal.author?.username || "developer"}</span>
-                      <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{selectedPostModal.author?.title || "Developer"}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    {selectedPostModal.author && String(selectedPostModal.author._id || selectedPostModal.author.id || selectedPostModal.author) !== String(user?.id || user?._id) && (
-                      <button
-                        onClick={() => {
-                          setReportedTargetUser({
-                            _id: selectedPostModal.author?._id || selectedPostModal.author.id || selectedPostModal.author,
-                            username: selectedPostModal.author?.username || "developer"
-                          });
-                          setReportEvidenceType("POST");
-                          setReportEvidenceId(selectedPostModal._id);
-                          setReportModalOpen(true);
-                        }}
-                        title="Report Post"
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#eab308",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          marginRight: "12px",
-                          transition: "all 0.2s ease"
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.transform = "scale(1.08)";
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.transform = "scale(1)";
-                        }}
-                      >
-                        <ShieldAlert size={18} />
-                      </button>
-                    )}
-                    <button 
-                      onClick={handleClosePostModal} 
-                      style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Content & Comments scroll section */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
-                  {/* Post description text */}
-                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
-                      {selectedPostModal.author?.avatar ? (
-                        <img src={selectedPostModal.author.avatar} alt="Author" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.7rem" }}>
-                          {(selectedPostModal.author?.username || "D").charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)", flex: 1 }}>
-                      <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{selectedPostModal.author?.username}:</strong>
-                      {parseMarkdown(hasCode ? getRightSideText(selectedPostModal.text) : selectedPostModal.text)}
-                    </div>
-                  </div>
-
-                  {/* Divider line */}
-                  <div style={{ borderBottom: "1px solid var(--ce-border)" }} />
-
-                  {/* Comments list */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {selectedPostModal.comments && selectedPostModal.comments.length > 0 ? (
-                      selectedPostModal.comments.map((comment, index) => (
-                        <div key={index} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                          <div style={{ width: "24px", height: "24px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
-                            {comment.avatar ? (
-                              <img src={comment.avatar} alt={comment.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            ) : (
-                              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.7rem" }}>
-                                {(comment.username || "D").charAt(0).toUpperCase()}
-                              </div>
-                            )}
+                          {/* Carousel Dots indicators */}
+                          <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", zIndex: 5 }}>
+                            {postImages.map((_, i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  width: "6px",
+                                  height: "6px",
+                                  borderRadius: "50%",
+                                  background: modalActiveImageIdx === i ? "#fff" : "rgba(255,255,255,0.4)",
+                                  transition: "background 0.2s"
+                                }}
+                              />
+                            ))}
                           </div>
-                          <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)" }}>
-                            <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{comment.username}:</strong>
-                            {comment.text}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <p style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)", textAlign: "center", marginTop: "20px" }}>No comments yet. Be first to comment!</p>
-                    )}
-                  </div>
-                </div>
+                        </>
+                      )}
+                    </div>
+                  )}
 
-                {/* Footer panel containing Like Action and Likes stack */}
-                <div style={{ padding: "16px", borderTop: "1px solid var(--ce-border)", display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      {/* Liking action - ONLY heart icon */}
-                      <button
-                        onClick={() => !selectedPostModal.likesDisabled && handleLikePostInModal()}
-                        disabled={selectedPostModal.likesDisabled}
-                        style={{ background: "none", border: "none", color: selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "var(--ce-text)", cursor: selectedPostModal.likesDisabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", padding: 0, opacity: selectedPostModal.likesDisabled ? 0.45 : 1 }}
-                        title={selectedPostModal.likesDisabled ? "Likes are disabled" : ""}
-                      >
-                        <Heart size={20} fill={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "none"} color={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "currentColor"} />
-                      </button>
-                      
-                      {/* Likers Stack with Clickable More Option */}
-                      {(() => {
-                        const resolvedLikers = (selectedPostModal.likes || []).map(resolveLikedUser).filter(Boolean);
-                        if (resolvedLikers.length === 0) return null;
-                        return (
-                          <div className="card-likes-avatars-stack" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              {resolvedLikers.slice(0, 3).map((u, i) => (
-                                <div
-                                  key={i}
-                                  className="avatar-stack-item"
-                                  style={{
-                                    width: "18px",
-                                    height: "18px",
-                                    borderRadius: "50%",
-                                    overflow: "hidden",
-                                    border: "1px solid var(--ce-surface-card)",
-                                    marginLeft: i > 0 ? "-6px" : "0",
-                                    zIndex: 10 - i,
-                                    cursor: "pointer"
-                                  }}
+                  {(!hasVideo && !hasImage && hasCode) && (
+                    <div style={{ flex: 1, height: "100%", background: "#09090f", display: "flex", flexDirection: "column", borderRight: "1px solid var(--ce-border)" }}>
+                      {/* Mac style window header */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "#11111b", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ff5f56" }} />
+                          <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ffbd2e" }} />
+                          <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#27c93f" }} />
+                        </div>
+                        <span style={{ fontSize: "0.75rem", color: "#a5b4fc", fontFamily: "monospace", textTransform: "uppercase", fontWeight: "700" }}>
+                          {codeDetails.lang}
+                        </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(codeDetails.code);
+                            addToast("Code copied to clipboard!", "success");
+                          }}
+                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e8f0", padding: "4px 8px", borderRadius: "4px", fontSize: "0.7rem", cursor: "pointer", fontWeight: "600", transition: "all 0.2s" }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+
+                      {/* Code Content */}
+                      <div style={{ flex: 1, overflow: "auto", padding: "16px", margin: 0 }}>
+                        <pre style={{ margin: 0, padding: 0, background: "none", border: "none", fontFamily: "'Fira Code', monospace", fontSize: "0.82rem", lineHeight: "1.5", color: "#e2e8f0", whiteSpace: "pre" }}>
+                          <code dangerouslySetInnerHTML={{ __html: highlightCode(codeDetails.code) }} />
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Right/Main Column: Post Details */}
+                  <div style={{ width: isSplit ? "380px" : "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--ce-surface-card)" }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderBottom: "1px solid var(--ce-border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", overflow: "hidden" }}>
+                          {selectedPostModal.author?.avatar ? (
+                            <img src={selectedPostModal.author.avatar} alt={selectedPostModal.author.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.8rem", fontWeight: "600" }}>
+                              {(selectedPostModal.author?.username || "D").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ce-text)" }}>@{selectedPostModal.author?.username || "developer"}</span>
+                          <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{selectedPostModal.author?.title || "Developer"}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        {selectedPostModal.author && String(selectedPostModal.author._id || selectedPostModal.author.id || selectedPostModal.author) !== String(user?.id || user?._id) && (
+                          <button
+                            onClick={() => {
+                              setReportedTargetUser({
+                                _id: selectedPostModal.author?._id || selectedPostModal.author.id || selectedPostModal.author,
+                                username: selectedPostModal.author?.username || "developer"
+                              });
+                              setReportEvidenceType("POST");
+                              setReportEvidenceId(selectedPostModal._id);
+                              setReportModalOpen(true);
+                            }}
+                            title="Report Post"
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#eab308",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              marginRight: "12px",
+                              transition: "all 0.2s ease"
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.transform = "scale(1.08)";
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.transform = "scale(1)";
+                            }}
+                          >
+                            <ShieldAlert size={18} />
+                          </button>
+                        )}
+                        <button
+                          onClick={handleClosePostModal}
+                          style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Content & Comments scroll section */}
+                    <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                      {/* Post description text */}
+                      <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                        <div style={{ width: "24px", height: "24px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                          {selectedPostModal.author?.avatar ? (
+                            <img src={selectedPostModal.author.avatar} alt="Author" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.7rem" }}>
+                              {(selectedPostModal.author?.username || "D").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)", flex: 1 }}>
+                          <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{selectedPostModal.author?.username}:</strong>
+                          {parseMarkdown(hasCode ? getRightSideText(selectedPostModal.text) : selectedPostModal.text)}
+                        </div>
+                      </div>
+
+                      {/* Divider line */}
+                      <div style={{ borderBottom: "1px solid var(--ce-border)" }} />
+
+                      {/* Comments list */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {selectedPostModal.comments && selectedPostModal.comments.length > 0 ? (
+                          selectedPostModal.comments.map((comment, index) => (
+                            <div key={index} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                              <div style={{ width: "24px", height: "24px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                                {comment.avatar ? (
+                                  <img src={comment.avatar} alt={comment.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                ) : (
+                                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.7rem" }}>
+                                    {(comment.username || "D").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                              <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)" }}>
+                                <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{comment.username}:</strong>
+                                {comment.text}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)", textAlign: "center", marginTop: "20px" }}>No comments yet. Be first to comment!</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer panel containing Like Action and Likes stack */}
+                    <div style={{ padding: "16px", borderTop: "1px solid var(--ce-border)", display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          {/* Liking action - ONLY heart icon */}
+                          <button
+                            onClick={() => !selectedPostModal.likesDisabled && handleLikePostInModal()}
+                            disabled={selectedPostModal.likesDisabled}
+                            style={{ background: "none", border: "none", color: selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "var(--ce-text)", cursor: selectedPostModal.likesDisabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", padding: 0, opacity: selectedPostModal.likesDisabled ? 0.45 : 1 }}
+                            title={selectedPostModal.likesDisabled ? "Likes are disabled" : ""}
+                          >
+                            <Heart size={20} fill={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "none"} color={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "currentColor"} />
+                          </button>
+
+                          {/* Likers Stack with Clickable More Option */}
+                          {(() => {
+                            const resolvedLikers = (selectedPostModal.likes || []).map(resolveLikedUser).filter(Boolean);
+                            if (resolvedLikers.length === 0) return null;
+                            return (
+                              <div className="card-likes-avatars-stack" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                  {resolvedLikers.slice(0, 3).map((u, i) => (
+                                    <div
+                                      key={i}
+                                      className="avatar-stack-item"
+                                      style={{
+                                        width: "18px",
+                                        height: "18px",
+                                        borderRadius: "50%",
+                                        overflow: "hidden",
+                                        border: "1px solid var(--ce-surface-card)",
+                                        marginLeft: i > 0 ? "-6px" : "0",
+                                        zIndex: 10 - i,
+                                        cursor: "pointer"
+                                      }}
+                                      onClick={() => {
+                                        handleClosePostModal();
+                                        setLikedUsersListModal(resolvedLikers);
+                                      }}
+                                      title={`@${u.username}`}
+                                    >
+                                      {u.avatar ? (
+                                        <img src={u.avatar} alt={u.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                      ) : (
+                                        <div className="avatar-fallback" style={{ width: "100%", height: "100%", fontSize: "0.6rem", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff" }}>
+                                          {(u.username || "D").charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <button
+                                  type="button"
                                   onClick={() => {
                                     handleClosePostModal();
                                     setLikedUsersListModal(resolvedLikers);
                                   }}
-                                  title={`@${u.username}`}
+                                  style={{ background: "none", border: "none", color: "var(--ce-primary)", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, padding: 0 }}
                                 >
-                                  {u.avatar ? (
-                                    <img src={u.avatar} alt={u.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                  ) : (
-                                    <div className="avatar-fallback" style={{ width: "100%", height: "100%", fontSize: "0.6rem", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff" }}>
-                                      {(u.username || "D").charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
+                                  {resolvedLikers.length > 3 ? `+${resolvedLikers.length - 3} others` : `liked`}
+                                </button>
+                              </div>
+                            );
+                          })()}
+                        </div>
 
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          {/* Bookmark / Saved button */}
+                          <button
+                            onClick={() => {
+                              setSavedPostIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(selectedPostModal._id)) {
+                                  next.delete(selectedPostModal._id);
+                                  addToast("Post removed from saved bookmarks", "success");
+                                } else {
+                                  next.add(selectedPostModal._id);
+                                  addToast("Post saved to bookmarks", "success");
+                                }
+                                localStorage.setItem("codeexpo_bookmarked_post_ids", JSON.stringify(Array.from(next)));
+                                return next;
+                              });
+                            }}
+                            style={{ background: "none", border: "none", color: savedPostIds.has(selectedPostModal._id) ? "#3b82f6" : "var(--ce-text)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
+                            title="Bookmark post"
+                          >
+                            <Bookmark size={18} fill={savedPostIds.has(selectedPostModal._id) ? "#3b82f6" : "none"} />
+                          </button>
+
+                          {/* Share link button */}
+                          <div style={{ position: "relative" }}>
                             <button
-                              type="button"
-                              onClick={() => {
-                                handleClosePostModal();
-                                setLikedUsersListModal(resolvedLikers);
-                              }}
-                              style={{ background: "none", border: "none", color: "var(--ce-primary)", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, padding: 0 }}
+                              onClick={() => setModalShareOpen(!modalShareOpen)}
+                              style={{ background: "none", border: "none", color: "var(--ce-text)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
+                              title="Share link"
                             >
-                              {resolvedLikers.length > 3 ? `+${resolvedLikers.length - 3} others` : `liked`}
+                              <Share2 size={18} />
                             </button>
+                            {modalShareOpen && (
+                              <div className="share-dropdown-menu">
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/post/${selectedPostModal._id}`);
+                                    addToast("Link copied to clipboard!", "success");
+                                    setModalShareOpen(false);
+                                  }}
+                                  style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}
+                                >
+                                  <Copy size={13} style={{ color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon" /> Copy Link
+                                </button>
+                                <a
+                                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out this post on CodeExpo: " + window.location.origin + "/post/" + selectedPostModal._id)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setModalShareOpen(false)}
+                                >
+                                  <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: "13px", height: "13px", color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.46h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                  </svg> WhatsApp
+                                </a>
+                              </div>
+                            )}
                           </div>
-                        );
-                      })()}
-                    </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      {/* Bookmark / Saved button */}
-                      <button
-                        onClick={() => {
-                          setSavedPostIds(prev => {
-                            const next = new Set(prev);
-                            if (next.has(selectedPostModal._id)) {
-                              next.delete(selectedPostModal._id);
-                              addToast("Post removed from saved bookmarks", "success");
-                            } else {
-                              next.add(selectedPostModal._id);
-                              addToast("Post saved to bookmarks", "success");
-                            }
-                            localStorage.setItem("codeexpo_bookmarked_post_ids", JSON.stringify(Array.from(next)));
-                            return next;
-                          });
-                        }}
-                        style={{ background: "none", border: "none", color: savedPostIds.has(selectedPostModal._id) ? "#3b82f6" : "var(--ce-text)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
-                        title="Bookmark post"
-                      >
-                        <Bookmark size={18} fill={savedPostIds.has(selectedPostModal._id) ? "#3b82f6" : "none"} />
-                      </button>
-
-                      {/* Share link button */}
-                      <div style={{ position: "relative" }}>
-                        <button
-                          onClick={() => setModalShareOpen(!modalShareOpen)}
-                          style={{ background: "none", border: "none", color: "var(--ce-text)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
-                          title="Share link"
-                        >
-                          <Share2 size={18} />
-                        </button>
-                        {modalShareOpen && (
-                          <div className="share-dropdown-menu">
-                            <button 
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/post/${selectedPostModal._id}`);
-                                addToast("Link copied to clipboard!", "success");
-                                setModalShareOpen(false);
-                              }}
-                              style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}
-                            >
-                              <Copy size={13} style={{ color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon" /> Copy Link
-                            </button>
-                            <a 
-                              href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out this post on CodeExpo: " + window.location.origin + "/post/" + selectedPostModal._id)}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              onClick={() => setModalShareOpen(false)}
-                            >
-                              <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: "13px", height: "13px", color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.46h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                              </svg> WhatsApp
-                            </a>
-                          </div>
-                        )}
+                          <span style={{ fontSize: "0.75rem", color: "var(--ce-text-muted)" }}>
+                            {new Date(selectedPostModal.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
 
-                      <span style={{ fontSize: "0.75rem", color: "var(--ce-text-muted)" }}>
-                        {new Date(selectedPostModal.createdAt).toLocaleDateString()}
-                      </span>
+                      {/* Comment form input */}
+                      <form onSubmit={handleAddCommentInModal} style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                        <input
+                          type="text"
+                          placeholder={selectedPostModal.commentsLocked ? "Comments are locked for this post." : "Add a comment..."}
+                          value={modalCommentText}
+                          onChange={(e) => setModalCommentText(e.target.value)}
+                          disabled={selectedPostModal.commentsLocked}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "var(--ce-surface-card-hover)", border: "1px solid var(--ce-border)", color: "var(--ce-text)", fontSize: "0.8rem", cursor: selectedPostModal.commentsLocked ? "not-allowed" : "text" }}
+                        />
+                        <button
+                          type="submit"
+                          disabled={selectedPostModal.commentsLocked}
+                          style={{ padding: "6px 12px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "0.8rem", cursor: selectedPostModal.commentsLocked ? "not-allowed" : "pointer", fontWeight: 600, opacity: selectedPostModal.commentsLocked ? 0.5 : 1 }}
+                        >
+                          Post
+                        </button>
+                      </form>
                     </div>
                   </div>
-
-                  {/* Comment form input */}
-                  <form onSubmit={handleAddCommentInModal} style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                    <input 
-                      type="text"
-                      placeholder={selectedPostModal.commentsLocked ? "Comments are locked for this post." : "Add a comment..."}
-                      value={modalCommentText}
-                      onChange={(e) => setModalCommentText(e.target.value)}
-                      disabled={selectedPostModal.commentsLocked}
-                      style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "var(--ce-surface-card-hover)", border: "1px solid var(--ce-border)", color: "var(--ce-text)", fontSize: "0.8rem", cursor: selectedPostModal.commentsLocked ? "not-allowed" : "text" }}
-                    />
-                    <button 
-                      type="submit" 
-                      disabled={selectedPostModal.commentsLocked}
-                      style={{ padding: "6px 12px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "0.8rem", cursor: selectedPostModal.commentsLocked ? "not-allowed" : "pointer", fontWeight: 600, opacity: selectedPostModal.commentsLocked ? 0.5 : 1 }}
-                    >
-                      Post
-                    </button>
-                  </form>
                 </div>
-              </div>
-            </div>
 
-            {selectedPostModal.isSensitive && !modalRevealedSensitive && (
-              <div className="sensitive-shield-mask" style={{ borderRadius: "16px" }}>
-                <h4 className="sensitive-shield-title">Sensitive Content</h4>
-                <p className="sensitive-shield-desc">This post has been flagged as sensitive by the platform administrators.</p>
-                <button
-                  type="button"
-                  className="btn-reveal-sensitive"
-                  onClick={() => setModalRevealedSensitive(true)}
-                >
-                  Show Sensitive Content
-                </button>
-              </div>
-            )}
-          </motion.div>
-          </div>,
-          document.body
-        );
-      })()}
+                {selectedPostModal.isSensitive && !modalRevealedSensitive && (
+                  <div className="sensitive-shield-mask" style={{ borderRadius: "16px" }}>
+                    <h4 className="sensitive-shield-title">Sensitive Content</h4>
+                    <p className="sensitive-shield-desc">This post has been flagged as sensitive by the platform administrators.</p>
+                    <button
+                      type="button"
+                      className="btn-reveal-sensitive"
+                      onClick={() => setModalRevealedSensitive(true)}
+                    >
+                      Show Sensitive Content
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </div>,
+            document.body
+          );
+        })()}
 
 
 
@@ -9866,58 +10038,58 @@ function Dashboard() {
           document.body
         )}
 
-      {/* Report User Modal */}
-      <ReportUserModal
-        isOpen={reportModalOpen}
-        onClose={() => {
-          setReportModalOpen(false);
-          setReportedTargetUser(null);
-          setReportEvidenceType("");
-          setReportEvidenceId("");
-        }}
-        reportedUser={reportedTargetUser}
-        evidenceType={reportEvidenceType}
-        evidenceId={reportEvidenceId}
-        addToast={addToast}
-      />
+        {/* Report User Modal */}
+        <ReportUserModal
+          isOpen={reportModalOpen}
+          onClose={() => {
+            setReportModalOpen(false);
+            setReportedTargetUser(null);
+            setReportEvidenceType("");
+            setReportEvidenceId("");
+          }}
+          reportedUser={reportedTargetUser}
+          evidenceType={reportEvidenceType}
+          evidenceId={reportEvidenceId}
+          addToast={addToast}
+        />
 
-      {/* Profile Post Delete Confirmation Modal */}
-      <AnimatePresence>
-        {postToDeleteFromProfile && (
-          <div className="ce-modal-overlay" onClick={() => setPostToDeleteFromProfile(null)} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="ce-modal-card"
-              style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center", background: "#0a0a0f", border: "1px solid var(--ce-premium-border)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.1rem", fontWeight: "700" }}>Delete Activity?</h3>
-              <p style={{ margin: "0 0 20px 0", color: "var(--ce-premium-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
-                Are you sure you want to delete this activity? This will permanently remove it from the global feed.
-              </p>
-              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-                <button
-                  type="button"
-                  onClick={() => setPostToDeleteFromProfile(null)}
-                  style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#fff", fontSize: "0.75rem", fontWeight: "600", cursor: "pointer" }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDeleteProfilePost}
-                  disabled={isDeletingProfilePost}
-                  style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer" }}
-                >
-                  {isDeletingProfilePost ? "Deleting..." : "Delete"}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+        {/* Profile Post Delete Confirmation Modal */}
+        <AnimatePresence>
+          {postToDeleteFromProfile && (
+            <div className="ce-modal-overlay" onClick={() => setPostToDeleteFromProfile(null)} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="ce-modal-card"
+                style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center", background: "#0a0a0f", border: "1px solid var(--ce-premium-border)" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.1rem", fontWeight: "700" }}>Delete Activity?</h3>
+                <p style={{ margin: "0 0 20px 0", color: "var(--ce-premium-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
+                  Are you sure you want to delete this activity? This will permanently remove it from the global feed.
+                </p>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => setPostToDeleteFromProfile(null)}
+                    style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#fff", fontSize: "0.75rem", fontWeight: "600", cursor: "pointer" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteProfilePost}
+                    disabled={isDeletingProfilePost}
+                    style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer" }}
+                  >
+                    {isDeletingProfilePost ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
       </div>
     </MainLayout>

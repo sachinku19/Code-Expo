@@ -1463,13 +1463,7 @@ body {
     display: none;
   }
 
-  .ce-mobile-bottom-nav {
-    display: flex;
-  }
 
-  .ce-main-content {
-    margin-bottom: 56px;
-  }
 }
 
 /* Bell Icon Hover Wrapper */

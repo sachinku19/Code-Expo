@@ -131,3 +131,26 @@ html, body, #root, .ce-layout-wrapper, .dashboard-container, .admin-dashboard-co
               border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
               box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
+
+/* Universal select dropdown option compatibility for Light/Dark themes */
+select {
+  color-scheme: dark !important;
+}
+
+.light select,
+[data-theme="light"] select,
+.light-mode select {
+  color-scheme: light !important;
+}
+
+select option {
+  background-color: #151125 !important;
+  color: #f3f4f6 !important;
+}
+
+.light select option,
+[data-theme="light"] select option,
+.light-mode select option {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}

@@ -802,7 +802,6 @@ export default function MainLayout({
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
     { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard?tab=feed" },
     { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard?tab=rooms&subtab=explore" },
-    { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard?tab=myrooms" },
     { id: "liverooms", label: "Live Rooms", icon: Radio, path: "/dashboard?tab=liverooms" },
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
@@ -1383,23 +1382,6 @@ export default function MainLayout({
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className={`ce-mobile-bottom-nav ${isRoomActive ? "room-active" : ""}`}>
-        {menuItems.filter(item => ["dashboard", "rooms", "workspace", "profile"].includes(item.id)).map(item => {
-          const Icon = item.icon;
-          const isActive = activeItem === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleMenuClick(item)}
-              className={`mobile-nav-btn ${isActive ? "active" : ""}`}
-            >
-              <Icon size={16} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
 
       {/* TABLET/MOBILE SIDE DRAWER OVERLAY */}
       {isDrawerOpen && (
