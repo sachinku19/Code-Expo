@@ -8,7 +8,8 @@ import {
   Pin, Search, Bell, Sun, Moon, LogOut, Terminal, Palette,
   Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
-  Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard
+  Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
+  Gem, Sparkles
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -769,7 +770,6 @@ export default function MainLayout({
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
     { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
     { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard?tab=helpdesk" },
-    { id: "subscription", label: "Subscriptions", icon: CreditCard, path: "/dashboard?tab=subscription" },
   ];
 
   if (user && user.role === "admin") {
@@ -1212,6 +1212,16 @@ export default function MainLayout({
                       </div>
                     </div>
                     <span className="grid-item-label">Badges</span>
+                  </button>
+
+                  <button onClick={() => { setProfileDropdownOpen(false); handleConfirmNavigate("/dashboard?tab=subscription"); }} className="grid-menu-item">
+                    <div className="custom-subscription-graphic">
+                      <Gem size={20} className="gem-main-icon" />
+                      <div className="premium-glow-container">
+                        <span className="premium-badge-tag">PRO</span>
+                      </div>
+                    </div>
+                    <span className="grid-item-label">Premium</span>
                   </button>
                 </div>
 

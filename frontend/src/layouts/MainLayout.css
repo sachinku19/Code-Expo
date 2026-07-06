@@ -692,7 +692,7 @@ body {
 /* Grid Menu Styles */
 .dropdown-grid-menu {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -2493,4 +2493,51 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
 
 .ce-call-dropdown-item:hover svg {
   color: var(--ce-accent, #aa3bff);
+}
+
+/* Subscription/Premium Custom Graphic */
+.custom-subscription-graphic {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  width: 100%;
+}
+
+.gem-main-icon {
+  color: #a855f7;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+}
+
+.premium-glow-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.premium-badge-tag {
+  font-size: 0.58rem;
+  font-weight: 850;
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: rgba(168, 85, 247, 0.08);
+  padding: 0 4px;
+  border-radius: 4px;
+  text-shadow: 0 0 4px rgba(168, 85, 247, 0.2);
+  transition: all 0.25s ease;
+}
+
+.grid-menu-item:hover .gem-main-icon {
+  transform: translateY(-2px) scale(1.1);
+  color: #c084fc;
+}
+
+.grid-menu-item:hover .premium-badge-tag {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: #a855f7;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
 }

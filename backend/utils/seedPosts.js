@@ -102,7 +102,7 @@ OpenAI has announced the preview of its next-generation LLM code-named **GPT-5**
 
 This marks a giant leap from autocomplete AI towards autonomous agentic assistants.`,
         techStack: ["AI", "LLM", "GPT-5", "OpenAI", "MachineLearning"],
-        image: "https://images.unsplash.com/photo-1677442136019-21780efad99a?w=800&auto=format&fit=crop&q=80",
+        image: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&auto=format&fit=crop&q=80",
         comments: [
           { user: commenters[3]._id, text: "The reasoning latency is high, but the accuracy makes it completely worth it." },
           { user: commenters[1]._id, text: "Agentic tool calling loops are going to dominate software development." }
@@ -213,7 +213,7 @@ GitHub has launched Copilot Workspace, moving beyond simple autocomplete popups.
 
 This transforms developer workflows from writing boilerplate to reviewing and editing plans.`,
         techStack: ["AI", "GitHub", "Copilot", "SoftwareEngineering"],
-        image: "https://images.unsplash.com/photo-1618401471353-b98aedd07871?w=800&auto=format&fit=crop&q=80",
+        image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&auto=format&fit=crop&q=80",
         comments: [
           { user: commenters[0]._id, text: "It's like having an apprentice developer write all the tests and minor fixes." }
         ]
@@ -363,7 +363,7 @@ AI Agents differ from simple chat inputs by executing loops of reasoning and too
 
 Building stable agent architectures requires robust state machines and retry parameters.`,
         techStack: ["AI", "AIAgents", "ReAct", "SoftwareEngineering"],
-        image: "https://images.unsplash.com/photo-1617791160505-6f006e121980?w=800&auto=format&fit=crop&q=80",
+        image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop&q=80",
         comments: [
           { user: commenters[3]._id, text: "Handling edge cases like infinite loops in tool calling is the main engineering challenge." }
         ]
@@ -380,7 +380,7 @@ TypeScript 5 has brought substantial improvements to compiler performance and ty
 
 Keep your TS versions updated to ensure the best DX in editors!`,
         techStack: ["TypeScript", "JavaScript", "SoftwareEngineering"],
-        image: "https://images.unsplash.com/photo-1516116211223-5c359a36298a?w=800&auto=format&fit=crop&q=80",
+        image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80",
         comments: [
           { user: commenters[2]._id, text: "Build speedups are very noticeable on large projects. TS compiler is super optimized now." }
         ]

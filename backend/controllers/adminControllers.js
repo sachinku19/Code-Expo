@@ -788,7 +788,7 @@ const toggleUserSuspension = async (req, res) => {
       user._id,
       user.isSuspended ? "Suspension" : "Account Reactivated",
       null,
-      req.body.reason || (user.isSuspended ? "Suspended for safety and compliance review." : "Account access reinstated."),
+      req.body?.reason || (user.isSuspended ? "Suspended for safety and compliance review." : "Account access reinstated."),
       req.user?.username || "Admin"
     );
 
@@ -1236,7 +1236,7 @@ const deleteAdminPost = async (req, res) => {
       post.author,
       "Post Deleted",
       post._id,
-      req.body.reason || "Content violates community guidelines.",
+      req.body?.reason || "Content violates community guidelines.",
       req.user?.username || "Admin"
     );
 
@@ -1370,7 +1370,7 @@ const updateAdminPostStatus = async (req, res) => {
 
     // Log corresponding moderation actions
     const moderatorUser = req.user?.username || "Admin";
-    const modReason = legalCase?.notes || req.body.reason || "Compliance review update";
+    const modReason = legalCase?.notes || req.body?.reason || "Compliance review update";
 
     if (status && oldStatus !== status) {
       if (status === "hidden") {
@@ -1609,7 +1609,7 @@ const deleteAdminStory = async (req, res) => {
       story.user,
       "Post Deleted",
       null,
-      req.body.reason || "Story content violates community guidelines.",
+      req.body?.reason || "Story content violates community guidelines.",
       req.user?.username || "Admin"
     );
 
@@ -1652,7 +1652,6 @@ const bulkDeletePosts = async (req, res) => {
         req.user?.username || "Admin"
       );
       if (post.image || post.images?.length > 0 || post.video) {
-        const MediaService = require("../services/mediaService");
         if (post.image) await MediaService.deleteMedia(post.image).catch(() => {});
         if (post.video) await MediaService.deleteMedia(post.video).catch(() => {});
         for (const img of post.images || []) {

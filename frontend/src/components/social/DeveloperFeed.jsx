@@ -1036,7 +1036,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         setPostToDelete(null);
       }
     } catch (err) {
-      addToast("Failed to delete post", "error");
+      addToast(err.response?.data?.message || "Failed to delete post", "error");
     } finally {
       setIsDeletingPost(false);
     }
