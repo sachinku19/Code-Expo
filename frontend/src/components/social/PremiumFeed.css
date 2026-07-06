@@ -803,7 +803,7 @@
 /* Feed Tabs Filters - Sticky pinned at the top */
 .premium-feed-tabs {
   position: sticky;
-  top: 56px;
+  top: 0;
   z-index: 90;
   background: var(--ce-premium-bg);
   display: flex;
