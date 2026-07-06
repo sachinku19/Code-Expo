@@ -49,6 +49,8 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
       "default_language",
       "notif_approvalAlerts",
       "notif_mentionAlerts",
+      "notif_soundEnabled",
+      "send_message_notification",
       "codeExpoHomeTheme",
       "ceSidebarPinned",
       "ce_editor_",

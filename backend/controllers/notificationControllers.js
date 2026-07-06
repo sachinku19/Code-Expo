@@ -4,7 +4,7 @@ const getNotifications = async (req, res) => {
   try {
     const userId = req.user._id;
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const limit = parseInt(req.query.limit, 10) || 20;
     const skip = (page - 1) * limit;
 
     const notifications = await Notification.find({ recipient: userId })
@@ -50,20 +50,22 @@ const markNotificationsRead = async (req, res) => {
   }
 };
 
-const createAndSendNotification = async (recipient, sender, type, category, targetRoom, io) => {
+const createAndSendNotification = async (recipient, sender, type, category, targetRoom, io, targetPost = null) => {
   try {
     const newNotification = await Notification.create({
       recipient,
       sender,
       type,
       category,
-      targetRoom
+      targetRoom,
+      targetPost
     });
 
     if (io) {
       const populatedNotification = await Notification.findById(newNotification._id)
         .populate("sender", "username avatar")
-        .populate("targetRoom", "title roomId");
+        .populate("targetRoom", "title roomId")
+        .populate("targetPost", "title text");
 
       io.to(String(recipient)).emit("notification-received", populatedNotification);
     }

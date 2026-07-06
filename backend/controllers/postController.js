@@ -265,9 +265,15 @@ const toggleLikePost = async (req, res) => {
           likes: updatedPost.likes,
           likesCount: updatedPost.likes.length
         });
+
+        // Send notification to the post author if liked by another user
+        if (!isLiked && String(post.author) !== String(userId)) {
+          const { createAndSendNotification } = require("./notificationControllers");
+          await createAndSendNotification(post.author, userId, "LIKE", "SOCIAL", null, socketHandler.io, postId);
+        }
       }
     } catch (e) {
-      console.error("Failed to emit post:liked event:", e.message);
+      console.error("Failed to emit post:liked or send notification:", e.message);
     }
 
     res.status(200).json({ success: true, likes: updatedPost.likes, isLiked: !isLiked });
@@ -295,7 +301,7 @@ const addComment = async (req, res) => {
     };
 
     const [updatedPost] = await Promise.all([
-      Post.findByIdAndUpdate(postId, { $push: { comments: comment } }, { new: true, select: "comments" }).lean(),
+      Post.findByIdAndUpdate(postId, { $push: { comments: comment } }, { new: true, select: "comments author" }).lean(),
       User.findByIdAndUpdate(userId, { $inc: { contributionScore: 1 } })
     ]);
 
@@ -312,9 +318,15 @@ const addComment = async (req, res) => {
           comments: updatedPost.comments,
           commentsCount: updatedPost.comments.length
         });
+
+        // Send notification to the post author if commented by another user
+        if (String(updatedPost.author) !== String(userId)) {
+          const { createAndSendNotification } = require("./notificationControllers");
+          await createAndSendNotification(updatedPost.author, userId, "COMMENT", "SOCIAL", null, socketHandler.io, postId);
+        }
       }
     } catch (e) {
-      console.error("Failed to emit post:commented event:", e.message);
+      console.error("Failed to emit post:commented or send notification:", e.message);
     }
 
     res.status(200).json({ success: true, comments: updatedPost.comments });

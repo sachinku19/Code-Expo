@@ -30,7 +30,8 @@ import {
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
-  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2
+  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2,
+  Volume2, VolumeX
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -74,9 +75,25 @@ const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
 import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
 import { useGateTransition } from "../routes/AppRoutes";
 
+const notificationAudio = new Audio("/code-Expo_notification_sound.mp3");
+notificationAudio.load();
+
 const playNotificationSound = () => {
-  const audio = new Audio("/mixkit-software-interface-start-2574.wav");
-  audio.play().catch(err => console.log("Audio play blocked by browser policy:", err));
+  const soundEnabled = localStorage.getItem("notif_soundEnabled") !== "false";
+  if (!soundEnabled) return;
+  notificationAudio.currentTime = 0;
+  notificationAudio.play().catch(err => console.log("Audio play blocked by browser policy:", err));
+};
+
+const getPostSnippet = (targetPost) => {
+  if (!targetPost) return "post";
+  const postText = targetPost.text || "";
+  let plainText = postText.replace(/```[\s\S]*?```/g, "").replace(/\n/g, " ").trim();
+  if (!plainText) plainText = postText;
+  if (plainText.length > 30) {
+    return plainText.slice(0, 30) + "...";
+  }
+  return plainText || "post";
 };
 
 const formatCodingTime = (hours, minutes) => {
@@ -1394,6 +1411,13 @@ function Dashboard() {
   const [notifMentionAlerts, setNotifMentionAlerts] = useState(
     localStorage.getItem("notif_mentionAlerts") !== "false"
   );
+  const [notifSoundEnabled, setNotifSoundEnabled] = useState(
+    localStorage.getItem("notif_soundEnabled") !== "false"
+  );
+  const [isSoundTesting, setIsSoundTesting] = useState(false);
+  const [sendMessageNotification, setSendMessageNotification] = useState(
+    localStorage.getItem("send_message_notification") !== "false"
+  );
 
   // Security preferences states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -1480,6 +1504,45 @@ function Dashboard() {
     setNotifMentionAlerts(val);
     localStorage.setItem("notif_mentionAlerts", val);
     addToast(`Mention notifications ${val ? "enabled" : "disabled"}`, "success");
+  };
+
+  const handleSoundEnabledChange = (e) => {
+    const val = e.target.checked;
+    setNotifSoundEnabled(val);
+    localStorage.setItem("notif_soundEnabled", val);
+    addToast(`Notification sounds ${val ? "enabled" : "disabled"}`, "success");
+    if (val) {
+      setIsSoundTesting(true);
+      notificationAudio.currentTime = 0;
+      notificationAudio.onended = () => setIsSoundTesting(false);
+      notificationAudio.onerror = () => setIsSoundTesting(false);
+      notificationAudio.play().catch(err => {
+        console.log("Audio play blocked by browser policy:", err);
+        setIsSoundTesting(false);
+      });
+    }
+  };
+
+  const handleTestSound = () => {
+    setIsSoundTesting(true);
+    notificationAudio.currentTime = 0;
+    notificationAudio.onended = () => setIsSoundTesting(false);
+    notificationAudio.onerror = () => setIsSoundTesting(false);
+    notificationAudio.play().catch(err => {
+      console.log("Audio play blocked by browser policy:", err);
+      setIsSoundTesting(false);
+    });
+  };
+
+  const handleSendMessageNotificationChange = (e) => {
+    const val = e.target.checked;
+    setSendMessageNotification(val);
+    localStorage.setItem("send_message_notification", val);
+    addToast(`Message sound effects ${val ? "enabled" : "disabled"}`, "success");
+    if (val) {
+      const audio = new Audio("/send_message_notification.mp3");
+      audio.play().catch(() => {});
+    }
   };
 
   const handleEditorWordWrapChange = (e) => {
@@ -3040,9 +3103,18 @@ function Dashboard() {
 
       let actionText = "";
       if (notif.type === "FOLLOW") actionText = "followed you";
-      else if (notif.type === "LIKE") actionText = `liked your room "${notif.targetRoom?.title || "workspace"}"`;
+      else if (notif.type === "LIKE") {
+        if (notif.targetPost) {
+          actionText = `liked your post "${getPostSnippet(notif.targetPost)}"`;
+        } else {
+          actionText = `liked your room "${notif.targetRoom?.title || "workspace"}"`;
+        }
+      }
       else if (notif.type === "BOOKMARK") actionText = `bookmarked your room "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "JOIN") actionText = `wants to join "${notif.targetRoom?.title || "workspace"}"`;
+      else if (notif.type === "COMMENT") actionText = `commented on your post "${getPostSnippet(notif.targetPost)}"`;
+      else if (notif.type === "INVITE") actionText = `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"`;
+      else actionText = "sent you a notification";
 
       const msg = `${notif.sender?.username || "Someone"} ${actionText}`;
       addToast(msg, "info");
@@ -3926,10 +3998,17 @@ function Dashboard() {
     .map(notif => {
       let actionText = "";
       if (notif.type === "FOLLOW") actionText = "followed you";
-      else if (notif.type === "LIKE") actionText = `liked room "${notif.targetRoom?.title || "workspace"}"`;
+      else if (notif.type === "LIKE") {
+        if (notif.targetPost) {
+          actionText = `liked your post "${getPostSnippet(notif.targetPost)}"`;
+        } else {
+          actionText = `liked room "${notif.targetRoom?.title || "workspace"}"`;
+        }
+      }
       else if (notif.type === "BOOKMARK") actionText = `bookmarked room "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "JOIN") actionText = `wants to join "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "INVITE") actionText = `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"`;
+      else if (notif.type === "COMMENT") actionText = `commented on your post "${getPostSnippet(notif.targetPost)}"`;
       return {
         id: notif._id,
         message: `${notif.sender?.username || "Someone"} ${actionText}`,
@@ -6867,8 +6946,16 @@ function Dashboard() {
                             typeClass = "notif-type-follow";
                           } else if (notif.type === "LIKE") {
                             notifIcon = <Heart size={14} style={{ color: "#ef4444" }} />;
-                            actionText = `liked your room "${roomTitle}"`;
+                            if (notif.targetPost) {
+                              actionText = `liked your post "${getPostSnippet(notif.targetPost)}"`;
+                            } else {
+                              actionText = `liked your room "${roomTitle}"`;
+                            }
                             typeClass = "notif-type-like";
+                          } else if (notif.type === "COMMENT") {
+                            notifIcon = <MessageSquare size={14} style={{ color: "var(--ce-accent)" }} />;
+                            actionText = `commented on your post "${getPostSnippet(notif.targetPost)}"`;
+                            typeClass = "notif-type-comment";
                           } else if (notif.type === "BOOKMARK") {
                             notifIcon = <Bookmark size={14} style={{ color: "var(--ce-accent)" }} />;
                             actionText = `bookmarked your room "${roomTitle}"`;
@@ -8169,6 +8256,64 @@ function Dashboard() {
                           </div>
                           <label className="ce-switch">
                             <input type="checkbox" checked={notifMentionAlerts} onChange={handleMentionAlertsChange} />
+                            <span className="ce-switch-slider" />
+                          </label>
+                        </div>
+
+                        <div className="settings-toggle-row">
+                          <div className="toggle-info">
+                            <div className="toggle-title-with-icon" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              {notifSoundEnabled ? (
+                                <Volume2 className={`toggle-icon-audio ${isSoundTesting ? "audio-pulse" : ""}`} size={18} style={{ color: "var(--ce-accent, #aa3bff)" }} />
+                              ) : (
+                                <VolumeX className="toggle-icon-audio muted" size={18} style={{ color: "var(--ce-text-muted, #9ca3af)" }} />
+                              )}
+                              <span className="toggle-label" style={{ margin: 0 }}>Notification Sound Effects</span>
+                            </div>
+                            <span className="toggle-desc">Play the signature Code-Expo alert sound for notifications and room join requests</span>
+                          </div>
+                          <div className="toggle-actions-wrapper" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            {notifSoundEnabled && (
+                              <button 
+                                className={`ce-sound-test-btn ${isSoundTesting ? "playing" : ""}`}
+                                onClick={handleTestSound}
+                                title="Play Test Sound"
+                                type="button"
+                              >
+                                {isSoundTesting ? (
+                                  <div className="soundwave-container">
+                                    <span className="stroke"></span>
+                                    <span className="stroke"></span>
+                                    <span className="stroke"></span>
+                                    <span className="stroke"></span>
+                                  </div>
+                                ) : (
+                                  <Play size={10} fill="currentColor" style={{ marginRight: "2px" }} />
+                                )}
+                                <span>{isSoundTesting ? "Testing" : "Test"}</span>
+                              </button>
+                            )}
+                            <label className="ce-switch">
+                              <input type="checkbox" checked={notifSoundEnabled} onChange={handleSoundEnabledChange} />
+                              <span className="ce-switch-slider" />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="settings-toggle-row">
+                          <div className="toggle-info">
+                            <div className="toggle-title-with-icon" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              {sendMessageNotification ? (
+                                <Volume2 className="toggle-icon-audio" size={18} style={{ color: "var(--ce-accent, #aa3bff)" }} />
+                              ) : (
+                                <VolumeX className="toggle-icon-audio muted" size={18} style={{ color: "var(--ce-text-muted, #9ca3af)" }} />
+                              )}
+                              <span className="toggle-label" style={{ margin: 0 }}>Message Sound Effects</span>
+                            </div>
+                            <span className="toggle-desc">Play satisfying audio tones when sending or receiving direct chat messages</span>
+                          </div>
+                          <label className="ce-switch">
+                            <input type="checkbox" checked={sendMessageNotification} onChange={handleSendMessageNotificationChange} />
                             <span className="ce-switch-slider" />
                           </label>
                         </div>

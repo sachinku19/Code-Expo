@@ -21,6 +21,23 @@ import { submitWebsiteRating, getWebsiteRatingInfo } from "../services/websiteRa
 import "./MainLayout.css";
 import Logo from "../components/shared/Logo";
 
+const getPostSnippet = (targetPost) => {
+  if (!targetPost) return "post";
+  const postText = targetPost.text || "";
+  let plainText = postText.replace(/```[\s\S]*?```/g, "").replace(/\n/g, " ").trim();
+  if (!plainText) plainText = postText;
+  if (plainText.length > 30) {
+    return plainText.slice(0, 30) + "...";
+  }
+  return plainText || "post";
+};
+
+const notificationAudio = new Audio("/code-Expo_notification_sound.mp3");
+notificationAudio.load();
+
+const dmReceiveAudio = new Audio("/send_message_notification.mp3");
+dmReceiveAudio.load();
+
 export default function MainLayout({
   children,
   roomId,
@@ -107,13 +124,15 @@ export default function MainLayout({
 
         const formatted = filteredNotifications.map(n => ({
           id: n._id,
-          message: n.message || `${n.sender?.username || "Someone"} ${n.type === "FOLLOW" ? "followed you" :
-              n.type === "LIKE" ? `liked room "${n.targetRoom?.title || "workspace"}"` :
-                n.type === "BOOKMARK" ? `bookmarked room "${n.targetRoom?.title || "workspace"}"` :
-                  n.type === "JOIN" ? `wants to join "${n.targetRoom?.title || "workspace"}"` :
-                    n.type === "INVITE" ? `invited you to join workspace "${n.targetRoom?.title || "workspace"}"` :
-                      "sent you a notification"
-            }`,
+          message: n.message || `${n.sender?.username || "Someone"} ${
+            n.type === "FOLLOW" ? "followed you" :
+            n.type === "LIKE" ? (n.targetPost ? `liked your post "${getPostSnippet(n.targetPost)}"` : `liked room "${n.targetRoom?.title || "workspace"}"`) :
+            n.type === "BOOKMARK" ? `bookmarked room "${n.targetRoom?.title || "workspace"}"` :
+            n.type === "JOIN" ? `wants to join "${n.targetRoom?.title || "workspace"}"` :
+            n.type === "INVITE" ? `invited you to join workspace "${n.targetRoom?.title || "workspace"}"` :
+            n.type === "COMMENT" ? `commented on your post "${getPostSnippet(n.targetPost)}"` :
+            "sent you a notification"
+          }`,
           time: n.createdAt,
           type: n.type,
           roomId: n.targetRoom?.roomId
@@ -151,10 +170,26 @@ export default function MainLayout({
     if (!userId) return;
 
     const handleIncomingMessage = (msg) => {
-      if (String(msg.sender?._id || msg.sender) !== String(userId)) {
+      let currentUserId = userId;
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          currentUserId = parsed?.id || parsed?._id || currentUserId;
+        }
+      } catch (err) {}
+
+      const senderId = msg.sender?._id || msg.sender?.id || msg.sender;
+      const isMyMessage = senderId && currentUserId && String(senderId) === String(currentUserId);
+      
+      if (!isMyMessage) {
         setUnreadMessageCount(c => c + 1);
-        const audio = new Audio("/message.mp3");
-        audio.play().catch(() => { });
+      }
+      
+      const dmTonesEnabled = localStorage.getItem("send_message_notification") !== "false";
+      if (dmTonesEnabled) {
+        dmReceiveAudio.currentTime = 0;
+        dmReceiveAudio.play().catch(() => { });
       }
     };
 
@@ -186,13 +221,15 @@ export default function MainLayout({
     const handleRealtimeNotif = (notif) => {
       const formatted = {
         id: notif._id,
-        message: `${notif.sender?.username || "Someone"} ${notif.type === "FOLLOW" ? "followed you" :
-            notif.type === "LIKE" ? `liked room "${notif.targetRoom?.title || "workspace"}"` :
-              notif.type === "BOOKMARK" ? `bookmarked room "${notif.targetRoom?.title || "workspace"}"` :
-                notif.type === "JOIN" ? `wants to join "${notif.targetRoom?.title || "workspace"}"` :
-                  notif.type === "INVITE" ? `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"` :
-                    "sent you a notification"
-          }`,
+        message: `${notif.sender?.username || "Someone"} ${
+          notif.type === "FOLLOW" ? "followed you" :
+          notif.type === "LIKE" ? (notif.targetPost ? `liked your post "${getPostSnippet(notif.targetPost)}"` : `liked room "${notif.targetRoom?.title || "workspace"}"`) :
+          notif.type === "BOOKMARK" ? `bookmarked room "${notif.targetRoom?.title || "workspace"}"` :
+          notif.type === "JOIN" ? `wants to join "${notif.targetRoom?.title || "workspace"}"` :
+          notif.type === "INVITE" ? `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"` :
+          notif.type === "COMMENT" ? `commented on your post "${getPostSnippet(notif.targetPost)}"` :
+          "sent you a notification"
+        }`,
         time: notif.createdAt,
         type: notif.type,
         roomId: notif.targetRoom?.roomId
@@ -204,10 +241,11 @@ export default function MainLayout({
         return [formatted, ...prev];
       });
 
-      // Play sound if in editor
-      if (roomId && roomId !== "default") {
-        const audio = new Audio("/notification.mp3");
-        audio.play().catch(() => { });
+      // Play sound if in editor and sound is enabled
+      const soundEnabled = localStorage.getItem("notif_soundEnabled") !== "false";
+      if (soundEnabled && roomId && roomId !== "default") {
+        notificationAudio.currentTime = 0;
+        notificationAudio.play().catch(() => { });
       }
     };
 
@@ -729,6 +767,8 @@ export default function MainLayout({
       "default_language",
       "notif_approvalAlerts",
       "notif_mentionAlerts",
+      "notif_soundEnabled",
+      "send_message_notification",
       "codeExpoHomeTheme",
       "ceSidebarPinned",
       "ce_editor_",

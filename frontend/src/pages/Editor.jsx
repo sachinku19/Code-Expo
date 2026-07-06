@@ -84,9 +84,14 @@ import {
 import "./Editor.css";
 import GateOverlay from "../components/GateOverlay";
 
+const notificationAudio = new Audio("/code-Expo_notification_sound.mp3");
+notificationAudio.load();
+
 const playNotificationSound = () => {
-  const audio = new Audio("/mixkit-software-interface-start-2574.wav");
-  audio.play().catch(err => console.log("Audio play blocked by browser policy:", err));
+  const soundEnabled = localStorage.getItem("notif_soundEnabled") !== "false";
+  if (!soundEnabled) return;
+  notificationAudio.currentTime = 0;
+  notificationAudio.play().catch(err => console.log("Audio play blocked by browser policy:", err));
 };
 
 const MOCK_FILES = [
@@ -473,7 +478,7 @@ function Editor() {
       message,
       time: new Date()
     };
-    setRoomNotifications((prev) => [newNotif, ...prev].slice(0, 10));
+    setRoomNotifications((prev) => [newNotif, ...prev].slice(0, 20));
 
     // Auto-clear active toast notification after a timeout
     const timeout = message.includes("auto-saved") ? 2500 : 3500;
@@ -1460,6 +1465,8 @@ function Editor() {
       "default_language",
       "notif_approvalAlerts",
       "notif_mentionAlerts",
+      "notif_soundEnabled",
+      "send_message_notification",
       "codeExpoHomeTheme",
       "ceSidebarPinned",
       "ce_editor_",
