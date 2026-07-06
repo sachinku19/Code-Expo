@@ -39,7 +39,11 @@ import {
   updateAdminStoryStatus,
   toggleAdminStoryFeature,
   getAdminReports,
-  resolveAdminReports
+  resolveAdminReports,
+  adminGetSubscriptionStats,
+  adminGetTransactionsList,
+  adminUpdateUserSubscription,
+  adminResolvePendingSubscription
 } from "../services/adminService";
 import socket from "../socket/socket";
 import { adminGetAppeals, adminResolveAppeal } from "../services/trustSafetyService";
@@ -84,7 +88,8 @@ import {
   Sparkles,
   Link,
   BarChart2,
-  FileText
+  FileText,
+  CreditCard
 } from "lucide-react";
 import Logo from "../components/shared/Logo";
 import { Pin, Heart, Edit, EyeOff } from "lucide-react";
@@ -594,6 +599,15 @@ const AdminDashboard = () => {
 
   // Loading states
   const [loadingStats, setLoadingStats] = useState(true);
+
+  // Administrative billing states
+  const [billingStats, setBillingStats] = useState(null);
+  const [billingTransactions, setBillingTransactions] = useState([]);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [adminSelectedUserId, setAdminSelectedUserId] = useState("");
+  const [adminUpdatePlan, setAdminUpdatePlan] = useState("Free");
+  const [adminUpdateStatus, setAdminUpdateStatus] = useState("active");
+  const [adminIsSubmittingPlan, setAdminIsSubmittingPlan] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingRatings, setLoadingRatings] = useState(true);
@@ -1539,6 +1553,66 @@ const AdminDashboard = () => {
     );
   };
 
+  const fetchSubscriptionsData = async () => {
+    try {
+      setBillingLoading(true);
+      const [statsRes, txnsRes] = await Promise.all([
+        adminGetSubscriptionStats(),
+        adminGetTransactionsList()
+      ]);
+      if (statsRes.success) {
+        setBillingStats(statsRes.stats);
+      }
+      if (txnsRes.success) {
+        setBillingTransactions(txnsRes.transactions);
+      }
+    } catch (error) {
+      console.error("Failed to load admin billing stats:", error);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleAdminUpdateUserSubscription = async (e) => {
+    e.preventDefault();
+    if (!adminSelectedUserId.trim()) {
+      alert("Please specify a user ID.");
+      return;
+    }
+
+    try {
+      setAdminIsSubmittingPlan(true);
+      const res = await adminUpdateUserSubscription(adminSelectedUserId, adminUpdatePlan, adminUpdateStatus);
+      if (res.success) {
+        alert(res.message);
+        setAdminSelectedUserId("");
+        fetchSubscriptionsData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    } finally {
+      setAdminIsSubmittingPlan(false);
+    }
+  };
+
+  const handleResolveSubscription = async (transactionId, action) => {
+    const confirmation = window.confirm(`Are you sure you want to ${action === "approve" ? "approve & activate" : "decline"} this subscription?`);
+    if (!confirmation) return;
+
+    try {
+      setBillingLoading(true);
+      const res = await adminResolvePendingSubscription(transactionId, action);
+      if (res.success) {
+        alert(res.message);
+        fetchSubscriptionsData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === "broadcasts") {
       fetchAnnouncements();
@@ -1558,6 +1632,8 @@ const AdminDashboard = () => {
       fetchAppealsList();
     } else if (activeTab === "reports") {
       fetchReports();
+    } else if (activeTab === "subscriptions") {
+      fetchSubscriptionsData();
     }
   }, [activeTab, feedSubTab]);
 
@@ -2892,6 +2968,14 @@ const AdminDashboard = () => {
           >
             <ShieldAlert size={16} style={{ color: "#ef4444" }} />
             <span style={{ color: "#ef4444", fontWeight: "600" }}>Reported Users</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab("subscriptions"); setIsMobileSidebarOpen(false); }}
+            className={`sidebar-nav-item-btn ${activeTab === "subscriptions" ? "active" : ""}`}
+          >
+            <CreditCard size={16} style={{ color: "#a855f7" }} />
+            <span style={{ color: "#a855f7", fontWeight: "600" }}>Billing & Subscriptions</span>
           </button>
         </nav>
 
@@ -5513,6 +5597,200 @@ const AdminDashboard = () => {
                     <p style={{ margin: 0 }}>Select a reported user from the sidebar to inspect diagnostic history and reports.</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "subscriptions" && (
+            <div className="admin-subscriptions-section" style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%", animation: "fadeIn 0.25s ease" }}>
+              
+              {/* Header metrics row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+                <div className="glass-panel" style={{ padding: "16px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", textAlign: "left" }}>
+                  <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)", textTransform: "uppercase", fontWeight: "600" }}>Monthly Recurring Revenue (MRR)</div>
+                  <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#a855f7", marginTop: "4px" }}>
+                    ${billingStats?.projectedMRR || "0.00"}
+                  </div>
+                </div>
+                <div className="glass-panel" style={{ padding: "16px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", textAlign: "left" }}>
+                  <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)", textTransform: "uppercase", fontWeight: "600" }}>Total Billing Volume</div>
+                  <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#10b981", marginTop: "4px" }}>
+                    ${billingStats?.totalVolume || "0.00"}
+                  </div>
+                </div>
+                <div className="glass-panel" style={{ padding: "16px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", textAlign: "left" }}>
+                  <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)", textTransform: "uppercase", fontWeight: "600" }}>Active Subscribers (Pro / Elite)</div>
+                  <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#fff", marginTop: "4px" }}>
+                    {billingStats?.developerProCount || 0} <span style={{ fontSize: "0.8rem", fontWeight: "500", color: "var(--admin-text-muted)" }}>Pro</span> / {billingStats?.eliteSponsorCount || 0} <span style={{ fontSize: "0.8rem", fontWeight: "500", color: "var(--admin-text-muted)" }}>Elite</span>
+                  </div>
+                </div>
+                <div className="glass-panel" style={{ padding: "16px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", textAlign: "left" }}>
+                  <div style={{ fontSize: "0.74rem", color: "var(--admin-text-muted)", textTransform: "uppercase", fontWeight: "600" }}>Processed Invoices</div>
+                  <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#f59e0b", marginTop: "4px" }}>
+                    {billingStats?.totalTransactions || 0} txn
+                  </div>
+                </div>
+              </div>
+
+              {/* Pending Activations Section */}
+              {(() => {
+                const pendingTxns = (billingTransactions || []).filter(txn => txn.status === "pending");
+                if (pendingTxns.length === 0) return null;
+                return (
+                  <div className="glass-panel" style={{ padding: "20px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid rgba(245, 158, 11, 0.35)", textAlign: "left" }}>
+                    <h3 style={{ margin: "0 0 16px", fontSize: "1.05rem", color: "#fbbf24", fontWeight: "750", display: "flex", alignItems: "center", gap: "8px" }}>
+                      ⏳ Pending Subscription Approvals ({pendingTxns.length})
+                    </h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      {pendingTxns.map((txn) => (
+                        <div key={txn._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "8px", padding: "14px", flexWrap: "wrap", gap: "12px" }}>
+                          <div>
+                            <div style={{ fontWeight: "700", color: "#fff", fontSize: "0.85rem" }}>
+                              @{txn.user?.username || "Unknown"} <span style={{ fontWeight: "400", color: "var(--admin-text-muted)", fontSize: "0.74rem" }}>({txn.user?.email || "N/A"})</span>
+                            </div>
+                            <div style={{ fontSize: "0.76rem", color: "var(--admin-text-muted)", marginTop: "4px" }}>
+                              Tier: <strong style={{ color: txn.plan === "Elite Sponsor" ? "#f59e0b" : "#8b5cf6" }}>{txn.plan}</strong> | Amount: <strong>${txn.amount}</strong>
+                            </div>
+                            <div style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", marginTop: "2px" }}>
+                              Method: <span>{txn.paymentMethodType === "upi" ? `UPI: ${txn.upiId}` : `${txn.cardBrand} Ending in ${txn.cardLast4}`}</span> | Transaction ID: <span style={{ fontFamily: "monospace", color: "#8b5cf6", fontWeight: "600" }}>{txn.transactionId}</span>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={() => handleResolveSubscription(txn.transactionId, "approve")}
+                              style={{ padding: "8px 14px", background: "#10b981", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "700", fontSize: "0.75rem", cursor: "pointer", transition: "opacity 0.2s" }}
+                            >
+                              Approve & Activate
+                            </button>
+                            <button
+                              onClick={() => handleResolveSubscription(txn.transactionId, "reject")}
+                              style={{ padding: "8px 14px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "700", fontSize: "0.75rem", cursor: "pointer", transition: "opacity 0.2s" }}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Main content split panel */}
+              <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+                
+                {/* Left: User subscription overrides panel */}
+                <div className="glass-panel" style={{ flex: "1 1 300px", padding: "20px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", textAlign: "left" }}>
+                  <h3 style={{ margin: "0 0 16px", fontSize: "1.05rem", color: "#fff", fontWeight: "700" }}>
+                    👑 Manual Subscription Standing Control
+                  </h3>
+                  <form onSubmit={handleAdminUpdateUserSubscription} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <label style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Target User Database ID *</label>
+                      <input
+                        type="text"
+                        required
+                        value={adminSelectedUserId}
+                        onChange={(e) => setAdminSelectedUserId(e.target.value)}
+                        placeholder="e.g. 642e12480f49cbba5102ff4b"
+                        style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--admin-border)", background: "rgba(0,0,0,0.2)", color: "#fff", fontSize: "0.82rem", outline: "none" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <label style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Upgrade Subscription Tier</label>
+                      <select
+                        value={adminUpdatePlan}
+                        onChange={(e) => setAdminUpdatePlan(e.target.value)}
+                        style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--admin-border)", background: "rgba(0,0,0,0.2)", color: "#fff", fontSize: "0.82rem", outline: "none", cursor: "pointer" }}
+                      >
+                        <option value="Free">Developer Free (Bypass/Deactivate)</option>
+                        <option value="Developer Pro">Developer Pro (Green Tick Badge)</option>
+                        <option value="Elite Sponsor">Elite Sponsor (Orange Tick Badge)</option>
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <label style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)", fontWeight: "600" }}>Standing Status</label>
+                      <select
+                        value={adminUpdateStatus}
+                        onChange={(e) => setAdminUpdateStatus(e.target.value)}
+                        style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--admin-border)", background: "rgba(0,0,0,0.2)", color: "#fff", fontSize: "0.82rem", outline: "none", cursor: "pointer" }}
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive / Expired</option>
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={adminIsSubmittingPlan}
+                      style={{ padding: "10px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "700", fontSize: "0.82rem", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: "6px", marginTop: "6px" }}
+                    >
+                      {adminIsSubmittingPlan ? <Loader className="spinner" size={14} /> : null}
+                      Save Subscription Override
+                    </button>
+                  </form>
+                </div>
+
+                {/* Right: Transactions list ledger */}
+                <div className="glass-panel" style={{ flex: "2 2 500px", padding: "20px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", textAlign: "left", display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#fff", fontWeight: "700" }}>
+                    📜 Global Invoices & Transaction Ledger
+                  </h3>
+                  
+                  <div style={{ overflowX: "auto", width: "100%" }}>
+                    <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid var(--admin-border)" }}>
+                          <th style={{ padding: "8px", color: "var(--admin-text-muted)", textAlign: "left" }}>User</th>
+                          <th style={{ padding: "8px", color: "var(--admin-text-muted)", textAlign: "left" }}>Invoice Code</th>
+                          <th style={{ padding: "8px", color: "var(--admin-text-muted)", textAlign: "left" }}>Plan</th>
+                          <th style={{ padding: "8px", color: "var(--admin-text-muted)", textAlign: "left" }}>Paid</th>
+                          <th style={{ padding: "8px", color: "var(--admin-text-muted)", textAlign: "left" }}>Payment Method</th>
+                          <th style={{ padding: "8px", color: "var(--admin-text-muted)", textAlign: "left" }}>Date</th>
+                          <th style={{ padding: "8px", color: "var(--admin-text-muted)", textAlign: "left" }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {billingLoading ? (
+                          <tr>
+                            <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>
+                              <Loader className="spinner" size={24} />
+                            </td>
+                          </tr>
+                        ) : billingTransactions.length > 0 ? (
+                          billingTransactions.map((txn) => (
+                            <tr key={txn._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.02)" }}>
+                              <td style={{ padding: "8px" }}>
+                                <div style={{ fontWeight: "700", color: "#fff" }}>@{txn.user?.username || "Unknown"}</div>
+                                <div style={{ fontSize: "0.65rem", color: "var(--admin-text-muted)" }}>ID: {txn.user?._id || "N/A"}</div>
+                              </td>
+                              <td style={{ padding: "8px", fontFamily: "monospace", color: "#8b5cf6", fontWeight: "600" }}>{txn.transactionId}</td>
+                              <td style={{ padding: "8px" }}>
+                                <span style={{ fontWeight: "600", color: txn.plan === "Elite Sponsor" ? "#f59e0b" : "#8b5cf6" }}>{txn.plan}</span>
+                              </td>
+                              <td style={{ padding: "8px", fontWeight: "700" }}>${txn.amount.toFixed(2)}</td>
+                              <td style={{ padding: "8px", color: "var(--admin-text-muted)" }}>
+                                {txn.paymentMethodType === "upi" ? `UPI: ${txn.upiId}` : `${txn.cardBrand} **${txn.cardLast4}`}
+                              </td>
+                              <td style={{ padding: "8px" }}>{new Date(txn.createdAt).toLocaleDateString()}</td>
+                              <td style={{ padding: "8px" }}>
+                                <span style={{ background: "rgba(16, 185, 129, 0.08)", color: "#10b981", padding: "2px 6px", borderRadius: "4px", fontSize: "0.68rem", fontWeight: "700" }}>
+                                  {txn.status.toUpperCase()}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" style={{ textAlign: "center", padding: "20px", color: "var(--admin-text-muted)", fontStyle: "italic" }}>
+                              No transactions recorded in system database.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
               </div>
             </div>
           )}

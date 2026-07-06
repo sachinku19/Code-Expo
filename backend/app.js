@@ -90,6 +90,10 @@ app.use("/api/trust-safety", trustSafetyRoutes);
 const adRoutes = require("./routes/adRoutes");
 app.use("/api/ads", adRoutes);
 
+// subscription routes
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
+app.use("/api/subscription", subscriptionRoutes);
+
 // Serve static assets from frontend build in production
 const frontendDist = path.join(__dirname, "../frontend/dist");
 app.use(express.static(frontendDist));

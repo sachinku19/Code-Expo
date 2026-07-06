@@ -226,3 +226,23 @@ export const resolveAdminReports = async (userId, actionType, resolutionNotes = 
   return response.data;
 };
 
+export const adminGetSubscriptionStats = async () => {
+  const response = await API.get("/admin/subscriptions/stats", getHeaders());
+  return response.data;
+};
+
+export const adminGetTransactionsList = async () => {
+  const response = await API.get("/admin/subscriptions/transactions", getHeaders());
+  return response.data;
+};
+
+export const adminUpdateUserSubscription = async (userId, plan, status) => {
+  const response = await API.put(`/admin/users/${userId}/subscription`, { plan, status }, getHeaders());
+  return response.data;
+};
+
+export const adminResolvePendingSubscription = async (transactionId, action) => {
+  const response = await API.put(`/admin/subscriptions/resolve/${transactionId}`, { action }, getHeaders());
+  return response.data;
+};
+

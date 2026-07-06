@@ -31,7 +31,11 @@ const {
   updateAdminStoryStatus,
   toggleAdminStoryFeature,
   adminGetReports,
-  adminResolveReports
+  adminResolveReports,
+  adminGetSubscriptionStats,
+  adminGetTransactionsList,
+  adminUpdateUserSubscription,
+  adminResolvePendingSubscription
 } = require("../controllers/adminControllers");
 
 const router = express.Router();
@@ -51,6 +55,12 @@ router.put("/users/:id/suspend", auth_protect, admin_protect, toggleUserSuspensi
 router.put("/users/:id/action", auth_protect, admin_protect, adminIssueUserAction);
 router.get("/reports", auth_protect, admin_protect, adminGetReports);
 router.put("/reports/:userId/resolve", auth_protect, admin_protect, adminResolveReports);
+
+// Subscriptions & Billing
+router.get("/subscriptions/stats", auth_protect, admin_protect, adminGetSubscriptionStats);
+router.get("/subscriptions/transactions", auth_protect, admin_protect, adminGetTransactionsList);
+router.put("/users/:id/subscription", auth_protect, admin_protect, adminUpdateUserSubscription);
+router.put("/subscriptions/resolve/:transactionId", auth_protect, admin_protect, adminResolvePendingSubscription);
 
 // Rooms
 router.get("/rooms", auth_protect, admin_protect, getAllRooms);

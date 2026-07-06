@@ -8,7 +8,7 @@ import {
   Pin, Search, Bell, Sun, Moon, LogOut, Terminal, Palette,
   Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
-  Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio
+  Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -769,6 +769,7 @@ export default function MainLayout({
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
     { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
     { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard?tab=helpdesk" },
+    { id: "subscription", label: "Subscriptions", icon: CreditCard, path: "/dashboard?tab=subscription" },
   ];
 
   if (user && user.role === "admin") {

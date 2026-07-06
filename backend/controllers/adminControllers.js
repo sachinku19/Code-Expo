@@ -1975,6 +1975,217 @@ const adminResolveReports = async (req, res) => {
   }
 };
 
+const adminGetSubscriptionStats = async (req, res) => {
+  try {
+    const Transaction = require("../models/Transaction");
+    const User = require("../models/User");
+
+    const totalUsers = await User.countDocuments();
+    const developerProCount = await User.countDocuments({ "subscription.plan": "Developer Pro", "subscription.status": "active" });
+    const eliteSponsorCount = await User.countDocuments({ "subscription.plan": "Elite Sponsor", "subscription.status": "active" });
+    const totalTransactions = await Transaction.countDocuments();
+
+    // Sum total processed transaction volume
+    const volumeAgg = await Transaction.aggregate([
+      { $match: { status: "success" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const totalVolume = volumeAgg[0]?.total || 0;
+
+    // Monthly Recurring Revenue (MRR) projection
+    const projectedMRR = (developerProCount * 9.99) + (eliteSponsorCount * 29.99);
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalUsers,
+        developerProCount,
+        eliteSponsorCount,
+        totalTransactions,
+        totalVolume: parseFloat(totalVolume.toFixed(2)),
+        projectedMRR: parseFloat(projectedMRR.toFixed(2))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const adminGetTransactionsList = async (req, res) => {
+  try {
+    const Transaction = require("../models/Transaction");
+    const transactions = await Transaction.find()
+      .populate("user", "username email avatar")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      transactions
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const adminUpdateUserSubscription = async (req, res) => {
+  try {
+    const { id: targetUserId } = req.params;
+    const { plan, status } = req.body; // plan: "Free"/"Developer Pro"/"Elite Sponsor", status: "active"/"inactive"
+
+    if (!plan || !["Free", "Developer Pro", "Elite Sponsor"].includes(plan)) {
+      return res.status(400).json({ success: false, message: "Invalid subscription plan selected." });
+    }
+
+    const User = require("../models/User");
+    const user = await User.findById(targetUserId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const crypto = require("crypto");
+    const transactionId = "TXN_ADMIN_" + crypto.randomBytes(6).toString("hex").toUpperCase();
+    const price = plan === "Free" ? 0 : plan === "Developer Pro" ? 9.99 : 29.99;
+
+    user.subscription = {
+      plan,
+      status: plan === "Free" ? "inactive" : status || "active",
+      startDate: plan === "Free" ? null : new Date(),
+      endDate: plan === "Free" ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      paymentMethod: "Manual Override (Admin)",
+      amountPaid: price,
+      transactionId
+    };
+
+    await user.save();
+
+    // Log a manual override transaction record
+    if (plan !== "Free") {
+      const Transaction = require("../models/Transaction");
+      await Transaction.create({
+        user: user._id,
+        plan,
+        amount: price,
+        status: "success",
+        transactionId,
+        cardBrand: "Admin Override",
+        cardLast4: "0000",
+        billingEmail: user.email
+      });
+    }
+
+    // Emit live socket standing update
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("subscription:updated", { userId: user._id, plan, status: user.subscription.status });
+      }
+    } catch (e) {
+      console.error("Failed to emit subscription:updated socket event:", e.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully updated ${user.username}'s subscription standing to ${plan}.`,
+      user: {
+        id: user._id,
+        username: user.username,
+        subscription: user.subscription
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const adminResolvePendingSubscription = async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    const { action } = req.body; // "approve" or "reject"
+
+    const Transaction = require("../models/Transaction");
+    const User = require("../models/User");
+
+    const transaction = await Transaction.findOne({ transactionId }).populate("user");
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: "Transaction not found." });
+    }
+
+    if (transaction.status !== "pending") {
+      return res.status(400).json({ success: false, message: "Transaction is already resolved." });
+    }
+
+    if (action === "approve") {
+      transaction.status = "success";
+      await transaction.save();
+
+      const user = await User.findById(transaction.user._id);
+      if (user) {
+        user.subscription = {
+          plan: transaction.plan,
+          status: "active",
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          paymentMethod: transaction.paymentMethodType === "upi" ? `UPI: ${transaction.upiId}` : `${transaction.cardBrand} ending in ${transaction.cardLast4}`,
+          amountPaid: transaction.amount,
+          transactionId: transaction.transactionId
+        };
+        await user.save();
+
+        // Socket notify
+        try {
+          const socketHandler = require("../sockets/socketHandler");
+          if (socketHandler.io) {
+            socketHandler.io.emit("subscription:updated", {
+              userId: user._id,
+              plan: user.subscription.plan,
+              status: "active"
+            });
+          }
+        } catch (e) {
+          console.error("Socket error:", e.message);
+        }
+      }
+      return res.status(200).json({ success: true, message: "Subscription activated successfully." });
+    } else if (action === "reject") {
+      transaction.status = "failed";
+      await transaction.save();
+
+      const user = await User.findById(transaction.user._id);
+      if (user) {
+        user.subscription = {
+          plan: "Free",
+          status: "inactive",
+          startDate: null,
+          endDate: null,
+          paymentMethod: "",
+          amountPaid: 0,
+          transactionId: ""
+        };
+        await user.save();
+
+        // Socket notify
+        try {
+          const socketHandler = require("../sockets/socketHandler");
+          if (socketHandler.io) {
+            socketHandler.io.emit("subscription:updated", {
+              userId: user._id,
+              plan: "Free",
+              status: "inactive"
+            });
+          }
+        } catch (e) {
+          console.error("Socket error:", e.message);
+        }
+      }
+      return res.status(200).json({ success: true, message: "Subscription rejected successfully." });
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid action. Use 'approve' or 'reject'." });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAdminOverviewStats,
   getAllUsers,
@@ -2006,5 +2217,9 @@ module.exports = {
   updateAdminStoryStatus,
   toggleAdminStoryFeature,
   adminGetReports,
-  adminResolveReports
+  adminResolveReports,
+  adminGetSubscriptionStats,
+  adminGetTransactionsList,
+  adminUpdateUserSubscription,
+  adminResolvePendingSubscription
 };

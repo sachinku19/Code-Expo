@@ -69,6 +69,7 @@ import LeftSidebar from "../components/social/LeftSidebar";
 import TrustSafety from "../components/social/TrustSafety";
 import NetworkAnalytics from "../components/social/NetworkAnalytics";
 import UserProfileModal from "../components/social/UserProfileModal";
+import SubscriptionPlans from "../components/social/SubscriptionPlans";
 const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
 import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
 import { useGateTransition } from "../routes/AppRoutes";
@@ -986,6 +987,62 @@ const findNearestCity = (lat, lon) => {
     }
   });
   return nearest;
+};
+const renderSubscriptionBadge = (profileUser) => {
+  if (!profileUser?.subscription || profileUser.subscription.status !== "active") return null;
+
+  const plan = profileUser.subscription.plan;
+  if (plan === "Developer Pro") {
+    return (
+      <span 
+        title="Developer Pro Verified" 
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "14px",
+          height: "14px",
+          borderRadius: "50%",
+          background: "#10b981",
+          color: "#fff",
+          marginLeft: "6px",
+          fontSize: "8px",
+          fontWeight: "bold",
+          verticalAlign: "middle",
+          boxShadow: "0 0 8px rgba(16, 185, 129, 0.4)",
+          flexShrink: 0
+        }}
+      >
+        ✓
+      </span>
+    );
+  }
+  if (plan === "Elite Sponsor") {
+    return (
+      <span 
+        title="Elite Sponsor Verified" 
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "14px",
+          height: "14px",
+          borderRadius: "50%",
+          background: "#f59e0b",
+          color: "#fff",
+          marginLeft: "6px",
+          fontSize: "8px",
+          fontWeight: "bold",
+          verticalAlign: "middle",
+          boxShadow: "0 0 8px rgba(245, 158, 11, 0.4)",
+          flexShrink: 0
+        }}
+      >
+        ✓
+      </span>
+    );
+  }
+  return null;
 };
 
 function Dashboard() {
@@ -7145,7 +7202,10 @@ function Dashboard() {
                           )}
                         </div>
 
-                        <h2>{viewingUserProfile ? viewingUserProfile.username : user?.username}</h2>
+                        <h2 style={{ display: "inline-flex", alignItems: "center" }}>
+                          {viewingUserProfile ? viewingUserProfile.username : user?.username}
+                          {renderSubscriptionBadge(viewingUserProfile || user)}
+                        </h2>
                         <span className="profile-email">{viewingUserProfile ? viewingUserProfile.email : user?.email}</span>
                         {(viewingUserProfile ? viewingUserProfile.location : user?.location) && (
                           <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "var(--ce-text-muted)", marginTop: "4px", marginBottom: "4px" }}>
@@ -8432,6 +8492,19 @@ function Dashboard() {
               style={{ width: "100%", height: "100%" }}
             >
               <HelpDesk />
+            </motion.div>
+          )}
+
+          {activeSection === "subscription" && (
+            <motion.div
+              key="subscription"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <SubscriptionPlans user={user} addToast={addToast} />
             </motion.div>
           )}
 

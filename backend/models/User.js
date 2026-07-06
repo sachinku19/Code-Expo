@@ -220,7 +220,24 @@ const userSchema=new mongoose.Schema({
         default: []
     },
     resetPasswordToken:String,
-    resetPasswordExpire:Date
+    resetPasswordExpire:Date,
+    subscription: {
+        plan: {
+            type: String,
+            enum: ["Free", "Developer Pro", "Elite Sponsor"],
+            default: "Free"
+        },
+        status: {
+            type: String,
+            enum: ["active", "inactive", "expired", "pending"],
+            default: "inactive"
+        },
+        startDate: { type: Date, default: null },
+        endDate: { type: Date, default: null },
+        paymentMethod: { type: String, default: "" },
+        amountPaid: { type: Number, default: 0 },
+        transactionId: { type: String, default: "" }
+    }
 },{timestamps:true});
 
 const User=mongoose.model("User",userSchema);

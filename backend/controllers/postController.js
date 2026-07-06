@@ -123,7 +123,8 @@ const createPost = async (req, res) => {
     });
 
     const populatedPost = await Post.findById(newPost._id)
-      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
+      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount subscription")
+      .populate({ path: "comments.user", select: "username email avatar subscription" })
       .lean();
 
     // Increment user contribution score for activity
@@ -210,7 +211,8 @@ const getPosts = async (req, res) => {
     }
 
     const posts = await Post.find(query)
-      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
+      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount subscription")
+      .populate({ path: "comments.user", select: "username email avatar subscription" })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -373,7 +375,8 @@ const getPostById = async (req, res) => {
       { $inc: { viewsCount: 1 } },
       { new: true }
     )
-      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount")
+      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount subscription")
+      .populate({ path: "comments.user", select: "username email avatar subscription" })
       .lean();
 
     if (!post) {

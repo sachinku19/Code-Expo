@@ -286,15 +286,27 @@ const parseMarkdownOnly = (text) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  html = html.replace(/^### (.*$)/gim, '<h4 style="margin:8px 0; color:#fff;">$1</h4>');
-  html = html.replace(/^## (.*$)/gim, '<h3 style="margin:10px 0; color:#fff;">$1</h3>');
-  html = html.replace(/^# (.*$)/gim, '<h2 style="margin:12px 0; color:#fff;">$1</h2>');
+  html = html.replace(/^### (.*$)/gim, '<h4 class="feed-post-h4">$1</h4>');
+  html = html.replace(/^## (.*$)/gim, '<h3 class="feed-post-h3">$1</h3>');
+  html = html.replace(/^# (.*$)/gim, '<h2 class="feed-post-h2">$1</h2>');
 
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  html = html.replace(/`([^`\r\n]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#fb7185;">$1</code>');
-  html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span style="color:#8b5cf6; font-weight:600; cursor:pointer;">#$1</span>');
-  html = html.replace(/@([a-zA-Z0-9_]+)/g, '<span style="color:#06b6d4; font-weight:600; cursor:pointer;">@$1</span>');
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="feed-post-strong">$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em class="feed-post-em">$1</em>');
+  html = html.replace(/`([^`\r\n]+)`/g, '<code class="feed-post-code">$1</code>');
+  html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span class="feed-post-hashtag">#$1</span>');
+  html = html.replace(/@([a-zA-Z0-9_]+)/g, '<span class="feed-post-mention">@$1</span>');
+
+  // Handle list items starting with - or *
+  html = html.split("\n").map(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      return `<li class="feed-post-li">${trimmed.substring(2)}</li>`;
+    }
+    return line;
+  }).join("\n");
+
+  // Wrap continuous list items in dynamic ul tags
+  html = html.replace(/(<li class="feed-post-li">.*?<\/li>)/gs, '<ul class="feed-post-ul">$1</ul>');
   html = html.replace(/\n/g, "<br />");
 
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
@@ -1837,7 +1849,31 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       </div>
                       <div className="post-name-section">
                         <div className="post-username-row" style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
-                          <span className="post-username-text">@{post.author.username}</span>
+                          <span className="post-username-text" style={{ display: "inline-flex", alignItems: "center" }}>
+                            @{post.author.username}
+                            {post.author.subscription && post.author.subscription.status === "active" && (
+                              <span 
+                                title={`${post.author.subscription.plan} Verified`} 
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: "12px",
+                                  height: "12px",
+                                  borderRadius: "50%",
+                                  background: post.author.subscription.plan === "Developer Pro" ? "#10b981" : "#f59e0b",
+                                  color: "#fff",
+                                  marginLeft: "5px",
+                                  fontSize: "7px",
+                                  fontWeight: "bold",
+                                  boxShadow: `0 0 6px ${post.author.subscription.plan === "Developer Pro" ? "rgba(16, 185, 129, 0.4)" : "rgba(245, 158, 11, 0.4)"}`,
+                                  flexShrink: 0
+                                }}
+                              >
+                                ✓
+                              </span>
+                            )}
+                          </span>
                           {post.author.status === "Coding" && (
                             <span className="post-dot-online" style={{ width: "6px", height: "6px" }} />
                           )}
@@ -2149,10 +2185,34 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                             <div className="comment-bubble-body">
                               <div className="comment-meta-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
                                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                  <span className="comment-author-name">@{c.username}</span>
+                                  <span className="comment-author-name" style={{ display: "inline-flex", alignItems: "center" }}>
+                                    @{c.username}
+                                    {c.user?.subscription?.status === "active" && (
+                                      <span 
+                                        title={`${c.user.subscription.plan} Verified`} 
+                                        style={{
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          width: "10px",
+                                          height: "10px",
+                                          borderRadius: "50%",
+                                          background: c.user.subscription.plan === "Developer Pro" ? "#10b981" : "#f59e0b",
+                                          color: "#fff",
+                                          marginLeft: "4px",
+                                          fontSize: "6px",
+                                          fontWeight: "bold",
+                                          boxShadow: `0 0 4px ${c.user.subscription.plan === "Developer Pro" ? "rgba(16, 185, 129, 0.4)" : "rgba(245, 158, 11, 0.4)"}`,
+                                          flexShrink: 0
+                                        }}
+                                      >
+                                        ✓
+                                      </span>
+                                    )}
+                                  </span>
                                   <span>{new Date(c.createdAt).toLocaleDateString()}</span>
                                 </div>
-                                {String(c.user || c.sender || "") !== String(user?.id || user?._id) && (
+                                {String(c.user?._id || c.user || c.sender || "") !== String(user?.id || user?._id) && (
                                   <div style={{ position: "relative" }}>
                                     <button
                                       type="button"
@@ -2178,7 +2238,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                                         <button
                                           onClick={() => {
                                             setActiveCommentMenuId(null);
-                                            setReportedTargetUser({ _id: c.user, username: c.username });
+                                            setReportedTargetUser({ _id: c.user?._id || c.user, username: c.username });
                                             setReportEvidenceType("COMMENT");
                                             setReportEvidenceId(c._id);
                                             setReportModalOpen(true);
