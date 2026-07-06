@@ -1111,6 +1111,7 @@ function Dashboard() {
       return true;
     }
   });
+  const [isFetchingData, setIsFetchingData] = useState(true);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -1923,6 +1924,7 @@ function Dashboard() {
   }, [user, navigate]);
 
   const fetchDashboardData = async () => {
+    setIsFetchingData(true);
     try {
       const [historyData, recentData, liveData, requestsData, activityData, statsData, publicData, sentRequestsData] = await Promise.all([
         getUserRoomsHistory(),
@@ -2006,6 +2008,7 @@ function Dashboard() {
       }
     } finally {
       setIsLoadingDashboard(false);
+      setIsFetchingData(false);
     }
   };
 
@@ -6477,7 +6480,21 @@ function Dashboard() {
                     {roomsTab === "public" && (
                       <div className="rooms-explorer-tab-content-wrapper" style={{ marginTop: "8px" }}>
 
-                        {publicRooms.length === 0 ? (
+                        {isFetchingData ? (
+                          <div className="modal-loader-container" style={{ minHeight: "200px" }}>
+                            <div className="modal-roller-spinner">
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                            </div>
+                            <p style={{ color: "var(--ce-text-muted)", fontSize: "0.88rem" }}>Loading public workspaces...</p>
+                          </div>
+                        ) : publicRooms.length === 0 ? (
                           <div className="empty-state-card">
                             <Globe size={18} className="empty-state-icon" />
                             <p>No public workspaces found. Be the first to create one!</p>
@@ -6525,8 +6542,21 @@ function Dashboard() {
                     {roomsTab === "myrooms" && (
                       <div className="rooms-explorer-tab-content-wrapper" style={{ marginTop: "8px" }}>
 
-
-                        {(() => {
+                        {isFetchingData ? (
+                          <div className="modal-loader-container" style={{ minHeight: "200px" }}>
+                            <div className="modal-roller-spinner">
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                            </div>
+                            <p style={{ color: "var(--ce-text-muted)", fontSize: "0.88rem" }}>Loading owned workspaces...</p>
+                          </div>
+                        ) : (() => {
                           const ownedRooms = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
 
                           if (ownedRooms.length === 0) {
@@ -6635,8 +6665,21 @@ function Dashboard() {
                     {roomsTab === "requests" && (
                       <div className="rooms-explorer-tab-content-wrapper" style={{ marginTop: "8px" }}>
 
-
-                        {mySentRequests.length === 0 ? (
+                        {isFetchingData ? (
+                          <div className="modal-loader-container" style={{ minHeight: "200px" }}>
+                            <div className="modal-roller-spinner">
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                            </div>
+                            <p style={{ color: "var(--ce-text-muted)", fontSize: "0.88rem" }}>Loading requests...</p>
+                          </div>
+                        ) : mySentRequests.length === 0 ? (
                           <div className="empty-state-card">
                             <Terminal size={18} className="empty-state-icon" />
                             <p>You haven't requested to join any private rooms yet.</p>
@@ -6722,7 +6765,22 @@ function Dashboard() {
                     {roomsTab === "history" && (
                       <div className="rooms-explorer-tab-content-wrapper" style={{ marginTop: "8px" }}>
 
-                        <div className="history-table-wrapper" style={{ overflowX: "auto", background: activeTheme === "light" ? "var(--ce-surface-card)" : "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "12px" }}>
+                        {isFetchingData ? (
+                          <div className="modal-loader-container" style={{ minHeight: "200px" }}>
+                            <div className="modal-roller-spinner">
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                            </div>
+                            <p style={{ color: "var(--ce-text-muted)", fontSize: "0.88rem" }}>Loading workspace history...</p>
+                          </div>
+                        ) : (
+                          <div className="history-table-wrapper" style={{ overflowX: "auto", background: activeTheme === "light" ? "var(--ce-surface-card)" : "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "12px" }}>
                           <table className="history-data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
                             <thead>
                               <tr style={{ borderBottom: "1px solid var(--ce-border)", background: "rgba(255,255,255,0.02)" }}>
@@ -6786,6 +6844,7 @@ function Dashboard() {
                             </tbody>
                           </table>
                         </div>
+                        )}
                       </div>
                     )}
                   </div>
