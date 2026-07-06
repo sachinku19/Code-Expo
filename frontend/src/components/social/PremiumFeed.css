@@ -3593,24 +3593,41 @@ html {
 }
 
 /* Tree branch reply styles */
+.comment-replies-list {
+  position: relative;
+  margin-left: 34px !important;
+  padding-left: 20px !important;
+  border-left: 1.5px solid rgba(168, 85, 247, 0.2) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.light .comment-replies-list {
+  border-left-color: rgba(124, 58, 237, 0.18) !important;
+}
+
 .panel-comment-card.is-reply {
-  margin-left: 36px;
+  margin-left: 0 !important;
   background: rgba(139, 92, 246, 0.015);
-  border-left: 1px dashed rgba(168, 85, 247, 0.25);
   padding: 10px 12px;
+  position: relative;
 }
 
 .panel-comment-card.is-reply::after {
   content: '';
   position: absolute;
-  left: -20px;
-  top: -8px;
-  width: 14px;
-  height: 24px;
-  border-left: 1.5px solid rgba(168, 85, 247, 0.2);
-  border-bottom: 1.5px solid rgba(168, 85, 247, 0.2);
-  border-bottom-left-radius: 6px;
+  left: -20px !important;
+  top: 28px !important;
+  width: 20px !important;
+  height: 1.5px !important;
+  background: rgba(168, 85, 247, 0.2) !important;
   pointer-events: none;
+}
+
+.light .panel-comment-card.is-reply::after {
+  background: rgba(124, 58, 237, 0.18) !important;
 }
 
 .reply-mention {
@@ -3655,15 +3672,20 @@ html {
   .comments-panel-body {
     padding: 16px !important;
   }
-  .panel-comment-card.is-reply {
+  .comment-replies-list {
     margin-left: 20px !important;
+    padding-left: 12px !important;
+    border-left-width: 1px !important;
+  }
+  .panel-comment-card.is-reply {
+    margin-left: 0 !important;
     padding: 8px 10px !important;
   }
   .panel-comment-card.is-reply::after {
     left: -12px !important;
-    width: 8px !important;
-    height: 20px !important;
-    top: -6px !important;
+    width: 12px !important;
+    top: 24px !important;
+    height: 1px !important;
   }
 }
 
