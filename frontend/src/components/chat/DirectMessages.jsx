@@ -371,8 +371,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         }
 
         setMessages((prev) => {
-          if (prev.some((m) => m._id === msg._id)) return prev;
-          const next = [...prev, msg];
+          const filtered = prev.filter((m) => 
+            m._id !== msg._id && 
+            !(m.isTemp && String(m.sender?._id || m.sender) === String(msg.sender?._id || msg.sender) && m.message === msg.message)
+          );
+          if (filtered.some((m) => m._id === msg._id)) return filtered;
+          const next = [...filtered, msg];
           if (activeChatVal) {
             const key = activeChatVal._id || activeChatVal.id;
             chatHistoryCacheRef.current[key] = next;
@@ -832,7 +836,40 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     socket.emit("dm:stop-typing", { recipientId: activeChat._id });
     setIsTyping(false);
 
+    // Create optimistic message for regular text messages
+    const tempId = "temp_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    let tempMessage = null;
 
+    if (!attachment && messageToSend) {
+      tempMessage = {
+        _id: tempId,
+        sender: {
+          _id: user?._id || user?.id,
+          username: user?.username || "Me",
+          avatar: user?.avatar || ""
+        },
+        recipient: activeChat._id,
+        message: messageToSend,
+        createdAt: new Date().toISOString(),
+        isTemp: true
+      };
+
+      setMessages((prev) => {
+        const next = [...prev, tempMessage];
+        if (activeChat) {
+          const key = activeChat._id || activeChat.id;
+          chatHistoryCacheRef.current[key] = next;
+        }
+        return next;
+      });
+
+      // Scroll to bottom immediately
+      setTimeout(() => {
+        if (chatEndRef.current) {
+          chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 50);
+    }
 
     // Actual API Chat Handling
     try {
@@ -862,8 +899,10 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         const res = await sendDirectMessage(activeChat._id, messageToSend);
         if (res.success) {
           setMessages((prev) => {
-            if (prev.some((m) => m._id === res.message._id)) return prev;
-            const next = [...prev, res.message];
+            // Replace the optimistic message with the resolved one
+            const filtered = prev.filter((m) => m._id !== tempId);
+            if (filtered.some((m) => m._id === res.message._id)) return filtered;
+            const next = [...filtered, res.message];
             if (activeChat) {
               const key = activeChat._id || activeChat.id;
               chatHistoryCacheRef.current[key] = next;
@@ -871,10 +910,19 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
             return next;
           });
           fetchConversations();
+        } else {
+          // Remove optimistic message if api call didn't succeed
+          if (tempMessage) {
+            setMessages((prev) => prev.filter((m) => m._id !== tempId));
+          }
         }
       }
     } catch (err) {
       console.error("Error sending message:", err);
+      // Remove optimistic message on error
+      if (tempMessage) {
+        setMessages((prev) => prev.filter((m) => m._id !== tempId));
+      }
     } finally {
       setIsSending(false);
     }
@@ -1782,7 +1830,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                       onClick={handleSendMessage}
                       disabled={(!newMessageText.trim() && !attachment) || isSending}
                     >
-                      {isSending ? (
+                      {isSending && attachment ? (
                         <div className="loading-spinner-tiny animate-spin" />
                       ) : (
                         <>
