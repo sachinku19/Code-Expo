@@ -1889,10 +1889,7 @@ html.lenis body {
   pointer-events: none;
 }
 
-/* Scroll performance hardware acceleration & off-screen optimization */
+/* Clean scroll layer */
 .ce-section {
-  will-change: transform, opacity;
-  transform: translate3d(0, 0, 0);
-  content-visibility: auto;
-  contain-intrinsic-size: 0 500px;
+  position: relative;
 }

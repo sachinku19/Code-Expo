@@ -108,40 +108,35 @@ function Home() {
   }, [activeSection, theme]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      // Ignore scroll event highlights if currently executing a click animation
-      if (isScrollingRef.current) return;
-
-      const sectionIds = ["hero", "features", "editor-section", "ai-partner", "testimonials"];
-      
-      // If at the very bottom of the page, active section is the last one
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60) {
-        setActiveSection("testimonials");
-        window.history.replaceState(null, null, "#testimonials");
-        return;
-      }
-
-      const scrollPosition = window.scrollY + 120; // offset for header + padding
-      
-      for (const id of sectionIds) {
-        const el = document.getElementById(id);
-        if (el) {
-          const top = el.offsetTop;
-          const height = el.offsetHeight;
-          if (scrollPosition >= top && scrollPosition < top + height) {
-            setActiveSection(id);
-            window.history.replaceState(null, null, `#${id === "hero" ? "" : id}`);
-            break;
-          }
-        }
-      }
+    const observerOptions = {
+      root: null,
+      rootMargin: "-25% 0px -55% 0px", // triggers when section dominates upper-middle viewport
+      threshold: 0
     };
 
-    window.addEventListener("scroll", handleScroll);
-    setTimeout(handleScroll, 100);
+    const handleIntersection = (entries) => {
+      // Ignore intersection detection if currently animating a link click
+      if (isScrollingRef.current) return;
+
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          setActiveSection(id);
+          window.history.replaceState(null, null, `#${id === "hero" ? "" : id}`);
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(handleIntersection, observerOptions);
+
+    const sectionIds = ["hero", "features", "editor-section", "ai-partner", "testimonials"];
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      observer.disconnect();
     };
   }, []);
 
