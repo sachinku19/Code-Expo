@@ -11,31 +11,31 @@ import CountUpModule from "react-countup";
 const CountUp = CountUpModule.default || CountUpModule;
 
 function Hero({ onWatchDemo }) {
- 
-    const navigate=useNavigate()
+
+  const navigate = useNavigate()
 
 
   // =====================  
- //total user on website
- //==========================
+  //total user on website
+  //==========================
 
   const [totalUser, setTotalUser] = useState(0);
   const [dbStats, setDbStats] = useState({ developers: 0, rooms: 0, messages: 0 });
 
-  useEffect(()=>{
-    const totalUserCount=async()=>{
+  useEffect(() => {
+    const totalUserCount = async () => {
 
-      try{
-        const data=await getCountUser();
+      try {
+        const data = await getCountUser();
         setTotalUser(data.userCount);
 
-      }catch(error){
+      } catch (error) {
         console.log(error);
       }
-      
+
     }
     totalUserCount();
-  },[]);
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -105,7 +105,7 @@ public class Sandbox {
     setIsRunning(true);
     setShowTerminal(true);
     setTerminalOutput("Initializing compiler sandbox...");
-    
+
     setTimeout(() => {
       setTerminalOutput(outputs[selectedLang]);
       setIsRunning(false);
@@ -176,9 +176,9 @@ public class Sandbox {
           transition={{ duration: 0.7, delay: 0.3 }}
         >
           <button className="cta-primary" onClick={() => navigate("/register")}>
-              Create Workspace
-              <ArrowRight size={18} />
-            </button>
+            Create Workspace
+            <ArrowRight size={18} />
+          </button>
 
           <button className="secondary-btn" onClick={onWatchDemo}>
             <Play size={17} />
@@ -295,8 +295,8 @@ public class Sandbox {
 
           {/* Run Panel & Terminals */}
           <div className="editor-actions">
-            <button 
-              className={`run-btn ${isRunning ? "running" : ""}`} 
+            <button
+              className={`run-btn ${isRunning ? "running" : ""}`}
               onClick={handleRunCode}
               disabled={isRunning}
             >

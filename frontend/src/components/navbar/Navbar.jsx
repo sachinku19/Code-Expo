@@ -37,7 +37,7 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
 
   const handleLogout = () => {
     logoutUser().catch(err => console.error("Logout error:", err));
-    
+
     // Preserve local preferences, read stories, and dismissed ads cache
     const preservedKeys = [];
     const prefixesToPreserve = [
@@ -60,20 +60,20 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
       "ce_activeRoomsTab",
       "ce_adminActiveTab"
     ];
-    
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && prefixesToPreserve.some(prefix => key.startsWith(prefix))) {
         preservedKeys.push({ key, value: localStorage.getItem(key) });
       }
     }
-    
+
     localStorage.clear();
-    
+
     preservedKeys.forEach(item => {
       localStorage.setItem(item.key, item.value);
     });
-    
+
     window.location.href = "/login";
   };
 

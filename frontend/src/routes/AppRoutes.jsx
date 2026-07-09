@@ -4,9 +4,11 @@ import GateOverlay from "../components/GateOverlay";
 import { ModalProvider } from "../context/ModalContext";
 import { ThemeProvider } from "../context/ThemeContext";
 
+// Page components (statically imported for instant transitions)
+import Home from "../pages/Home";
+import Auth from "../pages/Auth";
+
 // Lazy loaded page components
-const Home = lazy(() => import("../pages/Home"));
-const Auth = lazy(() => import("../pages/Auth"));
 const Dashboard = lazy(() => import("../pages/Dashboard"));
 const Editor = lazy(() => import("../pages/Editor"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
@@ -24,7 +26,7 @@ import CallOverlay from "../components/chat/CallOverlay";
 
 // Global Transition Context
 export const GateTransitionContext = createContext({
-  triggerGateTransition: () => {}
+  triggerGateTransition: () => { }
 });
 
 export const useGateTransition = () => useContext(GateTransitionContext);
@@ -37,16 +39,16 @@ export function GateTransitionProvider({ children }) {
   const triggerGateTransition = (targetPath, customStatusText = "Connecting to Neural Grid...") => {
     setStatusText(customStatusText);
     setGateState("closing");
-    
+
     // 1. Wait for doors to slide shut (350ms)
     setTimeout(() => {
       // 2. Perform navigation, passing state so target page knows it is a transition
       navigate(targetPath, { state: { fromTransition: true } });
-      
+
       // 3. Switch to opening state
       setGateState("opening");
       setStatusText("Decryption Complete");
-      
+
       // 4. Wait for unlocking sequence + doors sliding open (650ms)
       setTimeout(() => {
         setGateState("idle");
