@@ -1893,3 +1893,1005 @@ html.lenis body {
 .ce-section {
   position: relative;
 }
+
+/* REDESIGNED & FUTURISTIC ADDITIONS */
+
+/* 1. Live Stories Tray */
+.ce-stories-section {
+  padding: 24px 0 8px 0;
+  background-color: var(--bg-home);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ce-stories-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.ce-stories-tray {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 4px 0 16px 0;
+}
+
+/* Hide scrollbar */
+.ce-stories-tray::-webkit-scrollbar {
+  display: none;
+}
+.ce-stories-tray {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.ce-story-bubble-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.ce-story-bubble-wrapper:hover {
+  transform: translateY(-2px);
+}
+
+.ce-story-bubble {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--story-color, #3b82f6) 0%, rgba(255, 255, 255, 0.1) 100%);
+  transition: box-shadow 0.3s;
+}
+
+.ce-story-bubble-wrapper:hover .ce-story-bubble {
+  box-shadow: 0 0 12px var(--story-color, #3b82f6);
+}
+
+.ce-story-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bg-home);
+}
+
+.ce-story-pulse {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-home);
+}
+
+.ce-story-username {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Stories Modal Overlay */
+.ce-story-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(9, 9, 11, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.ce-story-modal {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: modal-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ce-story-modal-progress {
+  height: 4px;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.ce-story-modal-progress-bar {
+  height: 100%;
+  background-color: var(--accent-color);
+  transition: width 0.03s linear;
+}
+
+.ce-story-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ce-story-modal-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ce-story-modal-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.ce-story-modal-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ce-story-modal-handle {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.ce-story-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.ce-story-modal-close:hover {
+  color: var(--text-primary);
+}
+
+.ce-story-modal-body {
+  padding: 20px;
+}
+
+.ce-story-status-card {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-subtle);
+}
+
+.ce-story-status-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.ce-story-status-text {
+  font-size: 14px;
+  margin: 6px 0 0 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ce-story-code-block {
+  margin: 0;
+  background-color: #0c0c0e;
+  padding: 16px;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: #c9d1d9;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-x: auto;
+  max-height: 220px;
+  line-height: 1.5;
+}
+
+.ce-story-modal-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+
+/* 2. Multi-File Explorer Workspace */
+.ce-workspace-ide {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  height: 520px;
+  background-color: #121215;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7);
+}
+
+.ce-ide-sidebar {
+  background-color: #0e0e11;
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.ce-sidebar-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  margin-bottom: 16px;
+  padding-left: 8px;
+}
+
+.ce-sidebar-files {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ce-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.ce-sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+}
+
+.ce-sidebar-item.active {
+  background-color: var(--accent-glow);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.ce-sidebar-item.folder {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ce-folder-icon {
+  color: var(--accent-color);
+  opacity: 0.85;
+}
+
+.ce-file-icon {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.ce-sidebar-item.active .ce-file-icon {
+  color: var(--accent-color);
+  opacity: 1;
+}
+
+.ce-file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ce-entry-point-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ce-set-entry-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  padding: 2px;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.ce-sidebar-item:hover .ce-set-entry-btn {
+  opacity: 1;
+}
+
+.ce-set-entry-btn:hover {
+  color: #eab308;
+}
+
+.ce-ide-editor-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #16161a;
+  position: relative;
+}
+
+/* Responsive adjustment for explorer */
+@media (max-width: 768px) {
+  .ce-workspace-ide {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .ce-ide-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    height: 180px;
+  }
+  .ce-ide-editor-panel {
+    height: 380px;
+  }
+}
+
+
+/* 3. Network Analytics Dashboard */
+.ce-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.ce-analytics-card {
+  background-color: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.ce-analytics-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.ce-analytics-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  margin-bottom: 20px;
+}
+
+.ce-dev-profile-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.ce-dev-profile-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ce-circular-level {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 4px solid var(--accent-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.ce-circular-level-num {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.ce-circular-level-lbl {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ce-dev-profile-username {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 2px 0;
+  color: var(--text-primary);
+}
+
+.ce-dev-profile-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ce-dev-profile-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ce-profile-stat-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ce-stat-badge-icon {
+  color: var(--accent-color);
+}
+
+.ce-dev-profile-hours {
+  margin-top: auto;
+}
+
+.ce-hours-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.ce-hours-val {
+  color: var(--text-primary);
+}
+
+.ce-hours-progress {
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ce-hours-progress-bar {
+  height: 100%;
+  background-color: var(--accent-color);
+  border-radius: 4px;
+}
+
+/* growth graph */
+.ce-bar-chart-preview {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  min-height: 140px;
+  padding-bottom: 8px;
+}
+
+.ce-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: 100%;
+  width: 100%;
+  justify-content: space-around;
+}
+
+.ce-chart-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.ce-bar {
+  width: 100%;
+  max-width: 24px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: 4px 4px 0 0;
+  transition: height 1s ease-out;
+}
+
+.ce-bar.glow {
+  background: linear-gradient(180deg, var(--accent-color) 0%, rgba(59, 130, 246, 0.3) 100%);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.4);
+}
+
+.ce-chart-bar-col span {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* Skills list styling */
+.ce-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ce-skill-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ce-skill-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ce-skill-info span:first-child {
+  color: var(--text-primary);
+}
+
+.ce-skill-bar {
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ce-skill-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+@media (max-width: 900px) {
+  .ce-analytics-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+
+/* 4. Pricing Billing Switches */
+.ce-pricing-billing-switch {
+  display: flex;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 30px;
+  padding: 4px;
+  width: fit-content;
+  margin: 24px auto 0 auto;
+}
+
+.ce-billing-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.ce-billing-btn.active {
+  background-color: var(--accent-color);
+  color: #fff;
+}
+
+.ce-save-tag {
+  background-color: #10b981;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 6px;
+  letter-spacing: 0.2px;
+}
+
+.ce-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 40px;
+}
+
+.ce-pricing-card {
+  background-color: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.ce-pricing-card:hover {
+  transform: translateY(-2px);
+}
+
+.ce-pricing-card.popular {
+  border-color: var(--accent-color);
+  box-shadow: 0 10px 40px rgba(59, 130, 246, 0.1);
+  background-color: rgba(24, 24, 27, 0.95);
+}
+
+.ce-popular-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--accent-color);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+}
+
+.ce-plan-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+.ce-plan-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 28px 0;
+  line-height: 1.4;
+}
+
+.ce-plan-price {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-bottom: 28px;
+  color: var(--text-primary);
+}
+
+.ce-currency {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.ce-amt {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ce-period {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.ce-plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 36px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.ce-plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ce-plan-features li svg {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.pricing-btn {
+  margin-top: auto;
+}
+
+@media (max-width: 900px) {
+  .ce-pricing-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+
+/* 5. Helpdesk & Trust Center */
+.ce-trust-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.ce-trust-box {
+  background-color: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ce-trust-box-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  color: var(--text-primary);
+}
+
+.ce-trust-box-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+/* Trust Standing meter gauge */
+.ce-health-meter-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  margin: auto 0;
+}
+
+.ce-health-gauge {
+  position: relative;
+  width: 140px;
+  height: 70px;
+  border-radius: 70px 70px 0 0;
+  border: 8px solid #10b981;
+  border-bottom: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.ce-gauge-needle {
+  position: absolute;
+  bottom: 0;
+  width: 4px;
+  height: 48px;
+  background-color: var(--text-primary);
+  border-radius: 2px;
+  transform-origin: bottom center;
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+  transition: transform 1s ease-out;
+}
+
+.ce-gauge-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 6px;
+}
+
+.ce-gauge-score {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.ce-gauge-label {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.ce-standing-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(16, 185, 129, 0.04);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: 12px;
+  padding: 12px 20px;
+  width: 100%;
+}
+
+.ce-standing-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.ce-standing-status-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #10b981;
+  margin-bottom: 2px;
+}
+
+.ce-standing-status-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* helpdesk simulation form */
+.ce-ticket-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.ce-ticket-input {
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ce-ticket-input:focus {
+  border-color: var(--accent-color);
+}
+
+.ce-ticket-form-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ce-ticket-select {
+  background-color: #121215;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.ticket-submit-btn {
+  padding: 0 20px;
+}
+
+.ce-tickets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.ce-ticket-item {
+  background-color: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px 16px;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.ce-ticket-item:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.ce-ticket-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.ce-ticket-id {
+  color: var(--accent-color);
+}
+
+.ce-ticket-cat {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.ce-ticket-title-text {
+  font-size: 13px;
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 80%;
+  line-height: 1.4;
+}
+
+.ce-ticket-status {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.ce-ticket-status.resolved {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.ce-ticket-status.in_review {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.ce-ticket-status.in_progress {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.ce-ticket-status.open {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+@media (max-width: 900px) {
+  .ce-trust-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
