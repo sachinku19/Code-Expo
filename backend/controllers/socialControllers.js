@@ -38,7 +38,8 @@ const toggleFollowUser = async (req, res) => {
           targetUserId,
           { $pull: { followers: currentUserId }, $inc: { followersCount: -1 } },
           { new: true }
-        ).populate("followers", "username email avatar bio followersCount followingCount coverBanner")
+        ).populate("followers", "username email avatar bio followersCount followingCount coverBanner"),
+        Follow.deleteOne({ follower: currentUserId, following: targetUserId })
       ]);
 
       const followingCount = updatedCurrentUser?.followingCount || 0;
@@ -69,7 +70,8 @@ const toggleFollowUser = async (req, res) => {
           targetUserId,
           { $addToSet: { followers: currentUserId }, $inc: { followersCount: 1 } },
           { new: true }
-        ).populate("followers", "username email avatar bio followersCount followingCount coverBanner")
+        ).populate("followers", "username email avatar bio followersCount followingCount coverBanner"),
+        Follow.create({ follower: currentUserId, following: targetUserId })
       ]);
 
       const followingCount = updatedCurrentUser?.followingCount || 0;
@@ -120,7 +122,8 @@ const removeFollower = async (req, res) => {
         currentUserId,
         { $pull: { followers: targetUserId }, $inc: { followersCount: -1 } },
         { new: true }
-      ).populate("followers", "username email avatar bio followersCount followingCount coverBanner")
+      ).populate("followers", "username email avatar bio followersCount followingCount coverBanner"),
+      Follow.deleteOne({ follower: targetUserId, following: currentUserId })
     ]);
 
     const followingCount = updatedTargetUser?.followingCount || 0;
@@ -293,9 +296,10 @@ const getSocialFeed = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const skip = (page - 1) * limit;
 
-    const followingRelations = await Follow.find({ follower: userId });
-    const followingIds = followingRelations.map(f => f.following);
-
+    // Use current user's following list directly from User document instead of legacy Follow collection
+    const currentUser = await User.findById(userId).select("following").lean();
+    const followingIds = currentUser?.following || [];
+ 
     // Include followed developers and the user themselves
     const feedUserIds = [...followingIds, userId];
 

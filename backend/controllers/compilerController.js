@@ -48,7 +48,9 @@ const runCode = async (req, res) => {
                     java: ".java"
                 };
                 const ext = exts[language];
-                entryPoint = items.find((item) => item.name.endsWith(ext));
+                if (ext) {
+                    entryPoint = items.find((item) => item.name.endsWith(ext));
+                }
             }
 
             if (!entryPoint) {

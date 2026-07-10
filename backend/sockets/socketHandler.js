@@ -1513,7 +1513,9 @@ const socketHandler = (io) => {
               java: ".java"
             };
             const ext = exts[language];
-            entryPoint = files.find((item) => item.name.endsWith(ext));
+            if (ext) {
+              entryPoint = files.find((item) => item.name.endsWith(ext));
+            }
           }
 
           if (!entryPoint) {
