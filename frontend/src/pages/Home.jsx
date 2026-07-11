@@ -366,6 +366,35 @@ function Home() {
     return () => observer.disconnect();
   }, []);
 
+  // ==========================================
+  // Intersection Observer for 3D Scroll Reveal
+  // ==========================================
+  useEffect(() => {
+    const revealElements = document.querySelectorAll(".reveal-init");
+    const observerOptions = {
+      root: null,
+      rootMargin: "0px 0px -10% 0px", // Trigger when elements are slightly in view
+      threshold: 0.05
+    };
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("reveal-active");
+        } else {
+          entry.target.classList.remove("reveal-active");
+        }
+      });
+    }, observerOptions);
+
+    revealElements.forEach((el) => revealObserver.observe(el));
+
+    return () => {
+      revealElements.forEach((el) => revealObserver.unobserve(el));
+      revealObserver.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
@@ -706,7 +735,7 @@ function Home() {
             </p>
           </div>
 
-          <div className="ce-workspace-ide">
+          <div className="ce-workspace-ide reveal-init reveal-3d-left">
             
             {/* Sidebar Explorer */}
             <div className="ce-ide-sidebar">
@@ -831,7 +860,7 @@ function Home() {
 
           <div className="ce-bento">
             {/* Bento Card 1: Multiplayer Code Sync */}
-            <div className="ce-bento-card col-2">
+            <div className="ce-bento-card col-2 reveal-init reveal-3d-left">
               <div className="ce-bento-card-icon">
                 <Code size={20} />
               </div>
@@ -850,7 +879,7 @@ yDoc.getText('monaco')
             </div>
 
             {/* Bento Card 2: Voice & Video Rooms */}
-            <div className="ce-bento-card">
+            <div className="ce-bento-card reveal-init reveal-3d-right">
               <div className="ce-bento-card-icon">
                 <Video size={20} />
               </div>
@@ -896,7 +925,7 @@ yDoc.getText('monaco')
             </div>
 
             {/* Bento Card 3: Collaborative Whiteboard */}
-            <div className="ce-bento-card">
+            <div className="ce-bento-card reveal-init reveal-3d-left">
               <div className="ce-bento-card-icon">
                 <Layout size={20} />
               </div>
@@ -933,7 +962,7 @@ yDoc.getText('monaco')
             </div>
 
             {/* Bento Card 4: Social Developer Hub */}
-            <div className="ce-bento-card col-2">
+            <div className="ce-bento-card col-2 reveal-init reveal-3d-right">
               <div className="ce-bento-card-icon">
                 <Compass size={20} />
               </div>
@@ -1023,7 +1052,7 @@ yDoc.getText('monaco')
 
           <div className="ce-analytics-grid">
             {/* Left Card: Developer Profile Stats */}
-            <div className="ce-analytics-card profile">
+            <div className="ce-analytics-card profile reveal-init reveal-3d-left">
               <div className="ce-analytics-card-header">
                 <Users size={16} />
                 <span>Developer Profile</span>
@@ -1064,7 +1093,7 @@ yDoc.getText('monaco')
             </div>
 
             {/* Middle Card: Follower Growth Graph */}
-            <div className="ce-analytics-card growth">
+            <div className="ce-analytics-card growth reveal-init reveal-3d-up">
               <div className="ce-analytics-card-header">
                 <BarChart2 size={16} />
                 <span>Follower Growth (6 Months)</span>
@@ -1082,7 +1111,7 @@ yDoc.getText('monaco')
             </div>
 
             {/* Right Card: Language Skill Index */}
-            <div className="ce-analytics-card skills">
+            <div className="ce-analytics-card skills reveal-init reveal-3d-right">
               <div className="ce-analytics-card-header">
                 <Award size={16} />
                 <span>Language Competence</span>
@@ -1135,7 +1164,7 @@ yDoc.getText('monaco')
           <div className="ce-pricing-grid">
             
             {/* Free Plan */}
-            <div className="ce-pricing-card">
+            <div className="ce-pricing-card reveal-init reveal-3d-left">
               <div className="ce-pricing-card-header">
                 <h3 className="ce-plan-name">Developer Free</h3>
                 <p className="ce-plan-desc">For hobbyists and quick code collaborations.</p>
@@ -1157,7 +1186,7 @@ yDoc.getText('monaco')
             </div>
 
             {/* Developer Pro (Popular) */}
-            <div className="ce-pricing-card popular">
+            <div className="ce-pricing-card popular reveal-init reveal-3d-up">
               <div className="ce-popular-badge">MOST POPULAR</div>
               <div className="ce-pricing-card-header">
                 <h3 className="ce-plan-name">Developer Pro</h3>
@@ -1181,7 +1210,7 @@ yDoc.getText('monaco')
             </div>
 
             {/* Elite Sponsor */}
-            <div className="ce-pricing-card">
+            <div className="ce-pricing-card reveal-init reveal-3d-right">
               <div className="ce-pricing-card-header">
                 <h3 className="ce-plan-name">Elite Sponsor</h3>
                 <p className="ce-plan-desc">For organizations supporting open source collaboration.</p>
@@ -1221,7 +1250,7 @@ yDoc.getText('monaco')
           <div className="ce-trust-layout">
             
             {/* Left Box: Trust & Guidelines Meter */}
-            <div className="ce-trust-box trust-standing">
+            <div className="ce-trust-box trust-standing reveal-init reveal-3d-left">
               <h3 className="ce-trust-box-title">Account Standing & Guidelines</h3>
               <p className="ce-trust-box-desc">
                 Review your current platform behavior metrics. Our system calculates standings based on guidelines compliance.
@@ -1246,7 +1275,7 @@ yDoc.getText('monaco')
             </div>
 
             {/* Right Box: Support Helpdesk Simulator */}
-            <div className="ce-trust-box ticket-helpdesk">
+            <div className="ce-trust-box ticket-helpdesk reveal-init reveal-3d-right">
               <h3 className="ce-trust-box-title">Built-in Support Helpdesk</h3>
               <p className="ce-trust-box-desc">
                 File help requests, suggest workspace features, and track resolved reports.
@@ -1302,7 +1331,7 @@ yDoc.getText('monaco')
       {/* AI Partner Section */}
       <section id="ai-partner" className="ce-section">
         <div className="ce-container ce-split-feature">
-          <div className="ce-split-content">
+          <div className="ce-split-content reveal-init reveal-3d-left">
             <span className="ce-section-tag">AI Integration</span>
             <h2 className="ce-section-title" style={{ fontSize: "36px" }}>
               Meet your inline AI coding partner.
@@ -1317,7 +1346,7 @@ yDoc.getText('monaco')
             </ul>
           </div>
 
-          <div className="ce-split-preview">
+          <div className="ce-split-preview reveal-init reveal-3d-right">
             <div className="ce-diff-box">
               <div className="ce-diff-header">
                 <Sparkles size={14} className="ce-diff-sparkle" />
@@ -1337,7 +1366,7 @@ yDoc.getText('monaco')
         <div className="ce-container ce-testimonials-container-split">
           
           {/* Left Column: Heading and nav controls */}
-          <div className="ce-testimonials-left">
+          <div className="ce-testimonials-left reveal-init reveal-3d-left">
             <span className="ce-section-tag">CLIENT VOICES</span>
             <h2 className="ce-testimonials-title">Trusted By <br /><span>Developers</span></h2>
             <p className="ce-testimonials-desc">
@@ -1358,7 +1387,7 @@ yDoc.getText('monaco')
           </div>
 
           {/* Right Column: Fanned Slider viewport */}
-          <div className="ce-testimonials-right">
+          <div className="ce-testimonials-right reveal-init reveal-3d-right">
             <div className="ce-testimonials-carousel">
               <div className="ce-testimonials-slider-track">
                 {activeReviews.map((review, idx) => {
