@@ -39,7 +39,24 @@ import {
   BarChart2,
   CheckCircle2,
   AlertCircle,
-  HelpCircle
+  HelpCircle,
+  Loader2,
+  Square,
+  Circle,
+  Type,
+  MousePointer,
+  ChevronLeft,
+  Plus,
+  FolderPlus,
+  FilePlus,
+  LogOut,
+  Copy,
+  Bell,
+  Send,
+  BookOpen,
+  Maximize2,
+  Settings,
+  History
 } from "lucide-react";
 import "./Home.css";
 
@@ -112,6 +129,51 @@ function Home() {
       status: "Optimizing Follow Array Sync",
       color: "#ec4899",
       code: `await User.updateMany(\n  {},\n  { $pull: { followers: userId, following: userId } }\n);\nawait Follow.deleteMany({ follower: userId });`
+    },
+    {
+      id: 6,
+      user: "alex_rust",
+      name: "Alex Rivera",
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80",
+      status: "Optimizing Cargo Compile Times",
+      color: "#3b82f6",
+      code: `fn optimize_cargo() -> Result<(), Error> {\n    let mut cmd = Command::new("cargo");\n    cmd.arg("build").arg("--release");\n    cmd.status()?;\n    Ok(())\n}`
+    },
+    {
+      id: 7,
+      user: "sophia_go",
+      name: "Sophia Vance",
+      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&h=120&q=80",
+      status: "Writing Go garbage collection script",
+      color: "#06b6d4",
+      code: `func triggerGC() {\n\tdebug.FreeOSMemory()\n\truntime.GC()\n\tlog.Println("Memory cleanup triggered")\n}`
+    },
+    {
+      id: 8,
+      user: "lucas_dev",
+      name: "Lucas Silva",
+      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80",
+      status: "Debugging React fiber tree transitions",
+      color: "#f43f5e",
+      code: `const startTransition = (cb) => {\n  React.startTransition(() => {\n    cb();\n  });\n};`
+    },
+    {
+      id: 9,
+      user: "emily_ml",
+      name: "Emily Taylor",
+      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&h=120&q=80",
+      status: "Fine-tuning PyTorch transformer layer",
+      color: "#eab308",
+      code: `class Attention(nn.Module):\n    def __init__(self, d_model, heads):\n        super().__init__()\n        self.q = nn.Linear(d_model, d_model)`
+    },
+    {
+      id: 10,
+      user: "david_node",
+      name: "David Kim",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
+      status: "Handling clusters child process fork",
+      color: "#10b981",
+      code: `if (cluster.isPrimary) {\n  for (let i = 0; i < numCPUs; i++) {\n    cluster.fork();\n  }\n}`
     }
   ];
 
@@ -203,11 +265,37 @@ function Home() {
     }
   });
 
-  const [activeFileName, setActiveFileName] = useState("index.js");
-  const [selectedLang, setSelectedLang] = useState("javascript");
+  const [activeFileName, setActiveFileName] = useState("main.py");
+  const [selectedLang, setSelectedLang] = useState("python");
   const [isRunning, setIsRunning] = useState(false);
   const [terminalOutput, setTerminalOutput] = useState("");
   const [showTerminal, setShowTerminal] = useState(false);
+  const [activeEditorMode, setActiveEditorMode] = useState("editor");
+  const [activeTerminalTab, setActiveTerminalTab] = useState("terminal");
+  const [activeChatTab, setActiveChatTab] = useState("room");
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, user: "Lulu_developer", text: "sd", time: "Jul 7, 02:36 PM", isYou: false, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&h=60&q=80" },
+    { id: 2, user: "Lulu_developer", text: "sd", time: "Jul 7, 02:36 PM", isYou: false, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&h=60&q=80" },
+    { id: 3, user: "sachin kumar", text: "jjkhj", time: "Jul 8, 03:01 PM", isYou: true, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&h=60&q=80" }
+  ]);
+
+  const handleSendChatMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        user: "sachin kumar",
+        text: chatInput,
+        time: "Just Now",
+        isYou: true,
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&h=60&q=80"
+      }
+    ]);
+    setChatInput("");
+  };
 
   const activeFile = workspaceFiles[activeFileName];
 
@@ -262,29 +350,122 @@ function Home() {
   // ==========================================
   // 4. Interactive Helpdesk Ticketing System State
   // ==========================================
+  // ==========================================
+  // 4. Interactive Helpdesk Ticketing System State
+  // ==========================================
   const [tickets, setTickets] = useState([
-    { id: "T-402", title: "WebRTC audio dropouts on low-bandwidth networks", category: "Calls", status: "RESOLVED", date: "2 mins ago" },
-    { id: "T-403", title: "Add Docker support for Go compile workspace targets", category: "Compiler", status: "IN REVIEW", date: "2 hrs ago" },
-    { id: "T-404", title: "Whiteboard eraser canvas synchronization lagging", category: "Whiteboard", status: "IN PROGRESS", date: "1 day ago" }
+    { 
+      id: "T-402", 
+      title: "WebRTC audio dropouts on low-bandwidth networks", 
+      category: "Calls", 
+      status: "RESOLVED", 
+      date: "2 mins ago",
+      logs: [
+        { sender: "user", text: "Audio drops out during calls when bandwidth is low. Screen sharing works but voices lag.", time: "10 mins ago" },
+        { sender: "agent", text: "Switched peer audio streams to Opus variable-bitrate encoding. Adjusted TURN candidate preferences. Connection latency reduced by 40%.", time: "2 mins ago" }
+      ]
+    },
+    { 
+      id: "T-403", 
+      title: "Add Docker support for Go compile workspace targets", 
+      category: "Compiler", 
+      status: "IN REVIEW", 
+      date: "2 hrs ago",
+      logs: [
+        { sender: "user", text: "Need Go 1.22 sandbox environment support.", time: "2 hrs ago" },
+        { sender: "agent", text: "Workspace compiler container updated. Rebuilding Docker baseline images for Go compiler target. Reviewing test runners.", time: "1 hr ago" }
+      ]
+    },
+    { 
+      id: "T-404", 
+      title: "Whiteboard eraser canvas synchronization lagging", 
+      category: "Whiteboard", 
+      status: "IN PROGRESS", 
+      date: "1 day ago",
+      logs: [
+        { sender: "user", text: "When erasing paths on whiteboard, the canvas takes 500ms to sync on other connected peers.", time: "1 day ago" },
+        { sender: "agent", text: "Investigating whiteboard socket message bundling thresholds. Dispatched sync engine optimization package.", time: "12 hrs ago" }
+      ]
+    }
   ]);
   const [newTicketTitle, setNewTicketTitle] = useState("");
   const [newTicketCategory, setNewTicketCategory] = useState("Compiler");
+  const [expandedTicketId, setExpandedTicketId] = useState(null);
+  const [creatingTicketId, setCreatingTicketId] = useState(null);
+
+  // Security Scanner State
+  const [scanState, setScanState] = useState("idle"); // idle, scanning, completed
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [currentGaugeScore, setCurrentGaugeScore] = useState(100);
+
+  const startSecurityAudit = () => {
+    if (scanState === "scanning") return;
+    setScanState("scanning");
+    setAuditLogs([]);
+    setCurrentGaugeScore(45);
+    
+    const logs = [
+      "Securing user session tokens...",
+      "Evaluating account behavior guidelines...",
+      "Pinging WebRTC signalling gateways...",
+      "Validating Docker container images...",
+      "Auditing active WSS certificates...",
+      "Security database synchronized!",
+      "Platform audit completed: Secure."
+    ];
+    
+    logs.forEach((log, index) => {
+      setTimeout(() => {
+        setAuditLogs(prev => [...prev, log]);
+        setCurrentGaugeScore(prev => Math.min(100, prev + 8));
+        if (index === logs.length - 1) {
+          setScanState("completed");
+          setCurrentGaugeScore(100);
+        }
+      }, (index + 1) * 350);
+    });
+  };
 
   const handleCreateTicket = (e) => {
     e.preventDefault();
     if (!newTicketTitle.trim()) return;
 
     const newId = `T-${Math.floor(400 + Math.random() * 600)}`;
+    setCreatingTicketId(newId);
+
     const ticketObj = {
       id: newId,
       title: newTicketTitle,
       category: newTicketCategory,
-      status: "OPEN",
-      date: "Just now"
+      status: "CREATING...",
+      date: "Just now",
+      logs: [
+        { sender: "user", text: newTicketTitle, time: "Just now" },
+        { sender: "agent", text: `Ticket encrypted. Dispatching CodeExpo AI agent to analyze compiler/socket logs on ${newTicketCategory}...`, time: "Just now" }
+      ]
     };
 
     setTickets([ticketObj, ...tickets]);
     setNewTicketTitle("");
+
+    // Simulate AI system resolving or updating the ticket status
+    setTimeout(() => {
+      setTickets(prevTickets => 
+        prevTickets.map(t => 
+          t.id === newId 
+            ? { 
+                ...t, 
+                status: "OPEN",
+                logs: [
+                  ...t.logs,
+                  { sender: "agent", text: `AI Diagnostics complete. Category set to ${newTicketCategory}. A senior engineer has been assigned.`, time: "Just now" }
+                ]
+              } 
+            : t
+        )
+      );
+      setCreatingTicketId(null);
+    }, 1800);
   };
 
   // ==========================================
@@ -357,7 +538,7 @@ function Home() {
     };
 
     const observer = new IntersectionObserver(handleIntersection, observerOptions);
-    const sectionIds = ["hero", "editor-section", "features", "analytics", "pricing", "trust-safety", "ai-partner", "testimonials"];
+    const sectionIds = ["hero", "editor-section", "features", "analytics", "pricing", "testimonials"];
     sectionIds.forEach((id) => {
       const el = document.getElementById(id);
       if (el) observer.observe(el);
@@ -487,13 +668,14 @@ function Home() {
   ];
 
   const activeReviews = (() => {
-    if (!reviews || reviews.length === 0) return defaultTestimonials;
-    if (reviews.length >= 3) return reviews;
-    const combined = [...reviews];
+    const validReviews = (reviews || []).filter(r => r && typeof r === 'object');
+    if (validReviews.length === 0) return defaultTestimonials;
+    if (validReviews.length >= 3) return validReviews;
+    const combined = [...validReviews];
     for (let i = 0; i < defaultTestimonials.length; i++) {
       if (combined.length >= 3) break;
       const isAlreadyAdded = combined.some(
-        (r) => (r.user?.username || "Anonymous") === defaultTestimonials[i].user.username
+        (r) => r && r.user && (r.user.username || "Anonymous") === defaultTestimonials[i].user.username
       );
       if (!isAlreadyAdded) combined.push(defaultTestimonials[i]);
     }
@@ -517,6 +699,8 @@ function Home() {
   const handleNext = () => {
     setReviewsIndex((prev) => (prev + 1) % activeReviews.length);
   };
+
+
 
   return (
     <main className={`home-page ${theme === "light" ? "light-theme" : "dark-theme"} page-fade-in`}>
@@ -570,14 +754,6 @@ function Home() {
             >
               Plans
             </a>
-            <a
-              ref={(el) => (navLinksRef.current["trust-safety"] = el)}
-              href="#trust-safety"
-              className={`ce-nav-link ${activeSection === "trust-safety" ? "active" : ""}`}
-              onClick={(e) => { e.preventDefault(); handleNavClick("trust-safety"); }}
-            >
-              Trust & Support
-            </a>
             <span className="ce-nav-indicator" />
           </nav>
 
@@ -603,82 +779,6 @@ function Home() {
           </div>
         </div>
       </header>
-
-      {/* Hero Section */}
-      <section id="hero" className="ce-hero">
-        <div className="ce-container">
-          <div className="ce-hero-badge">
-            <span className="ce-hero-badge-pulse" />
-            <span className="ce-hero-badge-text">
-              {totalUser > 0 ? `${totalUser} developers online coding right now` : "Developers hub online"}
-            </span>
-          </div>
-
-          <h1 className="ce-hero-title">
-            Where developers collaborate, code, and share in real time.
-          </h1>
-
-          <p className="ce-hero-subtitle">
-            A professional multiplayer editor with integrated audio/video rooms, shared whiteboards, AI pair programming, and developer profiles.
-          </p>
-
-          <div className="ce-hero-ctas">
-            <button className="ce-btn ce-btn-primary" onClick={() => navigate(user ? "/dashboard" : "/register")}>
-              Create Workspace
-              <ArrowRight size={16} />
-            </button>
-            <a href="#editor-section" className="ce-btn ce-btn-secondary">
-              Explore Live Workspace
-            </a>
-          </div>
-
-          {/* Core Live Stats Row */}
-          <div className="ce-hero-stats">
-            <div className="ce-stat-item">
-              <span className="ce-stat-val">
-                {dbStats.developers > 0 ? dbStats.developers.toLocaleString() : "1,200+"}
-              </span>
-              <span className="ce-stat-lbl">Developers</span>
-            </div>
-            <div className="ce-stat-item">
-              <span className="ce-stat-val">
-                {dbStats.rooms > 0 ? dbStats.rooms.toLocaleString() : "850+"}
-              </span>
-              <span className="ce-stat-lbl">Active Rooms</span>
-            </div>
-            <div className="ce-stat-item">
-              <span className="ce-stat-val">
-                {dbStats.executions > 0 ? dbStats.executions.toLocaleString() : "10,000+"}
-              </span>
-              <span className="ce-stat-lbl">Executions</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Futuristic Developer Stories Row */}
-      <div className="ce-stories-section">
-        <div className="ce-container">
-          <h3 className="ce-stories-title">
-            <Sparkles size={14} style={{ color: "#3b82f6" }} /> Live Developers Sharing Code
-          </h3>
-          <div className="ce-stories-tray">
-            {stories.map((story) => (
-              <div 
-                key={story.id} 
-                className="ce-story-bubble-wrapper"
-                onClick={() => handleOpenStory(story)}
-              >
-                <div className="ce-story-bubble" style={{ "--story-color": story.color }}>
-                  <img src={story.avatar} alt={story.user} className="ce-story-avatar" />
-                  <span className="ce-story-pulse" style={{ backgroundColor: story.color }} />
-                </div>
-                <span className="ce-story-username">{story.user}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* Interactive Stories Modal */}
       {activeStory && (
@@ -724,6 +824,135 @@ function Home() {
         </div>
       )}
 
+      <div className="home-perspective-wrapper">
+        {/* Hero Section */}
+        <section id="hero" className="ce-hero">
+        <div className="ce-container">
+          <div className="ce-hero-badge">
+            <span className="ce-hero-badge-pulse" />
+            <span className="ce-hero-badge-text">
+              {totalUser > 0 ? `${totalUser} developers online coding right now` : "Developers hub online"}
+            </span>
+          </div>
+
+          <h1 className="ce-hero-title">
+            Where developers collaborate, code, and share in real time.
+          </h1>
+
+          <p className="ce-hero-subtitle">
+            A professional multiplayer editor with integrated audio/video rooms, shared whiteboards, AI pair programming, and developer profiles.
+          </p>
+
+          <div className="ce-hero-ctas">
+            <button className="ce-btn ce-btn-primary" onClick={() => navigate(user ? "/dashboard" : "/register")}>
+              Create Workspace
+              <ArrowRight size={16} />
+            </button>
+            <a href="#editor-section" className="ce-btn ce-btn-secondary">
+              Explore Live Workspace
+            </a>
+          </div>
+
+          {/* Core Live Stats Row */}
+          <div className="ce-hero-stats">
+            <div className="ce-stat-item devs" style={{ "--stat-color": "#3b82f6" }}>
+              <div className="ce-stat-icon-wrapper">
+                <Users size={20} />
+              </div>
+              <span className="ce-stat-val">
+                {dbStats.developers > 0 ? dbStats.developers.toLocaleString() : "1,200+"}
+              </span>
+              <span className="ce-stat-lbl">Developers</span>
+            </div>
+
+            <div className="ce-stat-item rooms" style={{ "--stat-color": "#10b981" }}>
+              <div className="ce-stat-icon-wrapper">
+                <Compass size={20} />
+              </div>
+              <span className="ce-stat-val">
+                {dbStats.rooms > 0 ? dbStats.rooms.toLocaleString() : "850+"}
+              </span>
+              <span className="ce-stat-lbl">Active Rooms</span>
+            </div>
+
+            <div className="ce-stat-item executions" style={{ "--stat-color": "#a855f7" }}>
+              <div className="ce-stat-icon-wrapper">
+                <Zap size={20} />
+              </div>
+              <span className="ce-stat-val">
+                {dbStats.executions > 0 ? dbStats.executions.toLocaleString() : "10,000+"}
+              </span>
+              <span className="ce-stat-lbl">Executions</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Futuristic Developer Stories Row */}
+      <div className="ce-stories-section">
+        <div className="ce-container">
+          <h3 className="ce-stories-title">
+            <Sparkles size={14} style={{ color: "#3b82f6" }} /> Live Developers Sharing Code
+          </h3>
+        </div>
+        <div className="ce-stories-tray-viewport">
+          <div className="ce-stories-tray-track">
+            {/* Group 1 */}
+            <div className="ce-stories-tray-group">
+              {stories.map((story) => (
+                <div 
+                  key={`g1-${story.id}`} 
+                  className="ce-story-bubble-wrapper"
+                  onClick={() => handleOpenStory(story)}
+                >
+                  <div className="ce-story-bubble" style={{ "--story-color": story.color }}>
+                    <img src={story.avatar} alt={story.user} className="ce-story-avatar" />
+                    <span className="ce-story-pulse" style={{ backgroundColor: story.color }} />
+                  </div>
+                  <span className="ce-story-username">{story.user}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Group 2 (Duplicate for seamless infinite scrolling loop) */}
+            <div className="ce-stories-tray-group">
+              {stories.map((story) => (
+                <div 
+                  key={`g2-${story.id}`} 
+                  className="ce-story-bubble-wrapper"
+                  onClick={() => handleOpenStory(story)}
+                >
+                  <div className="ce-story-bubble" style={{ "--story-color": story.color }}>
+                    <img src={story.avatar} alt={story.user} className="ce-story-avatar" />
+                    <span className="ce-story-pulse" style={{ backgroundColor: story.color }} />
+                  </div>
+                  <span className="ce-story-username">{story.user}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Group 3 (Duplicate for seamless infinite scrolling loop) */}
+            <div className="ce-stories-tray-group">
+              {stories.map((story) => (
+                <div 
+                  key={`g3-${story.id}`} 
+                  className="ce-story-bubble-wrapper"
+                  onClick={() => handleOpenStory(story)}
+                >
+                  <div className="ce-story-bubble" style={{ "--story-color": story.color }}>
+                    <img src={story.avatar} alt={story.user} className="ce-story-avatar" />
+                    <span className="ce-story-pulse" style={{ backgroundColor: story.color }} />
+                  </div>
+                  <span className="ce-story-username">{story.user}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
       {/* Multi-File Workspace Sandbox Section */}
       <section id="editor-section" className="ce-section" style={{ borderTop: "none", paddingBottom: "32px" }}>
         <div className="ce-container">
@@ -735,114 +964,344 @@ function Home() {
             </p>
           </div>
 
-          <div className="ce-workspace-ide reveal-init reveal-3d-left">
-            
-            {/* Sidebar Explorer */}
-            <div className="ce-ide-sidebar">
-              <div className="ce-sidebar-header">
-                <span>WORKSPACE EXPLORER</span>
-              </div>
-              
-              <div className="ce-sidebar-files">
-                {/* Simulated folders */}
-                <div className="ce-sidebar-item folder">
-                  <Folder size={14} className="ce-folder-icon" />
-                  <span>src</span>
+          <div className="ce-actual-room-mockup reveal-init reveal-3d-left">
+            {/* Top Room Header Bar */}
+            <div className="ce-actual-room-header">
+              <div className="ce-actual-room-header-left">
+                <div className="ce-actual-logo">
+                  <img src="/logo.png" alt="CodeExpo" className="ce-actual-logo-img" />
+                  <span className="ce-actual-logo-text">CodeExpo</span>
                 </div>
-                
-                {/* File list */}
-                {Object.keys(workspaceFiles).map((fileName) => {
-                  const fileObj = workspaceFiles[fileName];
-                  return (
-                    <div 
-                      key={fileName}
-                      className={`ce-sidebar-item file ${activeFileName === fileName ? "active" : ""}`}
-                      onClick={() => handleFileClick(fileName)}
-                    >
-                      <File size={13} className="ce-file-icon" />
-                      <span className="ce-file-name">{fileName}</span>
-                      
-                      {fileObj.isEntryPoint ? (
-                        <span className="ce-entry-point-badge" title="Compilation Entry Point">
-                          <Award size={10} style={{ color: "#eab308" }} />
-                        </span>
-                      ) : (
-                        fileObj.lang !== "text" && fileObj.lang !== "json" && (
-                          <button 
-                            className="ce-set-entry-btn" 
-                            onClick={(e) => { e.stopPropagation(); handleSetEntryPoint(fileName); }}
-                            title="Set as Entry Point"
-                          >
-                            <Star size={10} />
-                          </button>
-                        )
-                      )}
-                    </div>
-                  );
-                })}
+                <div className="ce-actual-room-name-wrapper">
+                  <span className="ce-actual-room-name">Sorting-Array</span>
+                  <div className="ce-actual-room-id-badge">
+                    <span>#jciajy</span>
+                    <button className="ce-copy-id-btn" title="Copy Room ID">
+                      <Copy size={11} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="ce-actual-room-header-right">
+                <div className="ce-actual-status-indicator">
+                  <span className="ce-actual-status-dot" />
+                  <span>Connected</span>
+                </div>
+                <div className="ce-actual-header-user">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&h=60&q=80" alt="User" />
+                </div>
+                <button className="ce-actual-btn-call">
+                  <Video size={13} />
+                  <span>Call</span>
+                  <span className="arrow">▼</span>
+                </button>
+                <button className="ce-actual-btn-share">
+                  <Sparkles size={13} />
+                  <span>Share</span>
+                </button>
+                <button className="ce-actual-icon-btn"><Bell size={14} /></button>
+                <div className="ce-actual-header-profile">
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&h=60&q=80" alt="Sachin" />
+                </div>
               </div>
             </div>
 
-            {/* Editor Workspace Panel */}
-            <div className="ce-ide-editor-panel">
-              <div className="ce-ide-header">
-                <div className="ce-ide-controls">
-                  <span className="ce-ide-dot red" />
-                  <span className="ce-ide-dot yellow" />
-                  <span className="ce-ide-dot green" />
-                  <span className="ce-ide-title">
-                    {activeFileName} {activeFile.isEntryPoint && "(Entry Point)"}
-                  </span>
+            {/* Room Main Body Content */}
+            <div className="ce-actual-room-body">
+              {/* Column 1: Narrow icon sidebar */}
+              <div className="ce-actual-narrow-sidebar">
+                <div className="ce-actual-sidebar-icon active">
+                  <Folder size={18} />
+                </div>
+                <div className="ce-actual-sidebar-icon">
+                  <BookOpen size={18} />
+                </div>
+                <div className="ce-actual-sidebar-icon">
+                  <Layout size={18} />
+                </div>
+                <div className="ce-actual-sidebar-icon">
+                  <History size={18} />
+                </div>
+                <div className="ce-actual-sidebar-icon">
+                  <Settings size={18} />
                 </div>
               </div>
 
-              <div className="ce-ide-body">
-                {/* Simulated Cursors */}
-                <div 
-                  className="ce-ide-cursor" 
-                  style={{ top: "34px", left: "210px", "--cursor-color": "#ef4444" }} 
-                  data-label="Sachin" 
-                />
-                <div 
-                  className="ce-ide-cursor" 
-                  style={{ top: "86px", left: "280px", "--cursor-color": "#a855f7" }} 
-                  data-label="Aman" 
-                />
-                
-                <pre className="ce-ide-code">
-                  <code>{activeFile.content}</code>
-                </pre>
-
-                <div className="ce-ide-typing">
-                  <span />
-                  <span />
-                  <span />
-                  Aman is editing...
+              {/* Column 2: Explorer panel */}
+              <div className="ce-actual-explorer-panel">
+                <div className="ce-actual-explorer-header">
+                  <span>EXPLORER</span>
+                  <ChevronLeft size={14} className="ce-actual-explorer-header-icon" />
+                </div>
+                <div className="ce-actual-explorer-subheader">
+                  <span>WORKSPACE FILES</span>
+                  <div className="ce-actual-explorer-actions">
+                    <FilePlus size={12} title="New File" />
+                    <FolderPlus size={12} title="New Folder" />
+                  </div>
+                </div>
+                <div className="ce-actual-explorer-files">
+                  {Object.keys(workspaceFiles).map((fileName) => {
+                    const isActive = activeFileName === fileName;
+                    return (
+                      <div
+                        key={fileName}
+                        className={`ce-actual-file-item ${isActive ? "active" : ""}`}
+                        onClick={() => handleFileClick(fileName)}
+                      >
+                        <File size={13} />
+                        <span>{fileName}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="ce-ide-footer">
-                <button
-                  className="ce-ide-run-btn"
-                  onClick={handleRunCode}
-                  disabled={isRunning}
-                >
-                  <Code size={14} />
-                  <span>{isRunning ? "Compiling Project..." : "Run Project"}</span>
+              {/* Column 3: Editor Panel */}
+              <div className="ce-actual-editor-panel">
+                <div className="ce-actual-editor-header">
+                  <div className="ce-actual-tab-list">
+                    <div className="ce-actual-tab active">
+                      <span>{activeFileName}</span>
+                      <span className="ce-actual-tab-close">×</span>
+                    </div>
+                  </div>
+                  <div className="ce-actual-editor-options">
+                    <div className="ce-actual-mode-toggles">
+                      <button
+                        className={`ce-actual-mode-btn ${activeEditorMode === "editor" ? "active" : ""}`}
+                        onClick={() => setActiveEditorMode("editor")}
+                      >
+                        Editor
+                      </button>
+                      <button
+                        className={`ce-actual-mode-btn ${activeEditorMode === "split" ? "active" : ""}`}
+                        onClick={() => setActiveEditorMode("split")}
+                      >
+                        Split
+                      </button>
+                      <button
+                        className={`ce-actual-mode-btn ${activeEditorMode === "board" ? "active" : ""}`}
+                        onClick={() => setActiveEditorMode("board")}
+                      >
+                        Board
+                      </button>
+                    </div>
+                    <select
+                      className="ce-actual-lang-dropdown"
+                      value={selectedLang.toUpperCase()}
+                      onChange={(e) => setSelectedLang(e.target.value.toLowerCase())}
+                    >
+                      <option value="JAVASCRIPT">JAVASCRIPT</option>
+                      <option value="PYTHON">PYTHON</option>
+                      <option value="CPP">CPP</option>
+                      <option value="JAVA">JAVA</option>
+                      <option value="TEXT">TEXT</option>
+                      <option value="JSON">JSON</option>
+                    </select>
+                    <button className="ce-actual-expand-btn">
+                      <Maximize2 size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="ce-actual-editor-breadcrumbs">
+                  Sorting-Array &gt; {activeFileName}
+                </div>
+
+                {/* Code writing canvas container */}
+                <div className="ce-actual-code-area">
+                  {/* Compiler loading overlay */}
+                  {isRunning && (
+                    <div className="ce-actual-editor-loading">
+                      <span>Compiling and running code...</span>
+                    </div>
+                  )}
+
+                  <div className="ce-actual-gutter">
+                    {activeFile.content.split("\n").map((_, i) => (
+                      <span key={i}>{i + 1}</span>
+                    ))}
+                  </div>
+
+                  <div className="ce-actual-code-viewport">
+                    <pre>
+                      <code>{activeFile.content}</code>
+                    </pre>
+
+                    {/* Collaborative cursor pins */}
+                    <div className="ce-actual-cursor" style={{ top: "34px", left: "210px", backgroundColor: "#ef4444", boxShadow: "0 0 6px #ef4444" }}>
+                      <span className="ce-actual-cursor-flag" style={{ backgroundColor: "#ef4444" }}>Sachin</span>
+                    </div>
+                    <div className="ce-actual-cursor" style={{ top: "86px", left: "280px", backgroundColor: "#a855f7", boxShadow: "0 0 6px #a855f7" }}>
+                      <span className="ce-actual-cursor-flag" style={{ backgroundColor: "#a855f7" }}>Aman</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Editor Footer execution console */}
+                <div className="ce-actual-editor-footer">
+                  <div className="ce-actual-footer-tabs">
+                    <button
+                      className={`ce-actual-footer-tab ${activeTerminalTab === "terminal" ? "active" : ""}`}
+                      onClick={() => setActiveTerminalTab("terminal")}
+                    >
+                      Terminal Output
+                    </button>
+                    <button
+                      className={`ce-actual-footer-tab ${activeTerminalTab === "input" ? "active" : ""}`}
+                      onClick={() => setActiveTerminalTab("input")}
+                    >
+                      Program Input (stdin)
+                    </button>
+                    <button
+                      className={`ce-actual-footer-tab ${activeTerminalTab === "logs" ? "active" : ""}`}
+                      onClick={() => setActiveTerminalTab("logs")}
+                    >
+                      Execution Logs
+                    </button>
+                  </div>
+
+                  <div className="ce-actual-terminal-pane">
+                    {activeTerminalTab === "terminal" && (
+                      <pre style={{ margin: 0 }}>
+                        {terminalOutput || "Console ready. Click Run Program to compile."}
+                      </pre>
+                    )}
+                    {activeTerminalTab === "input" && (
+                      <span style={{ color: "#94a3b8" }}>Standard Input buffers empty.</span>
+                    )}
+                    {activeTerminalTab === "logs" && (
+                      <span style={{ color: "#94a3b8" }}>Docker containers status: HEALTHY (0.012s warmup)</span>
+                    )}
+                  </div>
+
+                  <div className="ce-actual-footer-actions">
+                    <button className="ce-actual-btn-save">Save</button>
+                    <button className="ce-actual-btn-run" onClick={handleRunCode}>Run Program</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 4: Participants and Chat Panel */}
+              <div className="ce-actual-right-panel">
+                {/* Participants Box */}
+                <div className="ce-actual-participants-box">
+                  <div className="ce-actual-part-header">
+                    <span>PARTICIPANTS (5)</span>
+                    <button className="ce-actual-btn-invite">
+                      <Plus size={10} />
+                      <span>Invite</span>
+                    </button>
+                  </div>
+                  <div className="ce-actual-participants-list">
+                    <div className="ce-actual-participant-card">
+                      <div className="ce-actual-part-avatar">
+                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=60&h=60&q=80" alt="Niranjan" />
+                      </div>
+                      <div className="ce-actual-part-details">
+                        <span className="ce-actual-part-name">Niranjan Jaiswal</span>
+                        <div className="ce-actual-part-badges">
+                          <span className="ce-actual-badge owner">OWNER</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="ce-actual-participant-card">
+                      <div className="ce-actual-part-avatar">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&h=60&q=80" alt="Sachin" />
+                      </div>
+                      <div className="ce-actual-part-details">
+                        <span className="ce-actual-part-name">sachin kumar</span>
+                        <div className="ce-actual-part-badges">
+                          <span className="ce-actual-badge you">YOU</span>
+                          <span className="ce-actual-badge member">MEMBER</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="ce-actual-participant-card">
+                      <div className="ce-actual-part-avatar">
+                        <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=60&h=60&q=80" alt="Shubham" />
+                      </div>
+                      <div className="ce-actual-part-details">
+                        <span className="ce-actual-part-name">shubham_paithane</span>
+                        <div className="ce-actual-part-badges">
+                          <span className="ce-actual-badge member">MEMBER</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="ce-actual-participant-card">
+                      <div className="ce-actual-part-avatar">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&h=60&q=80" alt="Lulu" />
+                      </div>
+                      <div className="ce-actual-part-details">
+                        <span className="ce-actual-part-name">Lulu_developer</span>
+                        <div className="ce-actual-part-badges">
+                          <span className="ce-actual-badge member">MEMBER</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chat Panel Box */}
+                <div className="ce-actual-chat-box">
+                  <div className="ce-actual-chat-tabs">
+                    <button
+                      className={`ce-actual-chat-tab ${activeChatTab === "room" ? "active" : ""}`}
+                      onClick={() => setActiveChatTab("room")}
+                    >
+                      Room
+                    </button>
+                    <button
+                      className={`ce-actual-chat-tab ${activeChatTab === "dm" ? "active" : ""}`}
+                      onClick={() => setActiveChatTab("dm")}
+                    >
+                      Direct Message
+                    </button>
+                  </div>
+
+                  <div className="ce-actual-chat-messages">
+                    {chatMessages.map((msg) => (
+                      <div key={msg.id} className={`ce-actual-chat-msg ${msg.isYou ? "you" : ""}`}>
+                        <div className="ce-actual-chat-msg-avatar">
+                          <img src={msg.avatar} alt={msg.user} />
+                        </div>
+                        <div className="ce-actual-chat-msg-details">
+                          <div className="ce-actual-chat-msg-meta">
+                            <span className="ce-actual-chat-msg-user">{msg.user}</span>
+                            <span className="ce-actual-chat-msg-time">{msg.time}</span>
+                          </div>
+                          <div className="ce-actual-chat-msg-bubble">{msg.text}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <form className="ce-actual-chat-input-wrapper" onSubmit={handleSendChatMessage}>
+                    <input
+                      type="text"
+                      className="ce-actual-chat-input"
+                      placeholder="Message room..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                    />
+                    <button type="submit" className="ce-actual-chat-send">
+                      <Send size={12} />
+                    </button>
+                  </form>
+                </div>
+
+                {/* Bottom Exit Button */}
+                <button className="ce-actual-exit-btn">
+                  <LogOut size={12} />
+                  <span>Exit Workspace</span>
                 </button>
               </div>
-
-              {showTerminal && (
-                <div className="ce-ide-terminal">
-                  <div className="ce-ide-terminal-header">
-                    <Terminal size={12} style={{ marginRight: "4px", display: "inline", verticalAlign: "middle" }} />
-                    <span>Terminal Output</span>
-                  </div>
-                  <pre className="ce-ide-terminal-content">{terminalOutput}</pre>
-                </div>
-              )}
             </div>
-
           </div>
         </div>
       </section>
@@ -1051,83 +1510,265 @@ yDoc.getText('monaco')
           </div>
 
           <div className="ce-analytics-grid">
-            {/* Left Card: Developer Profile Stats */}
+            {/* Left Card: Developer Profile Stats Deck */}
             <div className="ce-analytics-card profile reveal-init reveal-3d-left">
               <div className="ce-analytics-card-header">
                 <Users size={16} />
-                <span>Developer Profile</span>
+                <span>Developer Profile Deck</span>
               </div>
-              <div className="ce-dev-profile-preview">
-                <div className="ce-dev-profile-meta">
-                  <div className="ce-circular-level">
-                    <span className="ce-circular-level-num">12</span>
-                    <span className="ce-circular-level-lbl">LVL</span>
+              <div className="ce-profile-deck-container">
+                <div className="ce-card-deck">
+                  {/* Card 4 (Hours) */}
+                  <div className="ce-deck-card rank-4" style={{ "--card-accent": "#a855f7" }}>
+                    <div className="ce-deck-card-rank">HOURS</div>
+                    <div className="ce-deck-icon-circle" style={{ borderColor: "#a855f7" }}>
+                      <Terminal size={20} style={{ color: "#a855f7" }} />
+                    </div>
+                    <span className="ce-deck-card-name">Coding Time</span>
+                    <span className="ce-deck-card-user">Active Practice</span>
+                    <div className="ce-deck-card-stats-vertical">
+                      <div className="ce-hours-row-mini">
+                        <span className="ce-hours-label-mini">Total Hours</span>
+                        <span className="ce-hours-val-mini">145.8 hrs</span>
+                      </div>
+                      <div className="ce-hours-progress-mini">
+                        <div className="ce-hours-progress-bar-mini" style={{ width: "72.9%", backgroundColor: "#a855f7" }} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="ce-dev-profile-username">Sachin Kumar</h4>
-                    <span className="ce-dev-profile-title">Principal Architect</span>
-                  </div>
-                </div>
 
-                <div className="ce-dev-profile-badges">
-                  <div className="ce-profile-stat-badge">
-                    <Flame size={12} className="ce-stat-badge-icon" />
-                    <span>21 Day Streak</span>
+                  {/* Card 3 (Reputation) */}
+                  <div className="ce-deck-card rank-3" style={{ "--card-accent": "#10b981" }}>
+                    <div className="ce-deck-card-rank">POINTS</div>
+                    <div className="ce-deck-icon-circle" style={{ borderColor: "#10b981" }}>
+                      <Award size={20} style={{ color: "#10b981" }} />
+                    </div>
+                    <span className="ce-deck-card-name">Reputation</span>
+                    <span className="ce-deck-card-user">Global Rank: Top 1.5%</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">2,400</span>
+                        <span className="ce-card-stat-label">Points</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">Rank 24</span>
+                        <span className="ce-card-stat-label">Position</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="ce-profile-stat-badge">
-                    <Award size={12} className="ce-stat-badge-icon" />
-                    <span>2,400 Rep Pts</span>
-                  </div>
-                </div>
 
-                <div className="ce-dev-profile-hours">
-                  <div className="ce-hours-row">
-                    <span>Coding Hours</span>
-                    <span className="ce-hours-val">145.8 hrs</span>
+                  {/* Card 2 (Streak) */}
+                  <div className="ce-deck-card rank-2" style={{ "--card-accent": "#f59e0b" }}>
+                    <div className="ce-deck-card-rank">STREAK</div>
+                    <div className="ce-deck-icon-circle" style={{ borderColor: "#f59e0b" }}>
+                      <Flame size={20} style={{ color: "#f59e0b" }} />
+                    </div>
+                    <span className="ce-deck-card-name">Coding Streak</span>
+                    <span className="ce-deck-card-user">Daily Consistency</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">21 Days</span>
+                        <span className="ce-card-stat-label">Active</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">95%</span>
+                        <span className="ce-card-stat-label">Target</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="ce-hours-progress">
-                    <div className="ce-hours-progress-bar" style={{ width: "72.9%" }} />
+
+                  {/* Card 1 (Overview) */}
+                  <div className="ce-deck-card rank-1" style={{ "--card-accent": "#3b82f6" }}>
+                    <div className="ce-deck-card-rank">LVL 12</div>
+                    <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80" alt="Sachin" className="ce-deck-card-img" />
+                    <span className="ce-deck-card-name">Sachin Kumar</span>
+                    <span className="ce-deck-card-user">Principal Architect</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">12</span>
+                        <span className="ce-card-stat-label">Level</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">4.9</span>
+                        <span className="ce-card-stat-label">Rating</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Middle Card: Follower Growth Graph */}
+            {/* Middle Card: Leaderboard Card Deck */}
             <div className="ce-analytics-card growth reveal-init reveal-3d-up">
               <div className="ce-analytics-card-header">
                 <BarChart2 size={16} />
-                <span>Follower Growth (6 Months)</span>
+                <span>Leaderboard Standings</span>
               </div>
-              <div className="ce-bar-chart-preview">
-                <div className="ce-chart-bars">
-                  <div className="ce-chart-bar-col"><div className="ce-bar" style={{ height: "30%" }} /><span>Feb</span></div>
-                  <div className="ce-chart-bar-col"><div className="ce-bar" style={{ height: "45%" }} /><span>Mar</span></div>
-                  <div className="ce-chart-bar-col"><div className="ce-bar" style={{ height: "40%" }} /><span>Apr</span></div>
-                  <div className="ce-chart-bar-col"><div className="ce-bar" style={{ height: "65%" }} /><span>May</span></div>
-                  <div className="ce-chart-bar-col"><div className="ce-bar" style={{ height: "85%" }} /><span>Jun</span></div>
-                  <div className="ce-chart-bar-col"><div className="ce-bar glow" style={{ height: "100%" }} /><span>Jul</span></div>
+              <div className="ce-leaderboard-deck-container">
+                <div className="ce-card-deck">
+                  {/* Card 4 (Rank 4, Sarah Jenkins) */}
+                  <div className="ce-deck-card rank-4" style={{ "--card-accent": "#f59e0b" }}>
+                    <div className="ce-deck-card-rank">#4</div>
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80" alt="Sarah" className="ce-deck-card-img" />
+                    <span className="ce-deck-card-name">Sarah Jenkins</span>
+                    <span className="ce-deck-card-user">@sarah_sys</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">1.7k</span>
+                        <span className="ce-card-stat-label">Rep</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">+410</span>
+                        <span className="ce-card-stat-label">Follows</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3 (Rank 3, Katarina Chen) */}
+                  <div className="ce-deck-card rank-3" style={{ "--card-accent": "#a855f7" }}>
+                    <div className="ce-deck-card-rank">#3</div>
+                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80" alt="Katarina" className="ce-deck-card-img" />
+                    <span className="ce-deck-card-name">Katarina Chen</span>
+                    <span className="ce-deck-card-user">@katarina_chen</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">1.8k</span>
+                        <span className="ce-card-stat-label">Rep</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">+430</span>
+                        <span className="ce-card-stat-label">Follows</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2 (Rank 2, Aman Sharma) */}
+                  <div className="ce-deck-card rank-2" style={{ "--card-accent": "#10b981" }}>
+                    <div className="ce-deck-card-rank">#2</div>
+                    <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&h=120&q=80" alt="Aman" className="ce-deck-card-img" />
+                    <span className="ce-deck-card-name">Aman Sharma</span>
+                    <span className="ce-deck-card-user">@aman_dev</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">1.9k</span>
+                        <span className="ce-card-stat-label">Rep</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">+480</span>
+                        <span className="ce-card-stat-label">Follows</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 1 (Rank 1, Sachin Kumar) */}
+                  <div className="ce-deck-card rank-1" style={{ "--card-accent": "#3b82f6" }}>
+                    <div className="ce-deck-card-rank">#1</div>
+                    <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80" alt="Sachin" className="ce-deck-card-img" />
+                    <span className="ce-deck-card-name">Sachin Kumar</span>
+                    <span className="ce-deck-card-user">@sachin_codes</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">2.4k</span>
+                        <span className="ce-card-stat-label">Rep</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">+520</span>
+                        <span className="ce-card-stat-label">Follows</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Card: Language Skill Index */}
+            {/* Right Card: Language Skill Index Deck */}
             <div className="ce-analytics-card skills reveal-init reveal-3d-right">
               <div className="ce-analytics-card-header">
                 <Award size={16} />
-                <span>Language Competence</span>
+                <span>Language Competence Deck</span>
               </div>
-              <div className="ce-skills-list">
-                <div className="ce-skill-row">
-                  <div className="ce-skill-info"><span>JavaScript</span><span>95%</span></div>
-                  <div className="ce-skill-bar"><div className="ce-skill-fill" style={{ width: "95%", backgroundColor: "#3b82f6" }} /></div>
-                </div>
-                <div className="ce-skill-row">
-                  <div className="ce-skill-info"><span>Python</span><span>88%</span></div>
-                  <div className="ce-skill-bar"><div className="ce-skill-fill" style={{ width: "88%", backgroundColor: "#10b981" }} /></div>
-                </div>
-                <div className="ce-skill-row">
-                  <div className="ce-skill-info"><span>C++</span><span>70%</span></div>
-                  <div className="ce-skill-bar"><div className="ce-skill-fill" style={{ width: "70%", backgroundColor: "#a855f7" }} /></div>
+              <div className="ce-skills-deck-container">
+                <div className="ce-card-deck">
+                  {/* Card 4 (C++) */}
+                  <div className="ce-deck-card rank-4" style={{ "--card-accent": "#a855f7" }}>
+                    <div className="ce-deck-card-rank">70%</div>
+                    <div className="ce-deck-icon-circle" style={{ borderColor: "#a855f7" }}>
+                      <Terminal size={20} style={{ color: "#a855f7" }} />
+                    </div>
+                    <span className="ce-deck-card-name">C++ Native</span>
+                    <span className="ce-deck-card-user">Performance Coding</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">9</span>
+                        <span className="ce-card-stat-label">Projects</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">STL</span>
+                        <span className="ce-card-stat-label">Lib</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3 (Python) */}
+                  <div className="ce-deck-card rank-3" style={{ "--card-accent": "#10b981" }}>
+                    <div className="ce-deck-card-rank">88%</div>
+                    <div className="ce-deck-icon-circle" style={{ borderColor: "#10b981" }}>
+                      <Bot size={20} style={{ color: "#10b981" }} />
+                    </div>
+                    <span className="ce-deck-card-name">Python Sandbox</span>
+                    <span className="ce-deck-card-user">AI & Data Pipelines</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">18</span>
+                        <span className="ce-card-stat-label">Projects</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">FastAPI</span>
+                        <span className="ce-card-stat-label">Stack</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2 (JavaScript) */}
+                  <div className="ce-deck-card rank-2" style={{ "--card-accent": "#3b82f6" }}>
+                    <div className="ce-deck-card-rank">95%</div>
+                    <div className="ce-deck-icon-circle" style={{ borderColor: "#3b82f6" }}>
+                      <Code size={20} style={{ color: "#3b82f6" }} />
+                    </div>
+                    <span className="ce-deck-card-name">JavaScript Core</span>
+                    <span className="ce-deck-card-user">Frontend & Fullstack</span>
+                    <div className="ce-deck-card-stats">
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">42</span>
+                        <span className="ce-card-stat-label">Projects</span>
+                      </div>
+                      <div className="ce-deck-card-stat">
+                        <span className="ce-card-stat-num">React</span>
+                        <span className="ce-card-stat-label">Stack</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 1 (Summary List) */}
+                  <div className="ce-deck-card rank-1" style={{ "--card-accent": "#3b82f6" }}>
+                    <div className="ce-deck-card-rank">INDEX</div>
+                    <span className="ce-deck-card-name" style={{ marginTop: "8px" }}>Tech Competence</span>
+                    <span className="ce-deck-card-user" style={{ marginBottom: "12px" }}>Overview Matrix</span>
+                    <div className="ce-skills-list-mini">
+                      <div className="ce-skill-row-mini">
+                        <div className="ce-skill-info-mini"><span>JS</span><span>95%</span></div>
+                        <div className="ce-skill-bar-mini"><div className="ce-skill-fill-mini" style={{ width: "95%", backgroundColor: "#3b82f6" }} /></div>
+                      </div>
+                      <div className="ce-skill-row-mini">
+                        <div className="ce-skill-info-mini"><span>Py</span><span>88%</span></div>
+                        <div className="ce-skill-bar-mini"><div className="ce-skill-fill-mini" style={{ width: "88%", backgroundColor: "#10b981" }} /></div>
+                      </div>
+                      <div className="ce-skill-row-mini">
+                        <div className="ce-skill-info-mini"><span>C++</span><span>70%</span></div>
+                        <div className="ce-skill-bar-mini"><div className="ce-skill-fill-mini" style={{ width: "70%", backgroundColor: "#a855f7" }} /></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1236,137 +1877,12 @@ yDoc.getText('monaco')
         </div>
       </section>
 
-      {/* Helpdesk & Trust Center Section */}
-      <section id="trust-safety" className="ce-section ce-trust-safety-section">
-        <div className="ce-container">
-          <div className="ce-section-header">
-            <span className="ce-section-tag">HELP & SAFETY CENTER</span>
-            <h2 className="ce-section-title">Support Desk & Platform Trust.</h2>
-            <p className="ce-section-subtitle">
-              Open support tickets directly in your workspace. Monitor your guidelines standing and manage profile security metrics.
-            </p>
-          </div>
-
-          <div className="ce-trust-layout">
-            
-            {/* Left Box: Trust & Guidelines Meter */}
-            <div className="ce-trust-box trust-standing reveal-init reveal-3d-left">
-              <h3 className="ce-trust-box-title">Account Standing & Guidelines</h3>
-              <p className="ce-trust-box-desc">
-                Review your current platform behavior metrics. Our system calculates standings based on guidelines compliance.
-              </p>
-              
-              <div className="ce-health-meter-container">
-                <div className="ce-health-gauge">
-                  <div className="ce-gauge-needle" style={{ transform: "rotate(90deg)" }} />
-                  <div className="ce-gauge-info">
-                    <span className="ce-gauge-score">100%</span>
-                    <span className="ce-gauge-label">HEALTH SCORE</span>
-                  </div>
-                </div>
-                <div className="ce-standing-status">
-                  <ShieldCheck size={16} className="ce-standing-icon" />
-                  <div>
-                    <span className="ce-standing-status-title">Good Standing</span>
-                    <p className="ce-standing-status-desc">No guidelines violations or warnings active.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Box: Support Helpdesk Simulator */}
-            <div className="ce-trust-box ticket-helpdesk reveal-init reveal-3d-right">
-              <h3 className="ce-trust-box-title">Built-in Support Helpdesk</h3>
-              <p className="ce-trust-box-desc">
-                File help requests, suggest workspace features, and track resolved reports.
-              </p>
-
-              {/* Ticket submit form */}
-              <form className="ce-ticket-form" onSubmit={handleCreateTicket}>
-                <input 
-                  type="text" 
-                  placeholder="Summarize the issue or request..." 
-                  value={newTicketTitle}
-                  onChange={(e) => setNewTicketTitle(e.target.value)}
-                  className="ce-ticket-input"
-                  required 
-                />
-                <div className="ce-ticket-form-footer">
-                  <select 
-                    value={newTicketCategory}
-                    onChange={(e) => setNewTicketCategory(e.target.value)}
-                    className="ce-ticket-select"
-                  >
-                    <option value="Compiler">Compiler</option>
-                    <option value="Calls">Calls / Voice</option>
-                    <option value="Whiteboard">Whiteboard</option>
-                    <option value="Billing">Billing</option>
-                  </select>
-                  <button type="submit" className="ce-btn ce-btn-primary ticket-submit-btn">
-                    Create Ticket
-                  </button>
-                </div>
-              </form>
-
-              {/* Tickets list */}
-              <div className="ce-tickets-list">
-                {tickets.map((t) => (
-                  <div key={t.id} className="ce-ticket-item">
-                    <div className="ce-ticket-meta">
-                      <span className="ce-ticket-id">{t.id}</span>
-                      <span className="ce-ticket-cat">{t.category}</span>
-                      <span className="ce-ticket-date">{t.date}</span>
-                    </div>
-                    <p className="ce-ticket-title-text">{t.title}</p>
-                    <span className={`ce-ticket-status ${t.status.toLowerCase()}`}>{t.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* AI Partner Section */}
-      <section id="ai-partner" className="ce-section">
-        <div className="ce-container ce-split-feature">
-          <div className="ce-split-content reveal-init reveal-3d-left">
-            <span className="ce-section-tag">AI Integration</span>
-            <h2 className="ce-section-title" style={{ fontSize: "36px" }}>
-              Meet your inline AI coding partner.
-            </h2>
-            <p className="ce-section-subtitle" style={{ fontSize: "16px", marginBottom: "24px" }}>
-              Get instant code suggestions, refactor functions, locate security bottlenecks, and chat with an AI assistant that understands the context of your collaborative editor.
-            </p>
-            <ul style={{ paddingLeft: "20px", color: "var(--text-secondary)", fontSize: "14px", lineHeight: "2" }}>
-              <li>Refactor code with single-click diff reviews</li>
-              <li>Translate legacy components to modern syntax</li>
-              <li>Autogenerate comprehensive unit tests</li>
-            </ul>
-          </div>
-
-          <div className="ce-split-preview reveal-init reveal-3d-right">
-            <div className="ce-diff-box">
-              <div className="ce-diff-header">
-                <Sparkles size={14} className="ce-diff-sparkle" />
-                <span>AI Refactoring Suggestion</span>
-              </div>
-              <div className="ce-diff-lines">
-                <span className="ce-diff-line del">{`- function calc(a, b) { return a + b; }`}</span>
-                <span className="ce-diff-line add">{`+ const add = (a, b) => a + b; // Optimized lambda`}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Testimonials Section */}
-      <section id="testimonials" className="ce-section" style={{ overflow: "hidden" }}>
+      <section id="testimonials" className="ce-section ce-testimonials-section" style={{ overflow: "hidden" }}>
         <div className="ce-container ce-testimonials-container-split">
           
           {/* Left Column: Heading and nav controls */}
-          <div className="ce-testimonials-left reveal-init reveal-3d-left">
+          <div className="ce-testimonials-left">
             <span className="ce-section-tag">CLIENT VOICES</span>
             <h2 className="ce-testimonials-title">Trusted By <br /><span>Developers</span></h2>
             <p className="ce-testimonials-desc">
@@ -1387,13 +1903,13 @@ yDoc.getText('monaco')
           </div>
 
           {/* Right Column: Fanned Slider viewport */}
-          <div className="ce-testimonials-right reveal-init reveal-3d-right">
+          <div className="ce-testimonials-right">
             <div className="ce-testimonials-carousel">
               <div className="ce-testimonials-slider-track">
                 {activeReviews.map((review, idx) => {
-                  const username = review.user?.username || "Anonymous";
-                  const avatar = review.user?.avatar;
-                  const langs = review.user?.programmingLanguages || [];
+                  const username = review?.user?.username || "Anonymous";
+                  const avatar = review?.user?.avatar;
+                  const langs = Array.isArray(review?.user?.programmingLanguages) ? review.user.programmingLanguages : [];
                   const title = langs.length > 0 ? langs.join(", ") : "Developer";
 
                   // Assign position class for coverflow slide logic
@@ -1469,6 +1985,8 @@ yDoc.getText('monaco')
 
         </div>
       </section>
+
+
 
       {/* Call to Action Panel */}
       <section className="ce-section">
@@ -1575,6 +2093,7 @@ yDoc.getText('monaco')
         </div>
       </footer>
 
+      </div>
     </main>
   );
 }
