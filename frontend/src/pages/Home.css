@@ -3660,23 +3660,21 @@ html.lenis body {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-}
 
-/* Custom Spacing Overrides for Pricing, Testimonials (Ratings), and AI Partner */
-.ce-pricing-section {
-  padding-bottom: 24px !important;
-}
+  /* Custom Spacing Overrides for Pricing, Testimonials (Ratings), and AI Partner */
+  .ce-pricing-section {
+    padding-bottom: 24px !important;
+  }
 
-.ce-testimonials-section {
-  border-top: none !important;
-  padding-top: 24px !important;
-  padding-bottom: 24px !important;
-}
+  .ce-testimonials-section {
+    border-top: none !important;
+    padding-top: 24px !important;
+    padding-bottom: 24px !important;
+  }
 
-.ce-ai-partner-section {
-  padding-top: 24px !important;
-}
-
+  .ce-ai-partner-section {
+    padding-top: 24px !important;
+  }
 }
 
 /* 6. Room Workspace Showcase & Features Section (Interactive IDE) */
