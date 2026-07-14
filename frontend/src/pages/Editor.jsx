@@ -1461,6 +1461,7 @@ function Editor() {
     );
     if (!confirm) return;
 
+    window.showLoader("Logging you out securely...");
     logoutUser().catch(err => console.error("Logout error:", err));
     
     // Preserve local preferences, read stories, and dismissed ads cache
@@ -3128,14 +3129,18 @@ function Editor() {
   };
 
   const handleExitWorkspaceAction = async () => {
-    const confirmExit = await window.showConfirm("Are you sure you want to exit this workspace?", "Exit Workspace", "warning");
+    const confirmExit = await window.showConfirm("Are you sure you want to exit this workspace? Any unsaved edits will be lost.", "Exit Workspace", "exit-workspace");
     if (!confirmExit) return;
+    
+    window.showLoader("Leaving workspace...");
     try {
       socket.emit("leave-room", { roomId });
       localStorage.removeItem("ceLastActiveRoomId");
       navigate("/dashboard");
     } catch (error) {
       console.error(error.message);
+    } finally {
+      window.hideLoader();
     }
   };
 
@@ -4931,7 +4936,7 @@ function Editor() {
                       <span>Delete Room</span>
                     </button>
                   )}
-                  <button className="ce-btn-secondary ce-btn-block" onClick={handleExitWorkspaceAction}>
+                  <button className="ce-btn-danger ce-btn-block" onClick={handleExitWorkspaceAction}>
                     <DoorOpen size={14} />
                     <span>Exit Workspace</span>
                   </button>

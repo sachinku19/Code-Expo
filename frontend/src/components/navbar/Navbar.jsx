@@ -43,6 +43,7 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
     );
     if (!confirm) return;
 
+    window.showLoader("Logging you out securely...");
     logoutUser().catch(err => console.error("Logout error:", err));
 
     // Preserve local preferences, read stories, and dismissed ads cache

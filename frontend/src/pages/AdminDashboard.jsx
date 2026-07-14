@@ -2050,6 +2050,7 @@ const AdminDashboard = () => {
       "logout"
     );
     if (!confirm) return;
+    window.showLoader("Logging you out securely...");
     // Preserve local preferences, read stories, and dismissed ads cache
     const preservedKeys = [];
     const prefixesToPreserve = [

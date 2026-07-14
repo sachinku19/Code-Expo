@@ -144,6 +144,7 @@ function Auth({ mode }) {
             if (tokenResponse && tokenResponse.access_token) {
               setGoogleLoading(true);
               setGoogleError(null);
+              window.showLoader("Authenticating with Google...");
               try {
                 const data = await googleLoginUser(tokenResponse.access_token);
                 localStorage.setItem("token", data.token);
@@ -155,6 +156,7 @@ function Auth({ mode }) {
                 setGoogleError(errMsg);
               } finally {
                 setGoogleLoading(false);
+                window.hideLoader();
               }
             }
           },
@@ -204,6 +206,7 @@ function Auth({ mode }) {
     e.preventDefault();
     setLoginError(null);
     setLoginLoading(true);
+    window.showLoader("Authenticating & Connecting...");
 
     try {
       const data = await loginUser(loginData);
@@ -216,6 +219,7 @@ function Auth({ mode }) {
       setLoginError(errMsg);
     } finally {
       setLoginLoading(false);
+      window.hideLoader();
     }
   };
 

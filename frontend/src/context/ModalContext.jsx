@@ -15,6 +15,11 @@ export const ModalProvider = ({ children }) => {
     resolve: null
   });
 
+  const [loader, setLoader] = useState({
+    isOpen: false,
+    message: ""
+  });
+
   useEffect(() => {
     const nativeAlert = window.alert;
 
@@ -53,6 +58,20 @@ export const ModalProvider = ({ children }) => {
       });
     };
 
+    window.showLoader = (message = "Processing...") => {
+      setLoader({
+        isOpen: true,
+        message
+      });
+    };
+
+    window.hideLoader = () => {
+      setLoader({
+        isOpen: false,
+        message: ""
+      });
+    };
+
     window.alert = (message) => {
       const msgStr = typeof message === "object" ? JSON.stringify(message) : String(message);
       window.showAlert(msgStr);
@@ -62,6 +81,8 @@ export const ModalProvider = ({ children }) => {
       window.alert = nativeAlert;
       delete window.showAlert;
       delete window.showConfirm;
+      delete window.showLoader;
+      delete window.hideLoader;
     };
   }, []);
 
@@ -99,8 +120,8 @@ export const ModalProvider = ({ children }) => {
       {modal.isOpen &&
         createPortal(
           <div className="ce-custom-modal-overlay" onClick={() => !modal.isConfirm && handleClose(false)}>
-            <div className={`ce-custom-modal-card ce-modal-${modal.type} ${modal.type === "logout" ? "ce-logout-modal-card" : ""}`} onClick={(e) => e.stopPropagation()}>
-              {modal.type === "logout" ? (
+            <div className={`ce-custom-modal-card ce-modal-${modal.type} ${["logout", "exit-workspace"].includes(modal.type) ? "ce-logout-modal-card" : ""}`} onClick={(e) => e.stopPropagation()}>
+              {["logout", "exit-workspace"].includes(modal.type) ? (
                 <div className="ce-logout-modal-content">
                   <div className="ce-logout-animation-container">
                     <svg viewBox="0 0 240 160" className="ce-logout-svg" width="240" height="160">
@@ -131,10 +152,10 @@ export const ModalProvider = ({ children }) => {
                   <div className="ce-modal-body ce-logout-body">{modal.message}</div>
                   <div className="ce-modal-actions ce-logout-actions">
                     <button className="ce-modal-btn ce-modal-btn-cancel ce-logout-btn-stay" onClick={() => handleClose(false)}>
-                      No, Stay Here!
+                      {modal.type === "exit-workspace" ? "No, Stay!" : "No, Stay Here!"}
                     </button>
                     <button className="ce-modal-btn ce-modal-btn-primary ce-logout-btn-leave" onClick={() => handleClose(true)}>
-                      Yes, Log Out
+                      {modal.type === "exit-workspace" ? "Yes, Exit" : "Yes, Log Out"}
                     </button>
                   </div>
                 </div>
@@ -157,6 +178,19 @@ export const ModalProvider = ({ children }) => {
                   </div>
                 </>
               )}
+            </div>
+          </div>,
+          document.body
+        )}
+      {loader.isOpen &&
+        createPortal(
+          <div className="ce-global-loader-overlay">
+            <div className="ce-global-loader-card">
+              <div className="ce-roller-spinner">
+                <div></div><div></div><div></div><div></div>
+                <div></div><div></div><div></div><div></div>
+              </div>
+              <span className="ce-global-loader-text">{loader.message}</span>
             </div>
           </div>,
           document.body
