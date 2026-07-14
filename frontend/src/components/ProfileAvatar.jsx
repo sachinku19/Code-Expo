@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { uploadAvatar, deleteAvatar } from "../services/userService";
 import socket from "../socket/socket";
 import { Camera, Trash2, Sliders, Maximize2, Loader, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 import "./ProfileAvatar.css";
+
 
 export default function ProfileAvatar() {
   const { user, setUser } = useAuth();
@@ -263,7 +265,7 @@ export default function ProfileAvatar() {
       )}
 
       {/* Canvas Crop Overlay Modal */}
-      {cropping && (
+      {cropping && createPortal(
         <div className="avatar-crop-modal">
           <div className="crop-card">
             <h3>Crop Profile Picture</h3>
@@ -321,7 +323,8 @@ export default function ProfileAvatar() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
