@@ -158,6 +158,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const prevChatIdRef = useRef(null);
   const prevMessagesCountRef = useRef(0);
   const prevTypersCountRef = useRef(0);
+  const justLoadedHistoryRef = useRef(false);
 
   // Attachment states
   const [attachment, setAttachment] = useState(null); 
@@ -593,8 +594,11 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   // Auto-scroll chat history using refined logic for instant vs smooth scroll
   useEffect(() => {
     if (activeChatId) {
-      if (prevChatIdRef.current !== activeChatId || prevMessagesCountRef.current === 0) {
+      const isInitialLoad = justLoadedHistoryRef.current || prevChatIdRef.current !== activeChatId || prevMessagesCountRef.current === 0;
+      
+      if (isInitialLoad) {
         scrollToBottom("auto");
+        justLoadedHistoryRef.current = false;
         prevChatIdRef.current = activeChatId;
       } else if (
         messages.length > prevMessagesCountRef.current ||
@@ -608,6 +612,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       prevChatIdRef.current = null;
       prevMessagesCountRef.current = 0;
       prevTypersCountRef.current = 0;
+      justLoadedHistoryRef.current = false;
     }
   }, [messages, partnerTypers.length, activeChatId]);
 
@@ -616,6 +621,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     const hasCache = !!chatHistoryCacheRef.current[userId];
     if (hasCache) {
       setMessages(chatHistoryCacheRef.current[userId]);
+      justLoadedHistoryRef.current = true;
     } else {
       setLoadingHistory(true);
     }
@@ -625,6 +631,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         const fetchedMsgs = res.messages || [];
         chatHistoryCacheRef.current[userId] = fetchedMsgs;
         setMessages(fetchedMsgs);
+        justLoadedHistoryRef.current = true;
         window.dispatchEvent(new CustomEvent("ce-unread-messages-update"));
         fetchConversations();
       }

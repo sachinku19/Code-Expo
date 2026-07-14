@@ -2043,7 +2043,13 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const confirm = await window.showConfirm(
+      "Are you sure you want to log out? We will miss you and your code!",
+      "Please don't go!",
+      "logout"
+    );
+    if (!confirm) return;
     // Preserve local preferences, read stories, and dismissed ads cache
     const preservedKeys = [];
     const prefixesToPreserve = [

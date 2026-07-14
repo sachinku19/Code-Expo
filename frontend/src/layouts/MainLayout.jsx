@@ -753,7 +753,14 @@ export default function MainLayout({
     localStorage.setItem("ceSidebarPinned", String(nextPinned));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const confirm = await window.showConfirm(
+      "Are you sure you want to log out? We will miss you and your code!",
+      "Please don't go!",
+      "logout"
+    );
+    if (!confirm) return;
+
     logoutUser().catch(err => console.error("Logout error:", err));
     
     // Preserve local preferences, read stories, and dismissed ads cache

@@ -1536,6 +1536,11 @@ const socketHandler = (io) => {
           sourceCode = roomObj ? roomObj.code : "";
         }
 
+        // Limit code compilation to 1000 lines max
+        if (sourceCode && sourceCode.split(/\r?\n/).length > 1000) {
+          throw new Error("Code length exceeds the 1000 lines execution limit.");
+        }
+
         // 2. Execute via JDoodle
         const output = await executeCode(language, sourceCode, stdin);
 

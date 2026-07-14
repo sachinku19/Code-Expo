@@ -274,11 +274,11 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
 
     const isVideo = file.type.startsWith("video/");
     if (isVideo) {
-      if (file.size > 30 * 1024 * 1024) {
+      if (file.size > 10 * 1024 * 1024) {
         setWarningModal({
           isOpen: true,
           title: "Video Too Large",
-          message: "Story videos are limited to 30 MB. Please compress your video or select a smaller file."
+          message: "Story videos are limited to 10 MB. Please compress your video or select a smaller file."
         });
         e.target.value = "";
         return;

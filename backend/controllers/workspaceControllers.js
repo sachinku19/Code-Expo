@@ -403,6 +403,13 @@ exports.saveFileContent = async (req, res) => {
       });
     }
 
+    if (content && content.split(/\r?\n/).length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: "File content exceeds the maximum limit of 1000 lines."
+      });
+    }
+
     file.content = content;
     await file.save();
 

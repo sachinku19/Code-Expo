@@ -71,6 +71,14 @@ const runCode = async (req, res) => {
             }
         }
 
+        // Limit code compilation to 1000 lines max
+        if (sourceCode && sourceCode.split(/\r?\n/).length > 1000) {
+            return res.status(400).json({
+                success: false,
+                message: "Code length exceeds the 1000 lines execution limit."
+            });
+        }
+
         // Execute via JDoodle
         const output = await executeCode(language, sourceCode, input);
 

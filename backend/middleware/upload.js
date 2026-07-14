@@ -21,12 +21,12 @@ const fileFilter = (req, file, cb) => {
   cb(new Error("Upload rejected: Unsupported file format! Only JPG, JPEG, PNG, WEBP images and MP4, WEBM, MOV, AVI, MKV videos are allowed."), false);
 };
 
-// Create the multer upload configurations (100MB limit for video posts)
+// Create the multer upload configurations (10MB limit for video posts)
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100MB limit
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   }
 });
 

@@ -767,3 +767,75 @@
     display: none !important; /* Hide activity timeline in very narrow panels */
   }
 }
+
+/* Whiteboard Slides Panel styles */
+.whiteboard-slides-panel {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  z-index: 10;
+}
+
+.wb-slide-btn {
+  background: transparent;
+  border: none;
+  color: var(--wb-color-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.wb-slide-btn:hover:not(:disabled) {
+  color: var(--wb-color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.wb-slide-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.wb-slide-btn.add-btn:hover {
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.wb-slide-btn.delete-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.wb-slide-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-width: 85px;
+  text-align: center;
+  color: var(--wb-color-text);
+  user-select: none;
+}
+
+/* Responsive adjustment for slide panel */
+@media (max-width: 768px) {
+  .whiteboard-slides-panel {
+    bottom: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px;
+  }
+  .wb-slide-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .wb-slide-val {
+    font-size: 0.72rem;
+    min-width: 70px;
+  }
+}

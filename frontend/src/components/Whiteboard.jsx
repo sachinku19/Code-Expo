@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import socket from "../socket/socket";
+import { jsPDF } from "jspdf";
 import {
   MousePointer,
   PenTool,
@@ -30,7 +31,9 @@ import {
   Diamond,
   Hexagon,
   Star,
-  Eye
+  Eye,
+  Plus,
+  FileText
 } from "lucide-react";
 import "./Whiteboard.css";
 
@@ -107,6 +110,10 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   const [history, setHistory] = useState([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
+  // Multi-page Slide states
+  const [slides, setSlides] = useState([{ elements: [] }]);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
   // Drawing states
   const [isDrawing, setIsDrawing] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -130,10 +137,21 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   useEffect(() => {
     if (room && room.whiteboardData) {
       try {
-        const loadedElements = JSON.parse(room.whiteboardData);
-        if (Array.isArray(loadedElements)) {
-          setElements(loadedElements);
-          setHistory([loadedElements]);
+        const loadedData = JSON.parse(room.whiteboardData);
+        if (Array.isArray(loadedData)) {
+          // Backward compatibility
+          setSlides([{ elements: loadedData }]);
+          setCurrentSlideIndex(0);
+          setElements(loadedData);
+          setHistory([loadedData]);
+          setHistoryIndex(0);
+        } else if (loadedData && loadedData.slides) {
+          // New format
+          setSlides(loadedData.slides);
+          setCurrentSlideIndex(loadedData.currentSlideIndex || 0);
+          const initialElements = loadedData.slides[loadedData.currentSlideIndex || 0]?.elements || [];
+          setElements(initialElements);
+          setHistory([initialElements]);
           setHistoryIndex(0);
         }
       } catch (err) {
@@ -186,12 +204,26 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     };
 
     const handleSyncWhiteboard = (data) => {
+      if (!data.elements) return;
       if (Array.isArray(data.elements)) {
+        // Backward compatibility
+        setSlides([{ elements: data.elements }]);
+        setCurrentSlideIndex(0);
         setElements(data.elements);
-        // Sync history
         setHistory((prev) => {
           const next = prev.slice(0, historyIndex + 1);
           return [...next, data.elements];
+        });
+        setHistoryIndex((prev) => prev + 1);
+      } else if (data.elements.slides) {
+        // Slides format
+        setSlides(data.elements.slides);
+        setCurrentSlideIndex(data.elements.currentSlideIndex);
+        const nextElements = data.elements.slides[data.elements.currentSlideIndex]?.elements || [];
+        setElements(nextElements);
+        setHistory((prev) => {
+          const next = prev.slice(0, historyIndex + 1);
+          return [...next, nextElements];
         });
         setHistoryIndex((prev) => prev + 1);
       }
@@ -235,13 +267,18 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   useEffect(() => {
     if (!roomId) return;
     const timer = setTimeout(() => {
+      const updatedSlides = [...slides];
+      updatedSlides[currentSlideIndex] = { ...updatedSlides[currentSlideIndex], elements };
       socket.emit("save-whiteboard", {
         roomId,
-        whiteboardData: JSON.stringify(elements)
+        whiteboardData: JSON.stringify({
+          slides: updatedSlides,
+          currentSlideIndex
+        })
       });
     }, 2000);
     return () => clearTimeout(timer);
-  }, [elements, roomId]);
+  }, [elements, slides, currentSlideIndex, roomId]);
 
   // Add Undo/Redo & Tool selector keyboard shortcuts
   useEffect(() => {
@@ -839,7 +876,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
       const finalEl = elements.find((el) => el.id === selectedElement.id);
       if (finalEl) {
         socket.emit("draw-element-update", { roomId, element: finalEl, isDrawing: false, userId: currentUser?.id });
-        socket.emit("sync-whiteboard", { roomId, elements });
+        syncBoardState(elements);
         socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, avatar: currentUser?.avatar, action: `moved ${finalEl.type}` });
         
         // Push history
@@ -865,11 +902,25 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
       setHistoryIndex(nextHistory.length);
 
       // Sync and log activity
-      socket.emit("sync-whiteboard", { roomId, elements: newElements });
+      syncBoardState(newElements);
       
       let toolName = currentElement.type === "pencil" ? "drawing line" : currentElement.type;
       socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, avatar: currentUser?.avatar, action: `added ${toolName}` });
     }
+  };
+
+  const syncBoardState = (newElements, targetIndex = currentSlideIndex) => {
+    const updatedSlides = [...slides];
+    updatedSlides[targetIndex] = { ...updatedSlides[targetIndex], elements: newElements };
+    setSlides(updatedSlides);
+
+    socket.emit("sync-whiteboard", {
+      roomId,
+      elements: {
+        slides: updatedSlides,
+        currentSlideIndex: targetIndex
+      }
+    });
   };
 
   const finishTextDrawing = () => {
@@ -902,7 +953,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     setHistoryIndex(nextHistory.length);
 
     // Sync
-    socket.emit("sync-whiteboard", { roomId, elements: newElements });
+    syncBoardState(newElements);
     socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, avatar: currentUser?.avatar, action: `added text: "${textEl.text.substring(0, 15)}..."` });
   };
 
@@ -924,7 +975,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
       const newElements = history[newIndex] || [];
       setElements(newElements);
       setHistoryIndex(newIndex);
-      socket.emit("sync-whiteboard", { roomId, elements: newElements });
+      syncBoardState(newElements);
       socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, avatar: currentUser?.avatar, action: "performed undo" });
     }
   };
@@ -936,7 +987,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
       const newElements = history[newIndex] || [];
       setElements(newElements);
       setHistoryIndex(newIndex);
-      socket.emit("sync-whiteboard", { roomId, elements: newElements });
+      syncBoardState(newElements);
       socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, avatar: currentUser?.avatar, action: "performed redo" });
     }
   };
@@ -954,8 +1005,324 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     setHistory([...nextHistory, []]);
     setHistoryIndex(nextHistory.length);
 
-    socket.emit("clear-board", { roomId });
+    syncBoardState([]);
     socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, avatar: currentUser?.avatar, action: "cleared the board" });
+  };
+
+  // Slide Navigation helpers
+  const handleAddSlide = () => {
+    if (currentUserRole === "VIEWER") return;
+    
+    // Save current elements to current slide
+    const updatedSlides = [...slides];
+    updatedSlides[currentSlideIndex] = { ...updatedSlides[currentSlideIndex], elements };
+
+    // Add new slide
+    const newSlide = { elements: [] };
+    const nextSlides = [...updatedSlides, newSlide];
+    const nextIndex = nextSlides.length - 1;
+
+    setSlides(nextSlides);
+    setCurrentSlideIndex(nextIndex);
+    setElements([]);
+    setHistory([[]]);
+    setHistoryIndex(0);
+
+    // Sync board state
+    socket.emit("sync-whiteboard", {
+      roomId,
+      elements: {
+        slides: nextSlides,
+        currentSlideIndex: nextIndex
+      }
+    });
+
+    socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, action: `added Slide ${nextIndex + 1}` });
+  };
+
+  const handleDeleteSlide = async () => {
+    if (currentUserRole === "VIEWER" || slides.length <= 1) return;
+
+    const confirmDelete = await window.showConfirm("Are you sure you want to delete this slide?", "Delete Slide", "warning");
+    if (!confirmDelete) return;
+
+    const nextSlides = slides.filter((_, idx) => idx !== currentSlideIndex);
+    const nextIndex = Math.max(0, currentSlideIndex - 1);
+    const nextElements = nextSlides[nextIndex]?.elements || [];
+
+    setSlides(nextSlides);
+    setCurrentSlideIndex(nextIndex);
+    setElements(nextElements);
+    setHistory([nextElements]);
+    setHistoryIndex(0);
+
+    // Sync board state
+    socket.emit("sync-whiteboard", {
+      roomId,
+      elements: {
+        slides: nextSlides,
+        currentSlideIndex: nextIndex
+      }
+    });
+
+    socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, action: `deleted slide` });
+  };
+
+  const handlePrevSlide = () => {
+    if (currentSlideIndex <= 0) return;
+    const prevIndex = currentSlideIndex - 1;
+    changeSlide(prevIndex);
+  };
+
+  const handleNextSlide = () => {
+    if (currentSlideIndex >= slides.length - 1) return;
+    const nextIndex = currentSlideIndex + 1;
+    changeSlide(nextIndex);
+  };
+
+  const changeSlide = (targetIndex) => {
+    // 1. Save current elements
+    const updatedSlides = [...slides];
+    updatedSlides[currentSlideIndex] = { ...updatedSlides[currentSlideIndex], elements };
+
+    // 2. Load target slide
+    const targetElements = updatedSlides[targetIndex]?.elements || [];
+    setSlides(updatedSlides);
+    setCurrentSlideIndex(targetIndex);
+    setElements(targetElements);
+    setHistory([targetElements]);
+    setHistoryIndex(0);
+
+    // 3. Sync target slide to other users
+    socket.emit("sync-whiteboard", {
+      roomId,
+      elements: {
+        slides: updatedSlides,
+        currentSlideIndex: targetIndex
+      }
+    });
+  };
+
+  // Render slides elements helper for export functionality
+  const renderSlideToCanvas = (tempCanvas, slideElements) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const tempCtx = tempCanvas.getContext("2d");
+    const isLight = document.documentElement.classList.contains("light");
+    tempCtx.fillStyle = isLight ? "#ffffff" : "#0D1117";
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    tempCtx.save();
+    tempCtx.translate(pan.x, pan.y);
+    tempCtx.scale(zoom, zoom);
+
+    if (gridType !== "none") {
+      const gridSize = 40;
+      const left = -pan.x / zoom;
+      const top = -pan.y / zoom;
+      const right = (canvas.width - pan.x) / zoom;
+      const bottom = (canvas.height - pan.y) / zoom;
+      const startX = Math.floor(left / gridSize) * gridSize;
+      const startY = Math.floor(top / gridSize) * gridSize;
+      
+      if (gridType === "dots") {
+        tempCtx.fillStyle = isLight ? "rgba(15, 23, 42, 0.05)" : "rgba(148, 163, 184, 0.12)";
+        for (let x = startX; x < right; x += gridSize) {
+          for (let y = startY; y < bottom; y += gridSize) {
+            tempCtx.beginPath();
+            tempCtx.arc(x, y, 1.2, 0, 2 * Math.PI);
+            tempCtx.fill();
+          }
+        }
+      } else if (gridType === "lines") {
+        tempCtx.strokeStyle = isLight ? "rgba(15, 23, 42, 0.04)" : "rgba(148, 163, 184, 0.06)";
+        tempCtx.lineWidth = 1 / zoom;
+        tempCtx.beginPath();
+        for (let x = startX; x < right; x += gridSize) {
+          tempCtx.moveTo(x, top);
+          tempCtx.lineTo(x, bottom);
+        }
+        for (let y = startY; y < bottom; y += gridSize) {
+          tempCtx.moveTo(left, y);
+          tempCtx.lineTo(right, y);
+        }
+        tempCtx.stroke();
+      }
+    }
+
+    slideElements.forEach((el) => {
+      tempCtx.save();
+      tempCtx.lineWidth = el.size;
+      tempCtx.strokeStyle = el.type === "eraser" ? (isLight ? "#ffffff" : "#0D1117") : el.color;
+      tempCtx.fillStyle = el.type === "eraser" ? (isLight ? "#ffffff" : "#0D1117") : el.color;
+      tempCtx.lineCap = "round";
+      tempCtx.lineJoin = "round";
+
+      if (el.type === "pencil") {
+        if (el.points.length >= 2) {
+          tempCtx.beginPath();
+          tempCtx.moveTo(el.points[0].x, el.points[0].y);
+          for (let i = 1; i < el.points.length; i++) {
+            tempCtx.lineTo(el.points[i].x, el.points[i].y);
+          }
+          tempCtx.stroke();
+        }
+      } else if (el.type === "highlighter") {
+        if (el.points.length >= 2) {
+          tempCtx.save();
+          tempCtx.globalAlpha = 0.42;
+          tempCtx.lineWidth = el.size * 2.2;
+          tempCtx.beginPath();
+          tempCtx.moveTo(el.points[0].x, el.points[0].y);
+          for (let i = 1; i < el.points.length; i++) {
+            tempCtx.lineTo(el.points[i].x, el.points[i].y);
+          }
+          tempCtx.stroke();
+          tempCtx.restore();
+        }
+      } else if (el.type === "eraser") {
+        if (el.points.length >= 2) {
+          tempCtx.lineWidth = el.size * 2.5;
+          tempCtx.beginPath();
+          tempCtx.moveTo(el.points[0].x, el.points[0].y);
+          for (let i = 1; i < el.points.length; i++) {
+            tempCtx.lineTo(el.points[i].x, el.points[i].y);
+          }
+          tempCtx.stroke();
+        }
+      } else if (el.type === "rectangle") {
+        tempCtx.strokeRect(el.x, el.y, el.width, el.height);
+      } else if (el.type === "triangle") {
+        tempCtx.beginPath();
+        tempCtx.moveTo(el.x + el.width / 2, el.y);
+        tempCtx.lineTo(el.x + el.width, el.y + el.height);
+        tempCtx.lineTo(el.x, el.y + el.height);
+        tempCtx.closePath();
+        tempCtx.stroke();
+      } else if (el.type === "diamond") {
+        tempCtx.beginPath();
+        tempCtx.moveTo(el.x + el.width / 2, el.y);
+        tempCtx.lineTo(el.x + el.width, el.y + el.height / 2);
+        tempCtx.lineTo(el.x + el.width / 2, el.y + el.height);
+        tempCtx.lineTo(el.x, el.y + el.height / 2);
+        tempCtx.closePath();
+        tempCtx.stroke();
+      } else if (el.type === "hexagon") {
+        tempCtx.beginPath();
+        const cx = el.x + el.width / 2;
+        const cy = el.y + el.height / 2;
+        const rx = el.width / 2;
+        const ry = el.height / 2;
+        for (let i = 0; i < 6; i++) {
+          const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 6;
+          const px = cx + rx * Math.cos(angle);
+          const py = cy + ry * Math.sin(angle);
+          if (i === 0) tempCtx.moveTo(px, py);
+          else tempCtx.lineTo(px, py);
+        }
+        tempCtx.closePath();
+        tempCtx.stroke();
+      } else if (el.type === "star") {
+        tempCtx.beginPath();
+        const cx = el.x + el.width / 2;
+        const cy = el.y + el.height / 2;
+        const rx = el.width / 2;
+        const ry = el.height / 2;
+        const innerRx = rx * 0.4;
+        const innerRy = ry * 0.4;
+        for (let i = 0; i < 10; i++) {
+          const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+          const currRx = i % 2 === 0 ? rx : innerRx;
+          const currRy = i % 2 === 0 ? ry : innerRy;
+          const px = cx + currRx * Math.cos(angle);
+          const py = cy + currRy * Math.sin(angle);
+          if (i === 0) tempCtx.moveTo(px, py);
+          else tempCtx.lineTo(px, py);
+        }
+        tempCtx.closePath();
+        tempCtx.stroke();
+      } else if (el.type === "circle") {
+        tempCtx.beginPath();
+        const rx = el.width / 2;
+        const ry = el.height / 2;
+        const cx = el.x + rx;
+        const cy = el.y + ry;
+        const r = Math.sqrt(rx * rx + ry * ry);
+        tempCtx.arc(cx, cy, r, 0, 2 * Math.PI);
+        tempCtx.stroke();
+      } else if (el.type === "arrow") {
+        tempCtx.beginPath();
+        tempCtx.moveTo(el.x1, el.y1);
+        tempCtx.lineTo(el.x2, el.y2);
+        tempCtx.stroke();
+
+        const angle = Math.atan2(el.y2 - el.y1, el.x2 - el.x1);
+        const arrowSize = Math.max(9, el.size * 2.8);
+        tempCtx.beginPath();
+        tempCtx.moveTo(el.x2, el.y2);
+        tempCtx.lineTo(
+          el.x2 - arrowSize * Math.cos(angle - Math.PI / 6),
+          el.y2 - arrowSize * Math.sin(angle - Math.PI / 6)
+        );
+        tempCtx.lineTo(
+          el.x2 - arrowSize * Math.cos(angle + Math.PI / 6),
+          el.y2 - arrowSize * Math.sin(angle + Math.PI / 6)
+        );
+        tempCtx.closePath();
+        tempCtx.fill();
+      } else if (el.type === "line") {
+        tempCtx.beginPath();
+        tempCtx.moveTo(el.x1, el.y1);
+        tempCtx.lineTo(el.x2, el.y2);
+        tempCtx.stroke();
+      } else if (el.type === "text") {
+        tempCtx.font = `600 ${Math.max(12, el.size * 4)}px ui-monospace, 'Fira Code', monospace`;
+        const lines = el.text.split("\n");
+        const lineHeight = Math.max(12, el.size * 4) * 1.25;
+        lines.forEach((line, index) => {
+          tempCtx.fillText(line, el.x, el.y + index * lineHeight);
+        });
+      }
+
+      tempCtx.restore();
+    });
+
+    tempCtx.restore();
+  };
+
+  // Export all whiteboard slides as a multi-page PDF document
+  const handleExportPDF = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+
+    const orientation = tempCanvas.width >= tempCanvas.height ? "landscape" : "portrait";
+    const pdf = new jsPDF({
+      orientation: orientation,
+      unit: "px",
+      format: [tempCanvas.width, tempCanvas.height]
+    });
+
+    const updatedSlides = [...slides];
+    updatedSlides[currentSlideIndex] = { ...updatedSlides[currentSlideIndex], elements };
+
+    updatedSlides.forEach((slide, idx) => {
+      renderSlideToCanvas(tempCanvas, slide.elements || []);
+      const imgData = tempCanvas.toDataURL("image/jpeg", 0.95);
+
+      if (idx > 0) {
+        pdf.addPage([tempCanvas.width, tempCanvas.height], orientation);
+      }
+      pdf.setPage(idx + 1);
+      pdf.addImage(imgData, "JPEG", 0, 0, tempCanvas.width, tempCanvas.height);
+    });
+
+    pdf.save(`whiteboard-${roomId || "export"}.pdf`);
+    socket.emit("whiteboard-activity", { roomId, username: currentUser?.username, action: "exported whiteboard as PDF" });
   };
 
   // Export board as PNG image
@@ -1473,6 +1840,15 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
           </button>
           <button
             className="wb-tool-btn"
+            onClick={handleExportPDF}
+            data-tooltip="Export Slides (PDF)"
+            type="button"
+            style={{ color: "#a855f7" }}
+          >
+            <FileText size={18} />
+          </button>
+          <button
+            className="wb-tool-btn"
             onClick={handleClearBoard}
             data-tooltip="Clear Board"
             style={{ color: "#ef4444" }}
@@ -1511,6 +1887,55 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
         >
           <Grid size={16} />
         </button>
+      </div>
+
+      {/* 9. Floating Slide Controls Panel */}
+      <div className="whiteboard-slides-panel wb-glass-panel">
+        <button
+          className="wb-slide-btn"
+          onClick={handlePrevSlide}
+          disabled={currentSlideIndex <= 0}
+          data-tooltip="Previous Slide"
+          type="button"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <span className="wb-slide-val">
+          Slide {currentSlideIndex + 1} of {slides.length}
+        </span>
+        <button
+          className="wb-slide-btn"
+          onClick={handleNextSlide}
+          disabled={currentSlideIndex >= slides.length - 1}
+          data-tooltip="Next Slide"
+          type="button"
+        >
+          <ChevronRight size={16} />
+        </button>
+        {currentUserRole !== "VIEWER" && (
+          <>
+            <div className="wb-tool-divider" />
+            <button
+              className="wb-slide-btn add-btn"
+              onClick={handleAddSlide}
+              data-tooltip="Add New Slide"
+              type="button"
+              style={{ color: "#2dd4bf" }}
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              className="wb-slide-btn delete-btn"
+              onClick={handleDeleteSlide}
+              disabled={slides.length <= 1}
+              data-tooltip="Delete Slide"
+              type="button"
+              style={{ color: "#ef4444" }}
+            >
+              <Trash2 size={16} />
+            </button>
+          </>
+        )}
       </div>
 
 

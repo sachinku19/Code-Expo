@@ -179,17 +179,7 @@ function Editor() {
     }
   }, [fromTransition]);
 
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      e.preventDefault();
-      e.returnValue = "Are you sure you want to exit this workspace?";
-      return "Are you sure you want to exit this workspace?";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
+
 
   // Core MERN Room State
   const [room, setRoom] = useState(null);
@@ -548,12 +538,13 @@ function Editor() {
       if (chatTabRef.current !== "room") {
         setRoomTabUnread(true);
       } else {
+        const isInitialLoad = prevRoomCount === 0;
         const lastMsg = messages[messages.length - 1];
         const isMyMsg = lastMsg && (String(lastMsg.userId || lastMsg.sender?._id) === String(user.id || user._id) || lastMsg.username === user.username);
         const container = chatMessagesContainerRef.current;
         const isAtBottom = container ? (container.scrollHeight - container.scrollTop - container.clientHeight <= 120) : true;
-        if (isMyMsg || isAtBottom) {
-          setTimeout(() => scrollToBottom("smooth"), 50);
+        if (isMyMsg || isAtBottom || isInitialLoad) {
+          setTimeout(() => scrollToBottom(isInitialLoad ? "auto" : "smooth"), 50);
         } else {
           setUnreadMessagesCount((prev) => prev + 1);
         }
@@ -570,12 +561,13 @@ function Editor() {
       if (chatTabRef.current !== "private") {
         setPrivateTabUnread(true);
       } else {
+        const isInitialLoad = prevPrivateCount === 0;
         const lastMsg = privateMessages[privateMessages.length - 1];
         const isMyMsg = lastMsg && (String(lastMsg.userId || lastMsg.sender?._id) === String(user.id || user._id) || lastMsg.username === user.username);
         const container = chatMessagesContainerRef.current;
         const isAtBottom = container ? (container.scrollHeight - container.scrollTop - container.clientHeight <= 120) : true;
-        if (isMyMsg || isAtBottom) {
-          setTimeout(() => scrollToBottom("smooth"), 50);
+        if (isMyMsg || isAtBottom || isInitialLoad) {
+          setTimeout(() => scrollToBottom(isInitialLoad ? "auto" : "smooth"), 50);
         } else {
           setUnreadMessagesCount((prev) => prev + 1);
         }
@@ -655,6 +647,16 @@ function Editor() {
   const [terminalInputVal, setTerminalInputVal] = useState("");
   const [programInput, setProgramInput] = useState("");
   const [isTerminalExecuting, setIsTerminalExecuting] = useState(false);
+  const [runCooldownSeconds, setRunCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (runCooldownSeconds > 0) {
+      const timer = setTimeout(() => {
+        setRunCooldownSeconds((prev) => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [runCooldownSeconds]);
   const terminalEndRef = useRef(null);
 
   // WebRTC Call States
@@ -1451,7 +1453,14 @@ function Editor() {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const confirm = await window.showConfirm(
+      "Are you sure you want to log out? We will miss you and your code!",
+      "Please don't go!",
+      "logout"
+    );
+    if (!confirm) return;
+
     logoutUser().catch(err => console.error("Logout error:", err));
     
     // Preserve local preferences, read stories, and dismissed ads cache
@@ -2913,6 +2922,19 @@ function Editor() {
     );
     editorDisposablesRef.current.push(...hoverDisposables);
 
+    // 1b. Line limit check (Max 1000 lines)
+    const lineLimitDisposable = editor.onDidChangeModelContent(() => {
+      const model = editor.getModel();
+      if (model) {
+        const lineCount = model.getLineCount();
+        if (lineCount > 1000) {
+          addToast("Code exceeds the maximum limit of 1000 lines!", "error");
+          editor.trigger("keyboard", "undo", null);
+        }
+      }
+    });
+    editorDisposablesRef.current.push(lineLimitDisposable);
+
     // 2. Cursor position tracking
     editor.onDidChangeCursorPosition((e) => {
       socket.emit("code-cursor-move", {
@@ -3061,6 +3083,11 @@ function Editor() {
   // Compile runner handler
   const handleRunCode = () => {
     if (isTerminalExecuting || currentUserRole === "VIEWER") return;
+    if (runCooldownSeconds > 0) {
+      addToast(`Please wait ${runCooldownSeconds}s before running code again.`, "error");
+      return;
+    }
+    setRunCooldownSeconds(5);
     setIsConsoleOpen(true);
     setConsoleTab("output");
     setTerminalOutput("");
@@ -4313,16 +4340,22 @@ function Editor() {
                         <span>Save</span>
                       </button>
                       <button 
-                        className={`ce-btn-run ${isTerminalExecuting ? "running" : ""}`} 
+                        className={`ce-btn-run ${isTerminalExecuting ? "running" : ""} ${runCooldownSeconds > 0 ? "cooldown" : ""}`} 
                         onClick={handleRunCode}
-                        disabled={isTerminalExecuting}
+                        disabled={isTerminalExecuting || runCooldownSeconds > 0}
                       >
                         {isTerminalExecuting ? (
                           <Loader2 size={13} className="ce-btn-loader" />
                         ) : (
                           <Play size={13} />
                         )}
-                        <span>{isTerminalExecuting ? "Running..." : "Run Program"}</span>
+                        <span>
+                          {isTerminalExecuting 
+                            ? "Running..." 
+                            : runCooldownSeconds > 0 
+                              ? `Wait ${runCooldownSeconds}s` 
+                              : "Run Program"}
+                        </span>
                       </button>
                     </>
                   )}

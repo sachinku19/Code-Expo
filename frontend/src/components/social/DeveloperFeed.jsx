@@ -751,7 +751,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   // Live validation helpers
   const codeLinesCount = attachedCode ? attachedCode.split(/\r?\n/).length : 0;
   const codeSizeKB = attachedCode ? Math.round(new Blob([attachedCode]).size / 1024) : 0;
-  const isCodeInvalid = codeLinesCount > 300 || codeSizeKB > 100;
+  const isCodeInvalid = codeLinesCount > 1000 || codeSizeKB > 500;
 
   const textLength = inputText.length;
   const isTextInvalid = textLength > 5000;
@@ -767,12 +767,12 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
   // Code size warning trigger
   useEffect(() => {
-    const exceeded = codeLinesCount > 300 || codeSizeKB > 100;
+    const exceeded = codeLinesCount > 1000 || codeSizeKB > 500;
     if (exceeded && !prevExceededRef.current) {
       setWarningModal({
         isOpen: true,
         title: "Code Too Large",
-        message: "Code posts are limited to 300 lines or 100 KB. Please split your solution into multiple posts or create a Gist."
+        message: "Code posts are limited to 1000 lines or 500 KB. Please split your solution into multiple posts or create a Gist."
       });
     }
     prevExceededRef.current = exceeded;
@@ -1009,11 +1009,11 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       return;
     }
 
-    if (file.size > 100 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       setWarningModal({
         isOpen: true,
         title: "Video Too Large",
-        message: "Video file size exceeds the 100 MB limit. Please compress your video or upload a shorter clip."
+        message: "Video file size exceeds the 10 MB limit. Please compress your video or upload a shorter clip."
       });
       e.target.value = "";
       return;
