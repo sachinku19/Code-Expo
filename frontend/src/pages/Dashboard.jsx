@@ -74,6 +74,7 @@ import SubscriptionPlans from "../components/social/SubscriptionPlans";
 const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
 import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
 import { useGateTransition } from "../routes/AppRoutes";
+import TaskPlanner from "../components/planner/TaskPlanner";
 
 const notificationAudio = new Audio("/code-Expo_notification_sound.mp3");
 notificationAudio.load();
@@ -6781,69 +6782,69 @@ function Dashboard() {
                           </div>
                         ) : (
                           <div className="history-table-wrapper" style={{ overflowX: "auto", background: activeTheme === "light" ? "var(--ce-surface-card)" : "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", borderRadius: "12px" }}>
-                          <table className="history-data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
-                            <thead>
-                              <tr style={{ borderBottom: "1px solid var(--ce-border)", background: "rgba(255,255,255,0.02)" }}>
-                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Room Workspace</th>
-                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Language</th>
-                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Participants</th>
-                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Owner</th>
-                                <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Last Activity</th>
-                                <th style={{ padding: "14px 16px", textAlign: "right", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {filteredHistory.length === 0 ? (
-                                <tr>
-                                  <td colSpan="6" style={{ padding: "32px", textAlign: "center", color: "var(--ce-text-muted)", fontSize: "0.85rem" }}>No rooms match your filter.</td>
+                            <table className="history-data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                              <thead>
+                                <tr style={{ borderBottom: "1px solid var(--ce-border)", background: "rgba(255,255,255,0.02)" }}>
+                                  <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Room Workspace</th>
+                                  <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Language</th>
+                                  <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Participants</th>
+                                  <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Owner</th>
+                                  <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Last Activity</th>
+                                  <th style={{ padding: "14px 16px", textAlign: "right", fontSize: "0.8rem", fontWeight: "600", color: "var(--ce-text-muted)" }}>Action</th>
                                 </tr>
-                              ) : (
-                                filteredHistory.map(room => {
-                                  const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                                  return (
-                                    <tr key={room.roomId} style={{ borderBottom: "1px solid var(--ce-border)", transition: "background 0.2s" }} className="table-row-hover">
-                                      <td style={{ padding: "14px 16px" }}>
-                                        <div style={{ fontWeight: "700", fontSize: "0.92rem", color: "var(--ce-text)", display: "flex", alignItems: "center", gap: "6px" }}>🚀 {room.title}</div>
-                                        <div style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", marginTop: "2px" }}>{room.roomId}</div>
-                                      </td>
-                                      <td style={{ padding: "14px 16px" }}>
-                                        <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", textTransform: "uppercase", fontWeight: "600", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
-                                      </td>
-                                      <td style={{ padding: "14px 16px" }}>
-                                        <span style={{ fontSize: "0.8rem", color: "var(--ce-text)" }}>{room.participants?.length || 1} online</span>
-                                      </td>
-                                      <td style={{ padding: "14px 16px" }}>
-                                        <span style={{ fontSize: "0.8rem", color: "var(--ce-text)" }}>{isOwner ? "You" : room.createdBy?.username || "Collaborator"}</span>
-                                      </td>
-                                      <td style={{ padding: "14px 16px" }}>
-                                        <span style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)" }}>{new Date(room.updatedAt).toLocaleDateString()}</span>
-                                      </td>
-                                      <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                                        <button
-                                          onClick={() => handleJoinRoomDirect(room.roomId)}
-                                          className="ce-btn-primary"
-                                          style={{
-                                            padding: "6px 16px",
-                                            fontSize: "0.78rem",
-                                            fontWeight: "600",
-                                            background: "var(--ce-primary)",
-                                            color: "#fff",
-                                            border: "none",
-                                            borderRadius: "6px",
-                                            cursor: "pointer",
-                                            boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)"
-                                          }}
-                                        >
-                                          Resume
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                              </thead>
+                              <tbody>
+                                {filteredHistory.length === 0 ? (
+                                  <tr>
+                                    <td colSpan="6" style={{ padding: "32px", textAlign: "center", color: "var(--ce-text-muted)", fontSize: "0.85rem" }}>No rooms match your filter.</td>
+                                  </tr>
+                                ) : (
+                                  filteredHistory.map(room => {
+                                    const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
+                                    return (
+                                      <tr key={room.roomId} style={{ borderBottom: "1px solid var(--ce-border)", transition: "background 0.2s" }} className="table-row-hover">
+                                        <td style={{ padding: "14px 16px" }}>
+                                          <div style={{ fontWeight: "700", fontSize: "0.92rem", color: "var(--ce-text)", display: "flex", alignItems: "center", gap: "6px" }}>🚀 {room.title}</div>
+                                          <div style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", marginTop: "2px" }}>{room.roomId}</div>
+                                        </td>
+                                        <td style={{ padding: "14px 16px" }}>
+                                          <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", textTransform: "uppercase", fontWeight: "600", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
+                                        </td>
+                                        <td style={{ padding: "14px 16px" }}>
+                                          <span style={{ fontSize: "0.8rem", color: "var(--ce-text)" }}>{room.participants?.length || 1} online</span>
+                                        </td>
+                                        <td style={{ padding: "14px 16px" }}>
+                                          <span style={{ fontSize: "0.8rem", color: "var(--ce-text)" }}>{isOwner ? "You" : room.createdBy?.username || "Collaborator"}</span>
+                                        </td>
+                                        <td style={{ padding: "14px 16px" }}>
+                                          <span style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)" }}>{new Date(room.updatedAt).toLocaleDateString()}</span>
+                                        </td>
+                                        <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                                          <button
+                                            onClick={() => handleJoinRoomDirect(room.roomId)}
+                                            className="ce-btn-primary"
+                                            style={{
+                                              padding: "6px 16px",
+                                              fontSize: "0.78rem",
+                                              fontWeight: "600",
+                                              background: "var(--ce-primary)",
+                                              color: "#fff",
+                                              border: "none",
+                                              borderRadius: "6px",
+                                              cursor: "pointer",
+                                              boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)"
+                                            }}
+                                          >
+                                            Resume
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
                         )}
                       </div>
                     )}
@@ -8868,6 +8869,19 @@ function Dashboard() {
               style={{ width: "100%", height: "100%" }}
             >
               <HelpDesk />
+            </motion.div>
+          )}
+
+          {activeSection === "planner" && (
+            <motion.div
+              key="planner"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <TaskPlanner />
             </motion.div>
           )}
 

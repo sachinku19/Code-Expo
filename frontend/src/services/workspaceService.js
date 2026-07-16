@@ -56,3 +56,8 @@ export const setFileEntryPoint = async (fileId) => {
   const response = await API.put(`/files/${fileId}/entry-point`, {}, getHeaders());
   return response.data;
 };
+
+export const getRoomHistory = async (roomId) => {
+  const response = await API.get(`/${roomId}/history`, getHeaders());
+  return response.data;
+};

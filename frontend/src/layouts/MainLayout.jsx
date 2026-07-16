@@ -9,7 +9,7 @@ import {
   Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
-  Gem, Sparkles
+  Gem, Sparkles, FolderKanban
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -124,15 +124,14 @@ export default function MainLayout({
 
         const formatted = filteredNotifications.map(n => ({
           id: n._id,
-          message: n.message || `${n.sender?.username || "Someone"} ${
-            n.type === "FOLLOW" ? "followed you" :
+          message: n.message || `${n.sender?.username || "Someone"} ${n.type === "FOLLOW" ? "followed you" :
             n.type === "LIKE" ? (n.targetPost ? `liked your post "${getPostSnippet(n.targetPost)}"` : `liked room "${n.targetRoom?.title || "workspace"}"`) :
-            n.type === "BOOKMARK" ? `bookmarked room "${n.targetRoom?.title || "workspace"}"` :
-            n.type === "JOIN" ? `wants to join "${n.targetRoom?.title || "workspace"}"` :
-            n.type === "INVITE" ? `invited you to join workspace "${n.targetRoom?.title || "workspace"}"` :
-            n.type === "COMMENT" ? `commented on your post "${getPostSnippet(n.targetPost)}"` :
-            "sent you a notification"
-          }`,
+              n.type === "BOOKMARK" ? `bookmarked room "${n.targetRoom?.title || "workspace"}"` :
+                n.type === "JOIN" ? `wants to join "${n.targetRoom?.title || "workspace"}"` :
+                  n.type === "INVITE" ? `invited you to join workspace "${n.targetRoom?.title || "workspace"}"` :
+                    n.type === "COMMENT" ? `commented on your post "${getPostSnippet(n.targetPost)}"` :
+                      "sent you a notification"
+            }`,
           time: n.createdAt,
           type: n.type,
           roomId: n.targetRoom?.roomId
@@ -177,15 +176,15 @@ export default function MainLayout({
           const parsed = JSON.parse(storedUser);
           currentUserId = parsed?.id || parsed?._id || currentUserId;
         }
-      } catch (err) {}
+      } catch (err) { }
 
       const senderId = msg.sender?._id || msg.sender?.id || msg.sender;
       const isMyMessage = senderId && currentUserId && String(senderId) === String(currentUserId);
-      
+
       if (!isMyMessage) {
         setUnreadMessageCount(c => c + 1);
       }
-      
+
       const dmTonesEnabled = localStorage.getItem("send_message_notification") !== "false";
       if (dmTonesEnabled) {
         dmReceiveAudio.currentTime = 0;
@@ -221,15 +220,14 @@ export default function MainLayout({
     const handleRealtimeNotif = (notif) => {
       const formatted = {
         id: notif._id,
-        message: `${notif.sender?.username || "Someone"} ${
-          notif.type === "FOLLOW" ? "followed you" :
+        message: `${notif.sender?.username || "Someone"} ${notif.type === "FOLLOW" ? "followed you" :
           notif.type === "LIKE" ? (notif.targetPost ? `liked your post "${getPostSnippet(notif.targetPost)}"` : `liked room "${notif.targetRoom?.title || "workspace"}"`) :
-          notif.type === "BOOKMARK" ? `bookmarked room "${notif.targetRoom?.title || "workspace"}"` :
-          notif.type === "JOIN" ? `wants to join "${notif.targetRoom?.title || "workspace"}"` :
-          notif.type === "INVITE" ? `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"` :
-          notif.type === "COMMENT" ? `commented on your post "${getPostSnippet(notif.targetPost)}"` :
-          "sent you a notification"
-        }`,
+            notif.type === "BOOKMARK" ? `bookmarked room "${notif.targetRoom?.title || "workspace"}"` :
+              notif.type === "JOIN" ? `wants to join "${notif.targetRoom?.title || "workspace"}"` :
+                notif.type === "INVITE" ? `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"` :
+                  notif.type === "COMMENT" ? `commented on your post "${getPostSnippet(notif.targetPost)}"` :
+                    "sent you a notification"
+          }`,
         time: notif.createdAt,
         type: notif.type,
         roomId: notif.targetRoom?.roomId
@@ -763,7 +761,7 @@ export default function MainLayout({
 
     window.showLoader("Logging you out securely...");
     logoutUser().catch(err => console.error("Logout error:", err));
-    
+
     // Preserve local preferences, read stories, and dismissed ads cache
     const preservedKeys = [];
     const prefixesToPreserve = [
@@ -786,20 +784,20 @@ export default function MainLayout({
       "ce_activeRoomsTab",
       "ce_adminActiveTab"
     ];
-    
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && prefixesToPreserve.some(prefix => key.startsWith(prefix))) {
         preservedKeys.push({ key, value: localStorage.getItem(key) });
       }
     }
-    
+
     localStorage.clear();
-    
+
     preservedKeys.forEach(item => {
       localStorage.setItem(item.key, item.value);
     });
-    
+
     window.location.href = "/login";
   };
 
@@ -814,6 +812,7 @@ export default function MainLayout({
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
+    { id: "planner", label: "Task Planner", icon: FolderKanban, path: "/dashboard?tab=planner" },
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
     { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
     { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard?tab=helpdesk" },

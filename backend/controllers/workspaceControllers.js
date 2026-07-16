@@ -14,6 +14,30 @@ const checkRoomAccess = async (roomId, userId) => {
   return null;
 };
 
+// Helper: Check if user has permission to modify workspace items (renaming, moving, deleting, saving content)
+const canModifyItem = (room, item, userId) => {
+  // If the user is the room owner/creator, they can edit anything
+  if (room.createdBy.toString() === userId.toString()) return true;
+
+  const participant = room.participants.find(
+    (p) => p.user && p.user.toString() === userId.toString()
+  );
+  if (!participant) return false;
+
+  // VIEWER cannot edit anything
+  if (participant.role === "VIEWER") return false;
+
+  // OWNER and MODERATOR can edit everything
+  if (participant.role === "OWNER" || participant.role === "MODERATOR") return true;
+
+  // MEMBER can only edit files they created
+  if (participant.role === "MEMBER") {
+    return !item.createdBy || item.createdBy.toString() === userId.toString();
+  }
+
+  return false;
+};
+
 // Helper: Check for cyclic loop when moving a folder
 const wouldCreateCycle = async (itemId, targetParentId) => {
   if (!targetParentId) return false;
@@ -60,6 +84,7 @@ exports.getWorkspaceTree = async (req, res) => {
 
     const items = await WorkspaceItem.find({ roomId })
       .select("-content")
+      .populate("createdBy", "username avatar")
       .sort({ type: 1, name: 1 }); // Folders first, then alphabetically
 
     res.status(200).json({
@@ -78,7 +103,7 @@ exports.getWorkspaceTree = async (req, res) => {
 exports.getFileContent = async (req, res) => {
   try {
     const { fileId } = req.params;
-    const file = await WorkspaceItem.findById(fileId);
+    const file = await WorkspaceItem.findById(fileId).populate("createdBy", "username avatar");
     if (!file || file.type !== "file") {
       return res.status(404).json({
         success: false,
@@ -117,6 +142,16 @@ exports.createWorkspaceItem = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to modify this workspace"
+      });
+    }
+
+    const participant = room.participants.find(
+      (p) => p.user && p.user.toString() === req.user._id.toString()
+    );
+    if (participant && participant.role === "VIEWER") {
+      return res.status(403).json({
+        success: false,
+        message: "Viewers are not authorized to create workspace items"
       });
     }
 
@@ -162,6 +197,8 @@ exports.createWorkspaceItem = async (req, res) => {
       createdBy: req.user._id
     });
 
+    const populatedItem = await WorkspaceItem.findById(newItem._id).populate("createdBy", "username avatar");
+
     logActivity(
       req.user._id,
       req.user.username,
@@ -172,7 +209,7 @@ exports.createWorkspaceItem = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      item: newItem
+      item: populatedItem
     });
   } catch (error) {
     res.status(500).json({
@@ -204,6 +241,13 @@ exports.renameWorkspaceItem = async (req, res) => {
       });
     }
 
+    if (!canModifyItem(room, item, req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to rename this item. Only the creator or room administrators can modify it."
+      });
+    }
+
     // Check duplicates under the same parent
     const existing = await WorkspaceItem.findOne({
       roomId: item.roomId,
@@ -222,6 +266,8 @@ exports.renameWorkspaceItem = async (req, res) => {
     item.name = name;
     await item.save();
 
+    const populatedItem = await WorkspaceItem.findById(item._id).populate("createdBy", "username avatar");
+
     logActivity(
       req.user._id,
       req.user.username,
@@ -232,7 +278,7 @@ exports.renameWorkspaceItem = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      item
+      item: populatedItem
     });
   } catch (error) {
     res.status(500).json({
@@ -261,6 +307,13 @@ exports.moveWorkspaceItem = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to modify this item"
+      });
+    }
+
+    if (!canModifyItem(room, item, req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to move this item. Only the creator or room administrators can modify it."
       });
     }
 
@@ -315,6 +368,8 @@ exports.moveWorkspaceItem = async (req, res) => {
     item.parentId = parentId || null;
     await item.save();
 
+    const populatedItem = await WorkspaceItem.findById(item._id).populate("createdBy", "username avatar");
+
     logActivity(
       req.user._id,
       req.user.username,
@@ -325,7 +380,7 @@ exports.moveWorkspaceItem = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      item
+      item: populatedItem
     });
   } catch (error) {
     res.status(500).json({
@@ -353,6 +408,13 @@ exports.deleteWorkspaceItem = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to delete this item"
+      });
+    }
+
+    if (!canModifyItem(room, item, req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to delete this item. Only the creator or room administrators can modify it."
       });
     }
 
@@ -403,6 +465,13 @@ exports.saveFileContent = async (req, res) => {
       });
     }
 
+    if (!canModifyItem(room, file, req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to edit this file. Only the creator or room administrators can modify it."
+      });
+    }
+
     if (content && content.split(/\r?\n/).length > 1000) {
       return res.status(400).json({
         success: false,
@@ -446,6 +515,13 @@ exports.setFileEntryPoint = async (req, res) => {
       });
     }
 
+    if (!canModifyItem(room, file, req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to modify this file. Only the creator or room administrators can modify it."
+      });
+    }
+
     const wasEntryPoint = file.isEntryPoint;
 
     // Set all files in this room to false
@@ -477,6 +553,46 @@ exports.setFileEntryPoint = async (req, res) => {
       message: !wasEntryPoint
         ? `Successfully set "${file.name}" as compilation entry point`
         : `Successfully removed "${file.name}" as compilation entry point`
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// 9. Get Room Activity History (Only Room Owner/Creator)
+exports.getRoomHistory = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const Room = require("../models/Room");
+    const Activity = require("../models/Activity");
+
+    const room = await Room.findOne({ roomId });
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Room not found"
+      });
+    }
+
+    // Only Room Owner/Creator is authorized
+    const isCreator = room.createdBy.toString() === req.user._id.toString();
+    if (!isCreator) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the Room Owner is authorized to view room history"
+      });
+    }
+
+    const history = await Activity.find({ room: room._id })
+      .populate("user", "username email avatar")
+      .sort({ timestamp: -1 });
+
+    res.status(200).json({
+      success: true,
+      history
     });
   } catch (error) {
     res.status(500).json({

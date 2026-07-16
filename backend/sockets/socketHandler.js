@@ -13,6 +13,7 @@ const Y = require("yjs");
 
 // Active Yjs docs in memory
 const activeYDocs = {}; // fileId -> Y.Doc
+const activeYDocsCreatedBy = {}; // fileId -> createdBy string
 const pendingYDocSaves = {}; // fileId -> setTimeout ID
 const fileSockets = {}; // fileId -> Set of socket.ids
 
@@ -98,6 +99,12 @@ const getUserRole = (roomId, socketId) => {
   if (!roomId || !roomUsers[roomId]) return null;
   const user = roomUsers[roomId].find(u => u.socketId === socketId);
   return user ? user.role : null;
+};
+
+const getSocketUserId = (roomId, socketId) => {
+  if (!roomId || !roomUsers[roomId]) return null;
+  const user = roomUsers[roomId].find(u => u.socketId === socketId);
+  return user ? user.userId : null;
 };
 
 const isUserMuted = (roomId, socketId) => {
@@ -841,6 +848,7 @@ const socketHandler = (io) => {
           ydoc = new Y.Doc();
           const file = await WorkspaceItem.findById(fileId);
           if (file) {
+            activeYDocsCreatedBy[fileId] = file.createdBy ? file.createdBy.toString() : "";
             if (file.yjsState) {
               Y.applyUpdate(ydoc, new Uint8Array(file.yjsState));
             } else if (file.content) {
@@ -848,6 +856,13 @@ const socketHandler = (io) => {
             }
           }
           activeYDocs[fileId] = ydoc;
+        } else {
+          if (activeYDocsCreatedBy[fileId] === undefined) {
+            const file = await WorkspaceItem.findById(fileId);
+            if (file) {
+              activeYDocsCreatedBy[fileId] = file.createdBy ? file.createdBy.toString() : "";
+            }
+          }
         }
 
         // Send initialization state to client
@@ -863,7 +878,18 @@ const socketHandler = (io) => {
     });
 
     socket.on("yjs:update", ({ roomId, fileId, update }) => {
-      if (getUserRole(roomId, socket.id) === "VIEWER") return;
+      const role = getUserRole(roomId, socket.id);
+      if (role === "VIEWER") return;
+
+      // MEMBER can only edit files they created
+      if (role === "MEMBER") {
+        const creatorId = activeYDocsCreatedBy[fileId];
+        const userId = getSocketUserId(roomId, socket.id);
+        if (creatorId && userId && creatorId !== String(userId)) {
+          return; // Ignore edit updates from unauthorized members
+        }
+      }
+
       try {
         const ydoc = activeYDocs[fileId];
         if (ydoc && update) {
@@ -910,6 +936,7 @@ const socketHandler = (io) => {
             }
           ).catch(err => console.error("Error on final Yjs save:", err.message));
           delete activeYDocs[fileId];
+          delete activeYDocsCreatedBy[fileId];
           console.log(`🧹 Cleaned up inactive Yjs Doc for file: ${fileId}`);
         }
       }

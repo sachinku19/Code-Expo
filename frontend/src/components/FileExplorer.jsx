@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 export default function FileExplorer({
   roomId,
   currentUser,
+  currentUserRole = "MEMBER",
   activeFileId,
   onFileSelect,
   openTabs,
@@ -31,6 +32,15 @@ export default function FileExplorer({
   const [items, setItems] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [loading, setLoading] = useState(true);
+
+  const canModifyItem = (item) => {
+    if (currentUserRole === "OWNER" || currentUserRole === "MODERATOR") return true;
+    if (currentUserRole === "VIEWER") return false;
+    // MEMBER role: only their own items
+    const creatorId = item?.createdBy?._id || item?.createdBy;
+    const currentUserId = currentUser?.id || currentUser?._id;
+    return !creatorId || String(creatorId) === String(currentUserId);
+  };
 
   // States for new items creation
   const [creatingType, setCreatingType] = useState(null); // 'file' | 'folder' | null
@@ -354,6 +364,12 @@ export default function FileExplorer({
     const itemId = e.dataTransfer.getData("text/plain");
     if (!itemId) return;
 
+    const itemToMove = items.find(i => i._id === itemId);
+    if (!itemToMove || !canModifyItem(itemToMove)) {
+      toast.error("You are not authorized to move this item");
+      return;
+    }
+
     // If targetItem is a folder, move inside it. If it's a file, move inside targetItem's parent folder.
     let parentId = null;
     if (targetItem) {
@@ -386,6 +402,10 @@ export default function FileExplorer({
   const handleContextMenu = (e, item) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Viewers have no context menu options at all
+    if (currentUserRole === "VIEWER") return;
+
     setSelectedItemId(item._id);
     setContextMenu({
       x: e.clientX,
@@ -412,7 +432,7 @@ export default function FileExplorer({
               <div
                 key={item._id}
                 className="tree-node-wrapper"
-                draggable
+                draggable={canModifyItem(item)}
                 onDragStart={(e) => handleDragStart(e, item)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, item)}
@@ -453,16 +473,18 @@ export default function FileExplorer({
                     <span className="node-name">{item.name}</span>
                   )}
 
-                  <button
-                    className="node-options-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleContextMenu(e, item);
-                    }}
-                    title="More Options..."
-                  >
-                    <MoreVertical size={13} />
-                  </button>
+                  {currentUserRole !== "VIEWER" && (
+                    <button
+                      className="node-options-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleContextMenu(e, item);
+                      }}
+                      title="More Options..."
+                    >
+                      <MoreVertical size={13} />
+                    </button>
+                  )}
                 </div>
 
                 {isExpanded && (
@@ -500,7 +522,7 @@ export default function FileExplorer({
               <div
                 key={item._id}
                 className={`tree-node-wrapper`}
-                draggable
+                draggable={canModifyItem(item)}
                 onDragStart={(e) => handleDragStart(e, item)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, item)}
@@ -537,16 +559,18 @@ export default function FileExplorer({
                     </span>
                   )}
 
-                  <button
-                    className="node-options-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleContextMenu(e, item);
-                    }}
-                    title="More Options..."
-                  >
-                    <MoreVertical size={13} />
-                  </button>
+                  {currentUserRole !== "VIEWER" && (
+                    <button
+                      className="node-options-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleContextMenu(e, item);
+                      }}
+                      title="More Options..."
+                    >
+                      <MoreVertical size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -565,24 +589,26 @@ export default function FileExplorer({
       {/* Explorer Controls Toolbar */}
       <div className="explorer-sec-header">
         <span>Workspace Files</span>
-        <div className="explorer-header-actions">
-          <button
-            type="button"
-            className="action-btn-mini"
-            onClick={() => triggerCreateNewItem("file")}
-            title="Create New File"
-          >
-            <FilePlus size={13} />
-          </button>
-          <button
-            type="button"
-            className="action-btn-mini"
-            onClick={() => triggerCreateNewItem("folder")}
-            title="Create New Folder"
-          >
-            <FolderPlus size={13} />
-          </button>
-        </div>
+        {currentUserRole !== "VIEWER" && (
+          <div className="explorer-header-actions">
+            <button
+              type="button"
+              className="action-btn-mini"
+              onClick={() => triggerCreateNewItem("file")}
+              title="Create New File"
+            >
+              <FilePlus size={13} />
+            </button>
+            <button
+              type="button"
+              className="action-btn-mini"
+              onClick={() => triggerCreateNewItem("folder")}
+              title="Create New Folder"
+            >
+              <FolderPlus size={13} />
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -669,36 +695,42 @@ export default function FileExplorer({
                 </li>
               </>
             ) : (
+              canModifyItem(contextMenu.item) && (
+                <li
+                  onClick={() => {
+                    handleSetEntryPoint(contextMenu.itemId);
+                    setContextMenu(null);
+                  }}
+                >
+                  <Play size={13} />
+                  <span>{contextMenu.item.isEntryPoint ? "Unset Main File" : "Set as Main File"}</span>
+                </li>
+              )
+            )}
+            {canModifyItem(contextMenu.item) && (
               <li
                 onClick={() => {
-                  handleSetEntryPoint(contextMenu.itemId);
+                  setRenamingItemId(contextMenu.itemId);
+                  setRenameValue(contextMenu.item.name);
                   setContextMenu(null);
                 }}
               >
-                <Play size={13} />
-                <span>{contextMenu.item.isEntryPoint ? "Unset Main File" : "Set as Main File"}</span>
+                <Edit2 size={13} />
+                <span>Rename</span>
               </li>
             )}
-            <li
-              onClick={() => {
-                setRenamingItemId(contextMenu.itemId);
-                setRenameValue(contextMenu.item.name);
-                setContextMenu(null);
-              }}
-            >
-              <Edit2 size={13} />
-              <span>Rename</span>
-            </li>
-            <li
-              className="delete-item"
-              onClick={() => {
-                handleDeleteItem(contextMenu.itemId);
-                setContextMenu(null);
-              }}
-            >
-              <Trash2 size={13} />
-              <span>Delete</span>
-            </li>
+            {canModifyItem(contextMenu.item) && (
+              <li
+                className="delete-item"
+                onClick={() => {
+                  handleDeleteItem(contextMenu.itemId);
+                  setContextMenu(null);
+                }}
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </li>
+            )}
           </ul>
         </>
       )}

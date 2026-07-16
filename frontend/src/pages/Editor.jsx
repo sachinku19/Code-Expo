@@ -13,6 +13,7 @@ import { runCode } from "../services/compilerService";
 import { getMessage } from "../services/messageService";
 import Whiteboard from "../components/Whiteboard";
 import FileExplorer from "../components/FileExplorer";
+import TaskPlanner from "../components/planner/TaskPlanner";
 import ReportUserModal from "../components/social/ReportUserModal";
 import * as workspaceService from "../services/workspaceService";
 import * as collabService from "../services/collaborationService";
@@ -79,7 +80,10 @@ import {
   VideoOff,
   MoreVertical,
   Maximize2,
-  Minimize2
+  Minimize2,
+  FolderKanban,
+  Lock,
+  Scroll
 } from "lucide-react";
 import "./Editor.css";
 import GateOverlay from "../components/GateOverlay";
@@ -141,7 +145,7 @@ function Editor() {
   const [reportedTargetUser, setReportedTargetUser] = useState(null);
   const [reportEvidenceType, setReportEvidenceType] = useState("");
   const [reportEvidenceId, setReportEvidenceId] = useState("");
-  
+
   // Dropdown menu states
   const [activeWorkspaceMemberMenuId, setActiveWorkspaceMemberMenuId] = useState(null);
   const [activeWorkspaceMessageMenuId, setActiveWorkspaceMessageMenuId] = useState(null);
@@ -483,6 +487,16 @@ function Editor() {
   const [chatTab, setChatTab] = useState("room"); // 'room' | 'private'
   const [privateRecipient, setPrivateRecipient] = useState("");
   const [privateMessages, setPrivateMessages] = useState([]);
+
+  const privateRecipientRef = useRef(privateRecipient);
+  useEffect(() => {
+    privateRecipientRef.current = privateRecipient;
+  }, [privateRecipient]);
+
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [roomTabUnread, setRoomTabUnread] = useState(false);
@@ -1136,6 +1150,30 @@ function Editor() {
   useEffect(() => {
     localStorage.setItem("ce_editor_leftActiveTab", leftActiveTab);
   }, [leftActiveTab]);
+
+  const [roomHistory, setRoomHistory] = useState([]);
+  const [roomHistoryLoading, setRoomHistoryLoading] = useState(false);
+
+  const fetchRoomHistory = async () => {
+    setRoomHistoryLoading(true);
+    try {
+      const res = await workspaceService.getRoomHistory(roomId);
+      if (res.success) {
+        setRoomHistory(res.history || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch room history:", err);
+    } finally {
+      setRoomHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (leftActiveTab === "history" && !leftSidebarCollapsed) {
+      fetchRoomHistory();
+    }
+  }, [leftActiveTab, leftSidebarCollapsed]);
+
   const [sidebarWidth, setSidebarWidth] = useState(320); // Left sidebar width in pixels
   const [isResizing, setIsResizing] = useState(false); // Global resizing lock state
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
@@ -1463,7 +1501,7 @@ function Editor() {
 
     window.showLoader("Logging you out securely...");
     logoutUser().catch(err => console.error("Logout error:", err));
-    
+
     // Preserve local preferences, read stories, and dismissed ads cache
     const preservedKeys = [];
     const prefixesToPreserve = [
@@ -1486,20 +1524,20 @@ function Editor() {
       "ce_activeRoomsTab",
       "ce_adminActiveTab"
     ];
-    
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && prefixesToPreserve.some(prefix => key.startsWith(prefix))) {
         preservedKeys.push({ key, value: localStorage.getItem(key) });
       }
     }
-    
+
     localStorage.clear();
-    
+
     preservedKeys.forEach(item => {
       localStorage.setItem(item.key, item.value);
     });
-    
+
     window.location.href = "/login";
   };
 
@@ -1985,8 +2023,8 @@ function Editor() {
 
     const handleRoomUsers = (usersList) => {
       setUsers(usersList);
-      if (usersList.length > 0 && !privateRecipient) {
-        const firstOther = usersList.find((u) => u.userId !== user.id);
+      if (usersList.length > 0 && !privateRecipientRef.current) {
+        const firstOther = usersList.find((u) => u.userId !== userRef.current.id);
         if (firstOther) setPrivateRecipient(firstOther.socketId);
       }
     };
@@ -2032,10 +2070,19 @@ function Editor() {
         ...newMsg,
         createdAt: newMsg.createdAt || new Date().toISOString()
       };
+      const getMsgId = (m) => String(m?._id || m?.id || "");
+      const newId = getMsgId(newMsg);
+
       if (newMsg.isPrivate) {
-        setPrivateMessages((prev) => [...prev, msgWithTime]);
+        setPrivateMessages((prev) => {
+          if (newId && prev.some((m) => getMsgId(m) === newId)) return prev;
+          return [...prev, msgWithTime];
+        });
       } else {
-        setMessages((prev) => [...prev, msgWithTime]);
+        setMessages((prev) => {
+          if (newId && prev.some((m) => getMsgId(m) === newId)) return prev;
+          return [...prev, msgWithTime];
+        });
       }
     };
 
@@ -2183,7 +2230,7 @@ function Editor() {
 
     const handleRoleChanged = ({ userId, role }) => {
       fetchRoom();
-      if (String(userId) === String(user.id)) {
+      if (String(userId) === String(userRef.current.id)) {
         triggerNotification(`Your role has been changed to ${role}`);
       }
     };
@@ -2200,7 +2247,7 @@ function Editor() {
 
     const handleUserKicked = ({ userId }) => {
       fetchRoom();
-      if (String(userId) === String(user.id)) {
+      if (String(userId) === String(userRef.current.id)) {
         setKickMessage("You have been kicked from the room.");
         setDuplicateSessionModalOpen(true);
       }
@@ -2212,11 +2259,11 @@ function Editor() {
         if (data && data.room) {
           setRoom(data.room);
 
-          if (String(userId) === String(user.id)) {
+          if (String(userId) === String(userRef.current.id)) {
             triggerNotification(`You have been ${targetIsMuted ? "muted" : "unmuted"} in chat.`);
 
             const myParticipant = data.room.participants?.find(
-              (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
+              (p) => p.user && String(p.user._id || p.user) === String(userRef.current.id || userRef.current._id)
             );
             const myRole = myParticipant ? myParticipant.role : "MEMBER";
 
@@ -2330,46 +2377,83 @@ function Editor() {
       setActiveCallUsers(callUsersList || []);
     };
 
+    socket.off("user-joined");
     socket.on("user-joined", handleUserJoined);
+    socket.off("room-users");
     socket.on("room-users", handleRoomUsers);
+    socket.off("user-avatar-updated");
     socket.on("user-avatar-updated", handleUserAvatarUpdated);
+    socket.off("receive-code");
     socket.on("receive-code", handleReceiveCode);
+    socket.off("receive-file-content");
     socket.on("receive-file-content", handleReceiveFileContent);
+    socket.off("Receive-Message");
     socket.on("Receive-Message", handleReceiveMessage);
+    socket.off("join-request");
     socket.on("join-request", handleJoinRequest);
+    socket.off("user-left");
     socket.on("user-left", handleUserLeft);
+    socket.off("code-cursor-move");
     socket.on("code-cursor-move", handleCodeCursorMove);
+    socket.off("whiteboard-activity");
     socket.on("whiteboard-activity", handleWhiteboardActivity);
+    socket.off("room-deleted");
     socket.on("room-deleted", handleRoomDeleted);
+    socket.off("already-online");
     socket.on("already-online", handleAlreadyOnline);
+    socket.off("kicked");
     socket.on("kicked", handleKicked);
+    socket.off("layout-change");
     socket.on("layout-change", handleLayoutChange);
+    socket.off("message-deleted");
     socket.on("message-deleted", handleMessageDeleted);
+    socket.off("terminal-output");
     socket.on("terminal-output", handleTerminalOutput);
+    socket.off("terminal-exit");
     socket.on("terminal-exit", handleTerminalExit);
+    socket.off("role-changed");
     socket.on("role-changed", handleRoleChanged);
+    socket.off("member-promoted");
     socket.on("member-promoted", handleMemberPromoted);
+    socket.off("member-demoted");
     socket.on("member-demoted", handleMemberDemoted);
+    socket.off("user-kicked");
     socket.on("user-kicked", handleUserKicked);
+    socket.off("mute-status-changed");
     socket.on("mute-status-changed", handleMuteStatusChanged);
+    socket.off("chat-muted-alert");
     socket.on("chat-muted-alert", handleChatMutedAlert);
 
     // Collaboration Socket Bindings
+    socket.off("cursor:update");
     socket.on("cursor:update", handleCursorUpdate);
+    socket.off("cursor:remove");
     socket.on("cursor:remove", handleCursorRemove);
+    socket.off("line:ownership:update");
     socket.on("line:ownership:update", handleLineOwnershipUpdate);
+    socket.off("activity:add");
     socket.on("activity:add", handleActivityAdd);
+    socket.off("version:create");
     socket.on("version:create", handleVersionCreate);
+    socket.off("user:join");
     socket.on("user:join", handleUserJoin);
+    socket.off("user:leave");
     socket.on("user:leave", handleUserLeave);
 
     // WebRTC signaling listeners
+    socket.off("user-joined-call");
     socket.on("user-joined-call", handleUserJoinedCall);
+    socket.off("webrtc-offer");
     socket.on("webrtc-offer", handleWebRtcOffer);
+    socket.off("webrtc-answer");
     socket.on("webrtc-answer", handleWebRtcAnswer);
+    socket.off("webrtc-ice-candidate");
     socket.on("webrtc-ice-candidate", handleWebRtcIceCandidate);
+    socket.off("user-toggle-media");
     socket.on("user-toggle-media", handleUserToggleMedia);
+    socket.off("user-left-call");
     socket.on("user-left-call", handleUserLeftCall);
+    socket.off("active-call-users");
     socket.on("active-call-users", handleActiveCallUsers);
 
     return () => {
@@ -2415,7 +2499,7 @@ function Editor() {
       socket.off("user-left-call", handleUserLeftCall);
       socket.off("active-call-users", handleActiveCallUsers);
     };
-  }, [privateRecipient, user.id, roomId, layoutMode, activeFileId]);
+  }, [roomId, user.id]);
 
   // Fetch past messages
   useEffect(() => {
@@ -3131,7 +3215,7 @@ function Editor() {
   const handleExitWorkspaceAction = async () => {
     const confirmExit = await window.showConfirm("Are you sure you want to exit this workspace? Any unsaved edits will be lost.", "Exit Workspace", "exit-workspace");
     if (!confirmExit) return;
-    
+
     window.showLoader("Leaving workspace...");
     try {
       socket.emit("leave-room", { roomId });
@@ -3441,6 +3525,12 @@ function Editor() {
   const currentUserRole = currentUserParticipant ? currentUserParticipant.role : (isCurrentUserOwner ? "OWNER" : "MEMBER");
   const showCallButtons = !room?.isPrivate || isCurrentUserOwner;
 
+  const activeFile = tabs.find((t) => t._id === activeFileId);
+  const activeFileCreatedBy = activeFile?.createdBy?._id || activeFile?.createdBy;
+  const isMemberReadOnly = currentUserRole === "MEMBER" && activeFileCreatedBy && String(activeFileCreatedBy) !== String(user.id || user._id);
+  const isEditorReadOnly = isPlaybackActive || currentUserRole === "VIEWER" || isMemberReadOnly;
+  const creatorUsername = activeFile?.createdBy?.username || "another member";
+
   return (
     <MainLayout
       roomId={roomId}
@@ -3531,6 +3621,21 @@ function Editor() {
               >
                 <History size={20} />
               </button>
+              {isCurrentUserOwner && (
+                <button
+                  className={`sidebar-tab-btn ${leftActiveTab === "history" && !leftSidebarCollapsed ? "active" : ""}`}
+                  onClick={() => {
+                    if (leftActiveTab === "history") setLeftSidebarCollapsed(!leftSidebarCollapsed);
+                    else {
+                      setLeftActiveTab("history");
+                      setLeftSidebarCollapsed(false);
+                    }
+                  }}
+                  title="Room History"
+                >
+                  <Scroll size={20} />
+                </button>
+              )}
               <button
                 className={`sidebar-tab-btn ${leftActiveTab === "settings" && !leftSidebarCollapsed ? "active" : ""}`}
                 onClick={() => {
@@ -3554,6 +3659,7 @@ function Editor() {
                   {leftActiveTab === "notes" && "Workspace Notes"}
                   {leftActiveTab === "activity" && "Activity Logs"}
                   {leftActiveTab === "versions" && "Version History"}
+                  {leftActiveTab === "history" && "Room History"}
                   {leftActiveTab === "settings" && "Workspace Settings"}
                 </span>
                 <button
@@ -3569,6 +3675,7 @@ function Editor() {
                   <FileExplorer
                     roomId={roomId}
                     currentUser={user}
+                    currentUserRole={currentUserRole}
                     activeFileId={activeFileId}
                     onFileSelect={handleFileSelect}
                     openTabs={tabs}
@@ -3812,6 +3919,62 @@ function Editor() {
                         <h4 className="empty-state-title">No snapshots yet</h4>
                         <p className="empty-state-desc">
                           Click "Snapshot" above to capture a point-in-time state of your code to compare and restore later.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {leftActiveTab === "history" && (
+                  <div className="room-history-timeline-pane" style={{ padding: "16px", display: "flex", flexDirection: "column", height: "100%", overflowY: "auto" }}>
+                    <div className="room-history-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>Creator Audit Logs</span>
+                      <button 
+                        onClick={fetchRoomHistory}
+                        disabled={roomHistoryLoading}
+                        style={{ background: "transparent", border: "none", color: "var(--ce-accent, #6366f1)", cursor: "pointer", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px" }}
+                      >
+                        {roomHistoryLoading ? "Refreshing..." : "Refresh"}
+                      </button>
+                    </div>
+
+                    {roomHistoryLoading ? (
+                      <div style={{ textAlign: "center", padding: "20px", color: "#6b7280", fontSize: "0.8rem" }}>
+                        Loading audit logs...
+                      </div>
+                    ) : roomHistory.length > 0 ? (
+                      <div className="room-history-list" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {roomHistory.map((item) => (
+                          <div 
+                            key={item._id} 
+                            style={{ 
+                              background: "rgba(255, 255, 255, 0.02)", 
+                              border: "1px solid rgba(255, 255, 255, 0.05)", 
+                              padding: "10px", 
+                              borderRadius: "8px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "4px"
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.68rem", color: "#6b7280" }}>
+                              <span style={{ fontWeight: 600, color: "var(--ce-accent, #818cf8)" }}>@{item.username}</span>
+                              <span>{new Date(item.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}</span>
+                            </div>
+                            <div style={{ fontSize: "0.78rem", color: "#d1d5db" }}>
+                              {item.action}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="activity-empty-state" style={{ textAlign: "center", padding: "30px 10px", color: "#4b5563" }}>
+                        <div className="empty-state-icon-wrapper" style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}>
+                          <Scroll size={24} />
+                        </div>
+                        <h4 className="empty-state-title" style={{ fontSize: "0.85rem", fontWeight: 700, color: "#9ca3af", margin: "0 0 4px 0" }}>No history logs yet</h4>
+                        <p className="empty-state-desc" style={{ fontSize: "0.75rem", margin: 0 }}>
+                          Workspace creation and modification logs will appear here.
                         </p>
                       </div>
                     )}
@@ -4139,6 +4302,17 @@ function Editor() {
                     <Palette size={12} />
                     <span>Board</span>
                   </button>
+                  {currentUserRole !== "VIEWER" && (
+                    <button
+                      type="button"
+                      className={`layout-switcher-btn ${layoutMode === "planner" ? "active" : ""}`}
+                      onClick={() => changeLayoutMode("planner")}
+                      title="Task Planner Fullscreen"
+                    >
+                      <FolderKanban size={12} />
+                      <span>Tasks</span>
+                    </button>
+                  )}
                 </div>
 
                 <select className="ce-select-box" value={editorLanguage} disabled>
@@ -4164,13 +4338,13 @@ function Editor() {
               <div
                 className="monaco-pane"
                 style={{
-                  width: layoutMode === "editor" ? "100%" : layoutMode === "whiteboard" ? "0%" : `${splitPercent}%`,
-                  display: layoutMode === "whiteboard" ? "none" : "block"
+                  width: layoutMode === "editor" ? "100%" : (layoutMode === "whiteboard" || layoutMode === "planner") ? "0%" : `${splitPercent}%`,
+                  display: (layoutMode === "whiteboard" || layoutMode === "planner") ? "none" : "block"
                 }}
               >
                 <div className="ce-editor-pane-container" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                   {activeFileId && explorerPath.length > 0 && (
-                    <div className="ce-breadcrumbs-bar">
+                    <div className="ce-breadcrumbs-bar" style={{ display: "flex", alignItems: "center", width: "100%" }}>
                       <span className="ce-breadcrumbs-room">{room?.title || "Workspace"}</span>
                       {explorerPath.map((item) => (
                         <span key={item._id} className="ce-breadcrumbs-item-wrapper" style={{ display: "inline-flex", alignItems: "center" }}>
@@ -4185,6 +4359,11 @@ function Editor() {
                           </span>
                         </span>
                       ))}
+                      {isMemberReadOnly && (
+                        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#fca5a5", paddingRight: "8px" }}>
+                          <Lock size={12} /> Read-only (created by {creatorUsername})
+                        </span>
+                      )}
                     </div>
                   )}
                   {activeFileId ? (
@@ -4197,7 +4376,7 @@ function Editor() {
                         onChange={activeFileId ? undefined : handleEditorChange}
                         onMount={handleEditorMount}
                         options={{
-                          readOnly: isPlaybackActive || currentUserRole === "VIEWER",
+                          readOnly: isEditorReadOnly,
                           fontSize: editorFontSize,
                           fontFamily: editorFontFamily,
                           minimap: { enabled: editorShowMinimap },
@@ -4290,7 +4469,7 @@ function Editor() {
               )}
 
               {/* Collaborative Whiteboard Split Pane */}
-              {(layoutMode !== "editor" || mobileTab === "whiteboard") && (
+              {(layoutMode !== "editor" && layoutMode !== "planner" || mobileTab === "whiteboard") && (
                 <div
                   className="whiteboard-pane"
                   style={{ width: layoutMode === "whiteboard" ? "100%" : `${100 - splitPercent}%` }}
@@ -4301,6 +4480,16 @@ function Editor() {
                     currentUser={user}
                     room={room}
                   />
+                </div>
+              )}
+
+              {/* Collaborative Task Planner Pane */}
+              {layoutMode === "planner" && (
+                <div
+                  className="planner-pane"
+                  style={{ width: "100%", height: "100%", background: "#0b0b0e", overflowY: "auto" }}
+                >
+                  <TaskPlanner roomId={roomId} />
                 </div>
               )}
             </div>
@@ -4344,8 +4533,8 @@ function Editor() {
                         <Download size={13} />
                         <span>Save</span>
                       </button>
-                      <button 
-                        className={`ce-btn-run ${isTerminalExecuting ? "running" : ""} ${runCooldownSeconds > 0 ? "cooldown" : ""}`} 
+                      <button
+                        className={`ce-btn-run ${isTerminalExecuting ? "running" : ""} ${runCooldownSeconds > 0 ? "cooldown" : ""}`}
                         onClick={handleRunCode}
                         disabled={isTerminalExecuting || runCooldownSeconds > 0}
                       >
@@ -4355,10 +4544,10 @@ function Editor() {
                           <Play size={13} />
                         )}
                         <span>
-                          {isTerminalExecuting 
-                            ? "Running..." 
-                            : runCooldownSeconds > 0 
-                              ? `Wait ${runCooldownSeconds}s` 
+                          {isTerminalExecuting
+                            ? "Running..."
+                            : runCooldownSeconds > 0
+                              ? `Wait ${runCooldownSeconds}s`
                               : "Run Program"}
                         </span>
                       </button>
@@ -5712,8 +5901,8 @@ function Editor() {
                   onClick={handleSendInvites}
                   disabled={selectedFollowers.size === 0 || sendingInvites}
                   style={{
-                    background: selectedFollowers.size > 0 
-                      ? "var(--ce-primary)" 
+                    background: selectedFollowers.size > 0
+                      ? "var(--ce-primary)"
                       : (editorTheme === "light" ? "rgba(139, 92, 246, 0.25)" : "rgba(170, 59, 255, 0.3)"),
                     color: "#ffffff",
                     border: "none",

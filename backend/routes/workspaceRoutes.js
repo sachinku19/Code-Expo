@@ -8,12 +8,14 @@ const {
   moveWorkspaceItem,
   deleteWorkspaceItem,
   saveFileContent,
-  setFileEntryPoint
+  setFileEntryPoint,
+  getRoomHistory
 } = require("../controllers/workspaceControllers");
 
 const router = express.Router();
 
 router.get("/:roomId/tree", auth_protect, getWorkspaceTree);
+router.get("/:roomId/history", auth_protect, getRoomHistory);
 router.get("/files/:fileId", auth_protect, getFileContent);
 router.post("/:roomId/item", auth_protect, createWorkspaceItem);
 router.put("/items/:itemId/rename", auth_protect, renameWorkspaceItem);
