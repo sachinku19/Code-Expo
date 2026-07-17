@@ -19,7 +19,8 @@ export default function TaskDetailsModal({
   userRole = "MEMBER", // role of current user if RoomTask
   onClose,
   onUpdateTask,
-  presenceList = []
+  presenceList = [],
+  onRefresh
 }) {
   const [checklist, setChecklist] = useState({ items: [] });
   const [newChecklistItem, setNewChecklistItem] = useState("");
@@ -190,6 +191,7 @@ export default function TaskDetailsModal({
       if (res.success) {
         setChecklist(res.checklist);
         setNewChecklistItem("");
+        if (onRefresh) onRefresh();
       }
     } catch (err) {
       console.error(err);
@@ -207,6 +209,7 @@ export default function TaskDetailsModal({
       });
       if (res.success) {
         setChecklist(res.checklist);
+        if (onRefresh) onRefresh();
       }
     } catch (err) {
       console.error(err);
@@ -220,6 +223,7 @@ export default function TaskDetailsModal({
       const res = await deleteChecklistItem(task._id, itemId);
       if (res.success) {
         setChecklist(res.checklist);
+        if (onRefresh) onRefresh();
       }
     } catch (err) {
       console.error(err);
@@ -273,6 +277,7 @@ export default function TaskDetailsModal({
       if (res.success) {
         setTimerRunning(true);
         localStorage.setItem(`timer_${task._id}`, new Date().toISOString());
+        if (onRefresh) onRefresh();
       }
     } catch (err) {
       alert(err.response?.data?.message || err.message);
@@ -285,6 +290,7 @@ export default function TaskDetailsModal({
       if (res.success) {
         setTimerRunning(false);
         localStorage.removeItem(`timer_${task._id}`);
+        if (onRefresh) onRefresh();
       }
     } catch (err) {
       console.error(err);

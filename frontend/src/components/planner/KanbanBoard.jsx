@@ -111,8 +111,9 @@ export default function KanbanBoard({
             {/* Cards container */}
             <div className={`kanban-column-cards ${isOver ? "drag-over" : ""}`}>
               {columnTasks.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "20px 0", color: "#4b5563", fontSize: "0.8rem", border: "1px dashed rgba(255,255,255,0.02)", borderRadius: "8px" }}>
-                  Empty column
+                <div className="kanban-empty-column">
+                  <CheckSquare size={16} style={{ opacity: 0.3, color: "var(--tp-accent)" }} />
+                  <span>No tasks here</span>
                 </div>
               ) : (
                 columnTasks.map((task) => {

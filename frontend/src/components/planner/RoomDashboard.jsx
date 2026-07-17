@@ -160,7 +160,7 @@ export default function RoomDashboard({ stats, onSelectTask, currentUser }) {
                 >
                   <span className="presence-dot" />
                   <span style={{ fontSize: "0.8rem", fontWeight: "700", color: "#4ade80" }}>@{s.user?.username}</span>
-                  <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>is working...</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--tp-text-secondary, #9ca3af)" }}>is working...</span>
                 </div>
               ))
             )}
@@ -189,15 +189,15 @@ export default function RoomDashboard({ stats, onSelectTask, currentUser }) {
                     <span style={{ fontSize: "0.75rem", background: "rgba(255, 255, 255, 0.05)", padding: "2px 8px", borderRadius: "4px" }}>
                       {t.status}
                     </span>
-                    <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "#fff" }}>{t.title}</span>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--tp-text-primary, #fff)" }}>{t.title}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     {t.dueDate && (
-                      <span style={{ fontSize: "0.72rem", color: "#9ca3af" }}>
+                      <span style={{ fontSize: "0.72rem", color: "var(--tp-text-secondary, #9ca3af)" }}>
                         Due: {new Date(t.dueDate).toLocaleDateString()}
                       </span>
                     )}
-                    <span style={{ fontSize: "0.7rem", color: t.priority === "Critical" ? "#f87171" : "#a5b4fc" }}>
+                    <span style={{ fontSize: "0.7rem", color: t.priority === "Critical" ? "#f87171" : "var(--tp-accent, #6366f1)" }}>
                       {t.priority}
                     </span>
                   </div>

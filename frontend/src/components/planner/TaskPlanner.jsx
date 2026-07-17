@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   FolderKanban, ClipboardList, LayoutDashboard, Search, Filter, ArrowUpDown,
-  Plus, Check, X, Calendar, AlertCircle, Play, ShieldAlert, Award, Loader2
+  Plus, Check, X, Calendar, AlertCircle, Play, ShieldAlert, Award, Loader2,
+  NotebookPen, ChevronDown, DoorOpen
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -27,12 +28,15 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
   
   // Tasks state
   const [tasks, setTasks] = useState([]);
-  const [dashboardStats, setDashboardStats] = useState(null);
+  const [personalStats, setPersonalStats] = useState(null);
+  const [roomStats, setRoomStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [myRooms, setMyRooms] = useState([]);
   const [selectedRoomId, setSelectedRoomId] = useState(editorRoomId || "");
   const [roomDetails, setRoomDetails] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState("MEMBER");
+  const [showRoomDropdown, setShowRoomDropdown] = useState(false);
 
   // Selected task details overlay
   const [selectedTask, setSelectedTask] = useState(null);
@@ -91,15 +95,15 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
   }, [editorRoomId]);
 
   // 2. Fetch data depending on active tab
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const isPersonal = activeTab.startsWith("personal");
       
       if (isPersonal) {
         if (activeTab === "personal_dashboard") {
           const res = await getPersonalDashboard();
-          if (res.success) setDashboardStats(res.stats);
+          if (res.success) setPersonalStats(res.stats);
         } else {
           // fetch list with active filters
           const res = await getPersonalTasks({
@@ -115,7 +119,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
         // Room based tabs
         const currentRoom = editorRoomId || selectedRoomId;
         if (!currentRoom) {
-          setIsLoading(false);
+          if (!silent) setIsLoading(false);
           return;
         }
 
@@ -130,7 +134,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
 
         if (activeTab === "room_dashboard") {
           const res = await getRoomDashboard(currentRoom);
-          if (res.success) setDashboardStats(res.stats);
+          if (res.success) setRoomStats(res.stats);
         } else {
           const res = await getRoomTasks(currentRoom, {
             search: searchQuery,
@@ -144,7 +148,8 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
     } catch (e) {
       console.error(e);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
+      setIsInitialLoad(false);
     }
   }, [activeTab, selectedRoomId, editorRoomId, searchQuery, filterPriority, filterStatus, filterCategory, sortOption, userId]);
 
@@ -193,6 +198,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
         if (newId && prev.some(t => getTaskId(t) === newId)) return prev;
         return [newTask, ...prev];
       });
+      fetchData(true);
     });
 
     plannerSocket.off("task-updated");
@@ -209,12 +215,14 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
       }
       setTasks((prev) => prev.map((t) => (t._id === updatedTask._id ? updatedTask : t)));
       setSelectedTask((curr) => (curr && curr._id === updatedTask._id ? updatedTask : curr));
+      fetchData(true);
     });
 
     plannerSocket.off("task-deleted");
     plannerSocket.on("task-deleted", ({ taskId }) => {
       setTasks((prev) => prev.filter((t) => t._id !== taskId));
       setSelectedTask((curr) => (curr && curr._id === taskId ? null : curr));
+      fetchData(true);
     });
 
     return () => {
@@ -225,22 +233,27 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
       plannerSocket.emit("leave-room");
       plannerSocket.disconnect();
     };
-  }, [activeTab, selectedRoomId, editorRoomId, userId, user?.username]);
+  }, [activeTab, selectedRoomId, editorRoomId, userId, user?.username, fetchData]);
 
   // 4. Update status with Optimistic UI updates
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    const targetTask = tasks.find(t => t._id === taskId);
+    const isPersonal = targetTask 
+      ? (targetTask.type === "personal" || (!targetTask.roomId && targetTask.type !== "room"))
+      : activeTab.startsWith("personal");
+
     // 1. Optimistic Update in State
     const previousTasks = [...tasks];
     setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: newStatus } : t));
 
     try {
-      const isPersonal = activeTab.startsWith("personal");
       if (isPersonal) {
         await updatePersonalTask(taskId, { status: newStatus });
       } else {
-        const currentRoom = editorRoomId || selectedRoomId;
-        await updateRoomTask(currentRoom, taskId, { status: newStatus });
+        const taskRoomId = targetTask?.roomId || editorRoomId || selectedRoomId;
+        await updateRoomTask(taskRoomId, taskId, { status: newStatus });
       }
+      fetchData(true);
     } catch (error) {
       // Revert on error
       setTasks(previousTasks);
@@ -251,19 +264,21 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
   // 5. General Task details modification in modal
   const handleUpdateTaskDetails = async (taskId, updatedFields) => {
     try {
-      const isPersonal = activeTab.startsWith("personal");
+      const isPersonal = selectedTask?.type === "personal" || (!selectedTask?.roomId && selectedTask?.type !== "room");
       if (isPersonal) {
         const res = await updatePersonalTask(taskId, updatedFields);
         if (res.success) {
           setTasks(prev => prev.map(t => t._id === taskId ? res.task : t));
           setSelectedTask(res.task);
+          fetchData(true);
         }
       } else {
-        const currentRoom = editorRoomId || selectedRoomId;
-        const res = await updateRoomTask(currentRoom, taskId, updatedFields);
+        const taskRoomId = selectedTask?.roomId || editorRoomId || selectedRoomId;
+        const res = await updateRoomTask(taskRoomId, taskId, updatedFields);
         if (res.success) {
           setTasks(prev => prev.map(t => t._id === taskId ? res.task : t));
           setSelectedTask(res.task);
+          fetchData(true);
         }
       }
     } catch (error) {
@@ -305,6 +320,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
           setTasks(prev => [res.task, ...prev]);
           setShowCreateModal(false);
           resetCreateForm();
+          fetchData(true);
         }
       } else {
         // Room Board tasks creation
@@ -406,28 +422,113 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
     </div>
   );
 
+  const isRoomTask = selectedTask?.type === "room" || !!selectedTask?.roomId;
+  const selectedTaskType = isRoomTask ? "RoomTask" : "PersonalTask";
+  const selectedTaskRoomId = selectedTask?.roomId || editorRoomId || selectedRoomId;
+  const selectedTaskRoomDetails = isRoomTask && myRooms.find(r => r.roomId === selectedTask?.roomId);
+  const selectedTaskRoomParticipants = selectedTaskRoomDetails ? (selectedTaskRoomDetails.participants || []) : (roomDetails?.participants || []);
+  const selectedTaskUserRole = selectedTaskRoomDetails
+    ? (selectedTaskRoomDetails.participants?.find(p => String(p.user?._id || p.user) === String(userId))?.role || "MEMBER")
+    : currentUserRole;
+
   return (
     <div className="task-planner-wrapper">
       
       {/* Header and Switcher tabs */}
       <div className="planner-header">
         <div className="planner-title-group">
-          <h1>⚡ Task Planner</h1>
+          <h1>
+            <NotebookPen size={22} className="planner-title-icon" style={{ verticalAlign: "middle", marginRight: "10px", color: "var(--tp-accent)" }} />
+            Task Planner
+          </h1>
 
           {/* Room Selector Dropdown when outside editor */}
           {!editorRoomId && (activeTab === "room_board" || activeTab === "room_dashboard") && myRooms.length > 0 && (
-            <select
-              className="tp-select room-select-dropdown"
-              value={selectedRoomId}
-              onChange={(e) => setSelectedRoomId(e.target.value)}
-              style={{ fontWeight: "600", border: "1px solid var(--tp-accent)" }}
-            >
-              {myRooms.map(room => (
-                <option key={room.roomId} value={room.roomId}>
-                  🚪 {room.roomName || room.roomId}
-                </option>
-              ))}
-            </select>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <button
+                className="custom-select-trigger room-select-dropdown"
+                onClick={() => setShowRoomDropdown(!showRoomDropdown)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontWeight: "600",
+                  padding: "7px 12px",
+                  borderRadius: "8px",
+                  background: "var(--tp-card-bg)",
+                  border: "1.5px solid var(--tp-accent)",
+                  color: "var(--tp-text-primary)",
+                  cursor: "pointer",
+                  fontSize: "0.825rem",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                <DoorOpen size={15} style={{ color: "var(--tp-accent)" }} />
+                <span>{myRooms.find(r => r.roomId === selectedRoomId)?.roomName || selectedRoomId}</span>
+                <ChevronDown size={14} style={{ opacity: 0.6 }} />
+              </button>
+
+              {showRoomDropdown && (
+                <>
+                  <div
+                    style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }}
+                    onClick={() => setShowRoomDropdown(false)}
+                  />
+                  <div
+                    className="room-dropdown-menu fade-in-up"
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 6px)",
+                      left: 0,
+                      zIndex: 999,
+                      background: "var(--tp-card-bg)",
+                      border: "1px solid var(--tp-border)",
+                      borderRadius: "8px",
+                      boxShadow: "var(--tp-shadow)",
+                      minWidth: "220px",
+                      padding: "4px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "2px"
+                    }}
+                  >
+                    {myRooms.map(room => {
+                      const isSelected = room.roomId === selectedRoomId;
+                      return (
+                        <button
+                          key={room.roomId}
+                          onClick={() => {
+                            setSelectedRoomId(room.roomId);
+                            setShowRoomDropdown(false);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            border: "none",
+                            background: isSelected ? "rgba(99, 102, 241, 0.08)" : "transparent",
+                            color: isSelected ? "var(--tp-accent)" : "var(--tp-text-primary)",
+                            fontWeight: isSelected ? "700" : "500",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            fontSize: "0.825rem",
+                            transition: "all 0.15s ease"
+                          }}
+                          className="room-dropdown-item"
+                        >
+                          <DoorOpen size={14} style={{ opacity: isSelected ? 1 : 0.6, color: isSelected ? "var(--tp-accent)" : "inherit" }} />
+                          <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", flexGrow: 1 }}>
+                            {room.roomName || room.roomId}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -467,18 +568,37 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
           )}
 
           {/* Create Task button */}
-          {(activeTab.startsWith("personal") || ["OWNER", "MODERATOR"].includes(currentUserRole)) && (
-            <button className="tp-btn-primary" onClick={() => setShowCreateModal(true)}>
-              <Plus size={16} />
-              <span>Create Task</span>
-            </button>
-          )}
+          <button className="tp-btn-primary" onClick={() => setShowCreateModal(true)}>
+            <Plus size={16} />
+            <span>Create Task</span>
+          </button>
         </div>
       </div>
 
+      {/* Loading Progress Bar Spacer Container */}
+      <div style={{ height: "3px", width: "100%", overflow: "hidden", position: "relative", marginBottom: "12px", borderRadius: "2px" }}>
+        {isLoading && !isInitialLoad && (
+          <div style={{
+            width: "100%",
+            height: "100%",
+            background: "var(--tp-accent, #6366f1)",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+            <div style={{
+              width: "100%",
+              height: "100%",
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
+              animation: "ce-loading-bar 1.2s infinite linear"
+            }} />
+          </div>
+        )}
+      </div>
+
       {/* Main Body Switcher */}
-      <div style={{ flexGrow: 1, minHeight: 0 }}>
-        {isLoading ? (
+      <div style={{ flexGrow: 1, minHeight: 0, position: "relative" }}>
+
+        {isLoading && isInitialLoad ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div className="skeleton-card" />
             <div className="skeleton-card" />
@@ -488,21 +608,35 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
           <>
             {activeTab === "personal_dashboard" && (
               <div className="fade-in-up">
-                <PersonalDashboard
-                  stats={dashboardStats}
-                  onSelectTask={setSelectedTask}
-                  activeTabChange={setActiveTab}
-                />
+                {!personalStats ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "20px" }}>
+                    <div className="skeleton-card" style={{ height: "180px" }} />
+                    <div className="skeleton-card" style={{ height: "180px" }} />
+                  </div>
+                ) : (
+                  <PersonalDashboard
+                    stats={personalStats}
+                    onSelectTask={setSelectedTask}
+                    activeTabChange={setActiveTab}
+                  />
+                )}
               </div>
             )}
 
             {activeTab === "room_dashboard" && (
               <div className="fade-in-up">
-                <RoomDashboard
-                  stats={dashboardStats}
-                  onSelectTask={setSelectedTask}
-                  currentUser={user}
-                />
+                {!roomStats ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "20px" }}>
+                    <div className="skeleton-card" style={{ height: "180px" }} />
+                    <div className="skeleton-card" style={{ height: "180px" }} />
+                  </div>
+                ) : (
+                  <RoomDashboard
+                    stats={roomStats}
+                    onSelectTask={setSelectedTask}
+                    currentUser={user}
+                  />
+                )}
               </div>
             )}
 
@@ -587,14 +721,15 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
       {selectedTask && (
         <TaskDetailsModal
           task={selectedTask}
-          taskType={activeTab.startsWith("personal") ? "PersonalTask" : "RoomTask"}
-          roomId={editorRoomId || selectedRoomId}
+          taskType={selectedTaskType}
+          roomId={selectedTaskRoomId}
           currentUser={user}
-          roomParticipants={roomDetails?.participants || []}
-          userRole={currentUserRole}
+          roomParticipants={selectedTaskRoomParticipants}
+          userRole={selectedTaskUserRole}
           onClose={() => setSelectedTask(null)}
           onUpdateTask={handleUpdateTaskDetails}
           presenceList={presenceList}
+          onRefresh={() => fetchData(true)}
         />
       )}
 
@@ -603,7 +738,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
           <div className="modal-content-card" style={{ maxWidth: "550px" }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ fontSize: "1.1rem", fontWeight: "800", color: "#fff", margin: 0 }}>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--tp-text-primary)", margin: 0 }}>
                 {activeTab.startsWith("personal") ? "New Personal Task" : "New Room Kanban Task"}
               </h2>
               <button onClick={() => setShowCreateModal(false)} style={{ background: "transparent", border: "none", color: "#6b7280", cursor: "pointer" }}>

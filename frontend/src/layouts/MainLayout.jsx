@@ -9,7 +9,7 @@ import {
   Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
-  Gem, Sparkles, FolderKanban
+  Gem, Sparkles, FolderKanban, NotebookPen
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -812,7 +812,6 @@ export default function MainLayout({
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
-    { id: "planner", label: "Task Planner", icon: FolderKanban, path: "/dashboard?tab=planner" },
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
     { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
     { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard?tab=helpdesk" },
@@ -1017,6 +1016,18 @@ export default function MainLayout({
                 </div>
               )}
             </>
+          )}
+
+          {/* TASK PLANNER BUTTON */}
+          {!isRoomActive && (
+            <button
+              className={`topnav-btn ${activeItem === "planner" ? "active" : ""}`}
+              onClick={() => handleConfirmNavigate("/dashboard?tab=planner")}
+              title="Task Planner"
+              style={activeItem === "planner" ? { color: "var(--ce-primary)", backgroundColor: "var(--ce-hover)" } : {}}
+            >
+              <NotebookPen size={15} />
+            </button>
           )}
 
           {/* SEARCH BOX */}
