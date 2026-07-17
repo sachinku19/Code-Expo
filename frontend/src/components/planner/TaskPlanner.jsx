@@ -599,19 +599,33 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
       <div style={{ flexGrow: 1, minHeight: 0, position: "relative" }}>
 
         {isLoading && isInitialLoad ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div className="skeleton-card" />
-            <div className="skeleton-card" />
-            <div className="skeleton-card" />
+          <div className="ce-roller-container">
+            <div className="ce-roller">
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--tp-text-secondary)" }}>
+              Initializing Task Planner...
+            </span>
           </div>
         ) : (
           <>
             {activeTab === "personal_dashboard" && (
               <div className="fade-in-up">
                 {!personalStats ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "20px" }}>
-                    <div className="skeleton-card" style={{ height: "180px" }} />
-                    <div className="skeleton-card" style={{ height: "180px" }} />
+                  <div className="ce-roller-container" style={{ padding: "40px 20px" }}>
+                    <div className="ce-roller">
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--tp-text-secondary)" }}>
+                      Loading Personal Dashboard...
+                    </span>
                   </div>
                 ) : (
                   <PersonalDashboard
@@ -626,9 +640,13 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
             {activeTab === "room_dashboard" && (
               <div className="fade-in-up">
                 {!roomStats ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "20px" }}>
-                    <div className="skeleton-card" style={{ height: "180px" }} />
-                    <div className="skeleton-card" style={{ height: "180px" }} />
+                  <div className="ce-roller-container" style={{ padding: "40px 20px" }}>
+                    <div className="ce-roller">
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--tp-text-secondary)" }}>
+                      Loading Room Metrics...
+                    </span>
                   </div>
                 ) : (
                   <RoomDashboard
@@ -643,7 +661,16 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
             {activeTab === "personal_tasks" && (
               <div className="personal-tasks-list fade-in-up" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {renderFiltersBar("personal")}
-                {tasks.length === 0 ? (
+                {isLoading && tasks.length === 0 ? (
+                  <div className="ce-roller-container" style={{ padding: "40px 20px" }}>
+                    <div className="ce-roller">
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--tp-text-secondary)" }}>
+                      Loading Personal Agenda...
+                    </span>
+                  </div>
+                ) : tasks.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "40px", color: "#6b7280" }}>
                     No tasks found matching your filters.
                   </div>
@@ -702,15 +729,26 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
             {activeTab === "room_board" && (
               <div className="fade-in-up" style={{ display: "flex", flexDirection: "column", gap: "12px", height: "100%" }}>
                 {renderFiltersBar("room")}
-                <KanbanBoard
-                  tasks={tasks}
-                  currentUser={user}
-                  userRole={currentUserRole}
-                  presenceList={presenceList}
-                  onSelectTask={setSelectedTask}
-                  onUpdateTaskStatus={handleUpdateTaskStatus}
-                  onOpenCreateTaskModal={() => setShowCreateModal(true)}
-                />
+                {isLoading && tasks.length === 0 ? (
+                  <div className="ce-roller-container" style={{ padding: "40px 20px" }}>
+                    <div className="ce-roller">
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--tp-text-secondary)" }}>
+                      Loading Room Board...
+                    </span>
+                  </div>
+                ) : (
+                  <KanbanBoard
+                    tasks={tasks}
+                    currentUser={user}
+                    userRole={currentUserRole}
+                    presenceList={presenceList}
+                    onSelectTask={setSelectedTask}
+                    onUpdateTaskStatus={handleUpdateTaskStatus}
+                    onOpenCreateTaskModal={() => setShowCreateModal(true)}
+                  />
+                )}
               </div>
             )}
           </>
