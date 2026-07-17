@@ -2024,21 +2024,27 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       <div className="feed-posts-list">
         {isLoading ? (
           // Shimmer loading skeletons
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="premium-glass-card skeleton-shimmer" style={{ minHeight: "180px", marginBottom: "20px" }}>
-              <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "14px" }}>
-                <div className="skeleton-circle skeleton-shimmer" />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton-line title skeleton-shimmer" />
-                  <div className="skeleton-line skeleton-shimmer" style={{ width: "30%" }} />
+          Array.from({ length: 6 }).map((_, i) => {
+            return (
+              <div 
+                key={i} 
+                className="premium-glass-card skeleton-shimmer"
+                style={{ minHeight: "180px" }}
+              >
+                <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "14px" }}>
+                  <div className="skeleton-circle skeleton-shimmer" />
+                  <div style={{ flex: 1 }}>
+                    <div className="skeleton-line title skeleton-shimmer" />
+                    <div className="skeleton-line skeleton-shimmer" style={{ width: "30%" }} />
+                  </div>
                 </div>
+                <div className="skeleton-line body-1 skeleton-shimmer" style={{ marginBottom: "10px" }} />
+                <div className="skeleton-line body-2 skeleton-shimmer" />
               </div>
-              <div className="skeleton-line body-1 skeleton-shimmer" style={{ marginBottom: "10px" }} />
-              <div className="skeleton-line body-2 skeleton-shimmer" />
-            </div>
-          ))
+            );
+          })
         ) : filteredPostsList.length === 0 ? (
-          <div className="premium-glass-card" style={{ textAlign: "center", padding: "40px 20px" }}>
+          <div className="premium-glass-card" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 20px" }}>
             {activeFeedTab === "search-results" ? (
               <>
                 <Search size={32} style={{ color: "var(--ce-premium-muted)", marginBottom: "16px" }} />
@@ -2054,29 +2060,23 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
             )}
           </div>
         ) : (
-          <AnimatePresence>
-            {filteredPostsList.slice(0, visiblePosts).map(post => {
-              if (!post.author) return null;
-              const hasLiked = post.likes.includes(user?.id || user?._id);
-              const showComments = activeComments[post._id];
-              const isOwner = String(post.author._id) === String(user?.id || user?._id);
-              const isBookmarked = bookmarkedPostIds.has(post._id);
+          filteredPostsList.slice(0, visiblePosts).map((post, index) => {
+            if (!post.author) return null;
+            const hasLiked = post.likes.includes(user?.id || user?._id);
+            const showComments = activeComments[post._id];
+            const isOwner = String(post.author._id) === String(user?.id || user?._id);
+            const isBookmarked = bookmarkedPostIds.has(post._id);
 
-              const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
-              const activeImgIdx = carouselIndices[post._id] || 0;
+            const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
+            const activeImgIdx = carouselIndices[post._id] || 0;
 
-              const isFollowed = followingList ? followingList.some(f => String(f._id || f) === String(post.author._id)) : false;
+            const isFollowed = followingList ? followingList.some(f => String(f._id || f) === String(post.author._id)) : false;
 
-              return (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.25 }}
-                  key={post._id}
-                  className="premium-post-card"
-                >
+            return (
+              <div
+                key={post._id}
+                className="premium-post-card"
+              >
                   {/* Post Header */}
                   <div className="post-header">
                     <div 
@@ -2094,8 +2094,8 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                         )}
                       </div>
                       <div className="post-name-section">
-                        <div className="post-username-row" style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
-                          <span className="post-username-text" style={{ display: "inline-flex", alignItems: "center" }}>
+                        <div className="post-username-row" style={{ display: "flex", flexWrap: "nowrap", gap: "6px", alignItems: "center", minWidth: 0 }}>
+                          <span className="post-username-text" style={{ display: "inline-flex", alignItems: "center", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: "130px" }}>
                             @{post.author.username}
                             {post.author.subscription && post.author.subscription.status === "active" && (
                               <span 
@@ -2417,23 +2417,33 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                     </div>
                   </div>
 
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+              </div>
+            );
+          })
         )}
 
-        {/* Load More button */}
-        {!isLoading && filteredPostsList.length > visiblePosts && (
+      </div>
+
+      {/* Load More button */}
+      {!isLoading && filteredPostsList.length > visiblePosts && (
+        <div style={{ display: "flex", justifyContent: "center", width: "100%", marginTop: "32px", marginBottom: "20px" }}>
           <button
             onClick={() => setVisiblePosts(prev => prev + 6)}
             className="register-btn"
-            style={{ margin: "20px auto 0 auto", width: "auto", display: "block", padding: "10px 24px" }}
+            style={{ 
+              width: "auto", 
+              padding: "10px 28px",
+              borderRadius: "24px",
+              fontSize: "0.85rem",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
           >
             Load More Posts
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Delete Post Modal */}
       <AnimatePresence>

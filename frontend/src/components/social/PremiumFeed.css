@@ -35,10 +35,10 @@
   grid-template-columns: 80px 1fr 320px;
   gap: 32px;
   width: 100%;
-  max-width: 1040px;
+  max-width: 1550px;
   margin: 0 auto;
   align-items: flex-start;
-  padding: 26px 20px 40px 0px;
+  padding: 26px 20px 40px 24px;
 }
 
 .premium-stories-column {
@@ -74,11 +74,45 @@
 
 .premium-center-feed {
   width: 100%;
-  max-width: 540px;
+  max-width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Symmetrical 2-Column Masonry columns Layout */
+.feed-posts-list {
+  column-count: 1;
+  column-gap: 24px;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .feed-posts-list {
+    column-count: 2;
+  }
+}
+
+.feed-posts-list .premium-post-card,
+.feed-posts-list .premium-glass-card {
+  display: inline-block;
+  width: 100%;
+  break-inside: avoid;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .feed-posts-list {
+    column-gap: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .feed-posts-list {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 .premium-right-sidebar {
@@ -91,14 +125,15 @@
   top: 20px;
   height: fit-content;
   border-left: 1px solid var(--ce-premium-border);
-  padding-left: 24px;
+  padding-left: 36px;
+  margin-left: 16px;
 }
 
 /* Media Queries & Responsive Adjustments */
 @media (max-width: 1200px) {
   .premium-layout-wrapper {
     grid-template-columns: 1fr;
-    max-width: 540px;
+    max-width: 95%;
     gap: 24px;
     padding: 34px 16px 30px 16px;
   }
@@ -853,25 +888,58 @@
 
 /* Premium Feed Card styling - Instagram Centered Feed Look */
 .premium-post-card {
-  background: rgba(10, 10, 18, 0.6) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(99, 102, 241, 0.15) !important;
-  border-radius: 12px !important;
+  background: rgba(15, 17, 26, 0.45) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
   overflow: hidden;
-  margin-bottom: 24px;
+  margin-bottom: 0px;
   padding: 0 !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
   max-width: 100%;
   min-width: 0;
   width: 100%;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 1, 0.2, 1), border-color 0.3s ease;
+  position: relative;
+}
+
+.premium-post-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #6366f1, #a855f7, #3b82f6);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .premium-post-card:hover {
-  border-color: rgba(99, 102, 241, 0.35) !important;
-  box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.15) !important;
-  transform: translateY(-2px);
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  box-shadow: 
+    0 24px 48px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(139, 92, 246, 0.1) !important;
+}
+
+.premium-post-card:hover::before {
+  opacity: 1;
+}
+
+/* Light mode post card overrides */
+.light .premium-post-card {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03) !important;
+}
+
+.light .premium-post-card:hover {
+  border-color: rgba(99, 102, 241, 0.25) !important;
+  box-shadow: 
+    0 20px 40px rgba(99, 102, 241, 0.06),
+    0 0 15px rgba(99, 102, 241, 0.04) !important;
 }
 
 .post-header {
@@ -881,12 +949,15 @@
   margin-bottom: 0;
   padding: 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .post-author-info {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .post-avatar-ring {
@@ -908,6 +979,7 @@
 .post-name-section {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .post-username-row {
@@ -920,6 +992,10 @@
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--ce-premium-text);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 130px;
 }
 
 .post-badge-verified {
@@ -1045,28 +1121,49 @@
 }
 
 .reaction-button-trigger {
-  background: none;
-  border: none;
-  color: var(--ce-premium-text);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--ce-premium-muted, #64748b);
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
+  gap: 8px;
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 4px;
-  border-radius: 50%;
+  padding: 6px 14px;
+  border-radius: 99px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .reaction-button-trigger:hover {
-  background: none;
-  color: #fff;
-  transform: scale(1.05);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: var(--ce-accent, #6366f1);
+  transform: translateY(-2px);
 }
 
 .reaction-button-trigger.liked {
+  background: rgba(244, 63, 94, 0.08);
+  border-color: rgba(244, 63, 94, 0.2);
   color: #f43f5e;
+}
+
+.reaction-button-trigger.liked:hover {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #f43f5e;
+}
+
+.light .reaction-button-trigger {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  color: var(--ce-premium-muted, #64748b);
+}
+
+.light .reaction-button-trigger:hover {
+  background: rgba(79, 70, 229, 0.06);
+  border-color: rgba(79, 70, 229, 0.15);
+  color: #4f46e5;
 }
 
 /* Multi reaction popup styles */
@@ -1781,9 +1878,7 @@
   box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15);
 }
 
-.light .reaction-button-trigger:hover {
-  color: #8b5cf6;
-}
+/* Reaction trigger hover overrides */
 
 .light .post-comments-thread {
   border-top: 1px solid rgba(99, 102, 241, 0.08);
@@ -2961,27 +3056,7 @@ html {
 }
 
 /* Redesigned card curves and shadow depth */
-.premium-post-card {
-  border-radius: 16px !important;
-  border-color: rgba(139, 92, 246, 0.18) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
-}
-
-.premium-post-card:hover {
-  border-color: rgba(139, 92, 246, 0.35) !important;
-  box-shadow: 0 15px 45px rgba(139, 92, 246, 0.12) !important;
-  transform: translateY(-2px);
-}
-
-.light .premium-post-card {
-  border-color: rgba(139, 92, 246, 0.12) !important;
-  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.03) !important;
-}
-
-.light .premium-post-card:hover {
-  border-color: rgba(139, 92, 246, 0.28) !important;
-  box-shadow: 0 15px 45px rgba(139, 92, 246, 0.06) !important;
-}
+/* Card curves are handled in the main declaration block */
 
 /* Systematic Post Content Styling */
 .feed-post-h2 {
