@@ -11,6 +11,7 @@ export default function KanbanBoard({
   onOpenCreateTaskModal
 }) {
   const [dragOverColumn, setDragOverColumn] = useState(null);
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
 
   const canModifyTask = (task) => {
     if (userRole === "VIEWER") return false;
@@ -38,6 +39,7 @@ export default function KanbanBoard({
   const handleDragStart = (e, taskId) => {
     e.dataTransfer.setData("text/plain", taskId);
     e.dataTransfer.effectAllowed = "move";
+    setDraggedTaskId(taskId);
   };
 
   const handleDragOver = (e, column) => {
@@ -50,9 +52,15 @@ export default function KanbanBoard({
     setDragOverColumn(null);
   };
 
+  const handleDragEnd = () => {
+    setDraggedTaskId(null);
+    setDragOverColumn(null);
+  };
+
   const handleDrop = (e, targetColumn) => {
     e.preventDefault();
     setDragOverColumn(null);
+    setDraggedTaskId(null);
     if (userRole === "VIEWER") return;
 
     const taskId = e.dataTransfer.getData("text/plain");
@@ -124,9 +132,10 @@ export default function KanbanBoard({
                   return (
                     <div
                       key={task._id}
-                      className="task-card"
+                      className={`task-card ${draggedTaskId === task._id ? "dragging" : ""}`}
                       draggable={canModifyTask(task)}
                       onDragStart={(e) => handleDragStart(e, task._id)}
+                      onDragEnd={handleDragEnd}
                       onClick={() => onSelectTask(task)}
                     >
                       {/* Header */}
