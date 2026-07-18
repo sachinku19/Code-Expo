@@ -559,9 +559,8 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
       <svg style={{ position: "absolute", width: 0, height: 0 }}>
         <defs>
           <linearGradient id="story-unread-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#3b82f6" />
-            <stop offset="50%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#06b6d4" />
+            <stop offset="0%" stopColor="#4f46e5" />
+            <stop offset="100%" stopColor="#4f46e5" />
           </linearGradient>
         </defs>
       </svg>

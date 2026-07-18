@@ -1787,8 +1787,29 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                   </div>
                 )}
 
-                {/* Redesigned Premium Chat Input Card */}
+                {/* Redesigned Premium Chat Input Card (WhatsApp Style) */}
                 <div className="chat-input-card">
+                  <div className="chat-input-left-actions">
+                    <button
+                      type="button"
+                      className="chat-action-icon-btn"
+                      onClick={handleSendImageClick}
+                      title="Send Image File"
+                      disabled={isSending}
+                    >
+                      <Image size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      className="chat-action-icon-btn"
+                      onClick={() => setShowCodeModal(true)}
+                      title="Send Code Block"
+                      disabled={isSending}
+                    >
+                      <Code2 size={18} />
+                    </button>
+                  </div>
+
                   <textarea
                     ref={inputRef}
                     placeholder="Type your message..."
@@ -1803,6 +1824,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                       }
                     }}
                   />
+
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -1810,42 +1832,19 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     accept="image/png, image/jpeg, image/jpg, image/webp"
                     style={{ display: "none" }}
                   />
-                  <div className="chat-input-actions-bar">
-                    <div className="chat-input-left-actions">
-                      <button
-                        type="button"
-                        className="chat-action-icon-btn"
-                        onClick={handleSendImageClick}
-                        title="Send Image File"
-                        disabled={isSending}
-                      >
-                        <Image size={18} />
-                      </button>
-                      <button
-                        type="button"
-                        className="chat-action-icon-btn"
-                        onClick={() => setShowCodeModal(true)}
-                        title="Send Code Block"
-                        disabled={isSending}
-                      >
-                        <Code2 size={18} />
-                      </button>
-                    </div>
-                    <button
-                      type="submit"
-                      className="chat-send-purple-btn"
-                      onClick={handleSendMessage}
-                      disabled={(!newMessageText.trim() && !attachment) || isSending}
-                    >
-                      {isSending && attachment ? (
-                        <div className="loading-spinner-tiny animate-spin" />
-                      ) : (
-                        <>
-                          <Send size={14} className="send-icon-margin" /> Send
-                        </>
-                      )}
-                    </button>
-                  </div>
+
+                  <button
+                    type="submit"
+                    className="chat-send-purple-btn"
+                    onClick={handleSendMessage}
+                    disabled={(!newMessageText.trim() && !attachment) || isSending}
+                  >
+                    {isSending ? (
+                      <div className="loading-spinner-tiny animate-spin" />
+                    ) : (
+                      <Send size={15} />
+                    )}
+                  </button>
                 </div>
               </div>
             )}
