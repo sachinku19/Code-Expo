@@ -75,6 +75,7 @@ const HelpDesk = lazy(() => import("../components/helpdesk/HelpDesk"));
 import { StatsSkeleton, RoomGridSkeleton, ActivityFeedSkeleton, UserListSkeleton, TrendingListSkeleton, AdSkeleton } from "../components/SkeletonLoader";
 import { useGateTransition } from "../routes/AppRoutes";
 import TaskPlanner from "../components/planner/TaskPlanner";
+import CPDashboard from "../components/cp/CPDashboard";
 
 const notificationAudio = new Audio("/code-Expo_notification_sound.mp3");
 notificationAudio.load();
@@ -4125,6 +4126,19 @@ function Dashboard() {
     >
       <div className={`ce-dashboard-container ${activeSection === "feed" ? "feed-layout-active" : ""}`}>
         <AnimatePresence mode="wait">
+          {activeSection === "cp" && (
+            <motion.div
+              key="cp"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <CPDashboard user={user} />
+            </motion.div>
+          )}
+
           {activeSection === "dashboard" && (
             <motion.div
               key="dashboard"

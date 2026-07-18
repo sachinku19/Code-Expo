@@ -1113,24 +1113,24 @@ body {
   width: calc(100% - 4px);
   background: transparent;
   border: none;
-  height: 46px;
-  border-radius: 12px;
+  height: 38px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   color: var(--ce-text-muted);
   cursor: pointer;
   position: relative;
   transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  padding: 0 16px;
-  margin: 3px 2px;
+  padding: 0 14px;
+  margin: 1px 2px;
 }
 
 .sidebar-nav-btn::before {
   content: "";
   position: absolute;
   left: 0px;
-  top: 10px;
-  bottom: 10px;
+  top: 8px;
+  bottom: 8px;
   width: 4px;
   background-color: var(--ce-accent, #6366F1);
   border-radius: 99px;
@@ -2775,4 +2775,61 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
   border-radius: 3px;
   background-color: var(--ce-primary);
   box-shadow: 0 0 8px var(--ce-primary);
+}
+
+/* Sidebar bottom MyVerse square box layout */
+.sidebar-footer-myverse-box {
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  box-sizing: border-box;
+}
+
+.myverse-sidebar-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.myverse-sidebar-card-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--ce-accent);
+}
+
+.myverse-sidebar-card-btn.active {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--ce-accent);
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.15);
+}
+
+.myverse-card-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--ce-accent);
+}
+
+.ce-sidebar.collapsed .sidebar-footer-myverse-box {
+  padding: 8px;
+}
+
+.ce-sidebar.collapsed .myverse-sidebar-card-btn {
+  padding: 10px 0;
+  justify-content: center;
+}
+
+.ce-sidebar.collapsed .myverse-sidebar-card-btn .btn-label {
+  display: none !important;
 }

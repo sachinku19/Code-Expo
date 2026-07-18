@@ -98,6 +98,10 @@ app.use("/api/subscription", subscriptionRoutes);
 const plannerRoutes = require("./routes/plannerRoutes");
 app.use("/api/planner", plannerRoutes);
 
+// competitive programming routes
+const competitiveProgrammingRoutes = require("./routes/competitiveProgrammingRoutes");
+app.use("/api/cp", competitiveProgrammingRoutes);
+
 // Serve static assets from frontend build in production
 const frontendDist = path.join(__dirname, "../frontend/dist");
 app.use(express.static(frontendDist));

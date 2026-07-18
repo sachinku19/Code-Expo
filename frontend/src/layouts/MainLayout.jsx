@@ -21,6 +21,28 @@ import { submitWebsiteRating, getWebsiteRatingInfo } from "../services/websiteRa
 import "./MainLayout.css";
 import Logo from "../components/shared/Logo";
 
+const SquareCode = (props) => {
+  const { className, size = 18, ...rest } = props;
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+      {...rest}
+    >
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <polyline points="10 9 7 12 10 15" />
+      <polyline points="14 9 17 12 14 15" />
+    </svg>
+  );
+};
+
 const getPostSnippet = (targetPost) => {
   if (!targetPost) return "post";
   const postText = targetPost.text || "";
@@ -814,6 +836,7 @@ export default function MainLayout({
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
+    { id: "cp", label: "MyVerse", icon: SquareCode, path: "/dashboard?tab=cp" },
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
     { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
     { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard?tab=helpdesk" },
@@ -1657,7 +1680,7 @@ export default function MainLayout({
 
           <nav className="sidebar-nav-menu">
             {menuItems
-              .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk")
+              .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk" && item.id !== "cp")
               .map(item => {
                 const Icon = item.icon;
                 const isActive = activeItem === item.id;
@@ -1689,6 +1712,20 @@ export default function MainLayout({
                 );
               })}
           </nav>
+
+          {/* Custom MyVerse Square Box at the very bottom */}
+          <div className="sidebar-footer-myverse-box">
+            <button
+              onClick={() => handleConfirmNavigate("/dashboard?tab=cp")}
+              className={`myverse-sidebar-card-btn ${activeItem === "cp" ? "active" : ""}`}
+              data-tooltip="MyVerse"
+            >
+              <div className="myverse-card-icon-wrapper">
+                <SquareCode size={20} />
+              </div>
+              <span className="btn-label">MyVerse</span>
+            </button>
+          </div>
         </aside>
 
         {/* PAGE CONTENT CONTAINER */}
@@ -1714,7 +1751,7 @@ export default function MainLayout({
 
         <nav className="drawer-nav-menu">
           {menuItems
-            .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk")
+            .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk" && item.id !== "cp")
             .map(item => {
               const Icon = item.icon;
               const isActive = activeItem === item.id;
@@ -1748,6 +1785,23 @@ export default function MainLayout({
               );
             })}
         </nav>
+
+        {/* Draw MyVerse at the bottom of the drawer menu list */}
+        <div className="drawer-footer-myverse-box" style={{ padding: "0 16px 12px 16px" }}>
+          <button
+            onClick={() => {
+              setIsDrawerOpen(false);
+              handleConfirmNavigate("/dashboard?tab=cp");
+            }}
+            className={`drawer-nav-btn ${activeItem === "cp" ? "active" : ""}`}
+            style={{ width: "100%", justifyContent: "flex-start", gap: "12px" }}
+          >
+            <div className="drawer-nav-icon-wrapper">
+              <SquareCode size={20} />
+            </div>
+            <span className="btn-label">MyVerse</span>
+          </button>
+        </div>
 
         <div className="drawer-footer" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
           <button

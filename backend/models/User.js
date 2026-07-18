@@ -237,6 +237,47 @@ const userSchema=new mongoose.Schema({
         paymentMethod: { type: String, default: "" },
         amountPaid: { type: Number, default: 0 },
         transactionId: { type: String, default: "" }
+    },
+    competitiveProgramming: {
+        platforms: {
+            leetcode: { 
+                username: { type: String, default: "" }, 
+                stats: { type: mongoose.Schema.Types.Mixed, default: null }, 
+                lastSynced: { type: Date, default: null },
+                syncStatus: { type: String, default: "Not Connected" },
+                lastError: { type: String, default: "" }
+            },
+            codeforces: { 
+                username: { type: String, default: "" }, 
+                stats: { type: mongoose.Schema.Types.Mixed, default: null }, 
+                lastSynced: { type: Date, default: null },
+                syncStatus: { type: String, default: "Not Connected" },
+                lastError: { type: String, default: "" }
+            },
+            codechef: { 
+                username: { type: String, default: "" }, 
+                stats: { type: mongoose.Schema.Types.Mixed, default: null }, 
+                lastSynced: { type: Date, default: null },
+                syncStatus: { type: String, default: "Not Connected" },
+                lastError: { type: String, default: "" }
+            },
+            atcoder: { 
+                username: { type: String, default: "" }, 
+                stats: { type: mongoose.Schema.Types.Mixed, default: null }, 
+                lastSynced: { type: Date, default: null },
+                syncStatus: { type: String, default: "Not Connected" },
+                lastError: { type: String, default: "" }
+            },
+            hackerrank: { 
+                username: { type: String, default: "" }, 
+                stats: { type: mongoose.Schema.Types.Mixed, default: null }, 
+                lastSynced: { type: Date, default: null },
+                syncStatus: { type: String, default: "Not Connected" },
+                lastError: { type: String, default: "" }
+            }
+        },
+        unifiedStats: { type: mongoose.Schema.Types.Mixed, default: null },
+        lastUpdated: { type: Date, default: null }
     }
 },{timestamps:true});
 
