@@ -1019,7 +1019,7 @@ body {
   top: 56px;
   bottom: 0;
   left: 0;
-  z-index: 35;
+  z-index: 150;
   transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease;
   overflow: hidden;
   box-shadow: 12px 0 45px rgba(0, 0, 0, 0.45) !important;
@@ -1038,8 +1038,18 @@ body {
     backdrop-filter: blur(28px) saturate(190%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
   }
+  .ce-sidebar.expanded {
+    background-color: #0b0b0f !important; /* Fully opaque on expand to prevent back-content overlap text bleed */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
   .light .ce-sidebar {
     background-color: rgba(255, 255, 255, 0.88) !important; /* Beautiful glassmorphism with strong readability */
+  }
+  .light .ce-sidebar.expanded {
+    background-color: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 
