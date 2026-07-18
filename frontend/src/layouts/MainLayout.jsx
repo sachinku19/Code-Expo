@@ -782,7 +782,9 @@ export default function MainLayout({
       "ce_settingsTab",
       "ce_roomsTab",
       "ce_activeRoomsTab",
-      "ce_adminActiveTab"
+      "ce_adminActiveTab",
+      "ce_tour_seen_",
+      "ce_room_tour_seen_"
     ];
 
     for (let i = 0; i < localStorage.length; i++) {
@@ -873,6 +875,296 @@ export default function MainLayout({
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Onboarding app guide tour steps
+  const tourSteps = [
+    {
+      selector: ".topnav-brand-container",
+      title: "🎨 Welcome to CodeExpo!",
+      content: "This is your unified brand and workspace logo. Click here at any time to return to your main dashboard page.",
+      position: "bottom"
+    },
+    {
+      selector: ".ce-sidebar",
+      title: "🧭 Navigational Sidebar",
+      content: "Easily jump between active views: Dashboard, Network Feed, Explore Rooms, and Direct Messages. Hover to expand!",
+      position: "right"
+    },
+    {
+      selector: ".search-box",
+      title: "🔍 Command Search Bar",
+      content: "Find specific workspaces, users, or articles instantly. You can also open this by pressing Ctrl + K.",
+      position: "bottom"
+    },
+    {
+      selector: 'button[title="Notifications"]',
+      title: "🔔 Real-time Notifications",
+      content: "Stay updated on follower requests, workspace join invitations, likes, and comments from the developer feed.",
+      position: "left"
+    },
+    {
+      selector: ".user-profile-trigger",
+      title: "⚡ Developer Profile Hub",
+      content: "View your coding XP and rank level, check your earned badges, change UI themes, or sign out.",
+      position: "left"
+    }
+  ];
+
+  const roomTourSteps = [
+    {
+      selector: ".ce-room-info",
+      title: "🏢 Live Collaborative Workspace",
+      content: "You are now inside an active collaborative room! Here you can check the workspace title and copy the unique Room ID to share with teammates.",
+      position: "bottom"
+    },
+    {
+      selector: ".ce-nav-avatar-group",
+      title: "👥 Active Collaborators",
+      content: "See who else is active in this room. You can click the arrow to view profile details and check active developer presence.",
+      position: "bottom"
+    },
+    {
+      selector: ".ce-call-dropdown-wrapper, .active-call",
+      title: "📞 Workspace Calls",
+      content: "Instantly start or join high-quality audio or video calls with active participants right inside this workspace for quick meetings.",
+      position: "bottom"
+    },
+    {
+      selector: 'button[title="Share Room Invite"]',
+      title: "🔗 Share Workspace Invite",
+      content: "Click this to instantly copy a direct invite link to send to teammates for quick collaboration.",
+      position: "bottom"
+    },
+    {
+      selector: ".sidebar-tabs",
+      title: "🧭 Sidebar Module Selector",
+      content: "Toggle different sidebar utility panels here: File Explorer, Live Room Chat, Workspace Task Planner, or Workspace Settings.",
+      position: "right"
+    },
+    {
+      selector: ".ce-left-sidebar",
+      title: "📁 Workspace File Explorer",
+      content: "Browse project folder structures, open files, or right-click to add, rename, or delete items.",
+      position: "right",
+      triggerTab: "Explorer (Files)"
+    },
+    {
+      selector: ".ce-left-sidebar",
+      title: "📝 Workspace Markdown Notes",
+      content: "Create and read shared documentation, notes, and guidelines written in Markdown for this workspace.",
+      position: "right",
+      triggerTab: "Notes"
+    },
+    {
+      selector: ".ce-left-sidebar",
+      title: "📈 Workspace Live Activity Feed",
+      content: "View real-time notifications of changes, edits, and file updates made by teammates in the workspace.",
+      position: "right",
+      triggerTab: "Activity Feed"
+    },
+    {
+      selector: ".ce-left-sidebar",
+      title: "🕒 File Version History Timeline",
+      content: "Access complete version history for files. Replay edit histories or compare differences side-by-side.",
+      position: "right",
+      triggerTab: "Version Timeline"
+    },
+    {
+      selector: ".ce-left-sidebar",
+      title: "⚙️ Workspace Settings",
+      content: "Configure collaborative permissions, manage roles, mute status, or check details about this workspace room.",
+      position: "right",
+      triggerTab: "Settings"
+    },
+    {
+      selector: ".monaco-pane",
+      title: "💻 Real-time Code Editor",
+      content: "Write code collaboratively with live cursor tracking, conflict-free sync (Yjs), and multi-file editing capabilities.",
+      position: "right",
+      triggerTab: "Explorer (Files)"
+    },
+    {
+      selector: ".floating-whiteboard-btn",
+      title: "🎨 Collaborative Whiteboard",
+      content: "Click this floating button to toggle the collaborative canvas whiteboard! Draw shapes, type notes, and sketch diagrams with your team.",
+      position: "left"
+    },
+    {
+      selector: ".ce-btn-run",
+      title: "⚡ Multi-Language Compiler",
+      content: "Click here to run your program! The execution logs, standard inputs/outputs, and compilation details will show in the interactive console below.",
+      position: "top"
+    }
+  ];
+
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const [tourMode, setTourMode] = useState("dashboard"); // "dashboard" or "room"
+  const [highlightStyle, setHighlightStyle] = useState(null);
+  const [cardStyle, setCardStyle] = useState({ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)" });
+
+  useEffect(() => {
+    if (user && (user.id || user._id)) {
+      const userId = user.id || user._id;
+      const isRoom = roomId && roomId !== "default";
+      
+      if (isRoom) {
+        const roomTourSeen = localStorage.getItem(`ce_room_tour_seen_${userId}`);
+        if (!roomTourSeen) {
+          const timer = setTimeout(() => {
+            setTourMode("room");
+            setTourStep(0);
+            setShowTour(true);
+          }, 2000); // 2 second delay to let room view initialize
+          return () => clearTimeout(timer);
+        }
+      } else {
+        const tourSeen = localStorage.getItem(`ce_tour_seen_${userId}`);
+        if (!tourSeen) {
+          const timer = setTimeout(() => {
+            setTourMode("dashboard");
+            setTourStep(0);
+            setShowTour(true);
+          }, 1500);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [user, roomId]);
+
+  useEffect(() => {
+    if (!showTour) return;
+
+    // Trigger tab clicks programmatically when the tour step changes
+    const currentSteps = tourMode === "room" ? roomTourSteps : tourSteps;
+    const safeStepIdx = Math.min(tourStep, currentSteps.length - 1);
+    const step = currentSteps[safeStepIdx];
+    
+    if (step && step.triggerTab) {
+      const btn = document.querySelector(`button[title="${step.triggerTab}"]`);
+      if (btn && !btn.classList.contains("active")) {
+        btn.click();
+      }
+    }
+
+    const updatePosition = () => {
+      const currentStepsUpdate = tourMode === "room" ? roomTourSteps : tourSteps;
+      const safeStepIdxUpdate = Math.min(tourStep, currentStepsUpdate.length - 1);
+      const stepUpdate = currentStepsUpdate[safeStepIdxUpdate];
+      if (!stepUpdate) return;
+
+      const target = document.querySelector(stepUpdate.selector);
+      if (target && target.getBoundingClientRect().width > 0) {
+        const rect = target.getBoundingClientRect();
+        
+        // Update highlight box style
+        setHighlightStyle({
+          top: rect.top - 8,
+          left: rect.left - 8,
+          width: rect.width + 16,
+          height: rect.height + 16,
+          borderRadius: "12px",
+          display: "block"
+        });
+
+        // Calculate card position
+        const cardWidth = 320;
+        const cardHeight = 180;
+        let top = 0;
+        let left = 0;
+
+        if (stepUpdate.position === "bottom") {
+          top = rect.bottom + 16;
+          left = rect.left + rect.width / 2 - cardWidth / 2;
+        } else if (stepUpdate.position === "right") {
+          top = rect.top + rect.height / 2 - cardHeight / 2;
+          left = rect.right + 16;
+        } else if (stepUpdate.position === "left") {
+          top = rect.top + rect.height / 2 - cardHeight / 2;
+          left = rect.left - cardWidth - 16;
+        } else {
+          top = rect.top - cardHeight - 16;
+          left = rect.left + rect.width / 2 - cardWidth / 2;
+        }
+
+        // Clamp inside viewport limits
+        const margin = 16;
+        left = Math.max(margin, Math.min(window.innerWidth - cardWidth - margin, left));
+        top = Math.max(margin, Math.min(window.innerHeight - cardHeight - margin, top));
+
+        setCardStyle({
+          position: "fixed",
+          top: `${top}px`,
+          left: `${left}px`,
+          transform: "none",
+          width: `${cardWidth}px`
+        });
+      } else {
+        // Fallback: Center card if selector not found or hidden
+        setHighlightStyle({ display: "none" });
+        setCardStyle({
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "340px"
+        });
+      }
+    };
+
+    // Delay updates by 150ms to allow tab opening transition to complete, ensuring precise positioning
+    const timer = setTimeout(updatePosition, 150);
+    
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition);
+    };
+  }, [showTour, tourStep, tourMode]);
+
+  const handleNextStep = () => {
+    const currentSteps = tourMode === "room" ? roomTourSteps : tourSteps;
+    if (tourStep < currentSteps.length - 1) {
+      setTourStep(prev => prev + 1);
+    } else {
+      completeTour();
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (tourStep > 0) {
+      setTourStep(prev => prev - 1);
+    }
+  };
+
+  const skipTour = () => {
+    completeTour();
+  };
+
+  const completeTour = () => {
+    setShowTour(false);
+    if (user) {
+      const userId = user.id || user._id;
+      const storageKey = tourMode === "room" ? `ce_room_tour_seen_${userId}` : `ce_tour_seen_${userId}`;
+      localStorage.setItem(storageKey, "true");
+    }
+    // Restore Explorer tab as active when tour is closed/skipped
+    if (tourMode === "room") {
+      const explorerBtn = document.querySelector('button[title="Explorer (Files)"]');
+      if (explorerBtn && !explorerBtn.classList.contains("active")) {
+        explorerBtn.click();
+      }
+    }
+  };
+
+  const triggerTourManual = () => {
+    setTourMode(roomId && roomId !== "default" ? "room" : "dashboard");
+    setTourStep(0);
+    setShowTour(true);
   };
 
   return (
@@ -1026,7 +1318,7 @@ export default function MainLayout({
               title="Task Planner"
               style={activeItem === "planner" ? { color: "var(--ce-primary)", backgroundColor: "var(--ce-hover)" } : {}}
             >
-              <NotebookPen size={15} />
+              <NotebookPen size={25} />
             </button>
           )}
 
@@ -1331,6 +1623,11 @@ export default function MainLayout({
                   <button onClick={() => { setProfileDropdownOpen(false); setIsRatingModalOpen(true); }} className="list-menu-item rating-btn">
                     <Star size={15} fill={userRating > 0 ? "currentColor" : "transparent"} style={{ color: "#ec4899" }} />
                     <span>Rate Us</span>
+                  </button>
+
+                  <button onClick={() => { setProfileDropdownOpen(false); triggerTourManual(); }} className="list-menu-item">
+                    <BookOpen size={15} style={{ color: "var(--ce-primary)" }} />
+                    <span>App Guide</span>
                   </button>
 
                   <button onClick={() => { setProfileDropdownOpen(false); handleLogout(); }} className="list-menu-item logout-btn">
@@ -1657,6 +1954,51 @@ export default function MainLayout({
             <X size={12} />
           </button>
         </div>
+      )}
+
+      {/* Onboarding App Tour overlay, highlight portal, and gliding details card */}
+      {showTour && (
+        <>
+          <div className="ce-tour-overlay" onClick={skipTour} />
+          {highlightStyle && highlightStyle.display !== "none" && (
+            <div className="ce-tour-highlight" style={highlightStyle} />
+          )}
+          <div className="ce-tour-card" style={cardStyle}>
+            <div className="ce-tour-card-header">
+              <h3>{(tourMode === "room" ? roomTourSteps : tourSteps)[tourStep]?.title}</h3>
+              <button className="ce-tour-close-btn" onClick={skipTour} title="Skip Tour">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="ce-tour-card-body">
+              <p>{(tourMode === "room" ? roomTourSteps : tourSteps)[tourStep]?.content}</p>
+            </div>
+            <div className="ce-tour-card-footer">
+              <button className="ce-tour-skip-link" onClick={skipTour}>
+                Skip Tour
+              </button>
+              <div className="ce-tour-nav-buttons">
+                {tourStep > 0 && (
+                  <button className="ce-tour-btn secondary" onClick={handlePrevStep}>
+                    Back
+                  </button>
+                )}
+                <button className="ce-tour-btn primary" onClick={handleNextStep}>
+                  {tourStep === (tourMode === "room" ? roomTourSteps : tourSteps).length - 1 ? "Finish" : "Next"}
+                </button>
+              </div>
+            </div>
+            <div className="ce-tour-progress-dots">
+              {(tourMode === "room" ? roomTourSteps : tourSteps).map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`ce-tour-dot ${idx === tourStep ? "active" : ""}`}
+                  onClick={() => setTourStep(idx)}
+                />
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

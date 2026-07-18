@@ -2071,7 +2071,9 @@ const AdminDashboard = () => {
       "ce_settingsTab",
       "ce_roomsTab",
       "ce_activeRoomsTab",
-      "ce_adminActiveTab"
+      "ce_adminActiveTab",
+      "ce_tour_seen_",
+      "ce_room_tour_seen_"
     ];
     
     for (let i = 0; i < localStorage.length; i++) {
