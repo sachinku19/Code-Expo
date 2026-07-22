@@ -12,6 +12,66 @@ const FeedPortal = ({ children }) => {
   return createPortal(children, document.body);
 };
 
+// Resilient SafeAvatar component that handles broken image URLs gracefully and prevents distortion
+const SafeAvatar = ({ src, name = "User", size = 36, className = "", style = {} }) => {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  const initial = (name || "U").trim().charAt(0).toUpperCase() || "U";
+
+  const dimensionStyle = {
+    width: `${size}px`,
+    height: `${size}px`,
+    minWidth: `${size}px`,
+    maxWidth: `${size}px`,
+    minHeight: `${size}px`,
+    maxHeight: `${size}px`,
+    borderRadius: "50%",
+    flexShrink: 0,
+    overflow: "hidden",
+    boxSizing: "border-box",
+    ...style
+  };
+
+  if (src && !hasError) {
+    return (
+      <img
+        src={src}
+        alt=""
+        onError={() => setHasError(true)}
+        className={className}
+        style={{
+          ...dimensionStyle,
+          objectFit: "cover",
+          display: "block"
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={className ? `${className}-fallback` : "safe-avatar-fallback"}
+      style={{
+        ...dimensionStyle,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontWeight: "700",
+        fontSize: size <= 28 ? "0.7rem" : size <= 36 ? "0.8rem" : "0.95rem",
+        color: "#ffffff",
+        background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+        userSelect: "none"
+      }}
+    >
+      {initial}
+    </div>
+  );
+};
+
 // Reusable styled CodeBlock component with line numbers, syntax highlighting, and copy button
 const CodeBlock = ({ lang, code, addToast }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -511,6 +571,8 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const [activeCommentsPanelPostId, setActiveCommentsPanelPostId] = useState(null);
   const [panelCommentInput, setPanelCommentInput] = useState("");
   const [replyingToComment, setReplyingToComment] = useState(null);
+  const [activeInlineReplyId, setActiveInlineReplyId] = useState(null); // ID of comment with active inline reply form
+  const [inlineReplyText, setInlineReplyText] = useState(""); // text typed in inline reply form
   const [commentLikes, setCommentLikes] = useState(() => {
     try {
       const saved = localStorage.getItem('code_expo_comment_likes_count');
@@ -527,8 +589,24 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       return {};
     }
   });
+  const [commentParentMap, setCommentParentMap] = useState(() => {
+    try {
+      const saved = localStorage.getItem('code_expo_comment_parent_map');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [expandedCommentThreads, setExpandedCommentThreads] = useState({});
   const [commentsTriggerOrigin, setCommentsTriggerOrigin] = useState(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('code_expo_comment_parent_map', JSON.stringify(commentParentMap));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [commentParentMap]);
 
   useEffect(() => {
     try {
@@ -575,7 +653,12 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   };
 
   useEffect(() => {
-    setVisibleCommentsCount(10);
+    setPanelCommentInput("");
+    setReplyingToComment(null);
+    setActiveInlineReplyId(null);
+    setInlineReplyText("");
+    const postComments = activeCommentsPanelPost?.comments || [];
+    setVisibleCommentsCount(Math.max(50, postComments.length));
     setIsLoadingMoreComments(false);
     setShowParentPostModal(false);
   }, [activeCommentsPanelPostId]);
@@ -584,22 +667,12 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - scrollTop - clientHeight < 40) {
       const allComments = activeCommentsPanelPost?.comments || [];
-      const mainComments = allComments.filter(c => {
-        const mentionMatch = c.text?.match(/^@\[([^\]]+)\]\s+(.*)/) || c.text?.match(/^@([a-zA-Z0-9_\. ]+)\s+(.*)/);
-        if (!mentionMatch) return true;
-        const targetUsername = mentionMatch[1];
-        const targetExists = allComments.some(other => 
-          other.username === targetUsername && 
-          new Date(other.createdAt) < new Date(c.createdAt)
-        );
-        return !targetExists;
-      });
-      if (activeCommentsPanelPost && !isLoadingMoreComments && visibleCommentsCount < mainComments.length) {
+      if (activeCommentsPanelPost && !isLoadingMoreComments && visibleCommentsCount < allComments.length) {
         setIsLoadingMoreComments(true);
         setTimeout(() => {
-          setVisibleCommentsCount(prev => prev + 10);
+          setVisibleCommentsCount(prev => prev + 20);
           setIsLoadingMoreComments(false);
-        }, 400);
+        }, 300);
       }
     }
   };
@@ -658,6 +731,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         username: user?.username || "You",
         avatar: user?.avatar || "",
         text: textToSend,
+        parentCommentId: targetParentId,
         createdAt: new Date()
       };
 
@@ -689,6 +763,69 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         if (addToast) addToast("Failed to submit reply comment", "error");
       }
     }, 800);
+  };
+
+  const handleSubmitInlineReply = async (postId, targetCommentId, targetUsername) => {
+    const commentText = inlineReplyText.trim();
+    if (!commentText) return;
+
+    const textToSend = `@[${targetUsername}] ${commentText}`;
+    const targetParentIdStr = String(targetCommentId);
+    const tempId = String(Date.now());
+
+    // Store mapping in commentParentMap
+    setCommentParentMap(prev => ({ ...prev, [tempId]: targetParentIdStr }));
+
+    // Expand target comment thread automatically
+    setExpandedCommentThreads(prev => ({ ...prev, [targetParentIdStr]: true }));
+
+    // Reset inline input state
+    setActiveInlineReplyId(null);
+    setInlineReplyText("");
+
+    const tempComment = {
+      _id: tempId,
+      user: user?.id || user?._id,
+      username: user?.username || "You",
+      avatar: user?.avatar || "",
+      text: textToSend,
+      parentCommentId: targetParentIdStr,
+      createdAt: new Date()
+    };
+
+    setPosts(prev => prev.map(post => {
+      if (String(post._id) === String(postId)) {
+        return { ...post, comments: [...(post.comments || []), tempComment] };
+      }
+      return post;
+    }));
+
+    try {
+      const res = await addCommentPost(postId, textToSend);
+      if (res.success) {
+        setPosts(prev => prev.map(post => {
+          if (String(post._id) === String(postId)) {
+            const updatedComments = (res.comments || []).map(c => {
+              const cId = String(c._id);
+              const existingParentId = c.parentCommentId || c.parentId || commentParentMap[cId];
+              const resolvedParentId = existingParentId || (c.text === textToSend ? targetParentIdStr : null);
+              if (resolvedParentId) {
+                setCommentParentMap(prevMap => ({ ...prevMap, [cId]: String(resolvedParentId) }));
+              }
+              return {
+                ...c,
+                parentCommentId: resolvedParentId ? String(resolvedParentId) : c.parentCommentId
+              };
+            });
+            return { ...post, comments: updatedComments };
+          }
+          return post;
+        }));
+      }
+    } catch (err) {
+      fetchPosts();
+      if (addToast) addToast("Failed to submit reply", "error");
+    }
   };
 
   const [postToDelete, setPostToDelete] = useState(null); // Custom delete post modal
@@ -2228,17 +2365,19 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
                       {/* Video Attachment with 16:9 aspect ratio */}
                       {post.video && (
-                        <div className="post-video-container" style={{ width: "100%", aspectRatio: "16/9", overflow: "hidden", borderRadius: "12px", background: "#000", marginTop: "12px", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                        <div className="post-video-container" style={{ width: "calc(100% - 44px)", margin: "12px 22px 14px 22px", aspectRatio: "16/9", overflow: "hidden", borderRadius: "16px", background: "#000", border: "1px solid rgba(255, 255, 255, 0.1)", boxSizing: "border-box" }}>
                           <AutoplayVideo src={post.video} />
                         </div>
                       )}
 
-                      {/* Redesigned Premium Carousel Multi-Image Block - Edge to Edge */}
+                      {/* Redesigned Premium Carousel Multi-Image Block - Full Aspect Ratio */}
                       {postImages.length > 0 && (
-                        <div className="post-carousel-container" style={{ position: "relative", overflow: "hidden", background: "#000" }}>
-                          <div style={{ display: "flex", height: "100%", transition: "transform 0.3s ease", transform: `translateX(-${activeImgIdx * 100}%)` }}>
+                        <div className="post-carousel-container">
+                          <div className="post-carousel-track" style={{ transform: `translateX(-${activeImgIdx * 100}%)` }}>
                             {postImages.map((src, i) => (
-                              <img key={i} src={src} alt={`Attachment ${i}`} style={{ width: "100%", height: "100%", flexShrink: 0, objectFit: "cover" }} />
+                              <div key={i} className="post-carousel-slide">
+                                <img src={src} alt={`Attachment ${i}`} className="post-carousel-image" />
+                              </div>
                             ))}
                           </div>
 
@@ -2246,30 +2385,28 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                           {postImages.length > 1 && (
                             <>
                               <button
+                                type="button"
                                 onClick={() => handlePrevImage(post._id, postImages.length)}
-                                style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
+                                className="post-carousel-arrow left"
+                                title="Previous image"
                               >
                                 <ChevronLeft size={16} />
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleNextImage(post._id, postImages.length)}
-                                style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
+                                className="post-carousel-arrow right"
+                                title="Next image"
                               >
                                 <ChevronRight size={16} />
                               </button>
 
                               {/* Carousel Dots indicators */}
-                              <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", zIndex: 5 }}>
+                              <div className="post-carousel-dots">
                                 {postImages.map((_, i) => (
                                   <div
                                     key={i}
-                                    style={{
-                                      width: "6px",
-                                      height: "6px",
-                                      borderRadius: "50%",
-                                      background: activeImgIdx === i ? "#fff" : "rgba(255,255,255,0.4)",
-                                      transition: "background 0.2s"
-                                    }}
+                                    className={`carousel-dot ${activeImgIdx === i ? "active" : ""}`}
                                   />
                                 ))}
                               </div>
@@ -2309,12 +2446,15 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       {/* Liking Button - ONLY Heart Icon */}
                       <button
                         onClick={() => !post.likesDisabled && handleLikePost(post._id)}
-                        className={`reaction-button-trigger ${hasLiked ? "liked" : ""}`}
-                        style={{ paddingRight: "4px", opacity: post.likesDisabled ? 0.45 : 1, cursor: post.likesDisabled ? "not-allowed" : "pointer" }}
+                        className={`post-like-heart-btn ${hasLiked ? "liked" : ""}`}
+                        style={{ opacity: post.likesDisabled ? 0.45 : 1, cursor: post.likesDisabled ? "not-allowed" : "pointer" }}
                         title={post.likesDisabled ? "Likes are disabled for this post" : (hasLiked ? "Unlike" : "Like")}
                         disabled={post.likesDisabled}
                       >
-                        <Heart size={14} fill={hasLiked ? "#f43f5e" : "none"} color={hasLiked ? "#f43f5e" : "var(--ce-premium-text)"} />
+                        <div className="heart-icon-wrapper">
+                          <Heart size={16} className="post-heart-outline-svg" />
+                          <Heart size={16} className={`post-heart-fill-svg ${hasLiked ? "is-active" : ""}`} />
+                        </div>
                       </button>
 
                       {/* Likers Avatars Stack with Clickable More Option */}
@@ -2365,29 +2505,29 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
                       <button
                         onClick={(e) => handleCommentsClick(post._id, e)}
-                        className="reaction-button-trigger"
+                        className="post-comments-pill-btn"
                       >
                         <MessageSquare size={14} />
                         <span>{post.comments.length} Comments</span>
                       </button>
                     </div>
 
-                    <div style={{ display: "flex", gap: "4px" }}>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                       <button
                         onClick={() => toggleBookmark(post._id)}
-                        className="reaction-button-trigger"
-                        style={{ color: isBookmarked ? "#3b82f6" : "var(--ce-premium-text)" }}
+                        className="post-circular-icon-btn"
+                        style={{ color: isBookmarked ? "#8b5cf6" : undefined }}
                         title="Bookmark post"
                       >
-                        <Bookmark size={14} fill={isBookmarked ? "#3b82f6" : "none"} />
+                        <Bookmark size={15} fill={isBookmarked ? "#8b5cf6" : "none"} color={isBookmarked ? "#8b5cf6" : "currentColor"} />
                       </button>
                       <div style={{ position: "relative" }}>
                         <button
                           onClick={() => setOpenSharePostId(openSharePostId === post._id ? null : post._id)}
-                          className="reaction-button-trigger"
+                          className="post-circular-icon-btn"
                           title="Share link"
                         >
-                          <Share2 size={14} />
+                          <Share2 size={15} />
                         </button>
                         {openSharePostId === post._id && (
                           <div className="share-dropdown-menu">
@@ -2577,18 +2717,21 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
               style={{ transformOrigin: getCommentsPanelTransformOrigin() }}
               className="ce-comments-panel"
             >
-              {/* Neon border lines & glow */}
-              <div className="comments-panel-glow-line" />
-              <div className="comments-panel-bg-details" />
-
               {/* Panel Header */}
               <div className="comments-panel-header">
-                <div className="comments-panel-header-title">
-                  <MessageSquare size={18} />
-                  <span>Comments</span>
-                  <span className="count-badge">
-                    {activeCommentsPanelPost.comments?.length || 0}
-                  </span>
+                <div className="comments-panel-header-left">
+                  <div className="comments-panel-icon-badge">
+                    <MessageSquare size={18} />
+                  </div>
+                  <div className="comments-panel-header-text">
+                    <div className="comments-panel-title-row">
+                      <span className="comments-panel-title">Comments</span>
+                      <span className="count-badge">
+                        {activeCommentsPanelPost.comments?.length || 0}
+                      </span>
+                    </div>
+                    <p className="comments-panel-subtitle">Join the conversation and share your thoughts.</p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -2597,6 +2740,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                     setActiveCommentsPanelPostId(null);
                     setReplyingToComment(null);
                   }}
+                  title="Close comments"
                 >
                   <X size={16} />
                 </button>
@@ -2604,20 +2748,18 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
               {/* Scrollable list of comments */}
               <div className="comments-panel-body" onScroll={handleCommentsScroll}>
-                {/* Sleek Collapsible Mini Parent Post Detail Card */}
-                {/* Sleek Mini Parent Post Detail Snapshot */}
+                {/* Mini Parent Post Detail Snapshot */}
                 <div 
                   className="panel-parent-post-snapshot" 
                   onClick={() => setShowParentPostModal(true)}
                 >
                   <div className="panel-snapshot-left">
-                    {activeCommentsPanelPost.author.avatar ? (
-                      <img src={activeCommentsPanelPost.author.avatar} alt={activeCommentsPanelPost.author.username} className="panel-snapshot-avatar" />
-                    ) : (
-                      <div className="panel-snapshot-avatar-fallback">
-                        {(activeCommentsPanelPost.author.username || "A").charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <SafeAvatar 
+                      src={activeCommentsPanelPost.author.avatar} 
+                      name={activeCommentsPanelPost.author.username} 
+                      size={34} 
+                      className="panel-snapshot-avatar" 
+                    />
                     <div className="panel-snapshot-meta">
                       <span className="panel-snapshot-author">@{activeCommentsPanelPost.author.username}</span>
                       <span className="panel-snapshot-label">Original Post</span>
@@ -2632,67 +2774,139 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
                 {(!activeCommentsPanelPost.comments || activeCommentsPanelPost.comments.length === 0) ? (
                   <div className="comments-panel-empty-state">
-                    <MessageSquare size={40} />
-                    <h4 style={{ margin: "0 0 4px 0", color: "#fff" }}>No Comments Yet</h4>
-                    <p style={{ margin: 0, fontSize: "0.82rem" }}>Be the first to share your thoughts!</p>
+                    <div className="empty-state-icon-stack">
+                      <div className="empty-state-bubble-main">
+                        <MessageSquare size={30} />
+                      </div>
+                      <div className="empty-state-bubble-sub">
+                        <MessageSquare size={14} />
+                      </div>
+                      <Sparkles size={12} className="empty-state-sparkle sparkle-1" />
+                      <Sparkles size={10} className="empty-state-sparkle sparkle-2" />
+                    </div>
+                    <h4 className="empty-state-title">No comments yet</h4>
+                    <p className="empty-state-subtitle">
+                      Be the first to share your thoughts<br />
+                      and start the conversation!
+                    </p>
                   </div>
                 ) : (
                   <>
                     {(() => {
                       const allComments = activeCommentsPanelPost.comments || [];
-                      const mainComments = [];
-                      const replyMapping = {}; // parentCommentId -> replies array
-
+                      const commentMap = new Map();
                       allComments.forEach(c => {
-                        const mentionMatch = c.text?.match(/^@\[([^\]]+)\]\s+(.*)/) || c.text?.match(/^@([a-zA-Z0-9_\. ]+)\s+(.*)/);
-                        let parentComment = null;
-                        if (mentionMatch) {
-                          const targetUsername = mentionMatch[1];
-                          parentComment = allComments.find(other => 
-                            other.username === targetUsername && 
-                            new Date(other.createdAt) < new Date(c.createdAt)
-                          );
+                        if (c && c._id) commentMap.set(String(c._id), c);
+                      });
+
+                      const extractMentionedUser = (text, comments) => {
+                        if (!text) return null;
+                        const bracketMatch = text.match(/^@\[([^\]]+)\]/);
+                        if (bracketMatch) return bracketMatch[1].trim();
+                        if (!text.startsWith("@")) return null;
+                        const rawAfterAt = text.substring(1);
+                        const knownUsernames = Array.from(new Set(comments.map(other => other.username).filter(Boolean)))
+                          .sort((a, b) => b.length - a.length);
+
+                        for (const uname of knownUsernames) {
+                          if (rawAfterAt.toLowerCase().startsWith(uname.toLowerCase())) {
+                            return uname;
+                          }
+                        }
+                        const fallbackMatch = text.match(/^@([^\s]+)/);
+                        return fallbackMatch ? fallbackMatch[1].trim() : null;
+                      };
+
+                      const getDirectParentId = (c) => {
+                        const cId = String(c._id);
+                        const savedParentId = c.parentCommentId || c.parentId || commentParentMap[cId];
+                        if (savedParentId && commentMap.has(String(savedParentId))) {
+                          return String(savedParentId);
                         }
 
-                        if (parentComment) {
-                          const pId = parentComment._id;
-                          if (!replyMapping[pId]) {
-                            replyMapping[pId] = [];
+                        const mentionedUser = extractMentionedUser(c.text, allComments);
+                        if (mentionedUser) {
+                          const priorComments = allComments
+                            .filter(other => 
+                              String(other._id) !== String(c._id) &&
+                              other.username?.toLowerCase() === mentionedUser.toLowerCase() &&
+                              new Date(other.createdAt) <= new Date(c.createdAt)
+                            )
+                            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                          if (priorComments.length > 0) {
+                            return String(priorComments[0]._id);
                           }
-                          replyMapping[pId].push(c);
+                        }
+                        return null;
+                      };
+
+                      const directReplyMap = {};
+                      const mainComments = [];
+
+                      allComments.forEach(c => {
+                        const pId = getDirectParentId(c);
+                        if (pId && commentMap.has(pId) && pId !== String(c._id)) {
+                          if (!directReplyMap[pId]) {
+                            directReplyMap[pId] = [];
+                          }
+                          directReplyMap[pId].push(c);
                         } else {
                           mainComments.push(c);
                         }
                       });
 
-                      return mainComments.slice(0, visibleCommentsCount).map(c => {
-                        const commentId = c._id;
+                      const parseReplyText = (text, comments) => {
+                        if (!text) return { mention: "", content: "" };
+                        const bracketMatch = text.match(/^@\[([^\]]+)\]\s*(.*)/s);
+                        if (bracketMatch) {
+                          return { mention: bracketMatch[1].trim(), content: bracketMatch[2].trim() };
+                        }
+                        if (text.startsWith("@")) {
+                          const rawAfterAt = text.substring(1);
+                          const knownUsernames = Array.from(new Set(comments.map(c => c.username).filter(Boolean)))
+                            .sort((a, b) => b.length - a.length);
+
+                          for (const uname of knownUsernames) {
+                            if (rawAfterAt.toLowerCase().startsWith(uname.toLowerCase())) {
+                              return { mention: uname, content: rawAfterAt.substring(uname.length).trim() };
+                            }
+                          }
+                        }
+                        return { mention: "", content: text };
+                      };
+
+                      const renderCommentItem = (c, depth = 0) => {
+                        const commentId = String(c._id);
                         const isLiked = !!userLikedComments[commentId];
                         const likesCount = commentLikes[commentId] !== undefined 
                           ? commentLikes[commentId] 
                           : getStableCommentLikesCount(commentId);
 
-                        const commentReplies = replyMapping[commentId] || [];
-                        const replyCount = commentReplies.length;
-                        const isThreadExpanded = !!expandedCommentThreads[commentId];
+                        const directReplies = directReplyMap[commentId] || [];
+                        const replyCount = directReplies.length;
+                        const isThreadExpanded = expandedCommentThreads[commentId] !== false;
+
+                        const isReplyCard = depth > 0;
+                        const { mention: rToUser, content: rDisplayContent } = isReplyCard 
+                          ? parseReplyText(c.text, allComments) 
+                          : { mention: "", content: c.text };
 
                         return (
-                          <div key={c._id} className="comment-thread-group" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            {/* Main Comment Card */}
+                          <div key={c._id} className="comment-thread-group" style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
                             <motion.div
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ duration: 0.15 }}
-                              className="panel-comment-card"
+                              className={`panel-comment-card ${isReplyCard ? "is-reply" : ""}`}
                             >
                               <div className="panel-comment-avatar-container">
-                                {c.avatar ? (
-                                  <img src={c.avatar} alt={c.username} className="panel-comment-avatar" />
-                                ) : (
-                                  <div className="panel-comment-avatar-fallback">
-                                    {(c.username || "U").charAt(0).toUpperCase()}
-                                  </div>
-                                )}
+                                <SafeAvatar 
+                                  src={c.avatar} 
+                                  name={c.username} 
+                                  size={isReplyCard ? 30 : 36} 
+                                  className="panel-comment-avatar" 
+                                />
                               </div>
                               <div className="panel-comment-info">
                                 <div className="panel-comment-meta">
@@ -2703,7 +2917,10 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                                     {formatPostTime(c.createdAt)}
                                   </span>
                                 </div>
-                                <p className="panel-comment-text">{c.text}</p>
+                                <p className="panel-comment-text">
+                                  {rToUser && <span className="reply-mention">@{rToUser}</span>}
+                                  {rDisplayContent}
+                                </p>
                                 <div className="panel-comment-actions">
                                   <div className="panel-comment-btn-group">
                                     <button
@@ -2715,8 +2932,16 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                                     </button>
                                     <button
                                       type="button"
-                                      className="comment-action-btn reply-btn"
-                                      onClick={() => setReplyingToComment({ commentId, username: c.username })}
+                                      className={`comment-action-btn reply-btn ${activeInlineReplyId === commentId ? "active" : ""}`}
+                                      onClick={() => {
+                                        if (activeInlineReplyId === commentId) {
+                                          setActiveInlineReplyId(null);
+                                          setInlineReplyText("");
+                                        } else {
+                                          setActiveInlineReplyId(commentId);
+                                          setInlineReplyText("");
+                                        }
+                                      }}
                                     >
                                       Reply
                                     </button>
@@ -2730,101 +2955,96 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                                     <span>{likesCount}</span>
                                   </div>
                                 </div>
+
+                                {activeInlineReplyId === commentId && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: -4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -4 }}
+                                    className="inline-reply-box"
+                                  >
+                                    <div className="inline-reply-input-row">
+                                      <SafeAvatar src={user?.avatar} name={user?.username || "Me"} size={28} className="inline-reply-avatar" />
+                                      <input
+                                        type="text"
+                                        autoFocus
+                                        placeholder={`Reply to @${c.username}...`}
+                                        value={inlineReplyText}
+                                        onChange={(e) => setInlineReplyText(e.target.value)}
+                                        className="inline-reply-input"
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter" && inlineReplyText.trim()) {
+                                            e.preventDefault();
+                                            handleSubmitInlineReply(activeCommentsPanelPost._id, c._id, c.username);
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="inline-reply-actions-row">
+                                      <button
+                                        type="button"
+                                        className="inline-reply-btn cancel-btn"
+                                        onClick={() => {
+                                          setActiveInlineReplyId(null);
+                                          setInlineReplyText("");
+                                        }}
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="inline-reply-btn submit-btn"
+                                        disabled={!inlineReplyText.trim()}
+                                        onClick={() => handleSubmitInlineReply(activeCommentsPanelPost._id, c._id, c.username)}
+                                      >
+                                        Reply
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                )}
                               </div>
                             </motion.div>
 
-                            {/* Replies Thread Toggle and Nested List */}
                             {replyCount > 0 && (
                               <div className="comment-thread-replies-section">
                                 <button
                                   type="button"
                                   className="toggle-thread-replies-btn"
-                                  onClick={() => setExpandedCommentThreads(prev => ({ ...prev, [commentId]: !prev[commentId] }))}
+                                  onClick={() => setExpandedCommentThreads(prev => ({ ...prev, [commentId]: !isThreadExpanded }))}
                                 >
                                   {isThreadExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                  <span>{isThreadExpanded ? "Hide replies" : `View ${replyCount} replies`}</span>
+                                  <span>{isThreadExpanded ? `Hide ${replyCount} ${replyCount === 1 ? "reply" : "replies"}` : `View ${replyCount} ${replyCount === 1 ? "reply" : "replies"}`}</span>
                                 </button>
 
                                 {isThreadExpanded && (
-                                  <div className="comment-replies-list" style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
-                                    {commentReplies.map(r => {
-                                      const rId = r._id;
-                                      const rIsLiked = !!userLikedComments[rId];
-                                      const rLikesCount = commentLikes[rId] !== undefined 
-                                        ? commentLikes[rId] 
-                                        : getStableCommentLikesCount(rId);
-
-                                      const rMatch = r.text?.match(/^@\[([^\]]+)\]\s+(.*)/) || r.text?.match(/^@([a-zA-Z0-9_\.]+)\s+(.*)/);
-                                      const rDisplayContent = rMatch ? rMatch[2] : r.text;
-                                      const rToUser = rMatch ? rMatch[1] : "";
-
-                                      return (
-                                        <motion.div
-                                          key={r._id}
-                                          initial={{ opacity: 0 }}
-                                          animate={{ opacity: 1 }}
-                                          transition={{ duration: 0.15 }}
-                                          className="panel-comment-card is-reply"
-                                        >
-                                          <div className="panel-comment-avatar-container">
-                                            {r.avatar ? (
-                                              <img src={r.avatar} alt={r.username} className="panel-comment-avatar" />
-                                            ) : (
-                                              <div className="panel-comment-avatar-fallback">
-                                                {(r.username || "U").charAt(0).toUpperCase()}
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="panel-comment-info">
-                                            <div className="panel-comment-meta">
-                                              <div className="panel-comment-author-group">
-                                                <span className="panel-comment-author">@{r.username}</span>
-                                              </div>
-                                              <span className="panel-comment-time">
-                                                {formatPostTime(r.createdAt)}
-                                              </span>
-                                            </div>
-                                            <p className="panel-comment-text">
-                                              <span className="reply-mention">@{rToUser}</span>
-                                              {rDisplayContent}
-                                            </p>
-                                            <div className="panel-comment-actions">
-                                              <div className="panel-comment-btn-group">
-                                                <button
-                                                  type="button"
-                                                  className={`comment-action-btn like-btn ${rIsLiked ? "liked" : ""}`}
-                                                  onClick={() => handleToggleLikeComment(rId)}
-                                                >
-                                                  Like
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  className="comment-action-btn reply-btn"
-                                                  onClick={() => setReplyingToComment({ commentId: c._id, username: r.username })}
-                                                >
-                                                  Reply
-                                                </button>
-                                              </div>
-                                              <div className={`comment-heart-count ${rIsLiked ? "active" : ""}`}>
-                                                <Heart 
-                                                  size={11} 
-                                                  fill={rIsLiked ? "#ec4899" : "none"} 
-                                                  stroke={rIsLiked ? "#ec4899" : "currentColor"} 
-                                                />
-                                                <span>{rLikesCount}</span>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </motion.div>
-                                      );
-                                    })}
+                                  <div className={`comment-replies-list ${depth > 0 ? "is-nested-depth" : ""}`}>
+                                    {directReplies.map(child => renderCommentItem(child, depth + 1))}
                                   </div>
                                 )}
                               </div>
                             )}
                           </div>
                         );
-                      });
+                      };
+
+                      const renderedList = mainComments.slice(0, visibleCommentsCount).map(c => renderCommentItem(c, 0));
+
+                      return (
+                        <>
+                          {renderedList}
+                          {mainComments.length > visibleCommentsCount && (
+                            <div style={{ display: "flex", justifyContent: "center", paddingTop: "8px", paddingBottom: "8px", width: "100%" }}>
+                              <button
+                                type="button"
+                                className="load-more-comments-btn"
+                                onClick={() => setVisibleCommentsCount(prev => prev + 20)}
+                              >
+                                Load more comments ({mainComments.length - visibleCommentsCount} remaining)
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
                     })()}
 
                     {isLoadingMoreComments && (
@@ -2861,22 +3081,46 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                     handlePanelAddComment(activeCommentsPanelPost._id);
                   }}
                 >
-                  <div className="comment-input-wrapper">
-                    <input
-                      type="text"
-                      placeholder={activeCommentsPanelPost.commentsLocked ? "Comments are locked" : "Write a comment..."}
-                      value={panelCommentInput}
-                      onChange={(e) => setPanelCommentInput(e.target.value)}
-                      className="comment-panel-textarea"
-                      disabled={activeCommentsPanelPost.commentsLocked}
-                    />
+                  <div className="comment-footer-input-row">
+                    <div className="comment-user-avatar-container">
+                      <SafeAvatar 
+                        src={user?.avatar} 
+                        name={user?.username || "Me"} 
+                        size={36} 
+                        className="comment-user-avatar" 
+                      />
+                      <span className="avatar-online-dot" />
+                    </div>
+                    <div className="comment-input-wrapper">
+                      <input
+                        type="text"
+                        placeholder={activeCommentsPanelPost.commentsLocked ? "Comments are locked" : "Write a comment..."}
+                        value={panelCommentInput}
+                        onChange={(e) => setPanelCommentInput(e.target.value)}
+                        className="comment-panel-textarea"
+                        disabled={activeCommentsPanelPost.commentsLocked}
+                      />
+                      <div className="comment-input-actions">
+                        <button type="button" className="comment-input-action-btn" title="Add emoji">
+                          <Smile size={18} />
+                        </button>
+                        <button type="button" className="comment-input-action-btn" title="Attach image">
+                          <Image size={18} />
+                        </button>
+                      </div>
+                    </div>
                     <button
                       type="submit"
                       disabled={!panelCommentInput.trim() || activeCommentsPanelPost.commentsLocked}
                       className="comment-panel-send-btn"
+                      title="Send comment"
                     >
-                      <Send size={14} />
+                      <Send size={16} />
                     </button>
+                  </div>
+                  <div className="comment-footer-microcopy">
+                    <ShieldCheck size={13} style={{ display: "inline-block", verticalAlign: "middle", marginRight: "4px" }} />
+                    <span>Be respectful and keep the conversation helpful.</span>
                   </div>
                 </form>
               </div>

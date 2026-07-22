@@ -1974,10 +1974,9 @@ a:hover svg.lucide-settings {
   transform: rotate(90deg);
 }
 
-/* 2. Heart / Like Pulse Beat */
-.ce-like-btn-animated:hover svg.lucide-heart,
-button:hover svg.lucide-heart {
-  animation: heartPulse 1.2s infinite ease-in-out;
+/* 2. Heart / Like Pulse Beat (Disabled for clean feed post like buttons) */
+.ce-like-btn-animated:hover svg.lucide-heart {
+  animation: none !important;
 }
 
 @keyframes heartPulse {
