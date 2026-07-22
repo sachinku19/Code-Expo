@@ -33,6 +33,13 @@ export function ThemeProvider({ children }) {
       setResolvedTheme(resTheme);
       document.documentElement.className = resTheme;
       document.documentElement.setAttribute("data-theme-mode", theme);
+      if (resTheme === "light") {
+        document.body.classList.add("light");
+        document.body.classList.remove("dark");
+      } else {
+        document.body.classList.add("dark");
+        document.body.classList.remove("light");
+      }
     };
 
     applyTheme();

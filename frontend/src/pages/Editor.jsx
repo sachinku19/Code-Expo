@@ -15,6 +15,8 @@ import Whiteboard from "../components/Whiteboard";
 import FileExplorer from "../components/FileExplorer";
 import TaskPlanner from "../components/planner/TaskPlanner";
 import ReportUserModal from "../components/social/ReportUserModal";
+import AIAssistantPanel from "../components/ai/AIAssistantPanel";
+import AIHistoryTab from "../components/ai/AIHistoryTab";
 import * as workspaceService from "../services/workspaceService";
 import * as collabService from "../services/collaborationService";
 import MainLayout from "../layouts/MainLayout";
@@ -36,6 +38,7 @@ import {
   MessageSquare,
   Send,
   Play,
+  Square,
   LogOut,
   Loader2,
   DoorOpen,
@@ -595,6 +598,155 @@ function Editor() {
   const decorationsRef = useRef([]);
   const hasJoinedRef = useRef(false);
   const [remoteCursors, setRemoteCursors] = useState({});
+
+  // AI Copilot Suite States
+  const [selectedCode, setSelectedCode] = useState("");
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+
+  // AI Panel Draggable State
+  const [aiPanelPos, setAiPanelPos] = useState({ x: 0, y: 0 });
+  const [isAiDragging, setIsAiDragging] = useState(false);
+  const aiDragStartRef = useRef({ mouseX: 0, mouseY: 0, posX: 0, posY: 0 });
+
+  const handleAiHeaderMouseDown = (e) => {
+    if (e.target.closest("button") || e.target.closest("input") || e.target.closest("select")) {
+      return;
+    }
+    setIsAiDragging(true);
+    aiDragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      posX: aiPanelPos.x,
+      posY: aiPanelPos.y
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isAiDragging) return;
+      const dx = e.clientX - aiDragStartRef.current.mouseX;
+      const dy = e.clientY - aiDragStartRef.current.mouseY;
+      setAiPanelPos({
+        x: aiDragStartRef.current.posX + dx,
+        y: aiDragStartRef.current.posY + dy
+      });
+    };
+
+    const handleMouseUp = () => {
+      if (isAiDragging) {
+        setIsAiDragging(false);
+      }
+    };
+
+    if (isAiDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isAiDragging]);
+
+  const [previousCodeBeforeAI, setPreviousCodeBeforeAI] = useState(null);
+
+  const handleReplaceSelection = (newCode) => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Backup current code state before replacing
+    setPreviousCodeBeforeAI(model.getValue());
+
+    const selection = editor.getSelection();
+    if (selection && !selection.isEmpty()) {
+      editor.executeEdits("expoai", [
+        {
+          range: selection,
+          text: newCode,
+          forceMoveMarkers: true
+        }
+      ]);
+      triggerNotification("Selection replaced by ExpoAI solution!");
+    } else {
+      const fullRange = model.getFullModelRange();
+      editor.executeEdits("expoai", [
+        {
+          range: fullRange,
+          text: newCode,
+          forceMoveMarkers: true
+        }
+      ]);
+      triggerNotification("Workspace code updated by ExpoAI!");
+    }
+
+    // Immediately sync React state and persist to server database
+    const updatedCode = model.getValue();
+    handleEditorChange(updatedCode);
+  };
+
+  const handleInsertBelowSelection = (newCode) => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Backup current code state before inserting
+    setPreviousCodeBeforeAI(model.getValue());
+
+    const selection = editor.getSelection();
+    const position = editor.getPosition();
+    const targetLine = selection ? selection.endLineNumber : (position ? position.lineNumber : 1);
+    const lineContent = model.getLineContent(targetLine);
+    editor.executeEdits("expoai", [
+      {
+        range: new monaco.Range(targetLine, lineContent.length + 1, targetLine, lineContent.length + 1),
+        text: "\n" + newCode,
+        forceMoveMarkers: true
+      }
+    ]);
+    triggerNotification("Code inserted below selection!");
+
+    // Immediately sync React state and persist to server database
+    const updatedCode = model.getValue();
+    handleEditorChange(updatedCode);
+  };
+
+  const handleUndoAIInsertion = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const model = editor.getModel();
+    if (!model) return;
+
+    // 1. Execute Monaco built-in undo command
+    editor.trigger("expoai", "undo", null);
+
+    // 2. If code wasn't completely reverted by Monaco undo, restore previousCodeBeforeAI snapshot
+    if (previousCodeBeforeAI !== null) {
+      setTimeout(() => {
+        if (model.getValue() !== previousCodeBeforeAI) {
+          const fullRange = model.getFullModelRange();
+          editor.executeEdits("expoai-undo", [
+            {
+              range: fullRange,
+              text: previousCodeBeforeAI,
+              forceMoveMarkers: true
+            }
+          ]);
+        }
+        setPreviousCodeBeforeAI(null);
+        handleEditorChange(model.getValue());
+      }, 50);
+    } else {
+      handleEditorChange(model.getValue());
+    }
+
+    triggerNotification("AI code modification undone!");
+  };
 
   // Collaboration Suite States
   const [lineOwnership, setLineOwnership] = useState([]);
@@ -2811,7 +2963,7 @@ function Editor() {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Emit cursor movement inside Monaco Editor
+  // Emit cursor movement & save file content inside Monaco Editor
   const handleEditorChange = (value) => {
     setCode(value);
     if (activeFileIdRef.current) {
@@ -2820,8 +2972,16 @@ function Editor() {
         fileId: activeFileIdRef.current,
         content: value
       });
+      socket.emit("save-file-content", {
+        roomId,
+        fileId: activeFileIdRef.current,
+        content: value,
+        userId: user?.id,
+        username: user?.username
+      });
     } else {
       socket.emit("code-change", { roomId, code: value });
+      socket.emit("save-code", { roomId, code: value });
     }
   };
 
@@ -3020,7 +3180,45 @@ function Editor() {
         }
       }
     });
-    editorDisposablesRef.current.push(lineLimitDisposable);
+    // ExpoAI: Cursor selection tracking for AI context
+    editor.onDidChangeCursorSelection((e) => {
+      const selection = editor.getSelection();
+      const model = editor.getModel();
+      if (selection && model && !selection.isEmpty()) {
+        const text = model.getValueInRange(selection);
+        setSelectedCode(text);
+      } else {
+        setSelectedCode("");
+      }
+    });
+
+    // ExpoAI: Register Context Menu Actions inside Monaco Editor
+    const registerAIAction = (id, label) => {
+      editor.addAction({
+        id: `expoai-${id}`,
+        label: `🤖 ExpoAI: ${label}`,
+        contextMenuGroupId: "1_modification",
+        contextMenuOrder: 1.5,
+        run: (ed) => {
+          const sel = ed.getSelection();
+          const mod = ed.getModel();
+          if (sel && mod && !sel.isEmpty()) {
+            const txt = mod.getValueInRange(sel);
+            setSelectedCode(txt);
+          }
+          setRightTabMode("ai");
+          setRightSidebarCollapsed(false);
+        }
+      });
+    };
+
+    registerAIAction("ask", "Ask AI");
+    registerAIAction("explain", "Explain Code");
+    registerAIAction("fix", "Fix Bug");
+    registerAIAction("optimize", "Optimize Code");
+    registerAIAction("review", "Review Code");
+    registerAIAction("docs", "Generate Documentation");
+    registerAIAction("tests", "Generate Test Cases");
 
     // 2. Cursor position tracking
     editor.onDidChangeCursorPosition((e) => {
@@ -3185,6 +3383,14 @@ function Editor() {
       activeFileId: activeFileIdRef.current || null,
       input: programInput
     });
+  };
+
+  const handleStopCodeExecution = () => {
+    if (!isTerminalExecuting) return;
+    socket.emit("stop-execute-code", { roomId });
+    setIsTerminalExecuting(false);
+    setTerminalOutput((prev) => prev + "\n\n❌ [Execution stopped by user]");
+    triggerNotification("Code execution stopped.");
   };
 
   const handleConsoleTabClick = (tab) => {
@@ -3650,6 +3856,22 @@ function Editor() {
                 title="Settings"
               >
                 <Settings size={20} />
+              </button>
+
+              {/* Explicit Expand / Collapse Arrow Toggle Button */}
+              <button
+                className="sidebar-tab-btn sidebar-expand-toggle-btn"
+                onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+                title={leftSidebarCollapsed ? "Expand Left Sidebar (Files / Notes)" : "Collapse Left Sidebar"}
+                style={{
+                  marginTop: "auto",
+                  marginBottom: "8px",
+                  color: "var(--ce-accent, #818cf8)",
+                  background: "rgba(99, 102, 241, 0.15)",
+                  border: "1px solid rgba(99, 102, 241, 0.3)"
+                }}
+              >
+                {leftSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
               </button>
             </div>
 
@@ -4526,33 +4748,63 @@ function Editor() {
                     <Activity size={14} />
                     <span>Execution Logs</span>
                   </button>
+                  <button
+                    className={`console-tab-btn ${consoleTab === "ai-history" ? "active" : ""}`}
+                    onClick={() => handleConsoleTabClick("ai-history")}
+                  >
+                    <Sparkles size={14} style={{ color: "#818cf8" }} />
+                    <span>AI History</span>
+                  </button>
                 </div>
 
                 <div className="console-actions">
+                  <button
+                    type="button"
+                    className={`ce-btn-ai-copilot ${isAIPanelOpen ? "active" : ""}`}
+                    onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
+                    title="Open ExpoAI Copilot Assistant"
+                  >
+                    <Sparkles size={13} className="sparkle-pulse" />
+                    <span>{isAIPanelOpen ? "Close ExpoAI" : "ExpoAI Copilot"}</span>
+                  </button>
                   {currentUserRole !== "VIEWER" && (
                     <>
                       <button className="ce-btn-save" onClick={handleSaveCode} title="Save file content">
                         <Download size={13} />
                         <span>Save</span>
                       </button>
-                      <button
-                        className={`ce-btn-run ${isTerminalExecuting ? "running" : ""} ${runCooldownSeconds > 0 ? "cooldown" : ""}`}
-                        onClick={handleRunCode}
-                        disabled={isTerminalExecuting || runCooldownSeconds > 0}
-                      >
-                        {isTerminalExecuting ? (
-                          <Loader2 size={13} className="ce-btn-loader" />
-                        ) : (
+                      {isTerminalExecuting ? (
+                        <button
+                          type="button"
+                          className="ce-btn-run running-stop-btn"
+                          onClick={handleStopCodeExecution}
+                          title="Click to Stop Code Execution"
+                          style={{
+                            background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                            color: "#ffffff",
+                            borderColor: "#b91c1c",
+                            boxShadow: "0 0 12px rgba(239, 68, 68, 0.4)",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <Square size={12} style={{ fill: "#ffffff" }} />
+                          <span>Stop Execution</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`ce-btn-run ${runCooldownSeconds > 0 ? "cooldown" : ""}`}
+                          onClick={handleRunCode}
+                          disabled={runCooldownSeconds > 0}
+                        >
                           <Play size={13} />
-                        )}
-                        <span>
-                          {isTerminalExecuting
-                            ? "Running..."
-                            : runCooldownSeconds > 0
+                          <span>
+                            {runCooldownSeconds > 0
                               ? `Wait ${runCooldownSeconds}s`
                               : "Run Program"}
-                        </span>
-                      </button>
+                          </span>
+                        </button>
+                      )}
                     </>
                   )}
                   <button
@@ -4634,6 +4886,10 @@ function Editor() {
                     </div>
                   </div>
                 )}
+
+                {consoleTab === "ai-history" && (
+                  <AIHistoryTab roomId={roomId} />
+                )}
               </div>
             </div>
           </main>
@@ -4652,7 +4908,6 @@ function Editor() {
 
             {/* 5. RIGHT SIDEBAR */}
             <aside className="ce-right-sidebar">
-
               <div className="right-sidebar-content">
 
                 {/* Section 1: Participants */}
@@ -5136,6 +5391,46 @@ function Editor() {
             </aside>
           </div>
         </div>
+
+        {/* Floating ExpoAI Assistant Drawer Widget */}
+        {isAIPanelOpen && (
+          <div
+            className="floating-ai-assistant-drawer"
+            style={{
+              position: "fixed",
+              bottom: "55px",
+              right: "20px",
+              width: "390px",
+              height: "560px",
+              maxHeight: "calc(100vh - 90px)",
+              zIndex: 99999,
+              borderRadius: "16px",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.85), 0 0 30px rgba(99,102,241,0.4)",
+              border: "1px solid rgba(99,102,241,0.5)",
+              overflow: "hidden",
+              background: "#0d0d14",
+              transform: `translate(${aiPanelPos.x}px, ${aiPanelPos.y}px)`,
+              transition: isAiDragging ? "none" : "transform 0.1s ease-out"
+            }}
+          >
+            <AIAssistantPanel
+              roomId={roomId}
+              username={user?.username || "Developer"}
+              selectedCode={selectedCode}
+              fullCode={code}
+              activeFileName={activeFile?.name || "active file"}
+              language={room?.language || "javascript"}
+              onReplaceCode={handleReplaceSelection}
+              onInsertBelow={handleInsertBelowSelection}
+              onUndoCode={handleUndoAIInsertion}
+              isCollapsed={false}
+              onToggleCollapse={() => setIsAIPanelOpen(false)}
+              onClose={() => setIsAIPanelOpen(false)}
+              onHeaderMouseDown={handleAiHeaderMouseDown}
+              isDragging={isAiDragging}
+            />
+          </div>
+        )}
 
         {/* 8. MOBILE VIEW NAVIGATION TABS */}
         <footer className="ce-mobile-tabs-nav">
