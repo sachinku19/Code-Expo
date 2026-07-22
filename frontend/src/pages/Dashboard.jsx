@@ -98,6 +98,56 @@ const getPostSnippet = (targetPost) => {
   return plainText || "post";
 };
 
+const SafeUserAvatar = ({ avatar, username, size = 28, className = "" }) => {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [avatar]);
+
+  const isValidAvatar = avatar && typeof avatar === "string" && avatar.trim().length > 0 && !imgFailed && avatar !== "undefined" && avatar !== "null";
+
+  if (isValidAvatar) {
+    return (
+      <img
+        src={avatar}
+        alt=""
+        onError={() => setImgFailed(true)}
+        className={className}
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: "50%",
+          objectFit: "cover",
+          display: "block",
+          flexShrink: 0
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={className ? `${className}-initial` : "avatar-initial"}
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: getAvatarColor(username),
+        fontSize: size <= 28 ? "0.78rem" : "0.9rem",
+        fontWeight: "600",
+        color: "#fff",
+        flexShrink: 0
+      }}
+    >
+      {(username || "D").charAt(0).toUpperCase()}
+    </div>
+  );
+};
+
 const formatCodingTime = (hours, minutes) => {
   if (minutes !== undefined && minutes !== null) {
     if (minutes === 0) return "0m active time";
@@ -1140,12 +1190,39 @@ function Dashboard() {
   const [suggestions, setSuggestions] = useState(() => loadFromCache("ce_cache_suggestions", []));
   const [trendingRooms, setTrendingRooms] = useState(() => loadFromCache("ce_cache_trendingRooms", []));
   const [onlineFollows, setOnlineFollows] = useState(() => loadFromCache("ce_cache_onlineFollows", []));
+  const [onlineFilterTab, setOnlineFilterTab] = useState("all");
+
   const [feedActivities, setFeedActivities] = useState(() => loadFromCache("ce_cache_feedActivities", []));
   const [feedPage, setFeedPage] = useState(1);
   const [feedTotalPages, setFeedTotalPages] = useState(1);
   const [feedLoading, setFeedLoading] = useState(false);
   const [followersList, setFollowersList] = useState(() => loadFromCache("ce_cache_followersList", []));
   const [followingList, setFollowingList] = useState(() => loadFromCache("ce_cache_followingList", []));
+
+  const onlineFollowersList = useMemo(() => {
+    return (followersList || []).filter(f => f && (f.isOnline === "true" || f.isOnline === true || f.isOnline === "online" || f.online === true || f.status === "online"));
+  }, [followersList]);
+
+  const onlineFollowingList = useMemo(() => {
+    return (followingList || []).filter(f => f && (f.isOnline === "true" || f.isOnline === true || f.isOnline === "online" || f.online === true || f.status === "online"));
+  }, [followingList]);
+
+  const allOnlineList = useMemo(() => {
+    const combined = [...(onlineFollows || []), ...onlineFollowersList, ...onlineFollowingList];
+    const map = new Map();
+    combined.forEach(u => {
+      if (u && (u._id || u.id) && !map.has(String(u._id || u.id))) {
+        map.set(String(u._id || u.id), u);
+      }
+    });
+    return Array.from(map.values());
+  }, [onlineFollows, onlineFollowersList, onlineFollowingList]);
+
+  const displayedOnlineList = useMemo(() => {
+    if (onlineFilterTab === "followers") return onlineFollowersList;
+    if (onlineFilterTab === "following") return onlineFollowingList;
+    return allOnlineList.length > 0 ? allOnlineList : onlineFollows;
+  }, [onlineFilterTab, onlineFollowersList, onlineFollowingList, allOnlineList, onlineFollows]);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const [socialSubTab, setSocialSubTab] = useState("explore");
   const [visibleFollowingCount, setVisibleFollowingCount] = useState(6);
@@ -2052,7 +2129,7 @@ function Dashboard() {
         const following = followRes.following || [];
         setFollowingList(following);
         localStorage.setItem("ce_cache_followingList", JSON.stringify(following));
-        const online = following.filter(f => f.isOnline === "true" || f.isOnline === true);
+        const online = following.filter(f => f && (f.isOnline === "true" || f.isOnline === true || f.isOnline === "online" || f.online === true || f.status === "online"));
         setOnlineFollows(online);
         localStorage.setItem("ce_cache_onlineFollows", JSON.stringify(online));
       }
@@ -4547,37 +4624,76 @@ function Dashboard() {
                         </section>
                       )}
 
-                      {/* ONLINE FOLLOWS */}
-                      <section className="ce-dashboard-section">
-                        <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                          <span className="live-indicator-dot" style={{ position: "relative", top: 0 }} /> Online Follows ({onlineFollows.length})
-                        </h3>
-                        {isLoadingDashboard && onlineFollows.length === 0 ? (
+                      {/* REDESIGNED ONLINE NETWORK CARD MATCHING TARGET REFERENCE */}
+                      <section className="ce-dashboard-section online-network-card">
+                        {/* Top Filter Tabs */}
+                        <div className="online-filter-tabs-bar">
+                          <button
+                            type="button"
+                            className={`online-filter-tab-btn ${onlineFilterTab === "all" ? "active" : ""}`}
+                            onClick={() => setOnlineFilterTab("all")}
+                          >
+                            All ({allOnlineList.length || onlineFollows.length})
+                          </button>
+                          <button
+                            type="button"
+                            className={`online-filter-tab-btn ${onlineFilterTab === "followers" ? "active" : ""}`}
+                            onClick={() => setOnlineFilterTab("followers")}
+                          >
+                            Followers ({onlineFollowersList.length})
+                          </button>
+                          <button
+                            type="button"
+                            className={`online-filter-tab-btn ${onlineFilterTab === "following" ? "active" : ""}`}
+                            onClick={() => setOnlineFilterTab("following")}
+                          >
+                            Following ({onlineFollowingList.length})
+                          </button>
+                        </div>
+
+                        {/* List Rows */}
+                        {isLoadingDashboard && displayedOnlineList.length === 0 ? (
                           <UserListSkeleton count={3} />
-                        ) : onlineFollows.length === 0 ? (
+                        ) : displayedOnlineList.length === 0 ? (
                           <div className="empty-state-card compact">
-                            <p>No followed developers online.</p>
+                            <p>No developers online in this category.</p>
                           </div>
                         ) : (
-                          <div className="online-follows-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            {onlineFollows.map(f => (
-                              <div key={f._id} className="online-follow-item" onClick={() => handleViewUserProfile(f._id)}>
-                                <div className="follow-avatar-wrapper" style={{ position: "relative", width: "28px", height: "28px" }}>
-                                  {f.avatar ? (
-                                    <img src={f.avatar} alt={f.username} className="follow-avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                                  ) : (
-                                    <div className="follow-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(f.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                      {f.username.charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                  <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
+                          <div className="online-developers-rows">
+                            {displayedOnlineList.slice(0, 5).map(dev => (
+                              <div key={dev._id || dev.id} className="online-developer-row-card" onClick={() => handleViewUserProfile(dev._id || dev.id)}>
+                                <div className="dev-avatar-container">
+                                  <SafeUserAvatar avatar={dev.avatar} username={dev.username} size={36} className="dev-avatar-img" />
+                                  <span className="dev-online-status-badge" />
                                 </div>
-                                <div className="follow-info" style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-                                  <span className="follow-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.username}</span>
-                                  <span className="follow-bio" style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.bio || "No bio yet"}</span>
+
+                                <div className="dev-meta-column">
+                                  <span className="dev-name-text">{dev.username}</span>
+                                  <span className="dev-bio-text">{dev.bio || "No bio yet"}</span>
                                 </div>
+
+                                <span className="dev-far-right-online-dot" title="Online now" />
                               </div>
                             ))}
+                          </div>
+                        )}
+
+                        {/* Bottom Overlapping Avatar Stack & Remaining Count */}
+                        {allOnlineList.length > 5 && (
+                          <div className="online-footer-stack-bar">
+                            <div className="online-avatar-bubbles">
+                              {allOnlineList.slice(5, 10).map((u, i) => (
+                                <div key={i} className="online-bubble-avatar">
+                                  <SafeUserAvatar avatar={u.avatar} username={u.username} size={22} />
+                                </div>
+                              ))}
+                              <div className="online-bubble-count">
+                                +{allOnlineList.length - 5}
+                              </div>
+                            </div>
+                            <span className="online-footer-more-text">
+                              and {allOnlineList.length - 5} more online
+                            </span>
                           </div>
                         )}
                       </section>

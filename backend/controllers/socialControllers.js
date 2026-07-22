@@ -173,8 +173,12 @@ const getFollowing = async (req, res) => {
 
     const followingWithOnline = followingList.map(uObj => {
       const userRoom = io?.sockets?.adapter?.rooms?.get(String(uObj._id));
-      uObj.isOnline = !!(userRoom && userRoom.size > 0);
-      return uObj;
+      const isSocketOnline = !!(userRoom && userRoom.size > 0);
+      const isDbOnline = uObj.isOnline === true || uObj.isOnline === "true" || uObj.status === "online";
+      return {
+        ...uObj,
+        isOnline: isSocketOnline || isDbOnline
+      };
     });
 
     res.status(200).json({
