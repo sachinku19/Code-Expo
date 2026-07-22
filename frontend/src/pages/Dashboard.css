@@ -11500,10 +11500,25 @@ tier-badge.master {
   margin-top: 14px !important;
   padding-top: 12px !important;
   border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  cursor: pointer !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.online-footer-stack-bar:hover {
+  opacity: 0.85 !important;
+}
+
+.online-footer-stack-bar:hover .online-footer-more-text {
+  text-decoration: underline !important;
+  color: #7c3aed !important;
 }
 
 .dark .online-footer-stack-bar {
   border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .online-footer-stack-bar:hover .online-footer-more-text {
+  color: #d8b4fe !important;
 }
 
 .online-avatar-bubbles {

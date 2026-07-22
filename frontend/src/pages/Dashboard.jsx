@@ -1191,6 +1191,7 @@ function Dashboard() {
   const [trendingRooms, setTrendingRooms] = useState(() => loadFromCache("ce_cache_trendingRooms", []));
   const [onlineFollows, setOnlineFollows] = useState(() => loadFromCache("ce_cache_onlineFollows", []));
   const [onlineFilterTab, setOnlineFilterTab] = useState("all");
+  const [showAllOnline, setShowAllOnline] = useState(false);
 
   const [feedActivities, setFeedActivities] = useState(() => loadFromCache("ce_cache_feedActivities", []));
   const [feedPage, setFeedPage] = useState(1);
@@ -4660,7 +4661,7 @@ function Dashboard() {
                           </div>
                         ) : (
                           <div className="online-developers-rows">
-                            {displayedOnlineList.slice(0, 5).map(dev => (
+                            {displayedOnlineList.slice(0, showAllOnline ? undefined : 3).map(dev => (
                               <div key={dev._id || dev.id} className="online-developer-row-card" onClick={() => handleViewUserProfile(dev._id || dev.id)}>
                                 <div className="dev-avatar-container">
                                   <SafeUserAvatar avatar={dev.avatar} username={dev.username} size={36} className="dev-avatar-img" />
@@ -4678,21 +4679,26 @@ function Dashboard() {
                           </div>
                         )}
 
-                        {/* Bottom Overlapping Avatar Stack & Remaining Count */}
-                        {allOnlineList.length > 5 && (
-                          <div className="online-footer-stack-bar">
+                        {/* Bottom Overlapping Avatar Stack & Remaining Count Button */}
+                        {displayedOnlineList.length > 3 && (
+                          <div
+                            className="online-footer-stack-bar"
+                            onClick={() => setShowAllOnline(prev => !prev)}
+                            style={{ cursor: "pointer" }}
+                            title={showAllOnline ? "Show less" : `Show all ${displayedOnlineList.length} online developers`}
+                          >
                             <div className="online-avatar-bubbles">
-                              {allOnlineList.slice(5, 10).map((u, i) => (
+                              {displayedOnlineList.slice(3, 8).map((u, i) => (
                                 <div key={i} className="online-bubble-avatar">
                                   <SafeUserAvatar avatar={u.avatar} username={u.username} size={22} />
                                 </div>
                               ))}
                               <div className="online-bubble-count">
-                                +{allOnlineList.length - 5}
+                                +{displayedOnlineList.length - 3}
                               </div>
                             </div>
                             <span className="online-footer-more-text">
-                              and {allOnlineList.length - 5} more online
+                              {showAllOnline ? "Show less" : `and ${displayedOnlineList.length - 3} more online`}
                             </span>
                           </div>
                         )}
