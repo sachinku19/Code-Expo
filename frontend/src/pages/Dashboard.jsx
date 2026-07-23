@@ -98,6 +98,38 @@ const getPostSnippet = (targetPost) => {
   return plainText || "post";
 };
 
+const getAvatarColor = (name) => {
+  const colors = [
+    "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
+    "#ec4899", "#14b8a6", "#6366f1", "#06b6d4", "#84cc16"
+  ];
+  if (!name) return colors[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+const getBannerGradient = (username) => {
+  const colors = [
+    "linear-gradient(135deg, #3f37c9 0%, #480ca8 100%)",
+    "linear-gradient(135deg, #7209b7 0%, #f72585 100%)",
+    "linear-gradient(135deg, #03045e 0%, #0077b6 100%)",
+    "linear-gradient(135deg, #1b4332 0%, #40916c 100%)",
+    "linear-gradient(135deg, #d90429 0%, #ef233c 100%)",
+    "linear-gradient(135deg, #ffa116 0%, #ff5500 100%)",
+    "linear-gradient(135deg, #240046 0%, #7b2cbf 100%)",
+  ];
+  if (!username) return colors[0];
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+};
+
 const SafeUserAvatar = ({ avatar, username, size = 28, className = "" }) => {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -3693,37 +3725,6 @@ function Dashboard() {
 
   const filteredHistory = getFilteredHistory();
 
-  const getAvatarColor = (name) => {
-    const colors = [
-      "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
-      "#ec4899", "#14b8a6", "#6366f1", "#06b6d4", "#84cc16"
-    ];
-    if (!name) return colors[0];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
-
-  const getBannerGradient = (username) => {
-    const colors = [
-      "linear-gradient(135deg, #3f37c9 0%, #480ca8 100%)",
-      "linear-gradient(135deg, #7209b7 0%, #f72585 100%)",
-      "linear-gradient(135deg, #03045e 0%, #0077b6 100%)",
-      "linear-gradient(135deg, #1b4332 0%, #40916c 100%)",
-      "linear-gradient(135deg, #d90429 0%, #ef233c 100%)",
-      "linear-gradient(135deg, #ffa116 0%, #ff5500 100%)",
-      "linear-gradient(135deg, #240046 0%, #7b2cbf 100%)",
-    ];
-    if (!username) return colors[0];
-    let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-      hash = username.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
-  };
 
   const renderRoomCard = (room) => {
     const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id;
