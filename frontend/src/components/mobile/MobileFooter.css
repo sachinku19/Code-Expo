@@ -1,0 +1,312 @@
+/* Mobile Footer Styles matching desktop theme */
+.mobile-footer-section {
+  position: relative;
+  background: #09090b;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fafafa;
+  padding: 40px 20px 24px 20px;
+  overflow: hidden;
+}
+
+:root[data-theme-mode="light"] .mobile-footer-section,
+body.light .mobile-footer-section,
+.mobile-landing-root.light-theme .mobile-footer-section {
+  background: #f8fafc;
+  border-top-color: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+.mobile-footer-watermark {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 72px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.02);
+  letter-spacing: 4px;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+:root[data-theme-mode="light"] .mobile-footer-watermark,
+body.light .mobile-footer-watermark,
+.mobile-landing-root.light-theme .mobile-footer-watermark {
+  color: rgba(15, 23, 42, 0.03);
+}
+
+.mobile-footer-container {
+  max-width: 520px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.footer-logo-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.footer-logo-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fafafa;
+}
+
+:root[data-theme-mode="light"] .footer-logo-text,
+body.light .footer-logo-text,
+.mobile-landing-root.light-theme .footer-logo-text {
+  color: #0f172a;
+}
+
+.footer-brand-desc {
+  font-size: 13px;
+  color: #a1a1aa;
+  line-height: 1.5;
+  margin: 0;
+}
+
+:root[data-theme-mode="light"] .footer-brand-desc,
+body.light .footer-brand-desc,
+.mobile-landing-root.light-theme .footer-brand-desc {
+  color: #475569;
+}
+
+.footer-contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.footer-contact-email {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.footer-contact-city {
+  color: #a1a1aa;
+}
+
+.footer-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  font-size: 11px;
+  font-weight: 600;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+.status-dot-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+/* Accordions */
+.footer-accordions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.footer-accordion-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme-mode="light"] .footer-accordion-item,
+body.light .footer-accordion-item,
+.mobile-landing-root.light-theme .footer-accordion-item {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+.accordion-header-btn {
+  width: 100%;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fafafa;
+  cursor: pointer;
+}
+
+:root[data-theme-mode="light"] .accordion-header-btn,
+body.light .accordion-header-btn,
+.mobile-landing-root.light-theme .accordion-header-btn {
+  color: #0f172a;
+}
+
+.accordion-content-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 12px 0;
+}
+
+.accordion-content-body a {
+  font-size: 13px;
+  color: #a1a1aa;
+  text-decoration: none;
+}
+
+:root[data-theme-mode="light"] .accordion-content-body a,
+body.light .accordion-content-body a,
+.mobile-landing-root.light-theme .accordion-content-body a {
+  color: #64748b;
+}
+
+.accordion-content-body a:active {
+  color: #3b82f6;
+}
+
+/* Newsletter Box */
+.footer-newsletter-card {
+  background: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+:root[data-theme-mode="light"] .footer-newsletter-card,
+body.light .footer-newsletter-card,
+.mobile-landing-root.light-theme .footer-newsletter-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+}
+
+.newsletter-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fafafa;
+}
+
+:root[data-theme-mode="light"] .newsletter-title,
+body.light .newsletter-title,
+.mobile-landing-root.light-theme .newsletter-title {
+  color: #0f172a;
+}
+
+.newsletter-desc {
+  font-size: 12px;
+  color: #a1a1aa;
+  margin: 0;
+}
+
+:root[data-theme-mode="light"] .newsletter-desc,
+body.light .newsletter-desc,
+.mobile-landing-root.light-theme .newsletter-desc {
+  color: #64748b;
+}
+
+.newsletter-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.newsletter-input {
+  flex: 1;
+  min-height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #09090b;
+  padding: 0 10px;
+  font-size: 12px;
+  color: #fafafa;
+  outline: none;
+}
+
+:root[data-theme-mode="light"] .newsletter-input,
+body.light .newsletter-input,
+.mobile-landing-root.light-theme .newsletter-input {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.15);
+  color: #0f172a;
+}
+
+.newsletter-submit-btn {
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 8px;
+  border: none;
+  background: #3b82f6;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.newsletter-success {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.footer-bottom-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #52525b;
+  margin-top: 8px;
+  text-align: center;
+}
+
+:root[data-theme-mode="light"] .footer-bottom-bar,
+body.light .footer-bottom-bar,
+.mobile-landing-root.light-theme .footer-bottom-bar {
+  color: #94a3b8;
+}
+
+.footer-social-inline {
+  display: flex;
+  gap: 16px;
+}
+
+.footer-social-inline a {
+  color: #a1a1aa;
+  text-decoration: none;
+}
+
+:root[data-theme-mode="light"] .footer-social-inline a,
+body.light .footer-social-inline a,
+.mobile-landing-root.light-theme .footer-social-inline a {
+  color: #475569;
+}

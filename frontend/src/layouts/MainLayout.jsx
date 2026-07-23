@@ -6,7 +6,7 @@ import { logoutUser } from "../services/authService";
 import {
   LayoutDashboard, Code2, DoorOpen, History, User, Settings,
   Pin, Search, Bell, Sun, Moon, LogOut, Terminal, Palette,
-  Hash, Copy, Check, Share2, Layers, ChevronDown, Menu, X,
+  Hash, Copy, Check, Share2, Layers, ChevronDown, ChevronRight, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
   Gem, Sparkles, FolderKanban, NotebookPen
@@ -830,9 +830,9 @@ export default function MainLayout({
   // Redesigned navigation items
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard?tab=feed" },
     { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard?tab=rooms&subtab=explore" },
     { id: "liverooms", label: "Live Rooms", icon: Radio, path: "/dashboard?tab=liverooms" },
+    { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard?tab=feed" },
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
@@ -1747,6 +1747,28 @@ export default function MainLayout({
           <button className="drawer-close-menu-btn" onClick={() => setIsDrawerOpen(false)} title="Close navigation">
             <X size={18} />
           </button>
+        </div>
+
+        {/* User Profile Card Header inside Drawer */}
+        <div
+          className="drawer-user-card"
+          onClick={() => {
+            setIsDrawerOpen(false);
+            handleConfirmNavigate("/dashboard?tab=profile");
+          }}
+        >
+          <div className="drawer-user-avatar">
+            {user?.avatar ? (
+              <img src={user.avatar} alt={user?.username} />
+            ) : (
+              <span>{user?.username?.charAt(0).toUpperCase() || "U"}</span>
+            )}
+          </div>
+          <div className="drawer-user-info">
+            <span className="drawer-username">{user?.username || "Developer"}</span>
+            <span className="drawer-user-rank">Lvl {displayLevel} • {displayRank}</span>
+          </div>
+          <ChevronRight size={16} className="drawer-arrow-icon" />
         </div>
 
         <nav className="drawer-nav-menu">

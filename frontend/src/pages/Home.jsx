@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { getCountUser, getPublicStats } from "../services/authService";
 import { getWebsiteRatingInfo } from "../services/websiteRatingService";
+import { useIsMobile } from "../hooks/useIsMobile";
 import Lenis from "lenis";
 import {
   Sun,
@@ -60,10 +61,13 @@ import {
 } from "lucide-react";
 import "./Home.css";
 
+const MobileLandingPage = lazy(() => import("../components/mobile/MobileLandingPage"));
+
 function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { resolvedTheme: theme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile(768);
 
   // Stats state
   const [totalUser, setTotalUser] = useState(0);
@@ -520,6 +524,26 @@ function Home() {
   }, [activeSection, theme]);
 
   useEffect(() => {
+    getCountUser().then(res => {
+      if (res && (res.count || res.data?.count)) {
+        setTotalUser(res.count || res.data?.count);
+      }
+    }).catch(err => console.error("Error fetching countUser:", err));
+
+    getPublicStats().then(res => {
+      if (res && res.stats) {
+        setDbStats(res.stats);
+      }
+    }).catch(err => console.error("Error fetching publicStats:", err));
+
+    getWebsiteRatingInfo().then(res => {
+      if (res && res.success && res.ratings) {
+        setReviews(res.ratings);
+      }
+    }).catch(err => console.error("Error fetching website ratings:", err));
+  }, []);
+
+  useEffect(() => {
     const observerOptions = {
       root: null,
       rootMargin: "-25% 0px -55% 0px",
@@ -700,7 +724,20 @@ function Home() {
     setReviewsIndex((prev) => (prev + 1) % activeReviews.length);
   };
 
-
+  if (isMobile) {
+    return (
+      <Suspense fallback={<div style={{ minHeight: "100vh", background: theme === "dark" ? "#0f172a" : "#ffffff" }} />}>
+        <MobileLandingPage
+          user={user}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          dbStats={dbStats}
+          totalUser={totalUser}
+          reviews={activeReviews}
+        />
+      </Suspense>
+    );
+  }
 
   return (
     <main className={`home-page ${theme === "light" ? "light-theme" : "dark-theme"} page-fade-in`}>

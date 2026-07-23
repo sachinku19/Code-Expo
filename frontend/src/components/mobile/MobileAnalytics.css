@@ -1,0 +1,229 @@
+/* Mobile Analytics Styles matching desktop theme */
+.mobile-analytics-section {
+  padding: 32px 0;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.mobile-analytics-header {
+  padding: 0 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.mobile-analytics-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fafafa;
+  letter-spacing: -0.4px;
+  margin-bottom: 6px;
+}
+
+:root[data-theme-mode="light"] .mobile-analytics-title,
+body.light .mobile-analytics-title,
+.mobile-landing-root.light-theme .mobile-analytics-title {
+  color: #0f172a;
+}
+
+.mobile-analytics-sub {
+  font-size: 14px;
+  color: #a1a1aa;
+}
+
+:root[data-theme-mode="light"] .mobile-analytics-sub,
+body.light .mobile-analytics-sub,
+.mobile-landing-root.light-theme .mobile-analytics-sub {
+  color: #475569;
+}
+
+/* Horizontal Swipe Container */
+.analytics-swipe-container {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 8px 20px 16px 20px;
+  scroll-padding-left: 20px;
+  scroll-padding-right: 20px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.analytics-swipe-container::-webkit-scrollbar {
+  display: none;
+}
+
+.analytics-card {
+  flex: 0 0 270px;
+  scroll-snap-align: start;
+  background: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 180px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme-mode="light"] .analytics-card,
+body.light .analytics-card,
+.mobile-landing-root.light-theme .analytics-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+}
+
+.analytics-card-top {
+  margin-bottom: 12px;
+}
+
+.card-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.card-badge.blue { color: #3b82f6; }
+.card-badge.emerald { color: #10b981; }
+.card-badge.purple { color: #a855f7; }
+
+.profile-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.profile-user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-user-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fafafa;
+  margin: 0;
+}
+
+:root[data-theme-mode="light"] .profile-user-name,
+body.light .profile-user-name,
+.mobile-landing-root.light-theme .profile-user-name {
+  color: #0f172a;
+}
+
+.profile-user-title {
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+.analytics-stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(9, 9, 11, 0.6);
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e4e4e7;
+}
+
+:root[data-theme-mode="light"] .stat-pill,
+body.light .stat-pill,
+.mobile-landing-root.light-theme .stat-pill {
+  background: rgba(241, 245, 249, 0.8);
+  color: #334155;
+}
+
+.pill-icon.purple { color: #a855f7; }
+.pill-icon.emerald { color: #10b981; }
+.pill-icon.amber { color: #f59e0b; }
+
+.leaderboard-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lb-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.lb-rank {
+  font-weight: 800;
+  color: #3b82f6;
+  width: 20px;
+}
+
+.lb-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.lb-name {
+  font-weight: 600;
+  color: #fafafa;
+  flex: 1;
+}
+
+:root[data-theme-mode="light"] .lb-name,
+body.light .lb-name,
+.mobile-landing-root.light-theme .lb-name {
+  color: #0f172a;
+}
+
+.lb-rep {
+  color: #a1a1aa;
+  font-size: 11px;
+}
+
+.skills-stack-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skill-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.skill-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.skill-bar-track {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.skill-bar-fill {
+  height: 100%;
+}

@@ -492,6 +492,7 @@ body {
 .user-dropdown {
   position: relative;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .user-profile-trigger {
@@ -500,6 +501,10 @@ body {
   justify-content: center;
   padding: 2px;
   border-radius: 50%;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  box-sizing: border-box;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -510,6 +515,10 @@ body {
 .user-avatar-initial {
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
   border-radius: 50%;
   background-color: var(--ce-primary);
   color: #fff;
@@ -519,18 +528,24 @@ body {
   font-size: 0.95rem;
   border: 2px solid #3b82f6;
   box-shadow: 0 0 10px rgba(59, 130, 241, 0.45);
+  box-sizing: border-box;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .user-avatar-img {
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #3b82f6;
   padding: 2px;
   background-color: var(--ce-bg);
   box-shadow: 0 0 10px rgba(59, 130, 241, 0.45);
+  box-sizing: border-box;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -2831,4 +2846,214 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
 
 .ce-sidebar.collapsed .myverse-sidebar-card-btn .btn-label {
   display: none !important;
+}
+
+/* ==========================================================================
+   WORLD-CLASS MOBILE SIDE DRAWER (320px - 768px)
+   Full-featured, sleek design inspired by GitHub Mobile, Linear & Vercel
+   ========================================================================== */
+
+/* Fullscreen Dimmed Backdrop Overlay with Glass Blur */
+.ce-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99998;
+  animation: drawerFadeIn 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+@keyframes drawerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Mobile Slide-Out Drawer Sidebar Panel */
+.ce-drawer-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 290px;
+  max-width: 82vw;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  background: var(--ce-bg-drawer, #0b0b0f);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-right: 1px solid var(--ce-border);
+  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.7);
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.light .ce-drawer-sidebar {
+  background: #ffffff;
+  border-right-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.12);
+}
+
+.ce-drawer-sidebar.open {
+  transform: translateX(0);
+}
+
+/* Drawer Header Bar */
+.drawer-header-menu {
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ce-border);
+  flex-shrink: 0;
+}
+
+.drawer-close-menu-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--ce-border);
+  color: var(--ce-text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.light .drawer-close-menu-btn {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.drawer-close-menu-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Drawer User Profile Header Badge */
+.drawer-user-card {
+  margin: 12px 14px 4px 14px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--ce-surface, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--ce-border);
+  border-radius: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.drawer-user-card:hover {
+  background: var(--ce-hover);
+  border-color: var(--ce-primary);
+}
+
+.drawer-user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--ce-primary);
+  display: grid;
+  place-items: center;
+  background: var(--ce-primary-glow, rgba(170, 59, 255, 0.15));
+  color: var(--ce-primary);
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.drawer-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.drawer-user-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.drawer-username {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ce-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-user-rank {
+  font-size: 0.72rem;
+  color: var(--ce-text-muted);
+  margin-top: 1px;
+}
+
+.drawer-arrow-icon {
+  color: var(--ce-text-muted);
+  flex-shrink: 0;
+}
+
+/* Drawer Nav Menu Scroll Area */
+.drawer-nav-menu {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawer-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ce-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.165, 0.84, 0.44, 1);
+  box-sizing: border-box;
+}
+
+.drawer-nav-btn:hover {
+  background: var(--ce-hover);
+  color: var(--ce-text-h, #ffffff);
+}
+
+.drawer-nav-btn.active {
+  background: linear-gradient(135deg, var(--ce-primary) 0%, #3b82f6 100%);
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(170, 59, 255, 0.3);
+}
+
+.drawer-nav-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.drawer-footer {
+  padding: 8px 14px 18px 14px;
+  border-top: 1px solid var(--ce-border);
+  flex-shrink: 0;
 }

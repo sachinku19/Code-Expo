@@ -1,0 +1,298 @@
+/* Mobile Pricing Styles matching desktop theme */
+.mobile-pricing-section {
+  padding: 32px 0;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.mobile-pricing-header {
+  padding: 0 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mobile-pricing-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fafafa;
+  letter-spacing: -0.4px;
+  margin-bottom: 6px;
+}
+
+:root[data-theme-mode="light"] .mobile-pricing-title,
+body.light .mobile-pricing-title,
+.mobile-landing-root.light-theme .mobile-pricing-title {
+  color: #0f172a;
+}
+
+.mobile-pricing-sub {
+  font-size: 14px;
+  color: #a1a1aa;
+  margin-bottom: 16px;
+}
+
+:root[data-theme-mode="light"] .mobile-pricing-sub,
+body.light .mobile-pricing-sub,
+.mobile-landing-root.light-theme .mobile-pricing-sub {
+  color: #475569;
+}
+
+/* Billing Period Toggle */
+.pricing-billing-switch {
+  display: flex;
+  align-items: center;
+  background: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  padding: 4px;
+  gap: 4px;
+}
+
+:root[data-theme-mode="light"] .pricing-billing-switch,
+body.light .pricing-billing-switch,
+.mobile-landing-root.light-theme .pricing-billing-switch {
+  background: rgba(241, 245, 249, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.billing-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a1a1aa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+:root[data-theme-mode="light"] .billing-btn,
+body.light .billing-btn,
+.mobile-landing-root.light-theme .billing-btn {
+  color: #475569;
+}
+
+.billing-btn.active {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.save-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.billing-btn.active .save-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Horizontal Pricing Slider */
+.pricing-slider-wrapper {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 12px 20px 20px 20px;
+  scroll-padding-left: 20px;
+  scroll-padding-right: 20px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.pricing-slider-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-pricing-card {
+  flex: 0 0 270px;
+  scroll-snap-align: center;
+  background: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+:root[data-theme-mode="light"] .mobile-pricing-card,
+body.light .mobile-pricing-card,
+.mobile-landing-root.light-theme .mobile-pricing-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+}
+
+.mobile-pricing-card.featured {
+  border-color: #3b82f6;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+}
+
+.pricing-featured-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3b82f6;
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.5px;
+}
+
+.plan-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: #fafafa;
+  margin-bottom: 4px;
+}
+
+:root[data-theme-mode="light"] .plan-name,
+body.light .plan-name,
+.mobile-landing-root.light-theme .plan-name {
+  color: #0f172a;
+}
+
+.plan-desc {
+  font-size: 12px;
+  color: #a1a1aa;
+  margin-bottom: 12px;
+}
+
+:root[data-theme-mode="light"] .plan-desc,
+body.light .plan-desc,
+.mobile-landing-root.light-theme .plan-desc {
+  color: #64748b;
+}
+
+.plan-price-group {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.plan-price {
+  font-size: 30px;
+  font-weight: 800;
+  color: #fafafa;
+}
+
+:root[data-theme-mode="light"] .plan-price,
+body.light .plan-price,
+.mobile-landing-root.light-theme .plan-price {
+  color: #0f172a;
+}
+
+.plan-period {
+  font-size: 13px;
+  color: #a1a1aa;
+}
+
+.plan-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.plan-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #a1a1aa;
+}
+
+:root[data-theme-mode="light"] .plan-feature-item,
+body.light .plan-feature-item,
+.mobile-landing-root.light-theme .plan-feature-item {
+  color: #334155;
+}
+
+.check-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.plan-cta-btn {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+.plan-cta-btn.primary {
+  background: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+}
+
+.plan-cta-btn.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fafafa;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme-mode="light"] .plan-cta-btn.secondary,
+body.light .plan-cta-btn.secondary,
+.mobile-landing-root.light-theme .plan-cta-btn.secondary {
+  background: rgba(241, 245, 249, 0.9);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+.plan-cta-btn:active {
+  transform: scale(0.97);
+}
+
+.pricing-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pricing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+
+:root[data-theme-mode="light"] .pricing-dot,
+body.light .pricing-dot,
+.mobile-landing-root.light-theme .pricing-dot {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.pricing-dot.active {
+  width: 18px;
+  border-radius: 9999px;
+  background: #3b82f6;
+}

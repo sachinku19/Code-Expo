@@ -1,0 +1,122 @@
+/* Mobile Stats Styles */
+.mobile-stats-section {
+  padding: 32px 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.mobile-stats-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.mobile-section-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #2563eb;
+  text-transform: uppercase;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+:root[data-theme-mode="dark"] .mobile-section-tag,
+body.dark .mobile-section-tag {
+  color: #60a5fa;
+}
+
+.mobile-stats-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.4px;
+}
+
+:root[data-theme-mode="dark"] .mobile-stats-title,
+body.dark .mobile-stats-title {
+  color: #f8fafc;
+}
+
+/* 2-Column Grid */
+.mobile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.mobile-stat-card {
+  position: relative;
+  background: rgba(248, 250, 252, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+:root[data-theme-mode="dark"] .mobile-stat-card,
+body.dark .mobile-stat-card {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(51, 65, 85, 0.8);
+}
+
+.mobile-stat-card:active,
+.mobile-stat-card.ripple-active {
+  transform: scale(0.96);
+  border-color: #2563eb;
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
+}
+
+.stat-card-glow {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  opacity: 0.15;
+  filter: blur(16px);
+  pointer-events: none;
+}
+
+.stat-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+:root[data-theme-mode="dark"] .stat-value,
+body.dark .stat-value {
+  color: #f8fafc;
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+:root[data-theme-mode="dark"] .stat-label,
+body.dark .stat-label {
+  color: #94a3b8;
+}

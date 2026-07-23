@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { MessageSquare, X, Send, Sparkles, Terminal, Cpu, ArrowRight } from "lucide-react";
 import Logo from "../shared/Logo";
@@ -26,7 +27,7 @@ export default function AIChatbot() {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, isOpen]);
 
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputValue;
@@ -99,54 +100,37 @@ export default function AIChatbot() {
 
       // Add text before code block
       if (matchIdx > currentIdx) {
-        parts.push(renderTextFormatting(text.substring(currentIdx, matchIdx)));
+        const textSegment = text.slice(currentIdx, matchIdx);
+        parts.push(
+          <span key={`text-${currentIdx}`} className="message-text-segment">
+            {textSegment}
+          </span>
+        );
       }
 
-      // Add code block
+      // Add code block snippet
       parts.push(
-        <div key={matchIdx} className="ai-chat-code-block-wrapper">
+        <div key={`code-${matchIdx}`} className="chat-code-block-wrapper">
           <div className="code-block-header">
-            <Terminal size={11} />
-            <span>{lang.toUpperCase()}</span>
+            <span className="code-block-lang">{lang}</span>
           </div>
-          <pre className="code-block-body">
+          <pre className="chat-code-snippet">
             <code>{code}</code>
           </pre>
         </div>
       );
 
-      currentIdx = codeBlockRegex.lastIndex;
+      currentIdx = matchIdx + match[0].length;
     }
 
     // Add remaining text
     if (currentIdx < text.length) {
-      parts.push(renderTextFormatting(text.substring(currentIdx)));
-    }
-
-    return parts;
-  };
-
-  // Helper for inline bolding **text**
-  const renderTextFormatting = (text) => {
-    const boldRegex = /\*\*(.*?)\*\*/g;
-    const parts = [];
-    let currentIdx = 0;
-    let match;
-
-    while ((match = boldRegex.exec(text)) !== null) {
-      const matchIdx = match.index;
-      const boldText = match[1];
-
-      if (matchIdx > currentIdx) {
-        parts.push(text.substring(currentIdx, matchIdx));
-      }
-
-      parts.push(<strong key={matchIdx}>{boldText}</strong>);
-      currentIdx = boldRegex.lastIndex;
-    }
-
-    if (currentIdx < text.length) {
-      parts.push(text.substring(currentIdx));
+      const remainingText = text.slice(currentIdx);
+      parts.push(
+        <span key={`text-${currentIdx}`} className="message-text-segment">
+          {remainingText}
+        </span>
+      );
     }
 
     return parts;
@@ -174,103 +158,109 @@ export default function AIChatbot() {
         </div>
       </button>
 
-      {/* CHAT WINDOW */}
-      {isOpen && (
-        <div className="chatbot-window-panel glass-panel">
-          {/* Futuristic Circuit Header */}
-          <div className="chatbot-header">
-            <div className="header-left">
-              <div className="ai-avatar-pulse">
-                <Logo size={24} showText={false} />
-                <span className="live-status-dot"></span>
-              </div>
-              <div className="header-text-block">
-                <h4>ExpoAI Control</h4>
-                <div className="status-flex">
-                  <Cpu size={10} className="status-icon" />
-                  <span>ONLINE • PLATFORM CORE</span>
+      {/* CHAT WINDOW PORTAL */}
+      {isOpen &&
+        createPortal(
+          <div className="chatbot-window-panel glass-panel">
+            {/* Futuristic Circuit Header */}
+            <div className="chatbot-header">
+              <div className="header-left">
+                <div className="ai-avatar-pulse">
+                  <Logo size={24} showText={false} />
+                  <span className="live-status-dot"></span>
                 </div>
-              </div>
-            </div>
-            <button onClick={() => setIsOpen(false)} className="btn-close-chatbot" title="Minimize Chat">
-              <X size={15} />
-            </button>
-            <div className="cyber-glow-line"></div>
-          </div>
-
-          {/* CHATBODY */}
-          <div className="chatbot-body-scroll">
-            <div className="chat-messages-container">
-              {messages.map((m) => (
-                <div key={m.id} className={`chat-message-row ${m.sender === "user" ? "user" : "ai"}`}>
-                  <div className="message-bubble">
-                    {m.sender === "ai" ? (
-                      <div className="message-content-text">
-                        {renderMessageText(m.text)}
-                      </div>
-                    ) : (
-                      <p className="message-plain">{m.text}</p>
-                    )}
+                <div className="header-text-block">
+                  <h4>ExpoAI Control</h4>
+                  <div className="status-flex">
+                    <Cpu size={10} className="status-icon" />
+                    <span>ONLINE • PLATFORM CORE</span>
                   </div>
                 </div>
-              ))}
+              </div>
+              <button onClick={() => setIsOpen(false)} className="btn-close-chatbot" title="Minimize Chat">
+                <X size={15} />
+              </button>
+              <div className="cyber-glow-line"></div>
+            </div>
 
-              {isTyping && (
-                <div className="chat-message-row ai">
-                  <div className="message-bubble typing">
-                    <div className="typing-indicator">
-                      <span></span>
-                      <span></span>
-                      <span></span>
+            {/* CHATBODY */}
+            <div
+              className="chatbot-body-scroll"
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+            >
+              <div className="chat-messages-container">
+                {messages.map((m) => (
+                  <div key={m.id} className={`chat-message-row ${m.sender === "user" ? "user" : "ai"}`}>
+                    <div className="message-bubble">
+                      {m.sender === "ai" ? (
+                        <div className="message-content-text">
+                          {renderMessageText(m.text)}
+                        </div>
+                      ) : (
+                        <p className="message-plain">{m.text}</p>
+                      )}
                     </div>
                   </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-
-          {/* SUGGESTIONS PANEL */}
-          {messages.length === 1 && !isTyping && (
-            <div className="suggestions-bar">
-              <span className="suggestion-label">Quick Scans:</span>
-              <div className="suggestions-flex">
-                {suggestions.map((s, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendMessage(s.query)}
-                    className="btn-suggestion"
-                  >
-                    <span>{s.label}</span>
-                    <ArrowRight size={10} />
-                  </button>
                 ))}
+
+                {isTyping && (
+                  <div className="chat-message-row ai">
+                    <div className="message-bubble typing">
+                      <div className="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
             </div>
-          )}
 
-          {/* CHAT INPUT AREA */}
-          <div className="chatbot-input-row">
-            <div className="input-glow-wrapper">
-              <textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask ExpoAI about CodeExpo..."
-                rows="1"
-              />
-              <button
-                onClick={() => handleSendMessage()}
-                disabled={!inputValue.trim() || isTyping}
-                className="btn-send-chat"
-                title="Send instruction"
-              >
-                <Send size={13} />
-              </button>
+            {/* SUGGESTIONS PANEL */}
+            {messages.length === 1 && !isTyping && (
+              <div className="suggestions-bar">
+                <span className="suggestion-label">Quick Scans:</span>
+                <div className="suggestions-flex">
+                  {suggestions.map((s, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSendMessage(s.query)}
+                      className="btn-suggestion"
+                    >
+                      <span>{s.label}</span>
+                      <ArrowRight size={10} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CHAT INPUT AREA */}
+            <div className="chatbot-input-row">
+              <div className="input-glow-wrapper">
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask ExpoAI about CodeExpo..."
+                  rows="1"
+                />
+                <button
+                  onClick={() => handleSendMessage()}
+                  disabled={!inputValue.trim() || isTyping}
+                  className="btn-send-chat"
+                  title="Send instruction"
+                >
+                  <Send size={13} />
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

@@ -1162,6 +1162,8 @@ function Dashboard() {
   const [activeRoomMemberMenuId, setActiveRoomMemberMenuId] = useState(null);
   const [postToDeleteFromProfile, setPostToDeleteFromProfile] = useState(null);
   const [isDeletingProfilePost, setIsDeletingProfilePost] = useState(false);
+  const [showMobileCreateModal, setShowMobileCreateModal] = useState(false);
+  const [showMobileJoinModal, setShowMobileJoinModal] = useState(false);
 
   const [stats, setStats] = useState(() => loadFromCache("ce_cache_stats", {
     totalCreated: 0,
@@ -4336,6 +4338,20 @@ function Dashboard() {
                         </div>
                       </div>
 
+                      {/* Card 5: MyVerse Points */}
+                      <div className="compact-stat-card myverse-points-card">
+                        <div className="stat-card-icon-wrapper amber-theme-wrapper">
+                          <Flame size={18} />
+                        </div>
+                        <div className="stat-card-info">
+                          <span className="stat-card-label">MyVerse Points</span>
+                          <span className="stat-card-val" style={{ color: "#f59e0b" }}>
+                            {(stats.totalPoints || 0).toLocaleString()} <span style={{ fontSize: "0.72rem", fontWeight: "600" }}>XP</span>
+                          </span>
+                          <span className="stat-card-subtitle">{rank.title} Rank</span>
+                        </div>
+                      </div>
+
                     </div>
                   )}
 
@@ -6427,8 +6443,26 @@ function Dashboard() {
               style={{ width: "100%", height: "100%" }}
             >
               <div className="rooms-section-container">
+                {/* Mobile Action Buttons (Visible only on Mobile < 768px) */}
+                <div className="mobile-explore-actions-bar">
+                  <button
+                    type="button"
+                    className="mobile-action-trigger-btn create-btn"
+                    onClick={() => setShowMobileCreateModal(true)}
+                  >
+                    <Plus size={16} /> Create Room
+                  </button>
+                  <button
+                    type="button"
+                    className="mobile-action-trigger-btn join-btn"
+                    onClick={() => setShowMobileJoinModal(true)}
+                  >
+                    <LogIn size={16} /> Join Room
+                  </button>
+                </div>
+
                 <div className="rooms-split-layout">
-                  {/* Left Side: Actions */}
+                  {/* Left Side: Actions (Desktop Inline Forms) */}
                   <div className="rooms-actions-sidebar">
                     {/* CREATE WORKSPACE */}
                     <div className="action-form-card">
@@ -6506,6 +6540,102 @@ function Dashboard() {
                       </form>
                     </div>
                   </div>
+
+                  {/* MOBILE CREATE ROOM POPUP MODAL */}
+                  {showMobileCreateModal && (
+                    <div className="mobile-popup-overlay" onClick={() => setShowMobileCreateModal(false)}>
+                      <div className="mobile-popup-card glass-panel" onClick={(e) => e.stopPropagation()}>
+                        <div className="mobile-popup-header">
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Plus size={18} style={{ color: "#aa3bff" }} />
+                            <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--ce-text-h)" }}>Create Workspace Room</h3>
+                          </div>
+                          <button type="button" className="mobile-popup-close" onClick={() => setShowMobileCreateModal(false)}>
+                            <X size={18} />
+                          </button>
+                        </div>
+
+                        <form onSubmit={(e) => { handleCreateRoom(e); setShowMobileCreateModal(false); }} className="compact-form" style={{ marginTop: "14px" }}>
+                          <div className="form-field">
+                            <label>Workspace Title</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. DSA Practice Prep"
+                              value={formData.title}
+                              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                              required
+                              disabled={isCreatingRoom}
+                            />
+                          </div>
+
+                          <div className="form-field">
+                            <label>Language</label>
+                            <select
+                              value={formData.language}
+                              onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                              disabled={isCreatingRoom}
+                            >
+                              <option value="javascript">JavaScript</option>
+                              <option value="python">Python</option>
+                              <option value="cpp">C++</option>
+                              <option value="java">Java</option>
+                            </select>
+                          </div>
+
+                          <div className="form-field">
+                            <label>Privacy Type</label>
+                            <select
+                              value={formData.isPrivate}
+                              onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
+                              disabled={isCreatingRoom}
+                            >
+                              <option value="false">Public</option>
+                              <option value="true">Private (Requires Approval)</option>
+                            </select>
+                          </div>
+
+                          <button type="submit" className="form-submit-btn" style={{ marginTop: "12px", width: "100%" }} disabled={isCreatingRoom}>
+                            {isCreatingRoom && <span className="btn-spinner"></span>}
+                            {isCreatingRoom ? "Creating Workspace..." : "Create Room Workspace"}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MOBILE JOIN ROOM POPUP MODAL */}
+                  {showMobileJoinModal && (
+                    <div className="mobile-popup-overlay" onClick={() => setShowMobileJoinModal(false)}>
+                      <div className="mobile-popup-card glass-panel" onClick={(e) => e.stopPropagation()}>
+                        <div className="mobile-popup-header">
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <LogIn size={18} style={{ color: "#3b82f6" }} />
+                            <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--ce-text-h)" }}>Join Room Workspace</h3>
+                          </div>
+                          <button type="button" className="mobile-popup-close" onClick={() => setShowMobileJoinModal(false)}>
+                            <X size={18} />
+                          </button>
+                        </div>
+
+                        <form onSubmit={(e) => { handleJoinRoom(e); setShowMobileJoinModal(false); }} className="compact-form" style={{ marginTop: "14px" }}>
+                          <div className="form-field">
+                            <label>Workspace Room ID Code</label>
+                            <input
+                              type="text"
+                              placeholder="Enter room hash token"
+                              value={roomId}
+                              onChange={(e) => setRoomId(e.target.value)}
+                              required
+                            />
+                          </div>
+
+                          <button type="submit" className="form-submit-btn secondary" style={{ marginTop: "12px", width: "100%" }}>
+                            Join Workspace Session
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Right Side: Explorer tabs */}
                   <div className="rooms-explorer-content">

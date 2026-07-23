@@ -18,8 +18,8 @@ const postAIRequest = async (endpoint, payload) => {
 };
 
 export const sendAIChat = (payload) => postAIRequest("chat", payload);
-export const sendAIChatMessage = async (message) => {
-  return postAIRequest("chat", { prompt: message, message });
+export const sendAIChatMessage = async (message, roomId = "global-dashboard") => {
+  return postAIRequest("chat", { prompt: message, message, roomId: roomId || "global-dashboard" });
 };
 export const explainCode = (payload) => postAIRequest("explain", payload);
 export const fixCode = (payload) => postAIRequest("fix", payload);

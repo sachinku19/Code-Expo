@@ -1,0 +1,142 @@
+/* Mobile Hero Styles matching desktop theme */
+.mobile-hero-section {
+  padding-top: 84px;
+  padding-bottom: 24px;
+  padding-left: 20px;
+  padding-right: 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.mobile-hero-container {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Status Badge */
+.mobile-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+:root[data-theme-mode="light"] .mobile-hero-badge,
+body.light .mobile-hero-badge,
+.mobile-landing-root.light-theme .mobile-hero-badge {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.2);
+  color: #2563eb;
+}
+
+.badge-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: 0.6;
+  }
+}
+
+/* Hero Title */
+.mobile-hero-title {
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  color: #fafafa;
+  margin-bottom: 14px;
+}
+
+:root[data-theme-mode="light"] .mobile-hero-title,
+body.light .mobile-hero-title,
+.mobile-landing-root.light-theme .mobile-hero-title {
+  color: #0f172a;
+}
+
+/* Hero Subtitle */
+.mobile-hero-subtitle {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #a1a1aa;
+  margin-bottom: 24px;
+  max-width: 440px;
+}
+
+:root[data-theme-mode="light"] .mobile-hero-subtitle,
+body.light .mobile-hero-subtitle,
+.mobile-landing-root.light-theme .mobile-hero-subtitle {
+  color: #475569;
+}
+
+/* Mobile Hero Buttons */
+.mobile-hero-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-hero-btn {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-hero-btn.primary {
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.35);
+}
+
+.mobile-hero-btn.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fafafa;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme-mode="light"] .mobile-hero-btn.secondary,
+body.light .mobile-hero-btn.secondary,
+.mobile-landing-root.light-theme .mobile-hero-btn.secondary {
+  background: rgba(248, 250, 252, 0.9);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+.mobile-hero-btn:active {
+  transform: scale(0.98);
+}

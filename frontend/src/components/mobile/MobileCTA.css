@@ -1,0 +1,70 @@
+/* Mobile CTA Styles matching desktop theme */
+.mobile-cta-section {
+  padding: 32px 20px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.mobile-cta-card {
+  background: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 28px 20px;
+  text-align: center;
+  color: #fafafa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+:root[data-theme-mode="light"] .mobile-cta-card,
+body.light .mobile-cta-card,
+.mobile-landing-root.light-theme .mobile-cta-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.cta-heading {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.5px;
+  margin-bottom: 10px;
+}
+
+.cta-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #a1a1aa;
+  margin-bottom: 20px;
+}
+
+:root[data-theme-mode="light"] .cta-desc,
+body.light .cta-desc,
+.mobile-landing-root.light-theme .cta-desc {
+  color: #475569;
+}
+
+.cta-primary-btn {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+  border: none;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+}
+
+.cta-primary-btn:active {
+  transform: scale(0.97);
+}
