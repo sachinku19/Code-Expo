@@ -24,6 +24,8 @@
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
   }
+.navbar.navbar-hidden {
+  pointer-events: none;
 }
 
 .navbar-container {

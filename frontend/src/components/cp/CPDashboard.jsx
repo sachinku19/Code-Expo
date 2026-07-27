@@ -4,19 +4,114 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy, Award, Activity, Flame, CheckCircle2, RefreshCw, Plus, Trash2, ShieldAlert,
   Search, Share2, FileDown, Info, Brain, Users, Target,
-  TrendingUp, Globe, School, Building2, User, Copy, Check, ExternalLink, Calendar, Lock
+  TrendingUp, Globe, School, Building2, User, Copy, Check, ExternalLink, Calendar, Lock,
+  Sparkles, Download, Zap, ShieldCheck
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { getUnifiedStats, connectPlatform, refreshAllPlatforms, disconnectPlatform, getLeaderboard, shareProfile } from "../../services/cpService";
 import ProfileAvatar from "../ProfileAvatar";
 import "./CPDashboard.css";
 
+const LinkedInIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.25V10.9H6.46M7.86 6.88a1.45 1.45 0 1 0 0 2.9 1.45 1.45 0 0 0 0-2.9Z" />
+  </svg>
+);
+
+const LeetCodeLogo = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+    {/* Dark/Light mode outer chevron */}
+    <path
+      d="M 31 8 L 14 23.5 L 23 34"
+      stroke="currentColor"
+      strokeWidth="5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    {/* Top orange curve */}
+    <path
+      d="M 22 10.5 C 28 10.5 35 13 35 18"
+      stroke="#FFA116"
+      strokeWidth="5"
+      strokeLinecap="round"
+    />
+    {/* Bottom orange curve */}
+    <path
+      d="M 23 34 C 28 39.5 35 37 35 31"
+      stroke="#FFA116"
+      strokeWidth="5"
+      strokeLinecap="round"
+    />
+    {/* Middle gray horizontal bar */}
+    <path
+      d="M 20 23.5 H 39"
+      stroke="#9CA3AF"
+      strokeWidth="4.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const CodeforcesLogo = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <rect x="2" y="10" width="5" height="11" rx="1.5" fill="#F3C234" />
+    <rect x="9.5" y="3" width="5" height="18" rx="1.5" fill="#3182CE" />
+    <rect x="17" y="14" width="5" height="7" rx="1.5" fill="#B51C1C" />
+  </svg>
+);
+
+const CodeChefLogo = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M12 2C8.5 2 5.7 4.8 5.7 8.3c0 2.1 1 3.9 2.6 5.1L7 19.5c-.2.7.3 1.5 1.1 1.5h7.8c.8 0 1.3-.8 1.1-1.5l-1.3-6.1c1.6-1.2 2.6-3 2.6-5.1C18.3 4.8 15.5 2 12 2zm-3 7.5c-.8 0-1.5-.7-1.5-1.5S8.2 6.5 9 6.5s1.5.7 1.5 1.5S9.8 9.5 9 9.5zm6 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z" fill="#D97706" />
+  </svg>
+);
+
+const AtCoderLogo = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M12 2L2 20h20L12 2zm0 5l6 11H6l6-11z" fill="#64748B" />
+    <circle cx="12" cy="14" r="2.5" fill="#2563EB" />
+  </svg>
+);
+
+const HackerRankLogo = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <rect x="2" y="2" width="20" height="20" rx="4" fill="#2EC866" />
+    <path d="M7 6v12h2.5v-4.5h5V18H17V6h-2.5v4.5h-5V6H7z" fill="#FFFFFF" />
+  </svg>
+);
+
+const PlatformLogo = ({ platformKey, size = 24, className = "" }) => {
+  const key = platformKey?.toLowerCase() || "";
+  if (key === "leetcode") return <LeetCodeLogo size={size} className={className} />;
+  if (key === "codeforces") return <CodeforcesLogo size={size} className={className} />;
+  if (key === "codechef") return <CodeChefLogo size={size} className={className} />;
+  if (key === "atcoder") return <AtCoderLogo size={size} className={className} />;
+  if (key === "hackerrank") return <HackerRankLogo size={size} className={className} />;
+
+  return (
+    <div className={`platform-logo-fallback ${className}`} style={{
+      width: size,
+      height: size,
+      borderRadius: 6,
+      background: "#2563eb",
+      color: "#ffffff",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: "bold",
+      fontSize: size * 0.45
+    }}>
+      {platformKey ? platformKey.charAt(0).toUpperCase() : "P"}
+    </div>
+  );
+};
+
 export default function CPDashboard({ user }) {
   // States
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const [platforms, setPlatforms] = useState({});
   const [unifiedStats, setUnifiedStats] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -76,6 +171,214 @@ export default function CPDashboard({ user }) {
   // Share profile state
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const [shareData, setShareData] = useState(null);
+
+  // LinkedIn showcase state
+  const [linkedinModalOpen, setLinkedinModalOpen] = useState(false);
+  const [linkedinCopied, setLinkedinCopied] = useState(false);
+
+  const handleCopyLinkedinPost = () => {
+    const text = `🚀 Excited to share my developer stats on CodeExpo MyVerse!\n\n` +
+      `🏆 CodeExpo Score: ${unifiedStats?.score || 0}/1000 (${unifiedStats?.level || "Grandmaster"})\n` +
+      `⚡ Problems Solved: ${unifiedStats?.overallSolved || 0}\n` +
+      `🔥 Active Streak: ${unifiedStats?.codingStreak || 0} Days\n` +
+      `🎯 Avg Contest Rating: ${unifiedStats?.avgRating || 0}\n` +
+      `🌐 Percentile Standing: Top ${(100 - (unifiedStats?.percentile || 95)).toFixed(1)}%\n\n` +
+      `Check out my developer portfolio on CodeExpo! #CodeExpo #MyVerse #CompetitiveProgramming #LeetCode #Codeforces #DeveloperPortfolio`;
+    navigator.clipboard.writeText(text);
+    setLinkedinCopied(true);
+    setTimeout(() => setLinkedinCopied(false), 3000);
+  };
+
+  const generateLinkedInCardPNG = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 630;
+    const ctx = canvas.getContext("2d");
+
+    // Background gradient
+    const bgGrad = ctx.createLinearGradient(0, 0, 1200, 630);
+    bgGrad.addColorStop(0, "#0B0F19");
+    bgGrad.addColorStop(0.5, "#111827");
+    bgGrad.addColorStop(1, "#0A0E1A");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1200, 630);
+
+    // Decorative Ambient Glows
+    const glow1 = ctx.createRadialGradient(1000, 100, 10, 1000, 100, 450);
+    glow1.addColorStop(0, "rgba(99, 102, 241, 0.28)");
+    glow1.addColorStop(1, "rgba(99, 102, 241, 0)");
+    ctx.fillStyle = glow1;
+    ctx.fillRect(0, 0, 1200, 630);
+
+    const glow2 = ctx.createRadialGradient(150, 520, 10, 150, 520, 400);
+    glow2.addColorStop(0, "rgba(16, 185, 129, 0.22)");
+    glow2.addColorStop(1, "rgba(16, 185, 129, 0)");
+    ctx.fillStyle = glow2;
+    ctx.fillRect(0, 0, 1200, 630);
+
+    // Outer Border Box
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(30, 30, 1140, 570, 24);
+    ctx.stroke();
+
+    // Glass Inner Fill
+    ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
+    ctx.fill();
+
+    // Top Header Row - Brand & Title
+    ctx.fillStyle = "#818CF8";
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillText("⚡ CODE-EXPO | MYVERSE DEVELOPER PASSPORT", 70, 80);
+
+    ctx.fillStyle = "#10B981";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText("✓ VERIFIED PORTFOLIO", 950, 80);
+
+    // Divider line
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(70, 105);
+    ctx.lineTo(1130, 105);
+    ctx.stroke();
+
+    // User Profile Section
+    const userName = unifiedStats?.name || user?.username || "Developer";
+    const userCollege = user?.college || "Global Coding Guild";
+    const userRank = unifiedStats?.currentRank || "Unranked";
+    const score = unifiedStats?.score || 0;
+    const level = unifiedStats?.level || "Grandmaster";
+
+    // Name
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 36px sans-serif";
+    ctx.fillText(userName, 70, 160);
+
+    // Subtitle / College
+    ctx.fillStyle = "#9CA3AF";
+    ctx.font = "18px sans-serif";
+    ctx.fillText(`🎓 ${userCollege}  •  🏆 Rank: ${userRank}`, 70, 195);
+
+    // Score Badge Pill (Top Right)
+    const scoreBoxX = 820;
+    const scoreBoxY = 130;
+    ctx.fillStyle = "rgba(99, 102, 241, 0.15)";
+    ctx.strokeStyle = "rgba(99, 102, 241, 0.4)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(scoreBoxX, scoreBoxY, 280, 75, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#A5B4FC";
+    ctx.font = "12px sans-serif";
+    ctx.fillText("CODEEXPO SCORE", scoreBoxX + 20, scoreBoxY + 28);
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 30px sans-serif";
+    ctx.fillText(`${score} / 1000`, scoreBoxX + 20, scoreBoxY + 62);
+
+    ctx.fillStyle = "#10B981";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText(level, scoreBoxX + 175, scoreBoxY + 60);
+
+    // 4 Core Stat Cards
+    const statsList = [
+      { label: "TOTAL SOLVED", val: String(unifiedStats?.overallSolved || 0), color: "#60A5FA", icon: "📊" },
+      { label: "ACTIVE STREAK", val: `${unifiedStats?.codingStreak || 0} Days`, color: "#34D399", icon: "🔥" },
+      { label: "AVG RATING", val: String(unifiedStats?.avgRating || 0), color: "#FBBF24", icon: "⭐" },
+      { label: "GLOBAL STANDING", val: `Top ${(100 - (unifiedStats?.percentile || 95)).toFixed(1)}%`, color: "#F472B6", icon: "🌐" }
+    ];
+
+    statsList.forEach((st, idx) => {
+      const cardX = 70 + idx * 268;
+      const cardY = 240;
+      const cardW = 248;
+      const cardH = 120;
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = st.color;
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText(`${st.icon} ${st.label}`, cardX + 20, cardY + 35);
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 28px sans-serif";
+      ctx.fillText(st.val, cardX + 20, cardY + 82);
+    });
+
+    // Connected Platforms Bar
+    ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.beginPath();
+    ctx.roundRect(70, 385, 1060, 135, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#9CA3AF";
+    ctx.font = "bold 13px sans-serif";
+    ctx.fillText("CONNECTED PLATFORMS & RATINGS", 95, 415);
+
+    const activeKeys = Object.keys(platforms).filter(k => platforms[k]?.username && PLATFORMS_CONFIG[k]);
+    const displayKeys = activeKeys.length > 0 ? activeKeys : ["leetcode", "codeforces", "codechef", "hackerrank"];
+
+    displayKeys.forEach((key, i) => {
+      const cfg = PLATFORMS_CONFIG[key] || { name: key, color: "#818CF8" };
+      const platData = platforms[key];
+      const solved = platData?.stats?.solvedStats?.total || 0;
+      const rating = platData?.stats?.contestRating || "N/A";
+      const handle = platData?.username ? `@${platData.username}` : "Not Linked";
+
+      const px = 95 + i * 255;
+      const py = 430;
+      const pw = 230;
+      const ph = 75;
+
+      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+      ctx.strokeStyle = cfg.color || "rgba(255, 255, 255, 0.1)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(px, py, pw, ph, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = cfg.color || "#FFFFFF";
+      ctx.font = "bold 15px sans-serif";
+      ctx.fillText(cfg.name, px + 15, py + 30);
+
+      ctx.fillStyle = "#9CA3AF";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(handle, px + 15, py + 48);
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 13px sans-serif";
+      ctx.fillText(`Solves: ${solved} | Rating: ${rating}`, px + 15, py + 65);
+    });
+
+    // Footer Tagline & Branding
+    ctx.fillStyle = "#6B7280";
+    ctx.font = "14px sans-serif";
+    ctx.fillText("🔗 verified at codeexpo.dev/dashboard?tab=cp", 70, 565);
+
+    ctx.fillStyle = "#818CF8";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText("⚡ CodeExpo MyVerse • Built for Developers", 840, 565);
+
+    // Trigger Download
+    const dataUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = `${userName.replace(/\s+/g, "_")}_MyVerse_Passport.png`;
+    link.href = dataUrl;
+    link.click();
+  };
 
   // Platform list config
   const PLATFORMS_CONFIG = {
@@ -171,7 +474,7 @@ export default function CPDashboard({ user }) {
   const handleConfirmDisconnect = async () => {
     const platformKey = platformToDisconnect;
     if (!platformKey) return;
-    
+
     setDisconnectConfirmOpen(false);
     setDisconnectingPlatform(platformKey);
     try {
@@ -253,41 +556,41 @@ export default function CPDashboard({ user }) {
   const exportPDF = () => {
     if (!unifiedStats) return;
     const doc = new jsPDF();
-    
+
     // Color Palette
     const primaryColor = [15, 23, 42]; // Slate 900
     const secondaryColor = [37, 99, 235]; // Royal Blue
     const mutedColor = [100, 116, 139]; // Slate 500
     const lightBg = [248, 250, 252]; // Slate 50
     const borderCol = [226, 232, 240]; // Slate 200
-    
+
     // Page 1 Header Banner
     doc.setFillColor(...secondaryColor);
     doc.rect(0, 0, 210, 42, "F");
-    
+
     // Header Content
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(255, 255, 255);
     doc.text("CODEEXPO CP PROFILE REPORT", 15, 18);
-    
+
     doc.setFont("Helvetica", "normal");
     doc.setFontSize(9.5);
     doc.setTextColor(219, 234, 254);
     doc.text("Premium Competitive Programming Analytics Dashboard", 15, 25);
     doc.text(`Report Generated: ${new Date().toLocaleString()}`, 15, 34);
-    
+
     // Section: Developer Overview
     doc.setTextColor(...primaryColor);
     doc.setFontSize(14);
     doc.setFont("Helvetica", "bold");
     doc.text("Developer Overview", 15, 54);
-    
+
     // Draw horizontal separator line
     doc.setDrawColor(...borderCol);
     doc.setLineWidth(0.5);
     doc.line(15, 57, 195, 57);
-    
+
     // Stats Grid - Row 1
     // Box 1: Overall Score
     doc.setFillColor(...lightBg);
@@ -302,7 +605,7 @@ export default function CPDashboard({ user }) {
     doc.setFontSize(13);
     doc.setTextColor(...secondaryColor);
     doc.text(`${unifiedStats.score} / 1000`, 20, 78);
-    
+
     // Box 2: Total Solves
     doc.setFillColor(...lightBg);
     doc.rect(77, 62, 56, 24, "F");
@@ -315,7 +618,7 @@ export default function CPDashboard({ user }) {
     doc.setFontSize(13);
     doc.setTextColor(...primaryColor);
     doc.text(`${unifiedStats.overallSolved}`, 82, 78);
-    
+
     // Box 3: Avg Contest Rating
     doc.setFillColor(...lightBg);
     doc.rect(139, 62, 56, 24, "F");
@@ -328,7 +631,7 @@ export default function CPDashboard({ user }) {
     doc.setFontSize(13);
     doc.setTextColor(...primaryColor);
     doc.text(`${unifiedStats.avgRating}`, 144, 78);
-    
+
     // Stats Grid - Row 2
     // Box 4: Global Percentile
     doc.setFillColor(...lightBg);
@@ -368,14 +671,14 @@ export default function CPDashboard({ user }) {
     doc.setFontSize(13);
     doc.setTextColor(...primaryColor);
     doc.text(`${unifiedStats.level}`, 144, 108);
-    
+
     // Section: Connected Platforms
     doc.setTextColor(...primaryColor);
     doc.setFontSize(14);
     doc.setFont("Helvetica", "bold");
     doc.text("Connected Platforms Detail", 15, 134);
     doc.line(15, 137, 195, 137);
-    
+
     // Render platform info cards
     let y = 144;
     Object.keys(platforms).forEach(key => {
@@ -384,65 +687,65 @@ export default function CPDashboard({ user }) {
         doc.setFillColor(...lightBg);
         doc.rect(15, y, 180, 20, "F");
         doc.rect(15, y, 180, 20, "D");
-        
+
         doc.setFont("Helvetica", "bold");
         doc.setFontSize(11);
         doc.setTextColor(...secondaryColor);
         doc.text(PLATFORMS_CONFIG[key].name, 20, y + 8);
-        
+
         doc.setFont("Helvetica", "normal");
         doc.setFontSize(9.5);
         doc.setTextColor(...primaryColor);
         doc.text(`Handle: ${p.username}   |   Solved: ${p.stats?.solvedStats?.total || 0}   |   Contest Rating: ${p.stats?.contestRating || "N/A"}   |   Global Rank: ${p.stats?.currentRank || "N/A"}`, 20, y + 14);
-        
+
         y += 25;
       }
     });
-    
+
     // Page 2: AI Insights (if available)
     if (unifiedStats.insights) {
       doc.addPage();
-      
+
       // Page 2 Header Banner
       doc.setFillColor(...primaryColor);
       doc.rect(0, 0, 210, 28, "F");
-      
+
       doc.setFont("Helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(255, 255, 255);
       doc.text("EXPOAI DIAGNOSTICS & RECOMMENDATIONS", 15, 18);
-      
+
       let nextY = 40;
-      
+
       const renderSection = (title, text) => {
         if (!text) return;
-        
+
         doc.setFont("Helvetica", "bold");
         doc.setFontSize(11.5);
         doc.setTextColor(...secondaryColor);
         doc.text(title, 15, nextY);
-        
+
         doc.setFont("Helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(...primaryColor);
-        
+
         // Wrap text cleanly
         const splitText = doc.splitTextToSize(text, 180);
         doc.text(splitText, 15, nextY + 6);
-        
+
         const height = splitText.length * 5.5;
         nextY += 12 + height;
       };
-      
+
       renderSection("Key Skill Strengths", unifiedStats.insights.strengths);
       renderSection("Growth Opportunities & Weaknesses", unifiedStats.insights.weaknesses);
       renderSection("Targeted Improvement Areas", unifiedStats.insights.improvementAreas);
-      
+
       if (unifiedStats.insights.recommendedTopics && unifiedStats.insights.recommendedTopics.length > 0) {
         renderSection("Recommended Advanced Curriculum Topics", unifiedStats.insights.recommendedTopics.join(", "));
       }
     }
-    
+
     doc.save(`${user?.username || "developer"}_cp_report.pdf`);
   };
 
@@ -497,13 +800,13 @@ export default function CPDashboard({ user }) {
     const total = vals.reduce((a, b) => a + b, 0);
     const activeDays = vals.filter(v => v > 0).length;
     const peak = vals.length > 0 ? Math.max(...vals) : 0;
-    
+
     let consistency = "Casual Coder";
     const ratio = activeDays / 364;
     if (ratio > 0.45) consistency = "Grandmaster Grinder";
     else if (ratio > 0.25) consistency = "Dedicated Coder";
     else if (ratio > 0.1) consistency = "Consistent Solver";
-    
+
     return { total, activeDays, peak, consistency };
   }, [unifiedStats]);
 
@@ -596,7 +899,7 @@ export default function CPDashboard({ user }) {
   // Main UI
   return (
     <div className="cp-dashboard-container page-fade-in">
-      
+
       {/* 1. Profile Header */}
       <div className="cp-profile-header glass-panel">
         <div className="cp-header-cover" />
@@ -620,9 +923,14 @@ export default function CPDashboard({ user }) {
           </div>
           <div className="cp-header-actions">
             {hasConnectedPlatforms && (
-              <button className={`btn-sync-all ${refreshing ? "spinning" : ""}`} onClick={handleFullRefresh} disabled={refreshing}>
-                <RefreshCw size={14} /> {refreshing ? "Syncing..." : "Sync Platforms"}
-              </button>
+              <>
+                <button className="btn-linkedin-showcase" onClick={() => setLinkedinModalOpen(true)}>
+                  <LinkedInIcon size={14} /> LinkedIn Showcase
+                </button>
+                <button className={`btn-sync-all ${refreshing ? "spinning" : ""}`} onClick={handleFullRefresh} disabled={refreshing}>
+                  <RefreshCw size={14} /> {refreshing ? "Syncing..." : "Sync Platforms"}
+                </button>
+              </>
             )}
             <button className="btn-connect-new" onClick={() => { setSelectedPlatformToConnect("leetcode"); setConnectModalOpen(true); }}>
               <Plus size={14} /> Connect Platform
@@ -661,16 +969,15 @@ export default function CPDashboard({ user }) {
                 return (
                   <div key={key} className={`platform-card glass-panel hover-elevation ${isConnected ? "connected" : "unconnected"}`}>
                     <div className="card-header-row">
-                      <img src={cfg.logo} alt={cfg.name} className="platform-logo" />
+                      <PlatformLogo platformKey={key} size={32} className="platform-logo" />
                       <div className="status-indicator">
-                        <span className={`status-dot ${
-                          disconnectingPlatform === key 
-                            ? "failed" 
+                        <span className={`status-dot ${disconnectingPlatform === key
+                            ? "failed"
                             : (connectingPlatform === key ? "syncing" : (plat.syncStatus?.toLowerCase().replace(/\s/g, "") || "notconnected"))
-                        }`} />
+                          }`} />
                         <span className="status-lbl">
-                          {disconnectingPlatform === key 
-                            ? "Disconnecting..." 
+                          {disconnectingPlatform === key
+                            ? "Disconnecting..."
                             : (connectingPlatform === key ? "Connecting..." : (plat.syncStatus || (isConnected ? "Connected" : "Not Connected")))}
                         </span>
                       </div>
@@ -683,7 +990,7 @@ export default function CPDashboard({ user }) {
                           <span className="verification-badge">Verified</span>
                         </div>
                         <p className="handle">@{plat.username}</p>
-                        
+
                         <div className="platform-stats-grid">
                           <div className="stat-item">
                             <span className="stat-lbl">Rating</span>
@@ -723,13 +1030,13 @@ export default function CPDashboard({ user }) {
                       <div className="platform-body unconnected-body">
                         <h4 className="platform-name">{cfg.name}</h4>
                         <p className="status-muted">{connectingPlatform === key ? "Connecting..." : "Not Connected"}</p>
-                        
+
                         <div className="connect-quick-input">
-                          <input 
-                            type="text" 
-                            placeholder="Username" 
-                            id={`input-connect-${key}`} 
-                            className="quick-username-input" 
+                          <input
+                            type="text"
+                            placeholder="Username"
+                            id={`input-connect-${key}`}
+                            className="quick-username-input"
                             disabled={connectingPlatform === key}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
@@ -740,8 +1047,8 @@ export default function CPDashboard({ user }) {
                               }
                             }}
                           />
-                          <button 
-                            className="btn-quick-connect" 
+                          <button
+                            className="btn-quick-connect"
                             disabled={connectingPlatform === key}
                             onClick={() => {
                               const input = document.getElementById(`input-connect-${key}`);
@@ -769,7 +1076,7 @@ export default function CPDashboard({ user }) {
 
           {/* Unified score & metrics summary */}
           <div className="metrics-column-layout">
-            
+
             {/* Overview cards */}
             <div className="overview-stats-grid">
               <div className="overview-card glass-panel">
@@ -837,8 +1144,8 @@ export default function CPDashboard({ user }) {
                 <svg width="100" height="100" viewBox="0 0 100 100">
                   <circle cx="50" cy="50" r="40" stroke="var(--cp-track-bg)" strokeWidth="6" fill="none" />
                   <circle cx="50" cy="50" r="40" stroke="var(--cp-blue)" strokeWidth="6" fill="none"
-                          strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * (unifiedStats?.score || 0)) / 1000}
-                          strokeLinecap="round" transform="rotate(-90 50 50)" />
+                    strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * (unifiedStats?.score || 0)) / 1000}
+                    strokeLinecap="round" transform="rotate(-90 50 50)" />
                   <text x="50" y="55" textAnchor="middle" fill="var(--text-h)" fontSize="16" fontWeight="bold">Lvl {Math.floor((unifiedStats?.score || 0) / 150) + 1}</text>
                 </svg>
               </div>
@@ -872,7 +1179,7 @@ export default function CPDashboard({ user }) {
                         <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
                       </radialGradient>
                     </defs>
-                    
+
                     <circle cx="60" cy="60" r="50" stroke="var(--cp-track-bg)" strokeWidth="8" fill="none" />
                     <circle cx="60" cy="60" r="42" fill="url(#donut-center-glow)" />
 
@@ -880,15 +1187,15 @@ export default function CPDashboard({ user }) {
                       const gradId = seg.label === "Easy" ? "url(#easy-grad)" : seg.label === "Medium" ? "url(#medium-grad)" : "url(#hard-grad)";
                       return (
                         <circle key={seg.label} cx="60" cy="60" r="50" stroke={gradId} strokeWidth="10" fill="none"
-                                strokeDasharray={seg.strokeDasharray} strokeDashoffset={seg.strokeDashoffset}
-                                strokeLinecap="butt" transform="rotate(-90 60 60)"
-                                style={{
-                                  transition: "stroke-width 0.2s ease, filter 0.2s ease",
-                                  cursor: "pointer",
-                                  filter: donutHoveredIndex === idx ? "brightness(1.1) drop-shadow(0 0 6px rgba(255,255,255,0.2))" : "none"
-                                }}
-                                onMouseEnter={() => setDonutHoveredIndex(idx)}
-                                onMouseLeave={() => setDonutHoveredIndex(null)} />
+                          strokeDasharray={seg.strokeDasharray} strokeDashoffset={seg.strokeDashoffset}
+                          strokeLinecap="butt" transform="rotate(-90 60 60)"
+                          style={{
+                            transition: "stroke-width 0.2s ease, filter 0.2s ease",
+                            cursor: "pointer",
+                            filter: donutHoveredIndex === idx ? "brightness(1.1) drop-shadow(0 0 6px rgba(255,255,255,0.2))" : "none"
+                          }}
+                          onMouseEnter={() => setDonutHoveredIndex(idx)}
+                          onMouseLeave={() => setDonutHoveredIndex(null)} />
                       );
                     })}
                     <text x="60" y="62" textAnchor="middle" fill="var(--text-h)" fontSize="13" fontWeight="bold">
@@ -902,9 +1209,9 @@ export default function CPDashboard({ user }) {
                 <div className="donut-legend-premium">
                   {donutSegments.map((seg, idx) => (
                     <div key={seg.label} className={`legend-card-premium ${seg.label.toLowerCase()}-card`}
-                         style={{ opacity: donutHoveredIndex === null || donutHoveredIndex === idx ? 1 : 0.4 }}
-                         onMouseEnter={() => setDonutHoveredIndex(idx)}
-                         onMouseLeave={() => setDonutHoveredIndex(null)}>
+                      style={{ opacity: donutHoveredIndex === null || donutHoveredIndex === idx ? 1 : 0.4 }}
+                      onMouseEnter={() => setDonutHoveredIndex(idx)}
+                      onMouseLeave={() => setDonutHoveredIndex(null)}>
                       <div className="card-top-row">
                         <div className="card-lbl-wrapper">
                           <span className={`card-indicator-dot ${seg.label.toLowerCase()}`} />
@@ -938,19 +1245,19 @@ export default function CPDashboard({ user }) {
                       return PLATFORMS_CONFIG[k];
                     }), 1);
                     const percent = (solved / maxVal) * 100;
-                    
+
                     return (
                       <div key={key} className="platform-progress-row-premium">
                         <div className="platform-row-meta">
                           <div className="platform-identity">
-                            <img src={cfg.logo} alt={cfg.name} className="platform-icon-img" />
+                            <PlatformLogo platformKey={key} size={20} className="platform-icon-img" />
                             <span className="platform-name-text">{cfg.name}</span>
                           </div>
                           <div className="platform-solved-badge">
                             <strong>{solved}</strong> solved
                           </div>
                         </div>
-                        
+
                         <div className="platform-progress-bar-track-premium">
                           <div className="platform-progress-bar-fill-premium" style={{
                             width: `${percent}%`,
@@ -958,7 +1265,7 @@ export default function CPDashboard({ user }) {
                             boxShadow: `0 0 10px ${cfg.color}44`
                           }} />
                         </div>
-                        
+
                         <div className="platform-row-footer">
                           <span className="footer-stat">Rating: <strong>{plat.stats?.contestRating || "N/A"}</strong></span>
                           <span className="footer-stat">Rank: <strong>{plat.stats?.currentRank || "N/A"}</strong></span>
@@ -982,8 +1289,8 @@ export default function CPDashboard({ user }) {
                     { key: "contests", label: "Contest Count", color: "#06B6D4" }
                   ].map(metric => (
                     <button key={metric.key} className={`metric-tab-premium ${activeChartMetric === metric.key ? "active" : ""}`}
-                            style={{ "--metric-color": metric.color }}
-                            onClick={() => { setActiveChartMetric(metric.key); setHoveredPoint(null); }}>
+                      style={{ "--metric-color": metric.color }}
+                      onClick={() => { setActiveChartMetric(metric.key); setHoveredPoint(null); }}>
                       <span className="metric-dot" />
                       <span className="metric-tab-lbl">{metric.label}</span>
                     </button>
@@ -1024,7 +1331,7 @@ export default function CPDashboard({ user }) {
                   const pointsCount = areaChartPoints.length;
                   const stepX = 500 / (pointsCount - 1 || 1);
                   const maxVal = Math.max(...areaChartPoints.map(p => p[activeChartMetric] || 0), 1);
-                  
+
                   // Construct line path
                   const coords = areaChartPoints.map((item, idx) => {
                     const x = idx * stepX;
@@ -1044,11 +1351,11 @@ export default function CPDashboard({ user }) {
                       <path d={pathStr} fill="none" stroke={strokeColor} strokeWidth="3" style={{ transition: "all 0.5s ease" }} />
                       {coords.map(c => (
                         <g key={c.label}
-                           onMouseEnter={() => setHoveredPoint(c)}
-                           onMouseLeave={() => setHoveredPoint(null)}
-                           style={{ cursor: "pointer" }}>
+                          onMouseEnter={() => setHoveredPoint(c)}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                          style={{ cursor: "pointer" }}>
                           <circle cx={c.x} cy={c.y} r="5" fill={strokeColor} stroke="var(--bg)" strokeWidth="2"
-                                  style={{ transition: "all 0.3s ease" }} />
+                            style={{ transition: "all 0.3s ease" }} />
                           <text x={c.x} y="145" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="8.5" fontWeight="500">{c.label}</text>
                         </g>
                       ))}
@@ -1057,16 +1364,16 @@ export default function CPDashboard({ user }) {
                       {hoveredPoint && (
                         <g style={{ pointerEvents: "none" }}>
                           <rect x={Math.max(5, Math.min(385, hoveredPoint.x - 55))} y={Math.max(5, hoveredPoint.y - 48)} width="110" height="36" rx="8"
-                                fill="var(--cp-card-bg)" stroke={strokeColor} strokeWidth="1.5"
-                                style={{ filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))" }} />
-                          
+                            fill="var(--cp-card-bg)" stroke={strokeColor} strokeWidth="1.5"
+                            style={{ filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))" }} />
+
                           <text x={Math.max(5, Math.min(385, hoveredPoint.x - 55)) + 55} y={Math.max(5, hoveredPoint.y - 48) + 13} textAnchor="middle"
-                                fill="var(--cp-text-muted)" fontSize="7.5" fontWeight="bold" letterSpacing="0.5">
+                            fill="var(--cp-text-muted)" fontSize="7.5" fontWeight="bold" letterSpacing="0.5">
                             {hoveredPoint.label.toUpperCase()}
                           </text>
 
                           <text x={Math.max(5, Math.min(385, hoveredPoint.x - 55)) + 55} y={Math.max(5, hoveredPoint.y - 48) + 27} textAnchor="middle"
-                                fill="var(--text-h)" fontSize="8.5" fontWeight="bold">
+                            fill="var(--text-h)" fontSize="8.5" fontWeight="bold">
                             {hoveredPoint.val} {activeChartMetric === "solved" ? "solves" : activeChartMetric === "rating" ? "rating" : "contests"}
                           </text>
                         </g>
@@ -1087,7 +1394,7 @@ export default function CPDashboard({ user }) {
                 <span className="badge-value-premium">{heatmapStats.consistency}</span>
               </div>
             </div>
-            
+
             <div className="heatmap-dashboard-premium">
               {/* Left hand stats grid */}
               <div className="heatmap-stats-side-panel">
@@ -1182,7 +1489,7 @@ export default function CPDashboard({ user }) {
                     comparisonList.map(item => (
                       <tr key={item.id}>
                         <td className="pf-col">
-                          <img src={item.logo} alt={item.platform} />
+                          <PlatformLogo platformKey={item.id} size={20} />
                           <span>{item.platform}</span>
                         </td>
                         <td>{item.solved}</td>
@@ -1202,7 +1509,7 @@ export default function CPDashboard({ user }) {
 
           {/* Skill Radar & Timeline splits */}
           <div className="radar-timeline-splits">
-            
+
             {/* Skill Radar Chart */}
             <div className="radar-card glass-panel">
               <h3 className="card-title">Skill Profiler</h3>
@@ -1212,7 +1519,7 @@ export default function CPDashboard({ user }) {
                   <polygon points="120,30 183,56 210,120 183,183 120,210 56,183 30,120 56,56" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
                   <polygon points="120,60 151,78 165,120 151,161 120,180 88,161 75,120 88,78" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
                   <polygon points="120,90 135,99 142,120 135,140 120,150 104,140 97,120 104,99" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
-                  
+
                   {/* Skill Coordinate Fill Polygon */}
                   {radarPoints && (
                     <polygon points={radarPoints} fill="rgba(37,99,235,0.18)" stroke="var(--ce-accent)" strokeWidth="2" strokeLinejoin="round" />
@@ -1244,7 +1551,7 @@ export default function CPDashboard({ user }) {
                       return (
                         <div key={idx} className="timeline-node">
                           <div className="node-icon-logo">
-                            <img src={cfg.logo} alt={item.platform} />
+                            <PlatformLogo platformKey={item.platform} size={20} />
                           </div>
                           <div className="node-content">
                             <div className="node-heading">
@@ -1410,6 +1717,9 @@ export default function CPDashboard({ user }) {
             <h3 className="card-title">Share Developer Portfolio</h3>
             <p>Generate shareable portfolio links or export your full CP diagnostics report to showcase on GitHub, LinkedIn, or send directly to recruiters.</p>
             <div className="share-btn-row">
+              <button className="btn-share-linkedin-showcase" onClick={() => setLinkedinModalOpen(true)}>
+                <LinkedInIcon size={14} /> Create LinkedIn Card
+              </button>
               <button className="btn-share-link" onClick={handleShare}>
                 {shareLinkCopied ? (
                   <><Check size={14} /> Link Copied</>
@@ -1426,13 +1736,174 @@ export default function CPDashboard({ user }) {
         </div>
       )}
 
+      {/* LinkedIn Showcase Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {linkedinModalOpen && (
+            <div className="modal-backdrop-overlay" onClick={() => setLinkedinModalOpen(false)}>
+              <motion.div
+                className="modal-card-box linkedin-showcase-modal glass-panel animate-scale-up"
+                onClick={(e) => e.stopPropagation()}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+              >
+                <div className="modal-header">
+                  <h4 style={{ display: "flex", alignItems: "center", gap: "8px", color: "#60A5FA" }}>
+                    <LinkedInIcon size={20} /> LinkedIn Developer Portfolio Showcase
+                  </h4>
+                  <button className="btn-close" onClick={() => setLinkedinModalOpen(false)}>&times;</button>
+                </div>
+
+                <p className="modal-subtitle">
+                  Preview your custom LinkedIn Developer Passport. Download as a high-res PNG card or copy ready-made post text!
+                </p>
+
+                {/* Live Passport Card Preview */}
+                <div className="passport-card-preview-container">
+                  <div className="passport-card-preview">
+                    {/* Holographic background glows */}
+                    <div className="passport-card-glow-orb-1" />
+                    <div className="passport-card-glow-orb-2" />
+                    <div className="passport-card-grid-pattern" />
+
+                    {/* Header Row */}
+                    <div className="passport-header-row">
+                      <div className="passport-brand-pill">
+                        <Sparkles size={14} className="sparkle-pulse-icon" />
+                        <span className="brand-main">CODE-EXPO</span>
+                        <span className="brand-divider">/</span>
+                        <span className="brand-sub">DEV PASSPORT</span>
+                      </div>
+                      <div className="passport-certified-seal">
+                        <ShieldCheck size={14} /> EXPO CERTIFIED DEVELOPER
+                      </div>
+                    </div>
+
+                    {/* User Profile Hero Area */}
+                    <div className="passport-user-hero">
+                      <div className="user-hero-avatar-wrapper">
+                        {user?.avatar || user?.profilePic ? (
+                          <img src={user.avatar || user.profilePic} alt={user?.username} className="user-hero-avatar-img" />
+                        ) : (
+                          <div className="user-hero-avatar-fallback">
+                            {(unifiedStats?.name || user?.username || "D").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="user-hero-info">
+                        <h3 className="user-hero-name">{unifiedStats?.name || user?.username || "Developer"}</h3>
+                        <p className="user-hero-institution">
+                          🎓 {user?.college || "Global Coding Guild"} • Rank: <strong>{unifiedStats?.currentRank || "Unranked"}</strong>
+                        </p>
+                        <div className="user-hero-badges-row">
+                          <span className="hero-badge-pill gold"><Zap size={11} /> {unifiedStats?.level || "Gold Tier"}</span>
+                          <span className="hero-badge-pill blue"><Trophy size={11} /> Top {(100 - (unifiedStats?.percentile || 95)).toFixed(1)}% Global</span>
+                        </div>
+                      </div>
+
+                      {/* Right XP Score Box with Progress Track */}
+                      <div className="passport-xp-card">
+                        <div className="xp-card-top">
+                          <span className="xp-lbl">CODEEXPO SCORE</span>
+                          <strong className="xp-val">{unifiedStats?.score || 0} <small>/ 1000</small></strong>
+                        </div>
+                        <div className="xp-progress-bar-track">
+                          <div className="xp-progress-bar-fill" style={{ width: `${Math.min(100, ((unifiedStats?.score || 0) / 1000) * 100)}%` }} />
+                        </div>
+                        <span className="xp-level-text">Level {Math.floor((unifiedStats?.score || 0) / 100) + 1} Developer</span>
+                      </div>
+                    </div>
+
+                    {/* 4 Metric Cards Grid */}
+                    <div className="passport-metrics-4grid">
+                      <div className="metric-card cyan-theme">
+                        <div className="metric-icon-box"><CheckCircle2 size={18} /></div>
+                        <div className="metric-content">
+                          <span className="metric-lbl">TOTAL SOLVED</span>
+                          <strong className="metric-val">{unifiedStats?.overallSolved || 0}</strong>
+                        </div>
+                      </div>
+
+                      <div className="metric-card orange-theme">
+                        <div className="metric-icon-box"><Flame size={18} /></div>
+                        <div className="metric-content">
+                          <span className="metric-lbl">ACTIVE STREAK</span>
+                          <strong className="metric-val">{unifiedStats?.codingStreak || 0} Days</strong>
+                        </div>
+                      </div>
+
+                      <div className="metric-card purple-theme">
+                        <div className="metric-icon-box"><TrendingUp size={18} /></div>
+                        <div className="metric-content">
+                          <span className="metric-lbl">AVG RATING</span>
+                          <strong className="metric-val">{unifiedStats?.avgRating || 0}</strong>
+                        </div>
+                      </div>
+
+                      <div className="metric-card green-theme">
+                        <div className="metric-icon-box"><Award size={18} /></div>
+                        <div className="metric-content">
+                          <span className="metric-lbl">PERCENTILE</span>
+                          <strong className="metric-val">Top {(100 - (unifiedStats?.percentile || 95)).toFixed(1)}%</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Connected Platform Badges */}
+                    <div className="passport-platforms-section">
+                      <span className="plat-section-title">CONNECTED PLATFORMS:</span>
+                      <div className="plat-badges-flex">
+                        {Object.keys(platforms).filter(k => platforms[k]?.username && PLATFORMS_CONFIG[k]).map(k => (
+                          <span key={k} className="plat-pill-creative" style={{ "--plat-color": PLATFORMS_CONFIG[k].color }}>
+                            <PlatformLogo platformKey={k} size={15} className="plat-pill-img" />
+                            <strong className="plat-pill-name">{PLATFORMS_CONFIG[k].name}:</strong>
+                            <span className="plat-pill-handle">@{platforms[k].username}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Passport Footer Watermark */}
+                    <div className="passport-footer">
+                      <span className="verify-link">verified at codeexpo.dev/dashboard?tab=cp</span>
+                      <span className="powered-tag">⚡ Powered by CodeExpo MyVerse</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="modal-actions-row">
+                  <button className="btn-modal-action btn-download-png" onClick={generateLinkedInCardPNG}>
+                    <Download size={16} /> Download PNG Image
+                  </button>
+                  <button className="btn-modal-action btn-copy-caption" onClick={handleCopyLinkedinPost}>
+                    {linkedinCopied ? <><Check size={16} /> Caption Copied!</> : <><Copy size={16} /> Copy LinkedIn Text</>}
+                  </button>
+                  <a
+                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-modal-action btn-share-linkedin"
+                  >
+                    <ExternalLink size={16} /> Open LinkedIn Share
+                  </a>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
       {/* Connection Dialog Modal */}
       {createPortal(
         <AnimatePresence>
           {connectModalOpen && (
             <div className="modal-backdrop-overlay" onClick={() => setConnectModalOpen(false)}>
               <motion.div className="modal-card-box glass-panel animate-scale-up" onClick={(e) => e.stopPropagation()}
-                          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
                 <div className="modal-header">
                   <h4>Link Platform Account</h4>
                   <button className="btn-close" onClick={() => setConnectModalOpen(false)}>&times;</button>
@@ -1470,7 +1941,7 @@ export default function CPDashboard({ user }) {
           {disconnectConfirmOpen && platformToDisconnect && (
             <div className="modal-backdrop-overlay" onClick={() => setDisconnectConfirmOpen(false)}>
               <motion.div className="modal-card-box glass-panel animate-scale-up" onClick={(e) => e.stopPropagation()}
-                          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
                 <div className="modal-header">
                   <h4 style={{ color: "var(--cp-red)", display: "flex", alignItems: "center", gap: "8px" }}>
                     <ShieldAlert size={20} /> Disconnect Account

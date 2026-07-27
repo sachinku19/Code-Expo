@@ -140,7 +140,8 @@ body {
 /* TOP NAVBAR */
 .ce-topnav {
   height: 56px;
-  background-color: rgba(16, 16, 22, 0.97) !important; /* Safe solid/high-opacity default fallback */
+  background-color: rgba(16, 16, 22, 0.97) !important;
+  /* Safe solid/high-opacity default fallback */
   border-bottom: 1px solid var(--ce-border);
   display: flex;
   justify-content: space-between;
@@ -156,12 +157,14 @@ body {
 }
 
 .light .ce-topnav {
-  background-color: rgba(255, 255, 255, 0.98) !important; /* Safe solid/high-opacity default fallback */
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  /* Safe solid/high-opacity default fallback */
 }
 
 @supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
   .ce-topnav {
-    background-color: var(--ce-surface) !important; /* Transparent glassmorphism style */
+    background-color: var(--ce-surface) !important;
+    /* Transparent glassmorphism style */
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
   }
@@ -1026,7 +1029,8 @@ body {
 
 /* GLOBAL COLLAPSIBLE SIDEBAR */
 .ce-sidebar {
-  background-color: #0b0b0f !important; /* Solid default fallback to avoid messy overlap */
+  background-color: #0b0b0f !important;
+  /* Solid default fallback to avoid messy overlap */
   border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
   display: flex;
   flex-direction: column;
@@ -1042,25 +1046,32 @@ body {
 }
 
 .light .ce-sidebar {
-  background-color: #ffffff !important; /* Solid default fallback to avoid messy overlap */
+  background-color: #ffffff !important;
+  /* Solid default fallback to avoid messy overlap */
   border-right: 1px solid rgba(15, 23, 42, 0.08) !important;
   box-shadow: 6px 0 35px rgba(15, 23, 42, 0.06) !important;
 }
 
 @supports (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px)) {
   .ce-sidebar {
-    background-color: rgba(11, 11, 15, 0.85) !important; /* Beautiful glassmorphism with strong readability */
+    background-color: rgba(11, 11, 15, 0.85) !important;
+    /* Beautiful glassmorphism with strong readability */
     backdrop-filter: blur(28px) saturate(190%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
   }
+
   .ce-sidebar.expanded {
-    background-color: #0b0b0f !important; /* Fully opaque on expand to prevent back-content overlap text bleed */
+    background-color: #0b0b0f !important;
+    /* Fully opaque on expand to prevent back-content overlap text bleed */
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+
   .light .ce-sidebar {
-    background-color: rgba(255, 255, 255, 0.88) !important; /* Beautiful glassmorphism with strong readability */
+    background-color: rgba(255, 255, 255, 0.88) !important;
+    /* Beautiful glassmorphism with strong readability */
   }
+
   .light .ce-sidebar.expanded {
     background-color: #ffffff !important;
     backdrop-filter: none !important;
@@ -1359,7 +1370,8 @@ body {
   bottom: 0;
   left: -280px;
   width: 260px;
-  background-color: #101016 !important; /* Solid default fallback */
+  background-color: #101016 !important;
+  /* Solid default fallback */
   border-right: 1px solid var(--ce-border);
   z-index: 220;
   display: flex;
@@ -1369,12 +1381,14 @@ body {
 }
 
 .light .ce-drawer-sidebar {
-  background-color: #ffffff !important; /* Solid default fallback */
+  background-color: #ffffff !important;
+  /* Solid default fallback */
 }
 
 @supports (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px)) {
   .ce-drawer-sidebar {
-    background-color: var(--ce-surface) !important; /* Glassmorphic when supported */
+    background-color: var(--ce-surface) !important;
+    /* Glassmorphic when supported */
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
   }
@@ -2649,6 +2663,7 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
     opacity: 0;
     transform: scale(0.95) translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -2868,8 +2883,13 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
 }
 
 @keyframes drawerFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* Mobile Slide-Out Drawer Sidebar Panel */

@@ -1,8 +1,37 @@
 import axios from "axios";
 
-const API=axios.create({
-    baseURL:`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}/api`
+const API = axios.create({
+  baseURL: `${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}/api`
 });
+
+// Configure Global & Instance 401 Response Interceptors (LeetCode-grade Auto-Logout)
+const setupInterceptors = (instance) => {
+  instance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response && error.response.status === 401) {
+        const url = error.config?.url || "";
+        const isAuthSubmit = url.includes("/auth/login") || url.includes("/auth/register") || url.includes("/auth/forgot-password");
+
+        // Do not auto-logout if the 401 was a failed password/credential check during login submit
+        if (!isAuthSubmit) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          localStorage.setItem("session_expired", "true");
+
+          const currentPath = window.location.pathname;
+          if (currentPath !== "/login" && currentPath !== "/register") {
+            window.location.href = "/login?expired=true";
+          }
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+};
+
+setupInterceptors(axios);
+setupInterceptors(API);
 
 export const  registerUser=async(userData)=>{
     const response=await API.post("/auth/register",userData);
@@ -59,6 +88,16 @@ export const changePassword = async (passwordData) => {
 
 export const getPublicStats = async () => {
   const response = await API.get("/auth/public-stats");
+  return response.data;
+};
+
+export const getPublicDevelopers = async () => {
+  const response = await API.get("/auth/public-developers");
+  return response.data;
+};
+
+export const getPublicUserProfile = async (username) => {
+  const response = await API.get(`/auth/user-profile/${encodeURIComponent(username)}`);
   return response.data;
 };
 

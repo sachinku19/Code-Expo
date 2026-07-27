@@ -1,10 +1,30 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
+    const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
+
+    // Client-side JWT expiration check
+    if (token) {
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          if (payload.exp && payload.exp * 1000 < Date.now()) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            localStorage.setItem("session_expired", "true");
+            return null;
+          }
+        }
+      } catch (e) {
+        // Malformed token
+      }
+    }
+
     if (!storedUser || storedUser === "null" || storedUser === "undefined") return null;
     try {
       const parsed = JSON.parse(storedUser);

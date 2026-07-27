@@ -8,6 +8,12 @@ import "./AIChatbot.css";
 
 export default function AIChatbot() {
   const location = useLocation();
+  const isHomePage = location.pathname === "/";
+
+  if (isHomePage) {
+    return null;
+  }
+
   const isEditorPage = location.pathname.startsWith("/editor/");
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([

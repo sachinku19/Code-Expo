@@ -25,8 +25,14 @@ function Auth({ mode }) {
   }, [mode]);
 
   const completeAuthRedirect = () => {
+    const redirectUrl = localStorage.getItem("redirectAfterLogin");
+    if (redirectUrl) {
+      localStorage.removeItem("redirectAfterLogin");
+      navigate(redirectUrl, { replace: true });
+      return;
+    }
     const from = location.state?.from?.pathname
-      ? location.state.from.pathname + location.state.from.search
+      ? location.state.from.pathname + (location.state.from.search || "")
       : "/dashboard";
     navigate(from, { replace: true });
   };
@@ -113,13 +119,20 @@ function Auth({ mode }) {
   }, [activeMode]);
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const isExpired = searchParams.get("expired") === "true" || localStorage.getItem("session_expired") === "true";
+    if (isExpired) {
+      setLoginError("Your session has expired. Please log in again to continue.");
+      localStorage.removeItem("session_expired");
+    }
+
     if (location.state?.successMessage) {
       const timer = setTimeout(() => {
         navigate(location.pathname, { replace: true, state: { ...location.state, successMessage: undefined } });
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.state, navigate, location.pathname]);
+  }, [location.state, location.search, navigate, location.pathname]);
 
   useEffect(() => {
     const initGoogleOAuth = async () => {

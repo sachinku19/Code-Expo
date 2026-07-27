@@ -367,6 +367,57 @@ const getPublicStats = async (req, res) => {
   }
 };
 
+const getPublicDevelopers = async (req, res) => {
+  try {
+    const users = await User.find({ isSuspended: { $ne: true } })
+      .select('username avatar title bio programmingLanguages status executionsCount followersCount')
+      .sort({ createdAt: -1 })
+      .limit(22)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      users
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const getPublicUserProfile = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const isObjId = mongoose.Types.ObjectId.isValid(username);
+    const query = isObjId 
+      ? { $or: [{ username: username }, { _id: username }] } 
+      : { username: username };
+
+    const userObj = await User.findOne(query)
+      .select('username avatar title bio programmingLanguages status executionsCount followersCount followingCount location codingHours reputationScore contributionScore developerLevel projectsShared')
+      .lean();
+
+    if (!userObj) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: userObj
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 const googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
@@ -635,6 +686,8 @@ module.exports={
     logoutUser,
     changePassword,
     getPublicStats,
+    getPublicDevelopers,
+    getPublicUserProfile,
     googleLogin,
     getGoogleConfig,
     forgotPassword,

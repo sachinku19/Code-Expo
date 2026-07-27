@@ -21,7 +21,7 @@ import {
 } from "../services/roomService";
 import socket from "../socket/socket";
 import { useAuth } from "../context/AuthContext";
-import { getUserProfile, changePassword } from "../services/authService";
+import { getUserProfile, changePassword, getPublicUserProfile } from "../services/authService";
 import ReportUserModal from "../components/social/ReportUserModal";
 import {
   Plus, LogIn, History as HistoryIcon, User,
@@ -1406,7 +1406,64 @@ function Dashboard() {
         fetchPostDirectly();
       }
     }
-  }, [location.search, allFeedPosts]);
+
+    let isCurrent = true;
+    const targetUser = searchParams.get("user") || searchParams.get("username") || searchParams.get("userId");
+    const targetAvatar = searchParams.get("avatar");
+    const tab = searchParams.get("tab");
+    if ((tab === "profile" || targetUser) && targetUser && targetUser !== user?.username && targetUser !== user?._id && targetUser !== user?.id) {
+      getPublicUserProfile(targetUser).then(res => {
+        if (!isCurrent) return;
+        if (res && res.success && res.user) {
+          setViewingUserProfile(res.user);
+        } else {
+          setViewingUserProfile({
+            _id: targetUser,
+            username: targetUser,
+            name: targetUser.charAt(0).toUpperCase() + targetUser.slice(1),
+            avatar: targetAvatar || null,
+            title: "CodeExpo Developer",
+            bio: "Building innovative software on CodeExpo."
+          });
+        }
+      }).catch(() => {
+        if (!isCurrent) return;
+        setViewingUserProfile({
+          _id: targetUser,
+          username: targetUser,
+          name: targetUser.charAt(0).toUpperCase() + targetUser.slice(1),
+          avatar: targetAvatar || null,
+          title: "CodeExpo Developer",
+          bio: "Building innovative software on CodeExpo."
+        });
+      });
+    } else {
+      setViewingUserProfile(null);
+    }
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [location.search, allFeedPosts, user]);
+
+  const handleReturnToMyProfile = () => {
+    setViewingUserProfile(null);
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.delete("user");
+    searchParams.delete("username");
+    searchParams.delete("userId");
+    searchParams.delete("avatar");
+    searchParams.set("tab", "profile");
+
+    const newSearch = searchParams.toString();
+    const currentSearch = location.search.startsWith("?") ? location.search.slice(1) : location.search;
+
+    if (newSearch === currentSearch) {
+      return;
+    }
+
+    navigate(`/dashboard?${newSearch}`, { replace: false });
+  };
 
   useEffect(() => {
     setModalActiveImageIdx(0);
@@ -1864,12 +1921,32 @@ function Dashboard() {
     isPrivate: false
   });
   const [roomId, setRoomId] = useState("");
-  const [activeSection, setActiveSection] = useState(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const urlTab = searchParams.get("tab");
+  const activeSection = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const urlTab = params.get("tab");
     if (urlTab) return urlTab === "feed-action" ? "trust-safety" : urlTab;
     return "dashboard";
-  });
+  }, [location.search]);
+
+  const setActiveSection = useCallback((newSection) => {
+    const params = new URLSearchParams(location.search);
+    params.set("tab", newSection);
+    if (newSection !== "profile") {
+      params.delete("user");
+      params.delete("username");
+      params.delete("userId");
+      params.delete("avatar");
+    }
+
+    const newSearch = params.toString();
+    const currentSearch = location.search.startsWith("?") ? location.search.slice(1) : location.search;
+
+    if (newSearch === currentSearch) {
+      return;
+    }
+
+    navigate(`${location.pathname}?${newSearch}`, { replace: false });
+  }, [location.search, location.pathname, navigate]);
   const [selectedRoomDetails, setSelectedRoomDetails] = useState(null);
   const [selectedRoomLikes, setSelectedRoomLikes] = useState([]);
   const [isLoadingRoomLikes, setIsLoadingRoomLikes] = useState(false);
@@ -1933,12 +2010,23 @@ function Dashboard() {
 
   const targetUserIdFromUrl = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    return params.get("userId");
-  }, [location.search]);
+    const target = params.get("user") || params.get("username") || params.get("userId");
+    if (target && target !== user?.username && target !== user?._id && target !== user?.id) {
+      return target;
+    }
+    return null;
+  }, [location.search, user]);
 
   const isViewingPublicProfile = activeSection === "profile" && !!targetUserIdFromUrl;
 
-  const isPublicProfileLoading = isViewingPublicProfile && (!viewingUserProfile || (String(viewingUserProfile._id) !== String(targetUserIdFromUrl) && String(viewingUserProfile.id) !== String(targetUserIdFromUrl)));
+  const isPublicProfileLoading = isViewingPublicProfile && (
+    !viewingUserProfile ||
+    (
+      String(viewingUserProfile._id) !== String(targetUserIdFromUrl) &&
+      String(viewingUserProfile.username) !== String(targetUserIdFromUrl) &&
+      String(viewingUserProfile.id) !== String(targetUserIdFromUrl)
+    )
+  );
 
   // Gate Opening Portal Animation State
   const [resumingHistoryRoomId, setResumingHistoryRoomId] = useState(null);
@@ -4473,38 +4561,55 @@ function Dashboard() {
                             </div>
                           ) : (
                             <div className="social-activities-list">
-                              {feedActivities.slice(0, visibleFeedCount).map(act => (
-                                <div key={act._id} className="social-activity-card">
-                                  <div className="social-activity-header">
-                                    <div className="social-activity-actor-info">
-                                      <div className="actor-avatar" style={{ background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
-                                        {act.user?.avatar ? (
-                                          <img src={act.user.avatar} alt={act.user?.username} />
-                                        ) : (
-                                          <span>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
-                                        )}
+                              {feedActivities.slice(0, visibleFeedCount).map(act => {
+                                const sanitizedAction = (() => {
+                                  if (!act.action) return "";
+                                  let clean = String(act.action).split("\n")[0].trim();
+                                  clean = clean.replace(/created file "([^"]+)"/gi, (match, fileName) => {
+                                    let fn = fileName.trim();
+                                    if (fn.includes("//") || fn.includes("Welcome") || fn.includes("include") || fn.length > 30) {
+                                      fn = fn.split(" ")[0].trim();
+                                      if (!fn || fn.length > 25 || fn.includes("//")) fn = "main.cpp";
+                                    }
+                                    return `created file "${fn}"`;
+                                  });
+                                  if (clean.length > 70) return clean.substring(0, 70) + "...";
+                                  return clean;
+                                })();
+
+                                return (
+                                  <div key={act._id} className="social-activity-card">
+                                    <div className="social-activity-header">
+                                      <div className="social-activity-actor-info">
+                                        <div className="actor-avatar" style={{ background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
+                                          {act.user?.avatar ? (
+                                            <img src={act.user.avatar} alt={act.user?.username} />
+                                          ) : (
+                                            <span>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
+                                          )}
+                                        </div>
+                                        <div className="actor-meta">
+                                          <span className="actor-username">
+                                            <strong>{act.user?.username || "Someone"}</strong>
+                                          </span>
+                                          <span className="activity-action-text">
+                                            {sanitizedAction} {act.roomTitle ? (
+                                              <strong className="clickable-room" onClick={() => act.room?.roomId && handleJoinRoomDirect(act.room.roomId)}>
+                                                {act.roomTitle}
+                                              </strong>
+                                            ) : act.targetUser ? (
+                                              <strong className="activity-target-user">{act.targetUser.username}</strong>
+                                            ) : ""}
+                                          </span>
+                                        </div>
                                       </div>
-                                      <div className="actor-meta">
-                                        <span className="actor-username">
-                                          <strong>{act.user?.username || "Someone"}</strong>
-                                        </span>
-                                        <span className="activity-action-text">
-                                          {act.action} {act.roomTitle ? (
-                                            <strong className="clickable-room" onClick={() => act.room?.roomId && handleJoinRoomDirect(act.room.roomId)}>
-                                              {act.roomTitle}
-                                            </strong>
-                                          ) : act.targetUser ? (
-                                            <strong className="activity-target-user">{act.targetUser.username}</strong>
-                                          ) : ""}
-                                        </span>
-                                      </div>
+                                      <span className="activity-timestamp">
+                                        {formatLastActive(act.timestamp)}
+                                      </span>
                                     </div>
-                                    <span className="activity-timestamp">
-                                      {formatLastActive(act.timestamp)}
-                                    </span>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
 
                               {(visibleFeedCount < feedActivities.length || feedPage < feedTotalPages) && (
                                 <button
@@ -7746,7 +7851,33 @@ function Dashboard() {
                           }
                         }}
                       >
-                        {!viewingUserProfile && (
+                        {viewingUserProfile ? (
+                          <button
+                            onClick={handleReturnToMyProfile}
+                            style={{
+                              position: "absolute",
+                              top: "10px",
+                              right: "10px",
+                              background: "rgba(15, 23, 42, 0.88)",
+                              backdropFilter: "blur(8px)",
+                              color: "#ffffff",
+                              border: "1px solid rgba(255, 255, 255, 0.25)",
+                              borderRadius: "20px",
+                              padding: "6px 14px",
+                              fontSize: "0.75rem",
+                              fontWeight: "600",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              cursor: "pointer",
+                              zIndex: 10,
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+                            }}
+                          >
+                            <User size={13} />
+                            <span>Return to My Profile</span>
+                          </button>
+                        ) : (
                           <div className="banner-edit-overlay" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.2s ease", color: "#fff", fontSize: "0.7rem", fontWeight: "600" }}>
                             Change Banner
                           </div>

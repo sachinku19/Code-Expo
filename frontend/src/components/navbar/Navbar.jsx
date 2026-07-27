@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Menu, Moon, Sparkles, Sun, X, LogOut, LayoutDashboard, User, Settings, ChevronDown, ShieldAlert } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { logoutUser } from "../../services/authService";
+import { useSmartNavbar } from "../../hooks/useSmartNavbar";
 import Logo from "../shared/Logo";
 import "./Navbar.css";
 
@@ -13,14 +14,19 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const { user, setUser } = useAuth();
 
+  const { isVisible } = useSmartNavbar({
+    isPinned: mobileMenuOpen || profileDropdownOpen
+  });
+
   const navLinks = [
     { label: "Home", id: "hero" },
-    { label: "Demo", id: "demo" },
-    { label: "Editor", id: "collaboration" },
-    { label: "Whiteboard", id: "whiteboard" },
-    { label: "Expo AI", id: "ai" },
-    { label: "Social Hub", id: "social-hub" },
+    { label: "Workspace", id: "editor-section" },
+    { label: "Planner", id: "planner" },
+    { label: "Expo AI", id: "ai-coder" },
+    { label: "MyVerse", id: "myverse" },
     { label: "Features", id: "features" },
+    { label: "Analytics", id: "analytics" },
+    { label: "Plans", id: "pricing" },
   ];
 
   const handleScroll = (id) => {
@@ -89,15 +95,18 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
 
   return (
     <motion.nav
-      className="navbar"
+      className={`navbar ${!isVisible ? "navbar-hidden" : ""}`}
       initial={{ y: -100, x: "-50%", opacity: 0 }}
-      animate={{ y: 0, x: "-50%", opacity: 1 }}
+      animate={{
+        y: isVisible ? 0 : -110,
+        x: "-50%",
+        opacity: isVisible ? 1 : 0
+      }}
       transition={{
         type: "spring",
-        stiffness: 80,
-        damping: 15,
-        mass: 1,
-        restDelta: 0.001
+        stiffness: 120,
+        damping: 18,
+        mass: 0.8
       }}
     >
       <div className="navbar-container">

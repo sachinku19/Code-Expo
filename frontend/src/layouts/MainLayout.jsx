@@ -24,15 +24,15 @@ import Logo from "../components/shared/Logo";
 const SquareCode = (props) => {
   const { className, size = 18, ...rest } = props;
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
       {...rest}
     >
@@ -1031,7 +1031,7 @@ export default function MainLayout({
     if (user && (user.id || user._id)) {
       const userId = user.id || user._id;
       const isRoom = roomId && roomId !== "default";
-      
+
       if (isRoom) {
         const roomTourSeen = localStorage.getItem(`ce_room_tour_seen_${userId}`);
         if (!roomTourSeen) {
@@ -1063,7 +1063,7 @@ export default function MainLayout({
     const currentSteps = tourMode === "room" ? roomTourSteps : tourSteps;
     const safeStepIdx = Math.min(tourStep, currentSteps.length - 1);
     const step = currentSteps[safeStepIdx];
-    
+
     if (step && step.triggerTab) {
       const btn = document.querySelector(`button[title="${step.triggerTab}"]`);
       if (btn && !btn.classList.contains("active")) {
@@ -1080,7 +1080,7 @@ export default function MainLayout({
       const target = document.querySelector(stepUpdate.selector);
       if (target && target.getBoundingClientRect().width > 0) {
         const rect = target.getBoundingClientRect();
-        
+
         // Update highlight box style
         setHighlightStyle({
           top: rect.top - 8,
@@ -1138,10 +1138,10 @@ export default function MainLayout({
 
     // Delay updates by 150ms to allow tab opening transition to complete, ensuring precise positioning
     const timer = setTimeout(updatePosition, 150);
-    
+
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition);
-    
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener("resize", updatePosition);

@@ -13,11 +13,14 @@ import {
   UserPlus
 } from "lucide-react";
 import { IconGithub, IconTwitter, IconLinkedin, IconDiscord } from "./SocialIcons";
+import { useSmartNavbar } from "../../hooks/useSmartNavbar";
 import "./MobileNavbar.css";
 
 export default function MobileNavbar({ user, theme, toggleTheme }) {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+
+  const { isVisible } = useSmartNavbar({ isPinned: isOpen });
 
   useEffect(() => {
     if (isOpen) {
@@ -49,7 +52,7 @@ export default function MobileNavbar({ user, theme, toggleTheme }) {
 
   return (
     <>
-      <header className="mobile-nav-header">
+      <header className={`mobile-nav-header ${!isVisible ? "mobile-nav-hidden" : ""}`}>
         <div className="mobile-nav-container">
           {/* Left Action Group (Three line option & Theme toggle) */}
           <div className="mobile-nav-left-actions">
@@ -135,6 +138,18 @@ export default function MobileNavbar({ user, theme, toggleTheme }) {
                   </button>
                   <button className="drawer-nav-item" onClick={() => handleNavClick("editor-section")}>
                     <span>Workspace</span>
+                    <ChevronRight className="nav-arrow" size={18} />
+                  </button>
+                  <button className="drawer-nav-item" onClick={() => handleNavClick("planner")}>
+                    <span>Planner</span>
+                    <ChevronRight className="nav-arrow" size={18} />
+                  </button>
+                  <button className="drawer-nav-item" onClick={() => handleNavClick("ai-coder")}>
+                    <span>Expo AI</span>
+                    <ChevronRight className="nav-arrow" size={18} />
+                  </button>
+                  <button className="drawer-nav-item" onClick={() => handleNavClick("myverse")}>
+                    <span>MyVerse</span>
                     <ChevronRight className="nav-arrow" size={18} />
                   </button>
                   <button className="drawer-nav-item" onClick={() => handleNavClick("features")}>

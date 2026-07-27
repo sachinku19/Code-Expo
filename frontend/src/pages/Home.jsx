@@ -2,9 +2,11 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { getCountUser, getPublicStats } from "../services/authService";
+import { getCountUser, getPublicStats, getPublicDevelopers } from "../services/authService";
 import { getWebsiteRatingInfo } from "../services/websiteRatingService";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useSmartNavbar } from "../hooks/useSmartNavbar";
+import { useGateTransition } from "../routes/AppRoutes";
 import Lenis from "lenis";
 import {
   Sun,
@@ -57,7 +59,18 @@ import {
   BookOpen,
   Maximize2,
   Settings,
-  History
+  History,
+  Calendar,
+  CheckSquare,
+  ListTodo,
+  Kanban,
+  Clock,
+  UserCheck,
+  Cpu,
+  FileCode2,
+  Globe,
+  Radio,
+  Layers
 } from "lucide-react";
 import "./Home.css";
 
@@ -67,13 +80,166 @@ function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { resolvedTheme: theme, toggleTheme } = useTheme();
+  const { triggerGateTransition } = useGateTransition();
   const isMobile = useIsMobile(768);
+  const { isVisible: navVisible, isScrolled: navScrolled, isMounted } = useSmartNavbar();
 
   // Stats state
   const [totalUser, setTotalUser] = useState(0);
   const [dbStats, setDbStats] = useState({ developers: 0, rooms: 0, messages: 0, executions: 0 });
   const [reviews, setReviews] = useState([]);
   const [activeSection, setActiveSection] = useState("hero");
+
+  // Showcase States (Google Proposal Features)
+  const [ecosystemTab, setEcosystemTab] = useState("all");
+  const [plannerFilter, setPlannerFilter] = useState("all");
+  const [activePlannerTask, setActivePlannerTask] = useState(1);
+  const [activeAiPrompt, setActiveAiPrompt] = useState(0);
+  const [isAiSimulating, setIsAiSimulating] = useState(false);
+  const [activeVersePod, setActiveVersePod] = useState(1);
+  const [isVerseJoined, setIsVerseJoined] = useState(false);
+
+  const plannerTasksData = [
+    {
+      id: 1,
+      title: "Implement WebRTC Mesh Topology for Google Cloud Multi-Region Deployments",
+      category: "Architecture",
+      priority: "CRITICAL",
+      priorityColor: "#ef4444",
+      column: "in_progress",
+      assignee: "Sachin Kumar",
+      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80",
+      progress: 75,
+      dueDate: "Today",
+      subtasks: ["Stun server config", "P2P fallbacks", "Latency benchmarks"]
+    },
+    {
+      id: 2,
+      title: "AI Pair Programmer Gemini API Context Window Stream Caching",
+      category: "AI Engine",
+      priority: "HIGH",
+      priorityColor: "#a855f7",
+      column: "code_review",
+      assignee: "Sophia Vance",
+      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=80&h=80&q=80",
+      progress: 90,
+      dueDate: "Tomorrow",
+      subtasks: ["Token stream parser", "AST cache layer"]
+    },
+    {
+      id: 3,
+      title: "Multiplayer Whiteboard Canvas CRDT Matrix State Reconciliation",
+      category: "Whiteboard",
+      priority: "NORMAL",
+      priorityColor: "#10b981",
+      column: "completed",
+      assignee: "Aman Sharma",
+      avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=80&h=80&q=80",
+      progress: 100,
+      dueDate: "Completed",
+      subtasks: ["Matrix transform", "Erasing path vector"]
+    },
+    {
+      id: 4,
+      title: "Developer Profile Badge & Reputation Ranking Indexing Engine",
+      category: "Social Space",
+      priority: "HIGH",
+      priorityColor: "#3b82f6",
+      column: "todo",
+      assignee: "Katarina Chen",
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&h=80&q=80",
+      progress: 30,
+      dueDate: "In 2 days",
+      subtasks: ["Redis ranking zset", "Badges API"]
+    }
+  ];
+
+  const aiPromptData = [
+    {
+      id: 0,
+      title: "Refactor WebRTC Audio Pipeline",
+      tag: "OPTIMIZATION",
+      prompt: "Refactor WebRTC audio signaling to use variable bitrate Opus codecs and multiplex stream buffers.",
+      codeBefore: `- const peerConnection = new RTCPeerConnection(defaultConfig);
+- peerConnection.addStream(audioStream);`,
+      codeAfter: `+ const peerConnection = new RTCPeerConnection({
++   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
++   encodedInsertableStreams: true
++ });
++ const sender = peerConnection.addTrack(audioTrack, audioStream);
++ const parameters = sender.getParameters();
++ parameters.encodings[0].maxBitrate = 64000; // Optimized Opus VBR
++ await sender.setParameters(parameters);`,
+      metrics: { speed: "280 tokens/sec", latency: "14ms", status: "VERIFIED BY GOOGLE COMPILER" }
+    },
+    {
+      id: 1,
+      title: "Generate Go Compiler Unit Tests",
+      tag: "TEST SYNTHESIS",
+      prompt: "Generate automated sandbox execution tests for Go 1.22 containerized execution targets.",
+      codeBefore: `- func TestRun(t *testing.T) { /* TODO */ }`,
+      codeAfter: `+ func TestGoSandboxCompiler(t *testing.T) {
++   ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
++   defer cancel()
++   result, err := sandbox.ExecuteGoCode(ctx, "package main\\nfunc main() { println(\\"CodeExpo\\") }")
++   assert.NoError(t, err)
++   assert.Equal(t, "CodeExpo\\n", result.Stdout)
++ }`,
+      metrics: { speed: "310 tokens/sec", latency: "11ms", status: "100% COVERAGE PASSED" }
+    },
+    {
+      id: 2,
+      title: "Security Audit Express Auth Routes",
+      tag: "SECURITY SCAN",
+      prompt: "Perform automated AST security audit on JWT token validation middleware.",
+      codeBefore: `- const user = jwt.decode(token); // Unsafe unverified decode`,
+      codeAfter: `+ const user = jwt.verify(token, process.env.JWT_SECRET_KEY, {
++   algorithms: ["RS256"],
++   issuer: "auth.codeexpo.io"
++ });
++ req.user = sanitizeUserClaims(user); // Strict sanitization`,
+      metrics: { speed: "295 tokens/sec", latency: "9ms", status: "0 VULNERABILITIES DETECTED" }
+    }
+  ];
+
+  const versePodsData = [
+    {
+      id: 1,
+      title: "Google Cloud Enterprise Sandbox",
+      category: "LIVE KEYNOTE",
+      host: "Sachin Kumar",
+      hostAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80",
+      participants: 142,
+      topic: "Distributed Multi-Region WebSockets & Gemini Pair Programming",
+      status: "LIVE STREAMING",
+      statusColor: "#10b981",
+      tags: ["Kubernetes", "Gemini 1.5", "WebRTC"]
+    },
+    {
+      id: 2,
+      title: "Quantum Compiler & Rust AST Lab",
+      category: "PAIRED CODING",
+      host: "Alex Rivera",
+      hostAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=80&h=80&q=80",
+      participants: 89,
+      topic: "Zero-Cost Abstractions & Cargo Performance Benchmarking",
+      status: "ACTIVE BREAKOUT",
+      statusColor: "#3b82f6",
+      tags: ["Rust", "AST", "LLVM"]
+    },
+    {
+      id: 3,
+      title: "AI Pair Programmer & Code Review Hub",
+      category: "WORKSHOP",
+      host: "Sophia Vance",
+      hostAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=80&h=80&q=80",
+      participants: 215,
+      topic: "Autonomous Refactoring Agents with Real-time AST Inspection",
+      status: "POPULAR POD",
+      statusColor: "#a855f7",
+      tags: ["AI Agents", "Monaco", "Python"]
+    }
+  ];
 
   // Lenis & Scroll refs
   const lenisRef = useRef(null);
@@ -88,98 +254,36 @@ function Home() {
   const storyTimerRef = useRef(null);
   const progressIntervalRef = useRef(null);
 
-  const stories = [
-    {
-      id: 1,
-      user: "sachin_codes",
-      name: "Sachin Kumar",
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Refactoring Socket Engine",
-      color: "#3b82f6",
-      code: `const io = new Server(server, {\n  cors: {\n    origin: "*",\n    methods: ["GET", "POST"]\n  }\n});`
-    },
-    {
-      id: 2,
-      user: "aman_dev",
-      name: "Aman Sharma",
-      avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Coding Python Sandbox",
-      color: "#10b981",
-      code: `import docker\n\ndef spin_sandbox(image):\n    client = docker.from_env()\n    return client.containers.run(\n        image, detach=True, tty=True\n    )`
-    },
-    {
-      id: 3,
-      user: "katarina_chen",
-      name: "Katarina Chen",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Designing Multiplayer Canvas",
-      color: "#a855f7",
-      code: `ctx.beginPath();\nctx.strokeStyle = activeColor;\nctx.lineWidth = brushWidth;\nctx.moveTo(prevX, prevY);\nctx.lineTo(currentX, currentY);\nctx.stroke();`
-    },
-    {
-      id: 4,
-      user: "sarah_sys",
-      name: "Sarah Jenkins",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Configuring WebRTC iceCandidates",
-      color: "#f59e0b",
-      code: `pc.onicecandidate = (event) => {\n  if (event.candidate) {\n    socket.emit("ice-candidate", {\n      candidate: event.candidate,\n      roomId\n    });\n  }\n};`
-    },
-    {
-      id: 5,
-      user: "markus_vance",
-      name: "Markus Vance",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Optimizing Follow Array Sync",
-      color: "#ec4899",
-      code: `await User.updateMany(\n  {},\n  { $pull: { followers: userId, following: userId } }\n);\nawait Follow.deleteMany({ follower: userId });`
-    },
-    {
-      id: 6,
-      user: "alex_rust",
-      name: "Alex Rivera",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Optimizing Cargo Compile Times",
-      color: "#3b82f6",
-      code: `fn optimize_cargo() -> Result<(), Error> {\n    let mut cmd = Command::new("cargo");\n    cmd.arg("build").arg("--release");\n    cmd.status()?;\n    Ok(())\n}`
-    },
-    {
-      id: 7,
-      user: "sophia_go",
-      name: "Sophia Vance",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Writing Go garbage collection script",
-      color: "#06b6d4",
-      code: `func triggerGC() {\n\tdebug.FreeOSMemory()\n\truntime.GC()\n\tlog.Println("Memory cleanup triggered")\n}`
-    },
-    {
-      id: 8,
-      user: "lucas_dev",
-      name: "Lucas Silva",
-      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Debugging React fiber tree transitions",
-      color: "#f43f5e",
-      code: `const startTransition = (cb) => {\n  React.startTransition(() => {\n    cb();\n  });\n};`
-    },
-    {
-      id: 9,
-      user: "emily_ml",
-      name: "Emily Taylor",
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Fine-tuning PyTorch transformer layer",
-      color: "#eab308",
-      code: `class Attention(nn.Module):\n    def __init__(self, d_model, heads):\n        super().__init__()\n        self.q = nn.Linear(d_model, d_model)`
-    },
-    {
-      id: 10,
-      user: "david_node",
-      name: "David Kim",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
-      status: "Handling clusters child process fork",
-      color: "#10b981",
-      code: `if (cluster.isPrimary) {\n  for (let i = 0; i < numCPUs; i++) {\n    cluster.fork();\n  }\n}`
+  const [stories, setStories] = useState([]);
+  const [isDevsLoading, setIsDevsLoading] = useState(true);
+
+  const handleDeveloperClick = (dev, e) => {
+    if (e) {
+      e.stopPropagation();
     }
-  ];
+    const targetUser = dev.user || dev.username || dev.name || "developer";
+    const userAvatar = dev.avatar || "";
+    const targetPath = `/dashboard?tab=profile&user=${encodeURIComponent(targetUser)}&avatar=${encodeURIComponent(userAvatar)}`;
+    const currentPath = location.pathname + location.search;
+
+    if (currentPath === targetPath) {
+      return; // Already on target profile path!
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (user || token) {
+      navigate(targetPath, { replace: false });
+    } else {
+      localStorage.setItem("redirectAfterLogin", targetPath);
+      navigate("/login", {
+        state: {
+          from: { pathname: "/dashboard", search: `?tab=profile&user=${encodeURIComponent(targetUser)}&avatar=${encodeURIComponent(userAvatar)}` },
+          message: `Please log in to view ${dev.name || targetUser}'s profile.`
+        }
+      });
+    }
+  };
 
   const handleOpenStory = (story) => {
     setActiveStory(story);
@@ -476,12 +580,19 @@ function Home() {
   // Scroll Navigation Setup
   // ==========================================
   const handleNavClick = (id) => {
+    let scrollTarget = id;
+    if (id === "planner" || id === "ai-coder" || id === "myverse") {
+      setEcosystemTab(id);
+      scrollTarget = "ecosystem";
+    } else if (id === "ecosystem") {
+      setEcosystemTab("all");
+    }
     setActiveSection(id);
     isScrollingRef.current = true;
     window.history.replaceState(null, null, `#${id === "hero" ? "" : id}`);
 
     if (lenisRef.current) {
-      lenisRef.current.scrollTo(`#${id}`, {
+      lenisRef.current.scrollTo(`#${scrollTarget}`, {
         duration: 0.9,
         onComplete: () => {
           setTimeout(() => {
@@ -490,7 +601,7 @@ function Home() {
         }
       });
     } else {
-      const el = document.getElementById(id);
+      const el = document.getElementById(scrollTarget);
       if (el) {
         el.scrollIntoView({ behavior: "smooth" });
         setTimeout(() => {
@@ -501,26 +612,32 @@ function Home() {
   };
 
   useEffect(() => {
+    let rafId;
     const updateIndicator = () => {
-      const activeLink = navLinksRef.current[activeSection];
-      const navContainer = document.querySelector(".ce-nav-links");
-      if (activeLink && navContainer) {
-        const containerRect = navContainer.getBoundingClientRect();
-        const linkRect = activeLink.getBoundingClientRect();
-        const left = linkRect.left - containerRect.left;
-        const width = linkRect.width;
+      rafId = requestAnimationFrame(() => {
+        const activeLink = navLinksRef.current[activeSection];
+        const navContainer = document.querySelector(".ce-nav-links");
+        if (activeLink && navContainer) {
+          const containerRect = navContainer.getBoundingClientRect();
+          const linkRect = activeLink.getBoundingClientRect();
+          const left = linkRect.left - containerRect.left;
+          const width = linkRect.width;
 
-        navContainer.style.setProperty("--active-left", `${left}px`);
-        navContainer.style.setProperty("--active-width", `${width}px`);
-        navContainer.style.setProperty("--indicator-opacity", "1");
-      } else if (navContainer) {
-        navContainer.style.setProperty("--indicator-opacity", "0");
-      }
+          navContainer.style.setProperty("--active-left", `${left}px`);
+          navContainer.style.setProperty("--active-width", `${width}px`);
+          navContainer.style.setProperty("--indicator-opacity", "1");
+        } else if (navContainer) {
+          navContainer.style.setProperty("--indicator-opacity", "0");
+        }
+      });
     };
 
     updateIndicator();
     window.addEventListener("resize", updateIndicator);
-    return () => window.removeEventListener("resize", updateIndicator);
+    return () => {
+      window.removeEventListener("resize", updateIndicator);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [activeSection, theme]);
 
   useEffect(() => {
@@ -535,6 +652,37 @@ function Home() {
         setDbStats(res.stats);
       }
     }).catch(err => console.error("Error fetching publicStats:", err));
+
+    getPublicDevelopers().then(res => {
+      if (res && res.success && Array.isArray(res.users) && res.users.length > 0) {
+        const solidBanners = [
+          "rgba(59, 130, 246, 0.15)",
+          "rgba(16, 185, 129, 0.15)",
+          "rgba(139, 92, 246, 0.15)",
+          "rgba(236, 72, 153, 0.15)",
+          "rgba(245, 158, 11, 0.15)"
+        ];
+        const colors = ["#3b82f6", "#10b981", "#8b5cf6", "#ec4899", "#f59e0b"];
+
+        const realStories = res.users.map((realUser, idx) => ({
+          id: realUser._id || realUser.id || idx + 1,
+          user: realUser.username || `dev_${idx + 1}`,
+          name: realUser.username ? (realUser.username.charAt(0).toUpperCase() + realUser.username.slice(1)) : "Developer",
+          avatar: realUser.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${realUser.username || idx}`,
+          role: realUser.title || "Fullstack Engineer",
+          bio: realUser.bio || "Building innovative software on CodeExpo.",
+          tags: (realUser.programmingLanguages && realUser.programmingLanguages.length > 0) ? realUser.programmingLanguages : ["React", "JavaScript"],
+          color: colors[idx % colors.length],
+          bgGradient: solidBanners[idx % solidBanners.length],
+          status: realUser.status || "Active on CodeExpo",
+          code: `// ${realUser.username || "Developer"}'s workspace\nconsole.log("CodeExpo Platform User");`
+        }));
+        setStories(realStories);
+      }
+    }).catch(err => console.error("Error fetching public developers:", err))
+    .finally(() => {
+      setIsDevsLoading(false);
+    });
 
     getWebsiteRatingInfo().then(res => {
       if (res && res.success && res.ratings) {
@@ -555,14 +703,17 @@ function Home() {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           const id = entry.target.id;
-          setActiveSection(id);
-          window.history.replaceState(null, null, `#${id === "hero" ? "" : id}`);
+          const targetHash = id === "hero" ? "" : `#${id}`;
+          if (window.location.hash !== targetHash) {
+            setActiveSection(id);
+            window.history.replaceState(null, null, targetHash || window.location.pathname);
+          }
         }
       });
     };
 
     const observer = new IntersectionObserver(handleIntersection, observerOptions);
-    const sectionIds = ["hero", "editor-section", "features", "analytics", "pricing", "testimonials"];
+    const sectionIds = ["hero", "editor-section", "ecosystem", "planner", "ai-coder", "myverse", "features", "analytics", "pricing", "testimonials"];
     sectionIds.forEach((id) => {
       const el = document.getElementById(id);
       if (el) observer.observe(el);
@@ -600,6 +751,28 @@ function Home() {
     };
   }, []);
 
+  // Pause marquee & floating animations when section is outside viewport (saves 100% GPU bandwidth during vertical scrolling!)
+  useEffect(() => {
+    const showcaseSection = document.querySelector(".ce-dev-showcase-section");
+    if (!showcaseSection) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            showcaseSection.classList.remove("ce-marquee-offscreen");
+          } else {
+            showcaseSection.classList.add("ce-marquee-offscreen");
+          }
+        });
+      },
+      { rootMargin: "250px 0px 250px 0px", threshold: 0.01 }
+    );
+
+    observer.observe(showcaseSection);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
@@ -617,11 +790,11 @@ function Home() {
 
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.1,
+      duration: 0.85,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      wheelMultiplier: 1.0,
-      touchMultiplier: 1.2
+      wheelMultiplier: 0.95,
+      touchMultiplier: 1.0
     });
     lenisRef.current = lenis;
 
@@ -743,7 +916,7 @@ function Home() {
     <main className={`home-page ${theme === "light" ? "light-theme" : "dark-theme"} page-fade-in`}>
 
       {/* Refined Fixed Header */}
-      <header className="ce-navbar">
+      <header className={`ce-navbar ${isMounted ? "has-transition" : ""} ${navScrolled ? "scrolled" : ""} ${!navVisible ? "ce-navbar-hidden" : ""}`}>
         <div className="ce-container ce-navbar-container">
           <div className="ce-nav-logo" onClick={() => navigate("/")}>
             <img src="/logo.png" alt="CodeExpo" className="ce-nav-logo-img" />
@@ -766,6 +939,30 @@ function Home() {
               onClick={(e) => { e.preventDefault(); handleNavClick("editor-section"); }}
             >
               Workspace
+            </a>
+            <a
+              ref={(el) => (navLinksRef.current["planner"] = el)}
+              href="#planner"
+              className={`ce-nav-link ${activeSection === "planner" ? "active" : ""}`}
+              onClick={(e) => { e.preventDefault(); handleNavClick("planner"); }}
+            >
+              Planner
+            </a>
+            <a
+              ref={(el) => (navLinksRef.current["ai-coder"] = el)}
+              href="#ai-coder"
+              className={`ce-nav-link ${activeSection === "ai-coder" ? "active" : ""}`}
+              onClick={(e) => { e.preventDefault(); handleNavClick("ai-coder"); }}
+            >
+              Expo AI
+            </a>
+            <a
+              ref={(el) => (navLinksRef.current["myverse"] = el)}
+              href="#myverse"
+              className={`ce-nav-link ${activeSection === "myverse" ? "active" : ""}`}
+              onClick={(e) => { e.preventDefault(); handleNavClick("myverse"); }}
+            >
+              MyVerse
             </a>
             <a
               ref={(el) => (navLinksRef.current["features"] = el)}
@@ -926,72 +1123,178 @@ function Home() {
       </section>
 
       {/* Futuristic Developer Stories Row */}
-      <div className="ce-stories-section">
+      {/* 3D Perspective Developer Showcase Carousel (Matching Image 1 reference layout & infinite roll!) */}
+      <section className="ce-section ce-dev-showcase-section">
         <div className="ce-container">
-          <h3 className="ce-stories-title">
-            <Sparkles size={14} style={{ color: "#3b82f6" }} /> Live Developers Sharing Code
-          </h3>
-        </div>
-        <div className="ce-stories-tray-viewport">
-          <div className="ce-stories-tray-track">
-            {/* Group 1 */}
-            <div className="ce-stories-tray-group">
-              {stories.map((story) => (
-                <div 
-                  key={`g1-${story.id}`} 
-                  className="ce-story-bubble-wrapper"
-                  onClick={() => handleOpenStory(story)}
-                >
-                  <div className="ce-story-bubble" style={{ "--story-color": story.color }}>
-                    <img src={story.avatar} alt={story.user} className="ce-story-avatar" />
-                    <span className="ce-story-pulse" style={{ backgroundColor: story.color }} />
-                  </div>
-                  <span className="ce-story-username">{story.user}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Group 2 (Duplicate for seamless infinite scrolling loop) */}
-            <div className="ce-stories-tray-group">
-              {stories.map((story) => (
-                <div 
-                  key={`g2-${story.id}`} 
-                  className="ce-story-bubble-wrapper"
-                  onClick={() => handleOpenStory(story)}
-                >
-                  <div className="ce-story-bubble" style={{ "--story-color": story.color }}>
-                    <img src={story.avatar} alt={story.user} className="ce-story-avatar" />
-                    <span className="ce-story-pulse" style={{ backgroundColor: story.color }} />
-                  </div>
-                  <span className="ce-story-username">{story.user}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Group 3 (Duplicate for seamless infinite scrolling loop) */}
-            <div className="ce-stories-tray-group">
-              {stories.map((story) => (
-                <div 
-                  key={`g3-${story.id}`} 
-                  className="ce-story-bubble-wrapper"
-                  onClick={() => handleOpenStory(story)}
-                >
-                  <div className="ce-story-bubble" style={{ "--story-color": story.color }}>
-                    <img src={story.avatar} alt={story.user} className="ce-story-avatar" />
-                    <span className="ce-story-pulse" style={{ backgroundColor: story.color }} />
-                  </div>
-                  <span className="ce-story-username">{story.user}</span>
-                </div>
-              ))}
-            </div>
+          <div className="ce-section-header ce-section-header-compact">
+            <span className="ce-section-tag">COMMUNITY SPOTLIGHT</span>
+            <h2 className="ce-section-title">
+              Built for <span className="ce-title-highlight">{stories.length > 0 ? `${stories.length}+` : "22+"} Active Developers</span> — Built for Every Niche.
+            </h2>
+            <p className="ce-section-subtitle">
+              Explore live developer portfolios, inspect real-time code snapshots, and connect across CodeExpo.
+            </p>
           </div>
         </div>
-      </div>
+
+        {/* 3D Curved Continuous Infinite Rolling Stage */}
+        <div className="ce-dev-carousel-viewport">
+          <div className="ce-dev-marquee-track">
+            {isDevsLoading ? (
+              <div className="ce-dev-marquee-group">
+                {[1, 2, 3, 4, 5, 6].map((skId) => (
+                  <div key={`sk-${skId}`} className="ce-dev-card ce-skeleton-card">
+                    <div className="ce-skeleton-banner">
+                      <span className="ce-skeleton-pulse-badge" />
+                    </div>
+                    <div className="ce-skeleton-avatar-wrapper">
+                      <div className="ce-skeleton-avatar" />
+                    </div>
+                    <div className="ce-skeleton-body">
+                      <div className="ce-skeleton-line title" />
+                      <div className="ce-skeleton-line handle" />
+                      <div className="ce-skeleton-line bio" />
+                      <div className="ce-skeleton-line bio short" />
+                      <div className="ce-skeleton-tags">
+                        <span className="ce-skeleton-tag" />
+                        <span className="ce-skeleton-tag" />
+                        <span className="ce-skeleton-tag" />
+                      </div>
+                      <div className="ce-skeleton-btn" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : stories.length === 0 ? (
+              <div className="ce-dev-marquee-group">
+                <div className="ce-dev-card theme-lavender" style={{ width: "320px" }}>
+                  <div className="ce-dev-card-body" style={{ justifyContent: "center", padding: "30px 20px" }}>
+                    <Sparkles size={28} color="#aa3bff" style={{ margin: "0 auto 12px" }} />
+                    <h4 className="ce-dev-card-name">Live Showcase Ready</h4>
+                    <p className="ce-dev-card-bio" style={{ margin: "8px 0 16px" }}>Be the first active developer to connect your portfolio to CodeExpo!</p>
+                    <button className="ce-btn ce-btn-primary" onClick={() => navigate("/register")} style={{ padding: "8px 16px", fontSize: "0.8rem" }}>
+                      Join CodeExpo Network <ArrowRight size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Track Group 1 */}
+                <div className="ce-dev-marquee-group">
+                  {stories.map((dev, idx) => {
+                    const themes = ["theme-lavender", "theme-lime", "theme-sage", "theme-white", "theme-crimson"];
+                    const themeClass = themes[idx % themes.length];
+                    return (
+                      <div
+                        key={`g1-${dev.id}`}
+                        className={`ce-dev-card ${themeClass}`}
+                        onClick={() => handleDeveloperClick(dev)}
+                      >
+                        {/* Top Banner Accent with Gradient */}
+                        <div className="ce-dev-card-banner">
+                          <span className="ce-dev-card-badge">{dev.role}</span>
+                        </div>
+
+                        {/* Avatar Portrait Overlapping Banner */}
+                        <div className="ce-dev-card-avatar-wrapper">
+                          <img src={dev.avatar} alt={dev.name} className="ce-dev-card-avatar" />
+                          <span className="ce-dev-card-online-dot" style={{ backgroundColor: dev.color }} />
+                        </div>
+
+                        {/* Card Content Body */}
+                        <div className="ce-dev-card-body">
+                          <h4 className="ce-dev-card-name">{dev.name}</h4>
+                          <span className="ce-dev-card-handle">@{dev.user}</span>
+
+                          <p className="ce-dev-card-bio">{dev.bio}</p>
+
+                          {/* Tech Stack Pills */}
+                          <div className="ce-dev-card-tags">
+                            {dev.tags.map((t, tidx) => (
+                              <span key={tidx} className="dev-tag-chip">{t}</span>
+                            ))}
+                          </div>
+
+                          {/* Footer Action Button */}
+                          <div className="ce-dev-card-footer">
+                            <button 
+                              className="ce-dev-card-btn" 
+                              style={{ "--dev-accent": dev.color }}
+                              onClick={(e) => handleDeveloperClick(dev, e)}
+                            >
+                              <span>View Profile</span>
+                              <ArrowRight size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Track Group 2 (Duplicate for smooth 100% infinite rolling loop) */}
+                <div className="ce-dev-marquee-group" aria-hidden="true">
+                  {stories.map((dev, idx) => {
+                    const themes = ["theme-lavender", "theme-lime", "theme-sage", "theme-white", "theme-crimson"];
+                    const themeClass = themes[idx % themes.length];
+                    return (
+                      <div
+                        key={`g2-${dev.id}`}
+                        className={`ce-dev-card ${themeClass}`}
+                        onClick={() => handleDeveloperClick(dev)}
+                      >
+                        {/* Top Banner Accent with Gradient */}
+                        <div className="ce-dev-card-banner">
+                          <span className="ce-dev-card-badge">{dev.role}</span>
+                        </div>
+
+                        {/* Avatar Portrait Overlapping Banner */}
+                        <div className="ce-dev-card-avatar-wrapper">
+                          <img src={dev.avatar} alt={dev.name} className="ce-dev-card-avatar" />
+                          <span className="ce-dev-card-online-dot" style={{ backgroundColor: dev.color }} />
+                        </div>
+
+                        {/* Card Content Body */}
+                        <div className="ce-dev-card-body">
+                          <h4 className="ce-dev-card-name">{dev.name}</h4>
+                          <span className="ce-dev-card-handle">@{dev.user}</span>
+
+                          <p className="ce-dev-card-bio">{dev.bio}</p>
+
+                          {/* Tech Stack Pills */}
+                          <div className="ce-dev-card-tags">
+                            {dev.tags.map((t, tidx) => (
+                              <span key={tidx} className="dev-tag-chip">{t}</span>
+                            ))}
+                          </div>
+
+                          {/* Footer Action Button */}
+                          <div className="ce-dev-card-footer">
+                            <button 
+                              className="ce-dev-card-btn" 
+                              style={{ "--dev-accent": dev.color }}
+                              onClick={(e) => handleDeveloperClick(dev, e)}
+                            >
+                              <span>View Profile</span>
+                              <ArrowRight size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
 
 
 
-      {/* Multi-File Workspace Sandbox Section */}
-      <section id="editor-section" className="ce-section" style={{ borderTop: "none", paddingBottom: "32px" }}>
+      {/* Multi-File Workspace Sandbox Section (3D Layered Cards matching Reference Image 2!) */}
+      <section id="editor-section" className="ce-section ce-editor-layered-section">
         <div className="ce-container">
           <div className="ce-section-header">
             <span className="ce-section-tag">MULTI-FILE WORKSPACE</span>
@@ -999,347 +1302,194 @@ function Home() {
             <p className="ce-section-subtitle">
               Manage folder directories, edit multiple files in tabs, set compilation entry points, and execute source code with stdin buffers.
             </p>
+
+            <div className="ce-editor-hero-actions">
+              <button className="ce-btn ce-btn-primary" onClick={() => navigate(user ? "/dashboard" : "/register")}>
+                Create Free Workspace <ArrowRight size={16} />
+              </button>
+              <button className="ce-btn ce-btn-secondary" onClick={handleRunCode}>
+                {isRunning ? "Compiling..." : "Run Live Code Sandbox"}
+              </button>
+            </div>
           </div>
 
-          <div className="ce-actual-room-mockup reveal-init reveal-3d-left">
-            {/* Top Room Header Bar */}
-            <div className="ce-actual-room-header">
-              <div className="ce-actual-room-header-left">
-                <div className="ce-actual-logo">
-                  <img src="/logo.png" alt="CodeExpo" className="ce-actual-logo-img" />
-                  <span className="ce-actual-logo-text">CodeExpo</span>
+          {/* Divided 3D Overlapping Card Stage (Matching Image 2 Reference Layout) */}
+          <div className="ce-editor-layered-stage reveal-init reveal-3d-up">
+            
+            {/* CARD 1: LEFT CARD — FILE EXPLORER & DIRECTORY TREE */}
+            <div className="ce-editor-layered-card explorer-card tilted-left">
+              <div className="ce-layer-floating-pill blue">MULTI-FILE TREE</div>
+
+              <div className="ce-layer-window-header">
+                <div className="window-dots">
+                  <span className="dot red" /><span className="dot yellow" /><span className="dot green" />
                 </div>
-                <div className="ce-actual-room-name-wrapper">
-                  <span className="ce-actual-room-name">Sorting-Array</span>
-                  <div className="ce-actual-room-id-badge">
-                    <span>#jciajy</span>
-                    <button className="ce-copy-id-btn" title="Copy Room ID">
-                      <Copy size={11} />
-                    </button>
-                  </div>
-                </div>
+                <span className="window-title">EXPLORER</span>
               </div>
 
-              <div className="ce-actual-room-header-right">
-                <div className="ce-actual-status-indicator">
-                  <span className="ce-actual-status-dot" />
-                  <span>Connected</span>
-                </div>
-                <div className="ce-actual-header-user">
-                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&h=60&q=80" alt="User" />
-                </div>
-                <button className="ce-actual-btn-call">
-                  <Video size={13} />
-                  <span>Call</span>
-                  <span className="arrow">▼</span>
-                </button>
-                <button className="ce-actual-btn-share">
-                  <Sparkles size={13} />
-                  <span>Share</span>
-                </button>
-                <button className="ce-actual-icon-btn"><Bell size={14} /></button>
-                <div className="ce-actual-header-profile">
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&h=60&q=80" alt="Sachin" />
-                </div>
-              </div>
-            </div>
-
-            {/* Room Main Body Content */}
-            <div className="ce-actual-room-body">
-              {/* Column 1: Narrow icon sidebar */}
-              <div className="ce-actual-narrow-sidebar">
-                <div className="ce-actual-sidebar-icon active">
-                  <Folder size={18} />
-                </div>
-                <div className="ce-actual-sidebar-icon">
-                  <BookOpen size={18} />
-                </div>
-                <div className="ce-actual-sidebar-icon">
-                  <Layout size={18} />
-                </div>
-                <div className="ce-actual-sidebar-icon">
-                  <History size={18} />
-                </div>
-                <div className="ce-actual-sidebar-icon">
-                  <Settings size={18} />
-                </div>
-              </div>
-
-              {/* Column 2: Explorer panel */}
-              <div className="ce-actual-explorer-panel">
-                <div className="ce-actual-explorer-header">
-                  <span>EXPLORER</span>
-                  <ChevronLeft size={14} className="ce-actual-explorer-header-icon" />
-                </div>
-                <div className="ce-actual-explorer-subheader">
+              <div className="ce-layer-card-body">
+                <div className="explorer-sub-bar">
                   <span>WORKSPACE FILES</span>
-                  <div className="ce-actual-explorer-actions">
-                    <FilePlus size={12} title="New File" />
-                    <FolderPlus size={12} title="New Folder" />
+                  <div className="exp-actions">
+                    <FilePlus size={12} />
+                    <FolderPlus size={12} />
                   </div>
                 </div>
-                <div className="ce-actual-explorer-files">
+
+                <div className="explorer-file-tree">
                   {Object.keys(workspaceFiles).map((fileName) => {
                     const isActive = activeFileName === fileName;
                     return (
                       <div
                         key={fileName}
-                        className={`ce-actual-file-item ${isActive ? "active" : ""}`}
+                        className={`tree-file-item ${isActive ? "active" : ""}`}
                         onClick={() => handleFileClick(fileName)}
                       >
-                        <File size={13} />
+                        <File size={13} style={{ color: isActive ? "#3b82f6" : "#64748b" }} />
                         <span>{fileName}</span>
+                        {workspaceFiles[fileName].isEntryPoint && <span className="entry-pill">MAIN</span>}
                       </div>
                     );
                   })}
                 </div>
+
+                <div className="explorer-footer-info">
+                  <Folder size={12} />
+                  <span>Sorting-Array Repo • 4 Files</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 2: CENTER CARD — MONACO CODE EDITOR & COMPILER OUTPUT (FRONT FOCUS) */}
+            <div className="ce-editor-layered-card editor-card center-focus">
+              <div className="ce-layer-floating-pill purple">CRDT LIVE PAIRING</div>
+
+              <div className="ce-layer-window-header">
+                <div className="window-dots">
+                  <span className="dot red" /><span className="dot yellow" /><span className="dot green" />
+                </div>
+                <div className="editor-tab-active">
+                  <span>{activeFileName}</span>
+                </div>
+                <div className="editor-lang-badge">
+                  <select
+                    className="lang-select"
+                    value={selectedLang.toUpperCase()}
+                    onChange={(e) => setSelectedLang(e.target.value.toLowerCase())}
+                  >
+                    <option value="JAVASCRIPT">JAVASCRIPT</option>
+                    <option value="PYTHON">PYTHON</option>
+                    <option value="CPP">CPP</option>
+                    <option value="JAVA">JAVA</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Column 3: Editor Panel */}
-              <div className="ce-actual-editor-panel">
-                <div className="ce-actual-editor-header">
-                  <div className="ce-actual-tab-list">
-                    <div className="ce-actual-tab active">
-                      <span>{activeFileName}</span>
-                      <span className="ce-actual-tab-close">×</span>
-                    </div>
-                  </div>
-                  <div className="ce-actual-editor-options">
-                    <div className="ce-actual-mode-toggles">
-                      <button
-                        className={`ce-actual-mode-btn ${activeEditorMode === "editor" ? "active" : ""}`}
-                        onClick={() => setActiveEditorMode("editor")}
-                      >
-                        Editor
-                      </button>
-                      <button
-                        className={`ce-actual-mode-btn ${activeEditorMode === "split" ? "active" : ""}`}
-                        onClick={() => setActiveEditorMode("split")}
-                      >
-                        Split
-                      </button>
-                      <button
-                        className={`ce-actual-mode-btn ${activeEditorMode === "board" ? "active" : ""}`}
-                        onClick={() => setActiveEditorMode("board")}
-                      >
-                        Board
-                      </button>
-                    </div>
-                    <select
-                      className="ce-actual-lang-dropdown"
-                      value={selectedLang.toUpperCase()}
-                      onChange={(e) => setSelectedLang(e.target.value.toLowerCase())}
-                    >
-                      <option value="JAVASCRIPT">JAVASCRIPT</option>
-                      <option value="PYTHON">PYTHON</option>
-                      <option value="CPP">CPP</option>
-                      <option value="JAVA">JAVA</option>
-                      <option value="TEXT">TEXT</option>
-                      <option value="JSON">JSON</option>
-                    </select>
-                    <button className="ce-actual-expand-btn">
-                      <Maximize2 size={12} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="ce-actual-editor-breadcrumbs">
-                  Sorting-Array &gt; {activeFileName}
-                </div>
-
-                {/* Code writing canvas container */}
-                <div className="ce-actual-code-area">
-                  {/* Compiler loading overlay */}
+              <div className="ce-layer-card-body">
+                <div className="code-canvas-container">
                   {isRunning && (
-                    <div className="ce-actual-editor-loading">
-                      <span>Compiling and running code...</span>
+                    <div className="code-compiling-overlay">
+                      <Zap size={14} className="spin-icon" />
+                      <span>Compiling AST...</span>
                     </div>
                   )}
 
-                  <div className="ce-actual-gutter">
+                  <div className="code-gutter">
                     {activeFile.content.split("\n").map((_, i) => (
                       <span key={i}>{i + 1}</span>
                     ))}
                   </div>
 
-                  <div className="ce-actual-code-viewport">
-                    <pre>
-                      <code>{activeFile.content}</code>
-                    </pre>
+                  <div className="code-viewport">
+                    <pre><code>{activeFile.content}</code></pre>
 
-                    {/* Collaborative cursor pins */}
-                    <div className="ce-actual-cursor" style={{ top: "34px", left: "210px", backgroundColor: "#ef4444", boxShadow: "0 0 6px #ef4444" }}>
-                      <span className="ce-actual-cursor-flag" style={{ backgroundColor: "#ef4444" }}>Sachin</span>
+                    {/* Live Collaborator Cursors */}
+                    <div className="live-cursor cursor-sachin" style={{ top: "34px", left: "140px" }}>
+                      <span className="cursor-flag red">Sachin</span>
                     </div>
-                    <div className="ce-actual-cursor" style={{ top: "86px", left: "280px", backgroundColor: "#a855f7", boxShadow: "0 0 6px #a855f7" }}>
-                      <span className="ce-actual-cursor-flag" style={{ backgroundColor: "#a855f7" }}>Aman</span>
+                    <div className="live-cursor cursor-aman" style={{ top: "86px", left: "190px" }}>
+                      <span className="cursor-flag purple">Aman</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Editor Footer execution console */}
-                <div className="ce-actual-editor-footer">
-                  <div className="ce-actual-footer-tabs">
-                    <button
-                      className={`ce-actual-footer-tab ${activeTerminalTab === "terminal" ? "active" : ""}`}
-                      onClick={() => setActiveTerminalTab("terminal")}
-                    >
-                      Terminal Output
-                    </button>
-                    <button
-                      className={`ce-actual-footer-tab ${activeTerminalTab === "input" ? "active" : ""}`}
-                      onClick={() => setActiveTerminalTab("input")}
-                    >
-                      Program Input (stdin)
-                    </button>
-                    <button
-                      className={`ce-actual-footer-tab ${activeTerminalTab === "logs" ? "active" : ""}`}
-                      onClick={() => setActiveTerminalTab("logs")}
-                    >
-                      Execution Logs
+                {/* Console Terminal Pane */}
+                <div className="terminal-console-box">
+                  <div className="term-header">
+                    <span className="term-title">TERMINAL OUTPUT</span>
+                    <button className="run-mini-btn" onClick={handleRunCode}>
+                      <Play size={10} /> Run Code
                     </button>
                   </div>
-
-                  <div className="ce-actual-terminal-pane">
-                    {activeTerminalTab === "terminal" && (
-                      <pre style={{ margin: 0 }}>
-                        {terminalOutput || "Console ready. Click Run Program to compile."}
-                      </pre>
-                    )}
-                    {activeTerminalTab === "input" && (
-                      <span style={{ color: "#94a3b8" }}>Standard Input buffers empty.</span>
-                    )}
-                    {activeTerminalTab === "logs" && (
-                      <span style={{ color: "#94a3b8" }}>Docker containers status: HEALTHY (0.012s warmup)</span>
-                    )}
-                  </div>
-
-                  <div className="ce-actual-footer-actions">
-                    <button className="ce-actual-btn-save">Save</button>
-                    <button className="ce-actual-btn-run" onClick={handleRunCode}>Run Program</button>
-                  </div>
+                  <pre className="term-out">{terminalOutput || "Ready to execute."}</pre>
                 </div>
-              </div>
-
-              {/* Column 4: Participants and Chat Panel */}
-              <div className="ce-actual-right-panel">
-                {/* Participants Box */}
-                <div className="ce-actual-participants-box">
-                  <div className="ce-actual-part-header">
-                    <span>PARTICIPANTS (5)</span>
-                    <button className="ce-actual-btn-invite">
-                      <Plus size={10} />
-                      <span>Invite</span>
-                    </button>
-                  </div>
-                  <div className="ce-actual-participants-list">
-                    <div className="ce-actual-participant-card">
-                      <div className="ce-actual-part-avatar">
-                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=60&h=60&q=80" alt="Niranjan" />
-                      </div>
-                      <div className="ce-actual-part-details">
-                        <span className="ce-actual-part-name">Niranjan Jaiswal</span>
-                        <div className="ce-actual-part-badges">
-                          <span className="ce-actual-badge owner">OWNER</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="ce-actual-participant-card">
-                      <div className="ce-actual-part-avatar">
-                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&h=60&q=80" alt="Sachin" />
-                      </div>
-                      <div className="ce-actual-part-details">
-                        <span className="ce-actual-part-name">sachin kumar</span>
-                        <div className="ce-actual-part-badges">
-                          <span className="ce-actual-badge you">YOU</span>
-                          <span className="ce-actual-badge member">MEMBER</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="ce-actual-participant-card">
-                      <div className="ce-actual-part-avatar">
-                        <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=60&h=60&q=80" alt="Shubham" />
-                      </div>
-                      <div className="ce-actual-part-details">
-                        <span className="ce-actual-part-name">shubham_paithane</span>
-                        <div className="ce-actual-part-badges">
-                          <span className="ce-actual-badge member">MEMBER</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="ce-actual-participant-card">
-                      <div className="ce-actual-part-avatar">
-                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&h=60&q=80" alt="Lulu" />
-                      </div>
-                      <div className="ce-actual-part-details">
-                        <span className="ce-actual-part-name">Lulu_developer</span>
-                        <div className="ce-actual-part-badges">
-                          <span className="ce-actual-badge member">MEMBER</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Chat Panel Box */}
-                <div className="ce-actual-chat-box">
-                  <div className="ce-actual-chat-tabs">
-                    <button
-                      className={`ce-actual-chat-tab ${activeChatTab === "room" ? "active" : ""}`}
-                      onClick={() => setActiveChatTab("room")}
-                    >
-                      Room
-                    </button>
-                    <button
-                      className={`ce-actual-chat-tab ${activeChatTab === "dm" ? "active" : ""}`}
-                      onClick={() => setActiveChatTab("dm")}
-                    >
-                      Direct Message
-                    </button>
-                  </div>
-
-                  <div className="ce-actual-chat-messages">
-                    {chatMessages.map((msg) => (
-                      <div key={msg.id} className={`ce-actual-chat-msg ${msg.isYou ? "you" : ""}`}>
-                        <div className="ce-actual-chat-msg-avatar">
-                          <img src={msg.avatar} alt={msg.user} />
-                        </div>
-                        <div className="ce-actual-chat-msg-details">
-                          <div className="ce-actual-chat-msg-meta">
-                            <span className="ce-actual-chat-msg-user">{msg.user}</span>
-                            <span className="ce-actual-chat-msg-time">{msg.time}</span>
-                          </div>
-                          <div className="ce-actual-chat-msg-bubble">{msg.text}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <form className="ce-actual-chat-input-wrapper" onSubmit={handleSendChatMessage}>
-                    <input
-                      type="text"
-                      className="ce-actual-chat-input"
-                      placeholder="Message room..."
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                    />
-                    <button type="submit" className="ce-actual-chat-send">
-                      <Send size={12} />
-                    </button>
-                  </form>
-                </div>
-
-                {/* Bottom Exit Button */}
-                <button className="ce-actual-exit-btn">
-                  <LogOut size={12} />
-                  <span>Exit Workspace</span>
-                </button>
               </div>
             </div>
+
+            {/* CARD 3: RIGHT CARD — COLLABORATORS ROOM & SPATIAL CALLS */}
+            <div className="ce-editor-layered-card room-card tilted-right">
+              <div className="ce-layer-floating-pill emerald">WEBRTC VOICE CALLS</div>
+
+              <div className="ce-layer-window-header">
+                <div className="window-dots">
+                  <span className="dot red" /><span className="dot yellow" /><span className="dot green" />
+                </div>
+                <span className="window-title">PARTICIPANTS (5)</span>
+              </div>
+
+              <div className="ce-layer-card-body">
+                <div className="room-user-list">
+                  <div className="user-row owner">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&h=60&q=80" alt="Niranjan" />
+                    <div>
+                      <span className="u-name">Niranjan Jaiswal</span>
+                      <span className="u-badge owner">OWNER</span>
+                    </div>
+                  </div>
+                  <div className="user-row you">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&h=60&q=80" alt="Sachin" />
+                    <div>
+                      <span className="u-name">Sachin Kumar</span>
+                      <span className="u-badge you">YOU</span>
+                    </div>
+                  </div>
+                  <div className="user-row">
+                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=60&h=60&q=80" alt="Shubham" />
+                    <div>
+                      <span className="u-name">Shubham Paithane</span>
+                      <span className="u-badge member">MEMBER</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="room-chat-snippet">
+                  <div className="chat-msg">
+                    <span className="chat-sender">Lulu_developer:</span>
+                    <span className="chat-text">"Syncing CRDT matrix live"</span>
+                  </div>
+                </div>
+
+                <div className="room-call-action">
+                  <button className="call-btn active">
+                    <Video size={12} />
+                    <span>In Voice Call</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
+
+          {/* Bottom Technology Stack Badges (Matching Bottom of Image 2!) */}
+          <div className="ce-editor-tech-stack">
+            <span className="tech-badge">PYTHON 3.11</span>
+            <span className="tech-badge">NODE.JS V20</span>
+            <span className="tech-badge">G++ COMPILER</span>
+            <span className="tech-badge">YJS CRDT SYNC</span>
+            <span className="tech-badge">DOCKER SANDBOX</span>
+            <span className="tech-badge">WEBRTC AUDIO</span>
+          </div>
+
         </div>
       </section>
 
@@ -1809,6 +1959,228 @@ yDoc.getText('monaco')
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Squarespace-Style 3D Perspective Showcase: Planner, Expo AI & MyVerse */}
+      <section id="ecosystem" className="ce-section ce-squarespace-showcase-section">
+        <div className="ce-container">
+          <div className="ce-section-header">
+            <span className="ce-section-tag">GOOGLE PROPOSAL PLATFORM STACK</span>
+            <h2 className="ce-section-title">A unified workspace makes it real.</h2>
+            <p className="ce-section-subtitle">
+              Three revolutionary developer features integrated into one seamless engine. Manage sprint backlogs, pair program with Gemini AI, and collaborate inside global metaverse pods.
+            </p>
+
+            {/* Category Filter Tabs */}
+            <div className="ce-ecosystem-tabs">
+              <button 
+                className={`ce-eco-tab ${ecosystemTab === "all" ? "active" : ""}`}
+                onClick={() => setEcosystemTab("all")}
+              >
+                All 3 Platforms
+              </button>
+              <button 
+                className={`ce-eco-tab planner ${ecosystemTab === "planner" ? "active" : ""}`}
+                onClick={() => setEcosystemTab("planner")}
+              >
+                <Calendar size={14} /> Sprint Planner
+              </button>
+              <button 
+                className={`ce-eco-tab ai ${ecosystemTab === "ai-coder" ? "active" : ""}`}
+                onClick={() => setEcosystemTab("ai-coder")}
+              >
+                <Sparkles size={14} /> Expo AI Coder
+              </button>
+              <button 
+                className={`ce-eco-tab verse ${ecosystemTab === "myverse" ? "active" : ""}`}
+                onClick={() => setEcosystemTab("myverse")}
+              >
+                <Radio size={14} /> MyVerse Pods
+              </button>
+            </div>
+          </div>
+
+          {/* 3D Perspective Showcase Container (Squarespace-style tilted 3D cards) */}
+          <div className="ce-sq-stage reveal-init reveal-3d-up">
+            
+            {/* CARD 1: SPRINT PLANNER (Tilted Left in default view) */}
+            <div 
+              className={`ce-sq-card planner-sq ${ecosystemTab === "planner" ? "focused" : ecosystemTab === "all" ? "tilted-left" : "dimmed"}`}
+              onClick={() => setEcosystemTab("planner")}
+            >
+              {/* Floating Pill Accents */}
+              <div className="ce-sq-floating-badge red">SPRINT PLANNER</div>
+              <div className="ce-sq-floating-badge pink">KANBAN BACKLOG</div>
+
+              {/* Browser Window Bar */}
+              <div className="ce-sq-window-header">
+                <div className="window-dots">
+                  <span className="dot red" /><span className="dot yellow" /><span className="dot green" />
+                </div>
+                <div className="window-title-nav">
+                  <span>SPRINT #14</span>
+                  <span>BACKLOG</span>
+                  <span>KANBAN</span>
+                  <span>TASK HUB</span>
+                </div>
+              </div>
+
+              {/* Card Content Body */}
+              <div className="ce-sq-card-body">
+                <div className="ce-sq-header-group">
+                  <div className="icon-box blue"><Calendar size={22} /></div>
+                  <div>
+                    <h3 className="sq-title">Sprint Planner Command Center</h3>
+                    <span className="sq-subtitle">84% Merged to Main Branch • 12 Active Tickets</span>
+                  </div>
+                </div>
+
+                <div className="ce-sq-kanban-preview">
+                  <div className="sq-task-row active">
+                    <span className="sq-pri critical">CRITICAL</span>
+                    <span className="sq-task-name">WebRTC P2P Mesh Signal Gateway</span>
+                    <span className="sq-pct">75%</span>
+                  </div>
+                  <div className="sq-task-row">
+                    <span className="sq-pri high">HIGH</span>
+                    <span className="sq-task-name">Gemini Context Memory Cache</span>
+                    <span className="sq-pct">90%</span>
+                  </div>
+                  <div className="sq-task-row">
+                    <span className="sq-pri done">DONE</span>
+                    <span className="sq-task-name">CRDT Canvas Matrix Synchronizer</span>
+                    <span className="sq-pct">100%</span>
+                  </div>
+                </div>
+
+                <div className="ce-sq-footer">
+                  <button className="ce-btn ce-btn-secondary sq-btn" onClick={(e) => { e.stopPropagation(); navigate(user ? "/dashboard" : "/register"); }}>
+                    Open Sprint Planner <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 2: EXPO AI CODER (Center Focus in default view) */}
+            <div 
+              className={`ce-sq-card ai-sq ${ecosystemTab === "ai-coder" || ecosystemTab === "all" ? "focused" : "dimmed"}`}
+              onClick={() => setEcosystemTab("ai-coder")}
+            >
+              {/* Floating Pill Accents */}
+              <div className="ce-sq-floating-badge purple">GEMINI 1.5 PRO</div>
+              <div className="ce-sq-floating-badge cyan">AST PAIR CODER</div>
+
+              {/* Browser Window Bar */}
+              <div className="ce-sq-window-header">
+                <div className="window-dots">
+                  <span className="dot red" /><span className="dot yellow" /><span className="dot green" />
+                </div>
+                <div className="window-title-nav">
+                  <span>EXPO AI</span>
+                  <span>PAIR PROGRAMMER</span>
+                  <span>AST DIFF ENGINE</span>
+                </div>
+              </div>
+
+              {/* Card Content Body */}
+              <div className="ce-sq-card-body">
+                <div className="ce-sq-header-group">
+                  <div className="icon-box purple"><Sparkles size={22} /></div>
+                  <div>
+                    <h3 className="sq-title">Expo AI Pair Programmer</h3>
+                    <span className="sq-subtitle">Autonomous Gemini LLM Assistant • 280 tokens/sec</span>
+                  </div>
+                </div>
+
+                {/* AI Prompt & Code Diff Viewport */}
+                <div className="ce-sq-ai-viewport">
+                  <div className="sq-ai-prompt">
+                    <Sparkles size={13} style={{ color: "#a855f7" }} />
+                    <span>"Refactor WebRTC Opus VBR audio pipeline & write Go unit tests"</span>
+                  </div>
+
+                  <div className="sq-ai-diff">
+                    <div className="diff-line del">- peerConnection.addStream(audioStream);</div>
+                    <div className="diff-line add">+ sender.setParameters(opusVBRConfig);</div>
+                    <div className="diff-line add">+ assert.NoError(t, err); // Go unit test</div>
+                  </div>
+
+                  <div className="sq-ai-metrics">
+                    <span className="chip">⚡ 280 tokens/s</span>
+                    <span className="chip">⏱ 14ms latency</span>
+                    <span className="chip green">0 Vulnerabilities</span>
+                  </div>
+                </div>
+
+                <div className="ce-sq-footer">
+                  <button className="ce-btn ce-btn-primary sq-btn" onClick={(e) => { e.stopPropagation(); navigate(user ? "/dashboard" : "/register"); }}>
+                    <Sparkles size={14} /> Run Expo AI Assistant
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 3: MYVERSE METAVERSE (Tilted Right in default view) */}
+            <div 
+              className={`ce-sq-card verse-sq ${ecosystemTab === "myverse" ? "focused" : ecosystemTab === "all" ? "tilted-right" : "dimmed"}`}
+              onClick={() => setEcosystemTab("myverse")}
+            >
+              {/* Floating Pill Accents */}
+              <div className="ce-sq-floating-badge emerald">MYVERSE SPACE</div>
+              <div className="ce-sq-floating-badge gold">5 BREAKOUT PODS</div>
+
+              {/* Browser Window Bar */}
+              <div className="ce-sq-window-header">
+                <div className="window-dots">
+                  <span className="dot red" /><span className="dot yellow" /><span className="dot green" />
+                </div>
+                <div className="window-title-nav">
+                  <span>MYVERSE</span>
+                  <span>BREAKOUT PODS</span>
+                  <span>SPATIAL AUDIO</span>
+                </div>
+              </div>
+
+              {/* Card Content Body */}
+              <div className="ce-sq-card-body">
+                <div className="ce-sq-header-group">
+                  <div className="icon-box emerald"><Radio size={22} /></div>
+                  <div>
+                    <h3 className="sq-title">MyVerse Developer Space</h3>
+                    <span className="sq-subtitle">5 Global Breakout Pods • 142 Developers Connected</span>
+                  </div>
+                </div>
+
+                <div className="ce-sq-pod-grid">
+                  <div className="sq-pod-card live">
+                    <div className="pod-top">
+                      <span className="live-pill"><Radio size={10} className="pulse-icon" /> LIVE POD #1</span>
+                      <span className="dev-cnt">142 devs</span>
+                    </div>
+                    <h4 className="pod-name">Google Cloud Sandbox</h4>
+                    <span className="host-text">Host: Sachin Kumar</span>
+                  </div>
+
+                  <div className="sq-pod-mini-list">
+                    <div className="mini-pod"><span>#2 Whiteboard Studio</span><span className="cnt">110</span></div>
+                    <div className="mini-pod"><span>#3 Quantum Rust Lab</span><span className="cnt">89</span></div>
+                    <div className="mini-pod"><span>#4 AI Review Hub</span><span className="cnt">215</span></div>
+                  </div>
+                </div>
+
+                <div className="ce-sq-footer">
+                  <button 
+                    className={`ce-btn ${isVerseJoined ? "ce-btn-primary" : "ce-btn-secondary"} sq-btn`}
+                    onClick={(e) => { e.stopPropagation(); setIsVerseJoined(!isVerseJoined); }}
+                  >
+                    {isVerseJoined ? "Connected to MyVerse" : "Enter Pod Space"} <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
