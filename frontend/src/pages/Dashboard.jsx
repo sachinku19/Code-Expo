@@ -2475,7 +2475,12 @@ function Dashboard() {
         });
       }
       setSuggestions(prev => {
-        const next = prev.filter(s => String(s._id || s) !== String(candidateId));
+        const next = prev.map(s => {
+          if (String(s._id || s.id || s) === String(candidateId)) {
+            return { ...s, isFollowing: true };
+          }
+          return s;
+        });
         localStorage.setItem("ce_cache_suggestions", JSON.stringify(next));
         return next;
       });
@@ -4286,6 +4291,7 @@ function Dashboard() {
 
   return (
     <MainLayout
+      activeTab={activeSection}
       notifications={dashboardNotifications}
       clearNotifications={handleMarkAllNotificationsRead}
       onSearchSelect={handleSearchSelect}
@@ -5501,6 +5507,7 @@ function Dashboard() {
                 <NetworkSidebar
                   suggestions={suggestions}
                   onlineFollows={onlineFollows}
+                  followingList={followingList}
                   handleFollowToggle={handleFollowToggle}
                   handleViewUserProfile={handleViewUserProfile}
                   setPreselectedChatPartner={setPreselectedChatPartner}
@@ -5733,7 +5740,7 @@ function Dashboard() {
                                               <span className="dev-follows-you-pill">Follows You</span>
                                             )}
                                           </div>
-                                          <span className="dev-card-email">{dev.email}</span>
+                                          <span className="dev-card-title" style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", marginBottom: "8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{dev.title || "Developer"}</span>
                                           <p className="dev-card-bio">{dev.bio || "No bio description set yet."}</p>
 
                                           {dev.programmingLanguages && dev.programmingLanguages.length > 0 && (
@@ -6184,7 +6191,7 @@ function Dashboard() {
                                     )}
                                     <div style={{ display: "flex", flexDirection: "column" }}>
                                       <span style={{ fontWeight: "700", color: "var(--ce-text-h)" }}>{item.username} {isCurrentUser ? "(you)" : ""}</span>
-                                      <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{item.email}</span>
+                                      <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title || "Developer"}</span>
                                     </div>
                                   </div>
                                 </td>
@@ -7930,7 +7937,7 @@ function Dashboard() {
                           {viewingUserProfile ? viewingUserProfile.username : user?.username}
                           {renderSubscriptionBadge(viewingUserProfile || user)}
                         </h2>
-                        <span className="profile-email">{viewingUserProfile ? viewingUserProfile.email : user?.email}</span>
+                        <span className="profile-email">{!viewingUserProfile ? user?.email : ""}</span>
                         {(viewingUserProfile ? viewingUserProfile.location : user?.location) && (
                           <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "var(--ce-text-muted)", marginTop: "4px", marginBottom: "4px" }}>
                             <MapPin size={12} style={{ color: "var(--ce-accent)" }} />

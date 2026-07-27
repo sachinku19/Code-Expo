@@ -2,8 +2,9 @@ import { UserPlus, MessageSquare } from "lucide-react";
 import "./PremiumFeed.css";
 
 export default function NetworkSidebar({ 
-  suggestions, 
-  onlineFollows, 
+  suggestions = [], 
+  onlineFollows = [], 
+  followingList = [],
   handleFollowToggle,
   handleViewUserProfile,
   setPreselectedChatPartner,
@@ -33,7 +34,7 @@ export default function NetworkSidebar({
                       <img src={dev.avatar} alt={dev.username} className="presence-avatar" />
                     ) : (
                       <div className="presence-avatar-fallback">
-                        {dev.username.charAt(0).toUpperCase()}
+                        {(dev.username || "D").charAt(0).toUpperCase()}
                       </div>
                     )}
                     <span className="presence-dot online" />
@@ -79,34 +80,38 @@ export default function NetworkSidebar({
           {suggestions.length === 0 ? (
             <p style={{ color: "var(--ce-premium-muted)", fontSize: "0.78rem", margin: 0 }}>No suggestions available.</p>
           ) : (
-            suggestions.slice(0, 8).map(s => (
-              <div key={s._id} className="suggestion-item">
-                <div 
-                  onClick={() => handleViewUserProfile(s._id)} 
-                  style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
-                >
-                  {s.avatar ? (
-                    <img src={s.avatar} alt={s.username} className="presence-avatar" />
-                  ) : (
-                    <div className="presence-avatar-fallback">
-                      {s.username.charAt(0).toUpperCase()}
+            suggestions.slice(0, 8).map(s => {
+              const devId = String(s._id || s.id);
+              const isFollowed = (followingList || []).some(f => String(f._id || f.id || f) === devId) || s.isFollowing === true;
+              return (
+                <div key={devId} className="suggestion-item">
+                  <div 
+                    onClick={() => handleViewUserProfile(devId)} 
+                    style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", minWidth: 0, flex: 1 }}
+                  >
+                    {s.avatar ? (
+                      <img src={s.avatar} alt={s.username} className="presence-avatar" />
+                    ) : (
+                      <div className="presence-avatar-fallback">
+                        {(s.username || "D").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="suggestion-name-col">
+                      <span className="suggestion-username">@{s.username}</span>
+                      <span className="suggestion-mutuals">
+                        Lvl {s.developerLevel || 1} &bull; {s.title || "Developer"}
+                      </span>
                     </div>
-                  )}
-                  <div className="suggestion-name-col">
-                    <span className="suggestion-username">@{s.username}</span>
-                    <span className="suggestion-mutuals" style={{ fontSize: "0.65rem" }}>
-                      Lvl {s.developerLevel || 1} &bull; {s.title || "Developer"}
-                    </span>
                   </div>
+                  <button 
+                    onClick={() => handleFollowToggle(devId)} 
+                    className={`suggestion-follow-btn ${isFollowed ? "following" : ""}`}
+                  >
+                    {isFollowed ? "Following" : "Follow"}
+                  </button>
                 </div>
-                <button 
-                  onClick={() => handleFollowToggle(s._id)} 
-                  className="suggestion-follow-btn"
-                >
-                  Follow
-                </button>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

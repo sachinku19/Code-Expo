@@ -62,6 +62,7 @@ dmReceiveAudio.load();
 
 export default function MainLayout({
   children,
+  activeTab,
   roomId,
   roomTitle,
   socketConnected,
@@ -863,6 +864,7 @@ export default function MainLayout({
   };
 
   const getActiveItem = () => {
+    if (activeTab) return activeTab;
     const searchParams = new URLSearchParams(location.search);
     const tab = searchParams.get("tab");
     if (location.pathname === "/dashboard") {
@@ -877,6 +879,9 @@ export default function MainLayout({
     }
     if (location.pathname === "/admin") {
       return "admin";
+    }
+    if (location.pathname.startsWith("/u/") || location.pathname.startsWith("/profile")) {
+      return "profile";
     }
     return "dashboard";
   };
