@@ -1374,20 +1374,29 @@ function Dashboard() {
   const [modalActiveImageIdx, setModalActiveImageIdx] = useState(0);
   const [modalShareOpen, setModalShareOpen] = useState(false);
 
+  const handleOpenPostModal = (postToOpen) => {
+    if (!postToOpen) return;
+    setSelectedPostModal(postToOpen);
+    setModalShareOpen(false);
+    if (postToOpen._id) {
+      window.history.pushState({ postId: postToOpen._id }, "", `/post/${postToOpen._id}`);
+    }
+  };
+
   const handleClosePostModal = () => {
     setSelectedPostModal(null);
     setModalShareOpen(false);
-    const searchParams = new URLSearchParams(location.search);
-    if (searchParams.has("post")) {
-      searchParams.delete("post");
-      const newSearch = searchParams.toString();
-      navigate(newSearch ? `${location.pathname}?${newSearch}` : location.pathname, { replace: true });
+    if (location.pathname.startsWith("/post/")) {
+      navigate(-1);
+    } else {
+      window.history.pushState(null, "", location.pathname + location.search);
     }
   };
 
   useEffect(() => {
+    const pathMatch = location.pathname.match(/^\/post\/([a-zA-Z0-9_]+)/);
     const searchParams = new URLSearchParams(location.search);
-    const postId = searchParams.get("post");
+    const postId = (pathMatch ? pathMatch[1] : null) || searchParams.get("post");
     if (postId) {
       const matchedPost = allFeedPosts.find(p => p._id === postId);
       if (matchedPost) {
@@ -1406,45 +1415,7 @@ function Dashboard() {
         fetchPostDirectly();
       }
     }
-
-    let isCurrent = true;
-    const targetUser = searchParams.get("user") || searchParams.get("username") || searchParams.get("userId");
-    const targetAvatar = searchParams.get("avatar");
-    const tab = searchParams.get("tab");
-    if ((tab === "profile" || targetUser) && targetUser && targetUser !== user?.username && targetUser !== user?._id && targetUser !== user?.id) {
-      getPublicUserProfile(targetUser).then(res => {
-        if (!isCurrent) return;
-        if (res && res.success && res.user) {
-          setViewingUserProfile(res.user);
-        } else {
-          setViewingUserProfile({
-            _id: targetUser,
-            username: targetUser,
-            name: targetUser.charAt(0).toUpperCase() + targetUser.slice(1),
-            avatar: targetAvatar || null,
-            title: "CodeExpo Developer",
-            bio: "Building innovative software on CodeExpo."
-          });
-        }
-      }).catch(() => {
-        if (!isCurrent) return;
-        setViewingUserProfile({
-          _id: targetUser,
-          username: targetUser,
-          name: targetUser.charAt(0).toUpperCase() + targetUser.slice(1),
-          avatar: targetAvatar || null,
-          title: "CodeExpo Developer",
-          bio: "Building innovative software on CodeExpo."
-        });
-      });
-    } else {
-      setViewingUserProfile(null);
-    }
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [location.search, allFeedPosts, user]);
+  }, [location.pathname, location.search, allFeedPosts]);
 
   const handleReturnToMyProfile = () => {
     setViewingUserProfile(null);
@@ -2074,11 +2045,26 @@ function Dashboard() {
     }, 1000);
   };
 
-  // Sync section with query tab
+  // Sync section with query tab or /u/:username handle URL
   useEffect(() => {
+    const handleMatch = location.pathname.match(/^\/u\/([a-zA-Z0-9_]+)/);
+    if (handleMatch && handleMatch[1]) {
+      const routeHandle = handleMatch[1].toLowerCase();
+      setActiveSection("profile");
+      const isOwnProfile = user && user.username && user.username.toLowerCase() === routeHandle;
+      if (isOwnProfile) {
+        setViewingUserProfile(null);
+        setViewingUserStats(null);
+        fetchProfilePosts(user.id || user._id);
+      } else if (!viewingUserProfile || viewingUserProfile.username?.toLowerCase() !== routeHandle) {
+        handleViewUserProfile(routeHandle);
+      }
+      return;
+    }
+
     const searchParams = new URLSearchParams(location.search);
     let tab = searchParams.get("tab");
-    const userId = searchParams.get("userId");
+    const userId = searchParams.get("userId") || searchParams.get("user");
     if (tab) {
       if (tab === "feed-action") {
         tab = "trust-safety";
@@ -2091,13 +2077,15 @@ function Dashboard() {
       setActiveSection(tab);
       if (tab === "profile") {
         if (userId) {
-          const isOwnProfile = user && (String(userId) === String(user.id) || String(userId) === String(user._id));
+          const isOwnProfile = user && (String(userId) === String(user.id) || String(userId) === String(user._id) || (user.username && user.username.toLowerCase() === String(userId).toLowerCase()));
           if (isOwnProfile) {
             setViewingUserProfile(null);
             setViewingUserStats(null);
             fetchProfilePosts(user.id || user._id);
-            navigate("/dashboard?tab=profile", { replace: true });
-          } else if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId))) {
+            if (user.username) {
+              navigate(`/u/${user.username}`, { replace: true });
+            }
+          } else if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId) && viewingUserProfile.username?.toLowerCase() !== String(userId).toLowerCase())) {
             handleViewUserProfile(userId);
           }
         } else {
@@ -2105,6 +2093,9 @@ function Dashboard() {
           setViewingUserStats(null);
           if (user) {
             fetchProfilePosts(user.id || user._id);
+            if (user.username) {
+              navigate(`/u/${user.username}`, { replace: true });
+            }
           }
         }
       } else {
@@ -2116,7 +2107,7 @@ function Dashboard() {
       setViewingUserProfile(null);
       setViewingUserStats(null);
     }
-  }, [location.search, user?.id, user?._id]);
+  }, [location.pathname, location.search, user?.id, user?._id, user?.username]);
 
   // Admin redirect logic
   useEffect(() => {
@@ -3818,7 +3809,7 @@ function Dashboard() {
 
   const renderRoomCard = (room) => {
     const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id;
-    const ownerName = isOwner ? "You" : (room.createdBy?.username || "Developer");
+    const ownerName = isOwner ? "You" : (room.createdBy?.displayName || room.createdBy?.username || "Developer");
     const activeCount = room.activeUsersCount || 0;
     const isBookmarked = savedRooms.some(r => r && (r.roomId === room.roomId || r._id === room._id || r._id === room.roomId));
 
@@ -3830,7 +3821,8 @@ function Dashboard() {
       const ownerId = room.createdBy._id || room.createdBy;
       allMembers.push({
         _id: String(ownerId),
-        username: room.createdBy.username || "Owner",
+        displayName: room.createdBy.displayName || room.createdBy.username || "Owner",
+        username: room.createdBy.username || "owner",
         avatar: room.createdBy.avatar,
         role: "OWNER",
         isOwner: true
@@ -3843,11 +3835,13 @@ function Dashboard() {
         const userObj = p.user && typeof p.user === 'object' ? p.user : null;
         const pId = userObj ? userObj._id : (p.user || p._id || p);
         if (pId && !memberIds.has(String(pId))) {
-          const username = userObj ? userObj.username : (p.username || "Collaborator");
+          const displayName = userObj ? (userObj.displayName || userObj.username) : (p.displayName || p.username || "Collaborator");
+          const username = userObj ? userObj.username : (p.username || "collaborator");
           const avatar = userObj ? userObj.avatar : p.avatar;
           const role = p.role || "MEMBER";
           allMembers.push({
             _id: String(pId),
+            displayName: displayName,
             username: username,
             avatar: avatar,
             role: role,
@@ -5489,6 +5483,7 @@ function Dashboard() {
                     handleFollowToggle={handleFollowToggle}
                     onViewProfile={handleViewUserProfile}
                     suggestions={suggestions}
+                    onOpenPost={handleOpenPostModal}
                   />
                 </div>
                 <NetworkSidebar
@@ -8379,7 +8374,7 @@ function Dashboard() {
                                       <ProfilePostCard
                                         key={post._id}
                                         post={post}
-                                        onOpen={() => setSelectedPostModal(post)}
+                                        onOpen={() => handleOpenPostModal(post)}
                                         user={viewingUserProfile || user}
                                         onDelete={showDelete ? (e) => {
                                           e.stopPropagation();
@@ -8419,7 +8414,7 @@ function Dashboard() {
                                         <ProfilePostCard
                                           key={post._id}
                                           post={post}
-                                          onOpen={() => setSelectedPostModal(post)}
+                                          onOpen={() => handleOpenPostModal(post)}
                                           user={post.author}
                                           onDelete={showDelete ? (e) => {
                                             e.stopPropagation();

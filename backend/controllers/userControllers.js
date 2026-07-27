@@ -3,6 +3,7 @@ const Follow = require("../models/Follow");
 const fs = require("fs");
 const path = require("path");
 const MediaService = require("../services/MediaService");
+const userService = require("../services/userService");
 
 // Upload Avatar Controller
 const uploadAvatar = async (req, res) => {
@@ -104,12 +105,15 @@ const deleteAvatar = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { bio, programmingLanguages, title } = req.body;
+    const { bio, programmingLanguages, title, displayName } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
+    if (displayName !== undefined && displayName.trim()) {
+      user.displayName = displayName.trim();
+    }
     if (bio !== undefined) user.bio = bio;
     if (req.body.location !== undefined) user.location = req.body.location;
     if (title !== undefined) user.title = title.trim() || "Developer";
@@ -139,6 +143,7 @@ const updateProfile = async (req, res) => {
       message: "Profile updated successfully",
       user: {
         id: user._id,
+        displayName: user.displayName || user.username || "Developer",
         username: user.username,
         email: user.email,
         role: user.role,
@@ -246,12 +251,100 @@ const deleteCoverBanner = async (req, res) => {
   }
 };
 
+// GET /api/users/check-username
+const checkUsernameAvailability = async (req, res) => {
+  try {
+    const username = req.query.username || "";
+    const currentUserId = req.user ? req.user._id : null;
+    const result = await userService.checkUsernameAvailability(username, currentUserId);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to check username availability"
+    });
+  }
+};
+
+// POST /api/users/setup-username
+const setupUsername = async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: "Username is required"
+      });
+    }
+
+    const result = await userService.setupUsername(req.user._id, username);
+    res.status(200).json({
+      success: true,
+      message: "Username configured successfully",
+      alreadySet: result.alreadySet,
+      user: {
+        id: result.user._id,
+        displayName: result.user.displayName || result.user.username || "Developer",
+        username: result.user.username,
+        email: result.user.email,
+        role: result.user.role,
+        avatar: result.user.avatar,
+        title: result.user.title
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to set up username"
+    });
+  }
+};
+
+// PUT /api/users/change-username
+const changeUsername = async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: "New username is required"
+      });
+    }
+
+    const result = await userService.changeUsername(req.user._id, username);
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      user: {
+        id: result.user._id,
+        displayName: result.user.displayName || result.user.username || "Developer",
+        username: result.user.username,
+        email: result.user.email,
+        role: result.user.role,
+        avatar: result.user.avatar,
+        title: result.user.title
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to change username"
+    });
+  }
+};
+
 module.exports = {
   uploadAvatar,
   deleteAvatar,
   updateProfile,
   uploadCoverBanner,
-  deleteCoverBanner
+  deleteCoverBanner,
+  checkUsernameAvailability,
+  setupUsername,
+  changeUsername
 };
 
 

@@ -76,4 +76,33 @@ export const getActiveAds = async () => {
   return response.data;
 };
 
+export const checkUsernameAvailability = async (username) => {
+  const token = localStorage.getItem("token");
+  const response = await API.get(`/users/check-username?username=${encodeURIComponent(username)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  return response.data;
+};
+
+export const setupUsername = async (username) => {
+  const token = localStorage.getItem("token");
+  const response = await API.post("/users/setup-username", { username }, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+};
+
+export const changeUsername = async (username) => {
+  const token = localStorage.getItem("token");
+  const response = await API.put("/users/change-username", { username }, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+};
+
+
 

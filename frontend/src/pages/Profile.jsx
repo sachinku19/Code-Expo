@@ -17,7 +17,7 @@ import {
 import { updateUserProfile } from "../services/userService";
 import { useTheme } from "../context/ThemeContext";
 import {
-  X, Heart, Bookmark, Users, Sparkles, Terminal,
+  X, Heart, Bookmark, Users, Sparkles, Terminal, Mail,
   Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin,
   LayoutGrid, Activity
 } from "lucide-react";
@@ -520,6 +520,11 @@ const Profile = () => {
     r => r.createdBy?._id === profileUser._id || r.createdBy === profileUser._id
   );
 
+  const isOwnProfile = authUser && profileUser && (
+    String(authUser._id || authUser.id) === String(profileUser._id || profileUser.id) ||
+    (authUser.username && profileUser.username && authUser.username.toLowerCase() === profileUser.username.toLowerCase())
+  );
+
   return (
     <div className="profile-page-main-wrapper">
       <div className="profile-page-header-nav">
@@ -534,8 +539,17 @@ const Profile = () => {
           {/* Profile Sidebar */}
           <div className="profile-sidebar-card">
             <ProfileAvatar />
-            <h2>{profileUser.username}</h2>
-            <span className="profile-email">{profileUser.email}</span>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: "700", margin: "8px 0 2px 0" }}>
+              {profileUser.displayName || profileUser.username || "Developer"}
+            </h2>
+            <div style={{ fontSize: "0.85rem", fontFamily: "monospace", color: "var(--ce-accent)", marginBottom: "4px" }}>
+              @{profileUser.username || "developer"}
+            </div>
+            {isOwnProfile && profileUser.email && (
+              <span className="profile-email" style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", color: "var(--ce-text-muted)", marginBottom: "4px" }}>
+                <Mail size={12} /> {profileUser.email}
+              </span>
+            )}
             {profileUser.location && (
               <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "var(--ce-text-muted)", marginTop: "4px", marginBottom: "4px" }}>
                 <MapPin size={12} style={{ color: "var(--ce-accent)" }} />
@@ -1099,7 +1113,8 @@ const Profile = () => {
                             </div>
                           )}
                           <div className="modal-member-meta">
-                            <span className="modal-member-name">{item.username}</span>
+                            <span className="modal-member-name">{item.displayName || item.username}</span>
+                            <span className="modal-member-handle" style={{ fontSize: "11px", color: "var(--ce-accent)", fontFamily: "monospace" }}>@{item.username}</span>
                             <span className="modal-member-bio">{item.bio || "No bio"}</span>
                           </div>
                         </div>
@@ -1153,11 +1168,12 @@ const Profile = () => {
                             <img src={item.avatar} alt={item.username} className="modal-member-avatar-img" />
                           ) : (
                             <div className="modal-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username) }}>
-                              {item.username.charAt(0).toUpperCase()}
+                              {(item.displayName || item.username || "D").charAt(0).toUpperCase()}
                             </div>
                           )}
                           <div className="modal-member-meta">
-                            <span className="modal-member-name">{item.username}</span>
+                            <span className="modal-member-name">{item.displayName || item.username}</span>
+                            <span className="modal-member-handle" style={{ fontSize: "11px", color: "var(--ce-accent)", fontFamily: "monospace" }}>@{item.username}</span>
                             <span className="modal-member-bio">{item.bio || "No bio"}</span>
                           </div>
                         </div>

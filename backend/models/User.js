@@ -3,14 +3,23 @@ const MediaSchema = require("./Media");
 
 const userSchema=new mongoose.Schema({
 
-    username:{
-        type:String,
-        required:[true,"Username is required"],
-        unique:true,
-        trim:true,
-        minlength:3,
-        maxlength:30,
-        index:true
+    displayName: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    username: {
+        type: String,
+        unique: true,
+        sparse: true,
+        lowercase: true,
+        trim: true,
+        default: null,
+        index: true
+    },
+    lastUsernameChange: {
+        type: Date,
+        default: null
     },
     email:{
         type: String,

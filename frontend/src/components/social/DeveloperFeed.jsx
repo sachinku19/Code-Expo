@@ -558,7 +558,7 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
   );
 };
 
-export default function DeveloperFeed({ user, addToast, followingList = [], handleFollowToggle, onViewProfile, suggestions = [] }) {
+export default function DeveloperFeed({ user, addToast, followingList = [], handleFollowToggle, onViewProfile, suggestions = [], onOpenPost }) {
   const [posts, setPosts] = useState([]);
   const [visiblePosts, setVisiblePosts] = useState(6);
   const [inputText, setInputText] = useState("");
@@ -2348,7 +2348,11 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                   <div className="sensitive-overlay-container">
                     <div className={post.isSensitive && !revealedSensitivePosts[post._id] ? "sensitive-blur-active" : ""}>
                       {/* Post Content */}
-                      <div className="post-card-content">
+                      <div 
+                        className="post-card-content"
+                        onClick={() => onOpenPost && onOpenPost(post)}
+                        style={{ cursor: onOpenPost ? "pointer" : "default" }}
+                      >
                         <ExpandableText maxHeight={240}>
                           {renderPostContent(post.text, addToast)}
                         </ExpandableText>
@@ -2365,14 +2369,22 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
                       {/* Video Attachment with 16:9 aspect ratio */}
                       {post.video && (
-                        <div className="post-video-container" style={{ width: "calc(100% - 44px)", margin: "12px 22px 14px 22px", aspectRatio: "16/9", overflow: "hidden", borderRadius: "16px", background: "#000", border: "1px solid rgba(255, 255, 255, 0.1)", boxSizing: "border-box" }}>
+                        <div 
+                          className="post-video-container" 
+                          onClick={() => onOpenPost && onOpenPost(post)}
+                          style={{ width: "calc(100% - 44px)", margin: "12px 22px 14px 22px", aspectRatio: "16/9", overflow: "hidden", borderRadius: "16px", background: "#000", border: "1px solid rgba(255, 255, 255, 0.1)", boxSizing: "border-box", cursor: onOpenPost ? "pointer" : "default" }}
+                        >
                           <AutoplayVideo src={post.video} />
                         </div>
                       )}
 
                       {/* Redesigned Premium Carousel Multi-Image Block - Full Aspect Ratio */}
                       {postImages.length > 0 && (
-                        <div className="post-carousel-container">
+                        <div 
+                          className="post-carousel-container"
+                          onClick={() => onOpenPost && onOpenPost(post)}
+                          style={{ cursor: onOpenPost ? "pointer" : "default" }}
+                        >
                           <div className="post-carousel-track" style={{ transform: `translateX(-${activeImgIdx * 100}%)` }}>
                             {postImages.map((src, i) => (
                               <div key={i} className="post-carousel-slide">

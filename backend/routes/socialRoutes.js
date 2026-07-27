@@ -64,8 +64,8 @@ const optional_auth = async (req, res, next) => {
 // Follow actions
 router.post("/follow/:id", auth_protect, toggleFollowUser);
 router.delete("/follower/:id", auth_protect, removeFollower);
-router.get("/followers/:id", auth_protect, getFollowers);
-router.get("/following/:id", auth_protect, getFollowing);
+router.get("/followers/:id", optional_auth, getFollowers);
+router.get("/following/:id", optional_auth, getFollowing);
 
 // Room interactions
 router.post("/like/:id", auth_protect, toggleLikeRoom);
@@ -82,7 +82,7 @@ router.get("/leaderboard", auth_protect, getLeaderboard);
 
 // User Search & Public Profile
 router.get("/users/search", auth_protect, searchUsers);
-router.get("/users/profile/:id", auth_protect, getUserPublicProfile);
+router.get("/users/profile/:id", optional_auth, getUserPublicProfile);
 router.post("/users/:id/report", auth_protect, reportUser);
 
 // Notifications

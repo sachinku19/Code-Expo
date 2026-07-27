@@ -14,6 +14,7 @@ const Editor = lazy(() => import("../pages/Editor"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
 const ResetPassword = lazy(() => import("../pages/ResetPassword"));
 const PublicPostView = lazy(() => import("../pages/PublicPostView"));
+const SetupUsername = lazy(() => import("../pages/SetupUsername"));
 
 // Protected routes
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -96,6 +97,19 @@ const UserProfileRedirect = () => {
   return <Navigate to={`/dashboard?tab=profile&userId=${userId}`} replace />;
 };
 
+const OwnProfileRedirect = () => {
+  try {
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.username) {
+        return <Navigate to={`/u/${parsed.username}`} replace />;
+      }
+    }
+  } catch (e) { }
+  return <Navigate to="/dashboard?tab=profile" replace />;
+};
+
 const AppRoutes = () => {
   return (
     <ThemeProvider>
@@ -108,7 +122,9 @@ const AppRoutes = () => {
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={<Auth mode="login" />} />
                   <Route path="/register" element={<Auth mode="register" />} />
-                  <Route path="/profile" element={<Navigate to="/dashboard?tab=profile" replace />} />
+                  <Route path="/setup-username" element={<ProtectedRoute><SetupUsername /></ProtectedRoute>} />
+                  <Route path="/u/:username" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/profile" element={<OwnProfileRedirect />} />
                   <Route path="/user/:userId" element={<UserProfileRedirect />} />
                   <Route path="/post/:postId" element={<PublicPostView />} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -117,7 +133,6 @@ const AppRoutes = () => {
                   <Route path="/reset-password/:token" element={<ResetPassword />} />
                 </Routes>
               </Suspense>
-              <AIChatbot />
               <CallOverlay />
             </GateTransitionProvider>
           </CallProvider>

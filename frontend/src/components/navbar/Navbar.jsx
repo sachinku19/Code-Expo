@@ -180,7 +180,7 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
                       <LayoutDashboard size={15} />
                       <span>Dashboard</span>
                     </button>
-                    <button onClick={() => navigate("/dashboard?tab=profile")} className="dropdown-link">
+                    <button onClick={() => navigate(user?.username ? `/u/${user.username}` : "/dashboard?tab=profile")} className="dropdown-link">
                       <User size={15} />
                       <span>My Profile</span>
                     </button>

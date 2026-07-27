@@ -678,7 +678,7 @@ export default function MainLayout({
         { label: "Go to History", path: "/dashboard?tab=history", tab: "history", icon: History },
         { label: "Go to Whiteboards", path: "/dashboard?tab=whiteboards", tab: "whiteboards", icon: Palette },
         { label: "Go to Notifications", path: "/dashboard?tab=notifications", tab: "notifications", icon: Bell },
-        { label: "Go to Profile", path: "/dashboard?tab=profile", tab: "profile", icon: User },
+        { label: "Go to Profile", path: user?.username ? `/u/${user.username}` : "/dashboard?tab=profile", tab: "profile", icon: User },
         { label: "Go to Settings", path: "/dashboard?tab=settings", tab: "settings", icon: Settings },
         { label: "Go to Help Desk", path: "/dashboard?tab=helpdesk", tab: "helpdesk", icon: HelpCircle }
       ];
@@ -1526,7 +1526,7 @@ export default function MainLayout({
                   className="dropdown-profile-header"
                   onClick={() => {
                     setProfileDropdownOpen(false);
-                    handleConfirmNavigate("/dashboard?tab=profile");
+                    handleConfirmNavigate(user?.username ? `/u/${user.username}` : "/dashboard?tab=profile");
                   }}
                   title="View Profile"
                 >
@@ -1754,7 +1754,7 @@ export default function MainLayout({
           className="drawer-user-card"
           onClick={() => {
             setIsDrawerOpen(false);
-            handleConfirmNavigate("/dashboard?tab=profile");
+            handleConfirmNavigate(user?.username ? `/u/${user.username}` : "/dashboard?tab=profile");
           }}
         >
           <div className="drawer-user-avatar">

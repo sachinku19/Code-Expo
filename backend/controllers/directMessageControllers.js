@@ -279,11 +279,18 @@ exports.sendDirectMessage = async (req, res) => {
     }
 
     // Check if either user is blocked (1-to-1 DMs only)
-    const targetUser = await User.findById(recipientId);
+    const cleanRecipient = String(recipientId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanRecipient);
+    const targetUser = await User.findOne(
+      isObjId 
+        ? { $or: [{ _id: cleanRecipient }, { username: cleanRecipient.toLowerCase() }] } 
+        : { username: cleanRecipient.toLowerCase() }
+    );
     if (!targetUser) {
       return res.status(404).json({ success: false, message: "Recipient user not found" });
     }
 
+    const realRecipientId = targetUser._id;
     const currentUser = await User.findById(myId);
 
     const isBlockedByTarget = (targetUser.blockedUsers || []).map(id => String(id)).includes(String(myId));

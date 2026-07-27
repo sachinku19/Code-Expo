@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Follow = require("../models/Follow");
 const Room = require("../models/Room");
@@ -11,16 +12,23 @@ const { logActivity, getPointsForAction, calculateCodingMinutes } = require("./a
 // Follow/Unfollow user toggle
 const toggleFollowUser = async (req, res) => {
   try {
-    const targetUserId = req.params.id;
+    const rawTargetId = req.params.id;
     const currentUserId = req.user._id;
+    const cleanTarget = String(rawTargetId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanTarget);
+    const targetQuery = isObjId 
+      ? { $or: [{ _id: cleanTarget }, { username: cleanTarget.toLowerCase() }] } 
+      : { username: cleanTarget.toLowerCase() };
+
+    const targetUser = await User.findOne(targetQuery);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const targetUserId = targetUser._id;
 
     if (String(targetUserId) === String(currentUserId)) {
       return res.status(400).json({ success: false, message: "You cannot follow yourself" });
-    }
-
-    const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
-      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     const currentUser = await User.findById(currentUserId);
@@ -33,12 +41,12 @@ const toggleFollowUser = async (req, res) => {
           currentUserId,
           { $pull: { following: targetUserId }, $inc: { followingCount: -1 } },
           { new: true }
-        ).populate("following", "username email avatar bio followersCount followingCount coverBanner"),
+        ).populate("following", "displayName username avatar bio followersCount followingCount coverBanner"),
         User.findByIdAndUpdate(
           targetUserId,
           { $pull: { followers: currentUserId }, $inc: { followersCount: -1 } },
           { new: true }
-        ).populate("followers", "username email avatar bio followersCount followingCount coverBanner"),
+        ).populate("followers", "displayName username avatar bio followersCount followingCount coverBanner"),
         Follow.deleteOne({ follower: currentUserId, following: targetUserId })
       ]);
 
@@ -65,12 +73,12 @@ const toggleFollowUser = async (req, res) => {
           currentUserId,
           { $addToSet: { following: targetUserId }, $inc: { followingCount: 1 } },
           { new: true }
-        ).populate("following", "username email avatar bio followersCount followingCount coverBanner"),
+        ).populate("following", "displayName username avatar bio followersCount followingCount coverBanner"),
         User.findByIdAndUpdate(
           targetUserId,
           { $addToSet: { followers: currentUserId }, $inc: { followersCount: 1 } },
           { new: true }
-        ).populate("followers", "username email avatar bio followersCount followingCount coverBanner"),
+        ).populate("followers", "displayName username avatar bio followersCount followingCount coverBanner"),
         Follow.create({ follower: currentUserId, following: targetUserId })
       ]);
 
@@ -146,14 +154,20 @@ const removeFollower = async (req, res) => {
 // Get followers list
 const getFollowers = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const user = await User.findById(userId)
+    const rawId = req.params.id;
+    const cleanId = String(rawId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanId);
+    const query = isObjId 
+      ? { $or: [{ _id: cleanId }, { username: cleanId.toLowerCase() }] } 
+      : { username: cleanId.toLowerCase() };
+
+    const user = await User.findOne(query)
       .populate("followers", "username email avatar bio followersCount followingCount coverBanner")
       .lean();
 
     res.status(200).json({
       success: true,
-      followers: user.followers || []
+      followers: user?.followers || []
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -163,13 +177,19 @@ const getFollowers = async (req, res) => {
 // Get following list
 const getFollowing = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const user = await User.findById(userId)
+    const rawId = req.params.id;
+    const cleanId = String(rawId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanId);
+    const query = isObjId 
+      ? { $or: [{ _id: cleanId }, { username: cleanId.toLowerCase() }] } 
+      : { username: cleanId.toLowerCase() };
+
+    const user = await User.findOne(query)
       .populate("following", "username email avatar bio followersCount followingCount coverBanner")
       .lean();
 
     const io = req.app.get("io");
-    const followingList = user.following || [];
+    const followingList = user?.following || [];
 
     const followingWithOnline = followingList.map(uObj => {
       const userRoom = io?.sockets?.adapter?.rooms?.get(String(uObj._id));
@@ -536,10 +556,10 @@ const searchUsers = async (req, res) => {
       _id: { $ne: req.user._id },
       $or: [
         { username: { $regex: query, $options: "i" } },
-        { email: { $regex: query, $options: "i" } }
+        { displayName: { $regex: query, $options: "i" } }
       ]
     })
-      .select("username email avatar bio programmingLanguages followersCount followingCount coverBanner title")
+      .select("displayName username avatar bio programmingLanguages followersCount followingCount coverBanner title")
       .limit(10);
 
     res.status(200).json({ success: true, users });
@@ -550,27 +570,36 @@ const searchUsers = async (req, res) => {
 
 const getUserPublicProfile = async (req, res) => {
   try {
-    const targetUserId = req.params.id;
-    const currentUserId = req.user._id;
+    const rawTargetId = req.params.id;
+    const currentUserId = req.user ? req.user._id : null;
+    const cleanTarget = String(rawTargetId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanTarget);
+    const targetQuery = isObjId 
+      ? { $or: [{ _id: cleanTarget }, { username: cleanTarget.toLowerCase() }] } 
+      : { username: cleanTarget.toLowerCase() };
 
-    const [targetUser, rawRooms, rawLikedRooms, activitiesList] = await Promise.all([
-      User.findById(targetUserId).select("username email avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner followers following title"),
-      Room.find({ createdBy: targetUserId, isPrivate: false }).populate("createdBy", "username avatar").populate("likes", "username avatar email bio").sort({ createdAt: -1 }),
-      Room.find({ likes: targetUserId, isPrivate: false }).populate("createdBy", "username avatar").populate("likes", "username avatar email bio").sort({ createdAt: -1 }),
-      Activity.find({ user: targetUserId, activityType: { $ne: "VIEW_PROFILE" } })
-    ]);
+    const targetUser = await User.findOne(targetQuery)
+      .select("displayName username avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner followers following title");
 
     if (!targetUser) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (String(currentUserId) !== String(targetUserId)) {
+    const targetUserId = targetUser._id;
+
+    const [rawRooms, rawLikedRooms, activitiesList] = await Promise.all([
+      Room.find({ createdBy: targetUserId, isPrivate: false }).populate("createdBy", "displayName username avatar").populate("likes", "displayName username avatar bio").sort({ createdAt: -1 }),
+      Room.find({ likes: targetUserId, isPrivate: false }).populate("createdBy", "displayName username avatar").populate("likes", "displayName username avatar bio").sort({ createdAt: -1 }),
+      Activity.find({ user: targetUserId, activityType: { $ne: "VIEW_PROFILE" } })
+    ]);
+
+    if (currentUserId && String(currentUserId) !== String(targetUserId)) {
       Promise.all([
         User.updateOne({ _id: targetUserId }, { $inc: { profileViews: 1 } }),
         Activity.create({
           user: currentUserId,
           userId: currentUserId,
-          username: req.user.username,
+          username: req.user?.username || "Guest",
           action: `viewed ${targetUser.username}'s profile`,
           activityType: "VIEW_PROFILE",
           targetUser: targetUserId,
@@ -778,15 +807,15 @@ const getUserPublicProfile = async (req, res) => {
 const getLeaderboard = async (req, res) => {
   try {
     const User = require("../models/User");
-    const users = await User.find({}, "username avatar email title executionsCount")
+    const users = await User.find({}, "displayName username avatar title executionsCount")
       .sort({ executionsCount: -1 })
       .limit(100);
 
     const leaderboard = users.map((u, idx) => ({
       userId: u._id,
+      displayName: u.displayName || u.username || "Developer",
       username: u.username,
       avatar: u.avatar,
-      email: u.email,
       title: u.title,
       xp: u.executionsCount || 0,
       rank: idx + 1

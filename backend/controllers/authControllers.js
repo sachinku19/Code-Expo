@@ -1,253 +1,276 @@
-const User=require("../models/User");
-const Follow=require("../models/Follow");
-const jwt=require("jsonwebtoken");
-const bcrypt=require("bcryptjs");
-const validator=require("validator");
-const mongoose=require("mongoose");
+const User = require("../models/User");
+const Follow = require("../models/Follow");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const validator = require("validator");
+const mongoose = require("mongoose");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
 
 
 //function of token creation
-const generateToken=(id)=>{
-    return jwt.sign(
-        {id},
-        process.env.JWT_SECRET,
-        {expiresIn:"7d"}
-    );
+const generateToken = (id) => {
+  return jwt.sign(
+    { id },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
 };
 
 
-//register user
-const registerUser=async(req,res)=>{
-    try{
+// Helper to ensure legacy users have a displayName and null username if not onboarded
+const ensureUserIdentity = async (user) => {
+  let modified = false;
+  // If user has no displayName set, use old username or Developer
+  if (!user.displayName) {
+    user.displayName = user.username || "Developer";
+    modified = true;
+  }
+  // If username is set but contains invalid characters (e.g. spaces/capitals from old schema), reset to null for onboarding
+  if (user.username && (!/^[a-z0-9_]{3,20}$/.test(user.username) || /[\sA-Z]/.test(user.username))) {
+    user.username = null;
+    modified = true;
+  }
+  if (modified) {
+    await user.save();
+  }
+  return user;
+};
 
-    const {username,email,password}=req.body;
-    
+//register user
+const registerUser = async (req, res) => {
+  try {
+
+    const { username, displayName, email, password } = req.body;
+
     //validation
-    if(!username || !password || !email){
-        return res.status(400).json({
-            success:false,
-            message:"All fields are required"
-        });
+    const nameProvided = displayName || username;
+    if (!nameProvided || !password || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required"
+      });
     }
     //email validation
-    if(!validator.isEmail(email)){
-        return res.status(400).json({
-            success:false,
-            message:"Invalid Email"
-        });
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Email"
+      });
     }
-   
+
     //password validation
-    if(password.length<6){
-        return res.status(400).json({
-            success:false,
-            message:"Password must be atleast 6 characters"
-        });
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be atleast 6 characters"
+      });
     }
 
     //check existing user
-    const existUser=await User.findOne({email});
-    if(existUser){
-        return res.status(409).json({
-            success:false,
-            message:"User allready exist"
-        });
+    const existUser = await User.findOne({ email });
+    if (existUser) {
+      return res.status(409).json({
+        success: false,
+        message: "User allready exist"
+      });
     }
-  
-    //password hashed
-    const salt=await bcrypt.genSalt(10);
-    const hashedPassword=await bcrypt.hash(password,salt);
 
-    const user=await User.create({
-        username,
-        email,
-        password:hashedPassword,
-        isVerified:true
+    //password hashed
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const user = await User.create({
+      displayName: nameProvided.trim(),
+      username: null, // Username setup required on first login/onboarding
+      email,
+      password: hashedPassword,
+      isVerified: true
     });
 
     res.status(200).json({
-        success:true,
-        message:"User Registered successfully"
+      success: true,
+      message: "User Registered successfully"
     });
-}
-catch(error)
-{
+  }
+  catch (error) {
     res.status(500).json({
-        success:false,
-        message:error.message
+      success: false,
+      message: error.message
     });
-}
+  }
 }
 
 
 //Login user
-const loginUser=async(req,res)=>{
-    try{
-        
-        const {email,password}=req.body;
+const loginUser = async (req, res) => {
+  try {
 
-        if(!email || !password){
-            return res.status(400).json({
-                success:false,
-                message:"All fields are required"
-            });
-        }
+    const { email, password } = req.body;
 
-        const user=await User.findOne({email});
-        if(!user){
-            return res.status(401).json({
-                success:false,
-                message:"Email not exist"
-            });
-        }
-
-        if (user.isSuspended) {
-            return res.status(403).json({
-                success:false,
-                message:"Your account has been suspended by an administrator."
-            });
-        }
-
-        //compare password
-        const isMatched=await bcrypt.compare(password,user.password);
-        if(!isMatched){
-            return res.status(401).json({
-                success:false,
-                message:"Password does not match"
-            });
-        }
-
-        // Close any dangling open sessions for this user
-        if (user.loginHistory && Array.isArray(user.loginHistory)) {
-            user.loginHistory.forEach(log => {
-                if (log.logoutTime === null) {
-                    log.logoutTime = new Date();
-                }
-            });
-        } else {
-            user.loginHistory = [];
-        }
-
-        // Create new LoginLog entry inside user object
-        let clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || "";
-        if (clientIp.startsWith("::ffff:")) {
-            clientIp = clientIp.replace("::ffff:", "");
-        }
-        if (clientIp === "::1") {
-            clientIp = "127.0.0.1";
-        }
-        user.loginHistory.unshift({
-            loginTime: new Date(),
-            logoutTime: null,
-            ipAddress: clientIp,
-            userAgent: req.headers['user-agent'] || ""
-        });
-
-        // Cap to 10 logs per user: delete older logs beyond the top 10
-        if (user.loginHistory.length > 10) {
-            user.loginHistory = user.loginHistory.slice(0, 10);
-        }
-
-        user.isOnline = true;
-        user.lastSeene = Date.now();
-
-        await user.save();
-
-        // send responses
-        res.status(201).json({
-            success:true,
-            message:"Login Successfull",
-            token:generateToken(user._id),
-            user:{
-                id:user._id,
-                username:user.username,
-                email:user.email,
-                role:user.role,
-                avatar:user.avatar,
-                title:user.title
-            }
-        });
-        
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required"
+      });
     }
-    catch(error){
-        res.status(500).json({
-            success:false,
-            message:"Login failed"
-        });
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Email not exist"
+      });
     }
+
+    if (user.isSuspended) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been suspended by an administrator."
+      });
+    }
+
+    //compare password
+    const isMatched = await bcrypt.compare(password, user.password);
+    if (!isMatched) {
+      return res.status(401).json({
+        success: false,
+        message: "Password does not match"
+      });
+    }
+
+    user = await ensureUserIdentity(user);
+
+    // Close any dangling open sessions for this user
+    if (user.loginHistory && Array.isArray(user.loginHistory)) {
+      user.loginHistory.forEach(log => {
+        if (log.logoutTime === null) {
+          log.logoutTime = new Date();
+        }
+      });
+    } else {
+      user.loginHistory = [];
+    }
+
+    // Create new LoginLog entry inside user object
+    let clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || "";
+    if (clientIp.startsWith("::ffff:")) {
+      clientIp = clientIp.replace("::ffff:", "");
+    }
+    if (clientIp === "::1") {
+      clientIp = "127.0.0.1";
+    }
+    user.loginHistory.unshift({
+      loginTime: new Date(),
+      logoutTime: null,
+      ipAddress: clientIp,
+      userAgent: req.headers['user-agent'] || ""
+    });
+
+    // Cap to 10 logs per user: delete older logs beyond the top 10
+    if (user.loginHistory.length > 10) {
+      user.loginHistory = user.loginHistory.slice(0, 10);
+    }
+
+    user.isOnline = true;
+    user.lastSeene = Date.now();
+
+    await user.save();
+
+    // send responses
+    res.status(201).json({
+      success: true,
+      message: "Login Successfull",
+      token: generateToken(user._id),
+      user: {
+        id: user._id,
+        displayName: user.displayName || "Developer",
+        username: user.username || null,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        title: user.title
+      }
+    });
+
+  }
+  catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Login failed"
+    });
+  }
 }
 
-const my_profile=async(req,res)=>{
+const my_profile = async (req, res) => {
 
-    try{
-        if (req.user && req.user.isSuspended) {
-            return res.status(403).json({
-                success:false,
-                message:"Your account has been suspended by an administrator."
-            });
-        }
-
-        if (req.user) {
-            const followersCount = req.user.followers ? req.user.followers.length : 0;
-            const followingCount = req.user.following ? req.user.following.length : 0;
-            if (req.user.followersCount !== followersCount || req.user.followingCount !== followingCount) {
-                await User.updateOne(
-                    { _id: req.user._id },
-                    { followersCount, followingCount }
-                );
-                req.user.followersCount = followersCount;
-                req.user.followingCount = followingCount;
-            }
-        }
-
-        res.status(200).json({
-            success:true,
-            user:req.user
-        });
-
-    }catch(error){
-         res.status(500).json({
-            success:false,
-            message:Error.message
-         });
+  try {
+    if (req.user && req.user.isSuspended) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been suspended by an administrator."
+      });
     }
-}
 
-const totalUser=async(req,res)=>{
-try{
-    const userCount=await User.countDocuments({isOnline:true});
+    if (req.user) {
+      const followersCount = req.user.followers ? req.user.followers.length : 0;
+      const followingCount = req.user.following ? req.user.following.length : 0;
+      if (req.user.followersCount !== followersCount || req.user.followingCount !== followingCount) {
+        await User.updateOne(
+          { _id: req.user._id },
+          { followersCount, followingCount }
+        );
+        req.user.followersCount = followersCount;
+        req.user.followingCount = followingCount;
+      }
+    }
 
     res.status(200).json({
-        success:true,
-        userCount
-    })
+      success: true,
+      user: req.user
+    });
 
-}catch(error){
+  } catch (error) {
     res.status(500).json({
-        success:false,
-        message:error.message
+      success: false,
+      message: Error.message
+    });
+  }
+}
+
+const totalUser = async (req, res) => {
+  try {
+    const userCount = await User.countDocuments({ isOnline: true });
+
+    res.status(200).json({
+      success: true,
+      userCount
     })
-}
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
 }
 
-const logoutUser=async(req,res)=>{
+const logoutUser = async (req, res) => {
 
-    try{
-   
-         const user = await User.findById(req.user._id);
-         if (user) {
-             user.isOnline = false;
-             user.lastSeene = Date.now();
-             if (user.loginHistory && Array.isArray(user.loginHistory)) {
-                 const activeLog = user.loginHistory.find(log => log.logoutTime === null);
-                 if (activeLog) {
-                     activeLog.logoutTime = new Date();
-                 }
-             }
-             await user.save();
-         }
+  try {
+
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.isOnline = false;
+      user.lastSeene = Date.now();
+      if (user.loginHistory && Array.isArray(user.loginHistory)) {
+        const activeLog = user.loginHistory.find(log => log.logoutTime === null);
+        if (activeLog) {
+          activeLog.logoutTime = new Date();
+        }
+      }
+      await user.save();
+    }
 
     res.status(200).json({
       success: true,
@@ -255,7 +278,7 @@ const logoutUser=async(req,res)=>{
     });
 
 
-    }catch (error) {
+  } catch (error) {
 
     res.status(500).json({
       success: false,
@@ -370,14 +393,17 @@ const getPublicStats = async (req, res) => {
 const getPublicDevelopers = async (req, res) => {
   try {
     const users = await User.find({ isSuspended: { $ne: true } })
-      .select('username avatar title bio programmingLanguages status executionsCount followersCount')
+      .select('displayName username avatar title bio programmingLanguages status executionsCount followersCount')
       .sort({ createdAt: -1 })
       .limit(22)
       .lean();
 
     res.status(200).json({
       success: true,
-      users
+      users: users.map(u => ({
+        ...u,
+        displayName: u.displayName || u.username || "Developer"
+      }))
     });
   } catch (error) {
     res.status(500).json({
@@ -390,13 +416,14 @@ const getPublicDevelopers = async (req, res) => {
 const getPublicUserProfile = async (req, res) => {
   try {
     const { username } = req.params;
+    const cleanHandle = username.toLowerCase().trim();
     const isObjId = mongoose.Types.ObjectId.isValid(username);
-    const query = isObjId 
-      ? { $or: [{ username: username }, { _id: username }] } 
-      : { username: username };
+    const query = isObjId
+      ? { $or: [{ username: cleanHandle }, { _id: username }] }
+      : { username: cleanHandle };
 
     const userObj = await User.findOne(query)
-      .select('username avatar title bio programmingLanguages status executionsCount followersCount followingCount location codingHours reputationScore contributionScore developerLevel projectsShared')
+      .select('displayName username avatar title bio programmingLanguages status executionsCount followersCount followingCount location codingHours reputationScore contributionScore developerLevel projectsShared')
       .lean();
 
     if (!userObj) {
@@ -408,7 +435,10 @@ const getPublicUserProfile = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      user: userObj
+      user: {
+        ...userObj,
+        displayName: userObj.displayName || userObj.username || "Developer"
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -444,16 +474,9 @@ const googleLogin = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Create new user (Google signup)
-      let username = (name || "user").replace(/\s+/g, "_").toLowerCase();
-      // Check if username already exists, if so append a random number
-      const existingUsername = await User.findOne({ username });
-      if (existingUsername) {
-        username = `${username}_${Math.floor(100 + Math.random() * 900)}`;
-      }
-
       user = await User.create({
-        username,
+        displayName: name || "Developer",
+        username: null,
         email,
         googleId,
         avatar: picture || "",
@@ -478,6 +501,8 @@ const googleLogin = async (req, res) => {
       }
     }
 
+    user = await ensureUserIdentity(user);
+
     if (user.isSuspended) {
       return res.status(403).json({
         success: false,
@@ -487,33 +512,33 @@ const googleLogin = async (req, res) => {
 
     // Close any dangling open sessions for this user
     if (user.loginHistory && Array.isArray(user.loginHistory)) {
-        user.loginHistory.forEach(log => {
-            if (log.logoutTime === null) {
-                log.logoutTime = new Date();
-            }
-        });
+      user.loginHistory.forEach(log => {
+        if (log.logoutTime === null) {
+          log.logoutTime = new Date();
+        }
+      });
     } else {
-        user.loginHistory = [];
+      user.loginHistory = [];
     }
 
     // Create new LoginLog entry inside user object
     let clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || "";
     if (clientIp.startsWith("::ffff:")) {
-        clientIp = clientIp.replace("::ffff:", "");
+      clientIp = clientIp.replace("::ffff:", "");
     }
     if (clientIp === "::1") {
-        clientIp = "127.0.0.1";
+      clientIp = "127.0.0.1";
     }
     user.loginHistory.unshift({
-        loginTime: new Date(),
-        logoutTime: null,
-        ipAddress: clientIp,
-        userAgent: req.headers['user-agent'] || ""
+      loginTime: new Date(),
+      logoutTime: null,
+      ipAddress: clientIp,
+      userAgent: req.headers['user-agent'] || ""
     });
 
     // Cap to 10 logs per user: delete older logs beyond the top 10
     if (user.loginHistory.length > 10) {
-        user.loginHistory = user.loginHistory.slice(0, 10);
+      user.loginHistory = user.loginHistory.slice(0, 10);
     }
 
     user.isOnline = true;
@@ -526,7 +551,8 @@ const googleLogin = async (req, res) => {
       token: generateToken(user._id),
       user: {
         id: user._id,
-        username: user.username,
+        displayName: user.displayName || "Developer",
+        username: user.username || null,
         email: user.email,
         role: user.role,
         avatar: user.avatar,
@@ -678,18 +704,18 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports={
-    registerUser,
-    loginUser,
-    my_profile,
-    totalUser,
-    logoutUser,
-    changePassword,
-    getPublicStats,
-    getPublicDevelopers,
-    getPublicUserProfile,
-    googleLogin,
-    getGoogleConfig,
-    forgotPassword,
-    resetPassword
+module.exports = {
+  registerUser,
+  loginUser,
+  my_profile,
+  totalUser,
+  logoutUser,
+  changePassword,
+  getPublicStats,
+  getPublicDevelopers,
+  getPublicUserProfile,
+  googleLogin,
+  getGoogleConfig,
+  forgotPassword,
+  resetPassword
 }

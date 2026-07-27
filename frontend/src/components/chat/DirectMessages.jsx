@@ -1404,7 +1404,14 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                 </div>
 
                 <div className="user-status-text">
-                  <span className="chat-partner-name">{activeChat.isGroup ? activeChat.name : activeChat.username}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span className="chat-partner-name">{activeChat.isGroup ? activeChat.name : (activeChat.displayName || activeChat.username)}</span>
+                    {!activeChat.isGroup && activeChat.username && (
+                      <span className="chat-partner-handle" style={{ fontSize: "0.78rem", color: "var(--ce-accent)", fontFamily: "monospace" }}>
+                        @{activeChat.username}
+                      </span>
+                    )}
+                  </div>
                   <span className={`status-label ${activeChat.isOnline || activeChat.isGroup ? "online" : ""}`}>
                     {activeChat.isGroup ? (activeChat.bio || "Group Channel") : activeChat.isOnline ? "Online" : "Offline"}
                   </span>
@@ -1664,8 +1671,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
                               <div className={`message-bubble ${msg.fileType === 'call' ? 'call-history-bubble' : ''}`}>
                                 {activeChat.isGroup && !isMe && (
-                                  <div className="group-message-sender-name">
-                                    {msg.sender?.username || "Developer"}
+                                  <div className="group-message-sender-name" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <span>{msg.sender?.displayName || msg.sender?.username || "Developer"}</span>
+                                    {msg.sender?.username && (
+                                      <span style={{ fontSize: "10.5px", color: "var(--ce-accent)", opacity: 0.85, fontFamily: "monospace" }}>
+                                        @{msg.sender.username}
+                                      </span>
+                                    )}
                                   </div>
                                 )}
 
