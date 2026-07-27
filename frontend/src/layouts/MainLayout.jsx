@@ -864,15 +864,11 @@ export default function MainLayout({
   };
 
   const getActiveItem = () => {
-    if (activeTab) return activeTab;
     const searchParams = new URLSearchParams(location.search);
-    const tab = searchParams.get("tab");
-    if (location.pathname === "/dashboard") {
-      if (tab === "rooms") {
-        return "explore-rooms";
-      }
-      if (tab) return tab;
-      return "dashboard";
+    const rawTab = activeTab || searchParams.get("tab") || "";
+
+    if (location.pathname.startsWith("/u/") || location.pathname.startsWith("/profile") || rawTab === "profile") {
+      return "profile";
     }
     if (location.pathname.startsWith("/editor")) {
       return "workspace";
@@ -880,9 +876,20 @@ export default function MainLayout({
     if (location.pathname === "/admin") {
       return "admin";
     }
-    if (location.pathname.startsWith("/u/") || location.pathname.startsWith("/profile")) {
-      return "profile";
+    if (rawTab === "rooms" || rawTab === "explore-rooms") {
+      return "explore-rooms";
     }
+    if (rawTab === "liverooms") return "liverooms";
+    if (rawTab === "feed") return "feed";
+    if (rawTab === "following") return "following";
+    if (rawTab === "planner") return "planner";
+    if (rawTab === "messages") return "messages";
+    if (rawTab === "notifications") return "notifications";
+    if (rawTab === "cp") return "cp";
+    if (rawTab === "leaderboard") return "leaderboard";
+    if (rawTab === "achievements") return "achievements";
+    if (rawTab === "helpdesk") return "helpdesk";
+
     return "dashboard";
   };
 

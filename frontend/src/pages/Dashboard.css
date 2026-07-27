@@ -783,32 +783,44 @@
 }
 
 .suggestion-follow-btn {
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: var(--border-radius-sm);
-  background-color: var(--ce-primary-glow);
-  color: var(--ce-primary);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  cursor: pointer;
-  transition: all var(--transition-fast);
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 5px 14px !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4) !important;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .suggestion-follow-btn:hover {
-  background-color: var(--ce-primary);
-  color: #fff;
+  background: linear-gradient(135deg, #9333ea 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(147, 51, 234, 0.6) !important;
+  transform: translateY(-1.5px) scale(1.02) !important;
 }
 
 .suggestion-follow-btn.following {
-  background-color: var(--ce-hover);
-  color: var(--ce-text-muted);
-  border-color: var(--ce-border);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.18)) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(52, 211, 153, 0.5) !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2) !important;
 }
 
 .suggestion-follow-btn.following:hover {
-  background-color: rgba(239, 68, 68, 0.08);
-  color: var(--ce-danger);
-  border-color: rgba(239, 68, 68, 0.2);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(5, 150, 105, 0.28)) !important;
+  color: #34d399 !important;
+  border-color: rgba(52, 211, 153, 0.7) !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35) !important;
+  transform: translateY(-1px) scale(1.02) !important;
 }
 
 /* Sponsored Promotions Banner */
