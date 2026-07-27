@@ -1969,9 +1969,12 @@ function Dashboard() {
   const [bookmarkSearch, setBookmarkSearch] = useState("");
   const [followingSearch, setFollowingSearch] = useState("");
   const filteredFollowing = useMemo(() => {
-    return followingList.filter(dev => {
-      const term = followingSearch.toLowerCase();
-      return dev.username.toLowerCase().includes(term) || (dev.bio && dev.bio.toLowerCase().includes(term));
+    return (followingList || []).filter(dev => {
+      if (!dev) return false;
+      const term = (followingSearch || "").toLowerCase();
+      const username = (dev.username || "").toLowerCase();
+      const bio = (dev.bio || "").toLowerCase();
+      return username.includes(term) || bio.includes(term);
     });
   }, [followingList, followingSearch]);
   const [showAllActiveMyRoomsTab, setShowAllActiveMyRoomsTab] = useState(false);
@@ -5128,8 +5131,11 @@ function Dashboard() {
                 {(() => {
                   const owned = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
                   const filteredOwned = owned.filter(room => {
-                    const term = myRoomsTabSearch.toLowerCase();
-                    return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                    if (!room) return false;
+                    const term = (myRoomsTabSearch || "").toLowerCase();
+                    const title = (room.title || "").toLowerCase();
+                    const roomId = (room.roomId || "").toLowerCase();
+                    return title.includes(term) || roomId.includes(term);
                   });
 
                   if (owned.length === 0) {
@@ -5284,9 +5290,12 @@ function Dashboard() {
                     </button>
                   </div>
                 ) : (() => {
-                  const filteredLive = liveRooms.filter(room => {
-                    const term = publicRoomsSearch.toLowerCase();
-                    return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                  const filteredLive = (liveRooms || []).filter(room => {
+                    if (!room) return false;
+                    const term = (publicRoomsSearch || "").toLowerCase();
+                    const title = (room.title || "").toLowerCase();
+                    const roomId = (room.roomId || "").toLowerCase();
+                    return title.includes(term) || roomId.includes(term);
                   });
 
                   if (filteredLive.length === 0) {
@@ -5392,9 +5401,12 @@ function Dashboard() {
                     </button>
                   </div>
                 ) : (() => {
-                  const filteredBookmarks = savedRooms.filter(room => {
-                    const term = bookmarkSearch.toLowerCase();
-                    return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                  const filteredBookmarks = (savedRooms || []).filter(room => {
+                    if (!room) return false;
+                    const term = (bookmarkSearch || "").toLowerCase();
+                    const title = (room.title || "").toLowerCase();
+                    const roomId = (room.roomId || "").toLowerCase();
+                    return title.includes(term) || roomId.includes(term);
                   });
 
                   if (filteredBookmarks.length === 0) {
