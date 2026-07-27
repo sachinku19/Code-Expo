@@ -762,6 +762,32 @@
   text-align: right;
 }
 
+/* Ticks & Read Status Indicators */
+.tick-container {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.sent-tick {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.read-tick {
+  color: #38bdf8 !important;
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.6));
+}
+
+.light .sent-tick {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.light .read-tick {
+  color: #0284c7 !important;
+  filter: none;
+}
+
 /* Typing bubble style */
 .typing-bubble {
   display: flex;

@@ -461,24 +461,34 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     const handleReceiveReadReceipt = ({ readerId, senderId }) => {
       const activeChatVal = activeChatRef.current;
       const currentUserIdVal = currentUserIdRef.current;
-      if (
-        activeChatVal &&
-        String(readerId) === String(activeChatVal._id) &&
-        String(senderId) === String(currentUserIdVal)
-      ) {
-        setMessages((prev) => {
-          const next = prev.map((m) =>
-            String(m.sender?._id || m.sender) === String(currentUserIdVal)
-              ? { ...m, isRead: true }
-              : m
-          );
-          if (activeChatVal) {
-            const key = activeChatVal._id || activeChatVal.id;
-            chatHistoryCacheRef.current[key] = next;
+      
+      setMessages((prev) => {
+        const next = prev.map((m) => {
+          const mSender = String(m.sender?._id || m.sender);
+          if (mSender === String(currentUserIdVal) || String(senderId) === String(currentUserIdVal)) {
+            return { ...m, isRead: true };
           }
-          return next;
+          return m;
         });
-      }
+        if (activeChatVal) {
+          const key = activeChatVal._id || activeChatVal.id;
+          chatHistoryCacheRef.current[key] = next;
+        }
+        return next;
+      });
+
+      setConversations((prev) =>
+        prev.map((c) => {
+          const targetId = c.isGroup ? c.group?._id : c.user?._id;
+          if (String(targetId) === String(readerId) || String(c._id) === String(readerId)) {
+            return {
+              ...c,
+              lastMessage: c.lastMessage ? { ...c.lastMessage, isRead: true } : null
+            };
+          }
+          return c;
+        })
+      );
     };
 
     // Presence listener: update online statuses in real-time!
@@ -833,7 +843,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   // Handle send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if ((!newMessageText.trim() && !attachment) || !activeChat || isSending) return;
+    if ((!newMessageText.trim() && !attachment) || !activeChat) return;
 
     const messageToSend = newMessageText.trim();
     setNewMessageText("");
@@ -845,8 +855,9 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     socket.emit("dm:stop-typing", { recipientId: activeChat._id });
     setIsTyping(false);
 
-    // Create optimistic message for regular text messages
+    // Create optimistic message for instant UI responsiveness (<1ms)
     const tempId = "temp_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    const nowIso = new Date().toISOString();
     let tempMessage = null;
 
     if (!attachment && messageToSend) {
@@ -859,10 +870,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         },
         recipient: activeChat._id,
         message: messageToSend,
-        createdAt: new Date().toISOString(),
+        createdAt: nowIso,
+        isRead: false,
         isTemp: true
       };
 
+      // 1. Instantly update active messages state
       setMessages((prev) => {
         const next = [...prev, tempMessage];
         if (activeChat) {
@@ -872,18 +885,38 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         return next;
       });
 
+      // 2. Instantly update left conversations list in memory (no HTTP delay!)
+      setConversations((prev) => {
+        const key = activeChat._id || activeChat.id;
+        const existsIndex = prev.findIndex((c) => String(c._id) === String(key) || String(c.user?._id) === String(key) || String(c.group?._id) === String(key));
+        const updatedMsg = {
+          text: messageToSend,
+          senderId: user?._id || user?.id,
+          createdAt: nowIso,
+          isRead: false
+        };
+
+        if (existsIndex >= 0) {
+          const updatedConv = { ...prev[existsIndex], lastMessage: updatedMsg };
+          const newList = [...prev];
+          newList.splice(existsIndex, 1);
+          return [updatedConv, ...newList];
+        }
+        return prev;
+      });
+
       // Scroll to bottom immediately
       setTimeout(() => {
         if (chatEndRef.current) {
           chatEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
-      }, 50);
+      }, 10);
     }
 
-    // Actual API Chat Handling
+    // Background API Chat Handling (Non-blocking)
     try {
-      setIsSending(true);
       if (attachment) {
+        setIsSending(true);
         const formData = new FormData();
         formData.append("recipientId", activeChat._id);
         formData.append("file", attachment.file);
@@ -902,13 +935,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
             return next;
           });
           handleRemoveAttachment();
-          fetchConversations();
         }
       } else {
         const res = await sendDirectMessage(activeChat._id, messageToSend);
         if (res.success) {
           setMessages((prev) => {
-            // Replace the optimistic message with the resolved one
+            // Replace the optimistic message with the resolved server message
             const filtered = prev.filter((m) => m._id !== tempId);
             if (filtered.some((m) => m._id === res.message._id)) return filtered;
             const next = [...filtered, res.message];
@@ -918,9 +950,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
             }
             return next;
           });
-          fetchConversations();
         } else {
-          // Remove optimistic message if api call didn't succeed
+          // Remove optimistic message if API failed
           if (tempMessage) {
             setMessages((prev) => prev.filter((m) => m._id !== tempId));
           }
@@ -928,7 +959,6 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       }
     } catch (err) {
       console.error("Error sending message:", err);
-      // Remove optimistic message on error
       if (tempMessage) {
         setMessages((prev) => prev.filter((m) => m._id !== tempId));
       }
