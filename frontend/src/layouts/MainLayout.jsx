@@ -876,6 +876,12 @@ export default function MainLayout({
     if (location.pathname === "/admin") {
       return "admin";
     }
+    if (rawTab === "settings") {
+      return "settings";
+    }
+    if (rawTab === "history" || rawTab === "whiteboards" || rawTab === "bookmarks" || rawTab === "trust-safety") {
+      return rawTab;
+    }
     if (rawTab === "rooms" || rawTab === "explore-rooms") {
       return "explore-rooms";
     }
@@ -890,7 +896,11 @@ export default function MainLayout({
     if (rawTab === "achievements") return "achievements";
     if (rawTab === "helpdesk") return "helpdesk";
 
-    return "dashboard";
+    if (location.pathname === "/dashboard" && (!rawTab || rawTab === "dashboard")) {
+      return "dashboard";
+    }
+
+    return rawTab || "none";
   };
 
   const activeItem = localActiveItem || getActiveItem();
