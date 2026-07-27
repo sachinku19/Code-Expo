@@ -33,7 +33,7 @@ function CTA({ onWatchDemo }) {
           </p>
 
           <div className="cta-buttons">
-            <button className="cta-primary" onClick={() => navigate("/register")}>
+            <button className="cta-primary" onClick={() => navigate((localStorage.getItem("token") || localStorage.getItem("user")) ? "/dashboard" : "/register")}>
               Create Workspace
               <ArrowRight size={18} />
             </button>

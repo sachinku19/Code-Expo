@@ -8,7 +8,8 @@ export default function MobileCTA({ user }) {
   const navigate = useNavigate();
 
   const handleAction = () => {
-    if (user) {
+    const hasToken = localStorage.getItem("token") || localStorage.getItem("user");
+    if (user || hasToken) {
       navigate(user?.role === "admin" ? "/admin" : "/dashboard");
     } else {
       navigate("/register");

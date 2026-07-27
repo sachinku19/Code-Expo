@@ -1005,7 +1005,7 @@ function Home() {
                 <button className="ce-btn ce-btn-secondary" onClick={() => navigate("/login")}>
                   Sign In
                 </button>
-                <button className="ce-btn ce-btn-primary" onClick={() => navigate("/register")}>
+                <button className="ce-btn ce-btn-primary" onClick={() => navigate((user || localStorage.getItem("token")) ? "/dashboard" : "/register")}>
                   Get Started
                 </button>
               </>
@@ -2405,7 +2405,7 @@ yDoc.getText('monaco')
             <p className="ce-cta-desc">
               Spin up a secure multiplayer coding environment and connect with other developers instantly.
             </p>
-            <button className="ce-btn ce-btn-primary" onClick={() => navigate("/register")}>
+            <button className="ce-btn ce-btn-primary" onClick={() => navigate((user || localStorage.getItem("token")) ? "/dashboard" : "/register")}>
               Get Started for Free
               <ArrowRight size={16} />
             </button>
