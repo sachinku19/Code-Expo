@@ -105,6 +105,16 @@
   animation: fadeInDashboard 0.4s ease-out;
 }
 
+.ce-dashboard-container.messages-layout-active {
+  padding: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  width: 100% !important;
+  height: calc(100vh - 56px) !important;
+  min-height: calc(100vh - 56px) !important;
+  overflow: hidden !important;
+}
+
 @keyframes fadeInDashboard {
   from {
     opacity: 0;

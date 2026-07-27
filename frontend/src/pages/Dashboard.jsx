@@ -4296,7 +4296,7 @@ function Dashboard() {
       clearNotifications={handleMarkAllNotificationsRead}
       onSearchSelect={handleSearchSelect}
     >
-      <div className={`ce-dashboard-container ${activeSection === "feed" ? "feed-layout-active" : ""}`}>
+      <div className={`ce-dashboard-container ${activeSection === "feed" ? "feed-layout-active" : ""} ${activeSection === "messages" ? "messages-layout-active" : ""}`}>
         <AnimatePresence mode="wait">
           {activeSection === "cp" && (
             <motion.div

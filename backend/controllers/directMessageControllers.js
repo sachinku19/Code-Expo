@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const DirectMessage = require("../models/DirectMessage");
 const User = require("../models/User");
 const GroupChat = require("../models/GroupChat");
@@ -185,12 +186,14 @@ exports.getChatHistory = async (req, res) => {
   try {
     const myId = req.user._id;
     const { userId } = req.params;
+    const cleanUserId = String(userId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanUserId);
 
-    const group = await GroupChat.findById(userId);
+    const group = isObjId ? await GroupChat.findById(cleanUserId) : null;
 
     if (group) {
       // Return group history
-      const messages = await DirectMessage.find({ groupChat: userId })
+      const messages = await DirectMessage.find({ groupChat: group._id })
         .sort({ createdAt: 1 })
         .populate("sender", "username avatar");
 
@@ -200,26 +203,38 @@ exports.getChatHistory = async (req, res) => {
       });
     }
 
+    const targetUser = await User.findOne(
+      isObjId 
+        ? { $or: [{ _id: cleanUserId }, { username: cleanUserId.toLowerCase() }] } 
+        : { username: cleanUserId.toLowerCase() }
+    );
+
+    if (!targetUser) {
+      return res.status(200).json({ success: true, messages: [] });
+    }
+
+    const realTargetId = targetUser._id;
+
     // Mark messages sent by target user to me as read
     const updated = await DirectMessage.updateMany(
-      { sender: userId, recipient: myId, isRead: false, groupChat: { $exists: false } },
+      { sender: realTargetId, recipient: myId, isRead: false, groupChat: { $exists: false } },
       { isRead: true }
     );
 
     if (updated.modifiedCount > 0) {
       const io = req.app.get("io");
       if (io) {
-        io.to(String(userId)).emit("dm:read", {
+        io.to(String(realTargetId)).emit("dm:read", {
           readerId: String(myId),
-          senderId: String(userId)
+          senderId: String(realTargetId)
         });
       }
     }
 
     const messages = await DirectMessage.find({
       $or: [
-        { sender: myId, recipient: userId },
-        { sender: userId, recipient: myId }
+        { sender: myId, recipient: realTargetId },
+        { sender: realTargetId, recipient: myId }
       ],
       groupChat: { $exists: false }
     })
@@ -232,6 +247,7 @@ exports.getChatHistory = async (req, res) => {
       messages
     });
   } catch (error) {
+    console.error("Error in getChatHistory:", error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -252,12 +268,15 @@ exports.sendDirectMessage = async (req, res) => {
       });
     }
 
-    const group = await GroupChat.findById(recipientId);
+    const cleanRecipient = String(recipientId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanRecipient);
+
+    const group = isObjId ? await GroupChat.findById(cleanRecipient) : null;
 
     if (group) {
       const newMessage = await DirectMessage.create({
         sender: myId,
-        groupChat: recipientId,
+        groupChat: group._id,
         message: message || "",
         fileType,
         fileUrl,
@@ -269,7 +288,7 @@ exports.sendDirectMessage = async (req, res) => {
 
       const io = req.app.get("io");
       if (io) {
-        io.to(String(recipientId)).emit("dm:receive", populated);
+        io.to(String(group._id)).emit("dm:receive", populated);
       }
 
       return res.status(200).json({
@@ -279,8 +298,6 @@ exports.sendDirectMessage = async (req, res) => {
     }
 
     // Check if either user is blocked (1-to-1 DMs only)
-    const cleanRecipient = String(recipientId).trim();
-    const isObjId = mongoose.Types.ObjectId.isValid(cleanRecipient);
     const targetUser = await User.findOne(
       isObjId 
         ? { $or: [{ _id: cleanRecipient }, { username: cleanRecipient.toLowerCase() }] } 
@@ -294,7 +311,7 @@ exports.sendDirectMessage = async (req, res) => {
     const currentUser = await User.findById(myId);
 
     const isBlockedByTarget = (targetUser.blockedUsers || []).map(id => String(id)).includes(String(myId));
-    const isBlockingTarget = (currentUser.blockedUsers || []).map(id => String(id)).includes(String(recipientId));
+    const isBlockingTarget = (currentUser.blockedUsers || []).map(id => String(id)).includes(String(realRecipientId));
 
     if (isBlockedByTarget || isBlockingTarget) {
       return res.status(403).json({
@@ -307,7 +324,7 @@ exports.sendDirectMessage = async (req, res) => {
 
     const newMessage = await DirectMessage.create({
       sender: myId,
-      recipient: recipientId,
+      recipient: realRecipientId,
       message: message || "",
       fileType,
       fileUrl,
@@ -320,7 +337,7 @@ exports.sendDirectMessage = async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.to(String(recipientId)).emit("dm:receive", populated);
+      io.to(String(realRecipientId)).emit("dm:receive", populated);
       io.to(String(myId)).emit("dm:receive", populated);
     }
 
@@ -329,6 +346,7 @@ exports.sendDirectMessage = async (req, res) => {
       message: populated
     });
   } catch (error) {
+    console.error("Error in sendDirectMessage:", error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -357,18 +375,27 @@ exports.sendDirectMessageAttachment = async (req, res) => {
       });
     }
 
-    const group = await GroupChat.findById(recipientId);
+    const cleanRecipient = String(recipientId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanRecipient);
+
+    const group = isObjId ? await GroupChat.findById(cleanRecipient) : null;
+    let realRecipientId = null;
 
     if (!group) {
-      const targetUser = await User.findById(recipientId);
+      const targetUser = await User.findOne(
+        isObjId 
+          ? { $or: [{ _id: cleanRecipient }, { username: cleanRecipient.toLowerCase() }] } 
+          : { username: cleanRecipient.toLowerCase() }
+      );
       if (!targetUser) {
         return res.status(404).json({ success: false, message: "Recipient user not found" });
       }
+      realRecipientId = targetUser._id;
 
       const currentUser = await User.findById(myId);
 
       const isBlockedByTarget = (targetUser.blockedUsers || []).map(id => String(id)).includes(String(myId));
-      const isBlockingTarget = (currentUser.blockedUsers || []).map(id => String(id)).includes(String(recipientId));
+      const isBlockingTarget = (currentUser.blockedUsers || []).map(id => String(id)).includes(String(realRecipientId));
 
       if (isBlockedByTarget || isBlockingTarget) {
         return res.status(403).json({
@@ -411,7 +438,7 @@ exports.sendDirectMessageAttachment = async (req, res) => {
     if (group) {
       newMessage = await DirectMessage.create({
         sender: myId,
-        groupChat: recipientId,
+        groupChat: group._id,
         message: message || "",
         fileUrl,
         fileMetadata: uploadedMedia,
@@ -424,12 +451,12 @@ exports.sendDirectMessageAttachment = async (req, res) => {
 
       const io = req.app.get("io");
       if (io) {
-        io.to(String(recipientId)).emit("dm:receive", populated);
+        io.to(String(group._id)).emit("dm:receive", populated);
       }
     } else {
       newMessage = await DirectMessage.create({
         sender: myId,
-        recipient: recipientId,
+        recipient: realRecipientId,
         message: message || "",
         fileUrl,
         fileMetadata: uploadedMedia,
@@ -443,7 +470,7 @@ exports.sendDirectMessageAttachment = async (req, res) => {
 
       const io = req.app.get("io");
       if (io) {
-        io.to(String(recipientId)).emit("dm:receive", populated);
+        io.to(String(realRecipientId)).emit("dm:receive", populated);
         io.to(String(myId)).emit("dm:receive", populated);
       }
     }

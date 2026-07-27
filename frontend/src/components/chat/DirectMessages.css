@@ -1,20 +1,22 @@
-/* Premium Instagram Direct Style Chat Dashboard Module */
+/* CodeExpo Developer Theme Chat Dashboard Module */
 
 .ce-direct-messages-layout {
-  --ce-primary: #00a884;         /* WhatsApp Emerald Accent */
-  --ce-primary-hover: #008f72;   /* WhatsApp Emerald Hover */
-  --ce-primary-glow: rgba(0, 168, 132, 0.12);
+  --ce-primary: #8b5cf6;
+  --ce-primary-hover: #7c3aed;
+  --ce-primary-glow: rgba(139, 92, 246, 0.2);
   display: flex;
-  height: calc(100vh - 120px);
-  min-height: 550px;
-  background: #0b141a;           /* WhatsApp Web Background */
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--border-radius, 16px);
+  height: calc(100vh - 56px) !important;
+  min-height: calc(100vh - 56px) !important;
+  width: 100% !important;
+  background: #090a0f;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
   overflow: hidden;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: none !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity;
 }
 
@@ -22,11 +24,11 @@
 .ce-direct-messages-layout .dm-conversations-panel {
   width: 340px;
   min-width: 340px;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
-  background: #111b21 !important; /* WhatsApp Web Sidebar Background */
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #0f1017 !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: width, transform, opacity;
 }
 
@@ -34,8 +36,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: rgba(15, 15, 25, 0.2);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(13, 14, 22, 0.95);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: width, transform, opacity;
 }
 
@@ -116,27 +118,27 @@
 
 /* Purple New Message Button */
 .new-message-purple-btn {
-  background: #00a884 !important;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
   color: #ffffff;
   border: none;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 20px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 12px rgba(0, 168, 132, 0.25) !important;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35) !important;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .new-message-purple-btn:hover {
-  background: #008f72 !important;
+  background: linear-gradient(135deg, #9333ea 0%, #4f46e5 100%) !important;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0, 168, 132, 0.4) !important;
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.55) !important;
 }
 
 .new-message-purple-btn:active {
@@ -255,10 +257,10 @@
   top: 3px;
   bottom: 3px;
   width: calc(25% - 6px);
-  background: #202c33 !important; /* WhatsApp Web Pill Background */
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(99, 102, 241, 0.2)) !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
   border-radius: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
   transition: left 0.3s cubic-bezier(0.25, 1, 0.5, 1);
   pointer-events: none;
   z-index: 1;
@@ -410,8 +412,9 @@
 }
 
 .conversation-item.selected {
-  background-color: #2a3942 !important; /* WhatsApp Web Selected chat background */
-  border-color: transparent !important;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.16), rgba(99, 102, 241, 0.08)) !important;
+  border-left: 3px solid #8b5cf6 !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
 }
 
 .avatar-wrapper {
@@ -441,13 +444,13 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #2a3942;
-  color: #00a884; /* WhatsApp brand color for initials */
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
   display: grid;
   place-items: center;
   font-weight: 800;
   font-size: 1.15rem;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(139, 92, 246, 0.3);
 }
 
 .online-dot-badge {
@@ -3787,10 +3790,11 @@
 
 /* Group Message Sender annotation label */
 .group-message-sender-name {
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: rgba(168, 85, 247, 0.85);
-  margin-bottom: 2px;
+  color: #c084fc !important;
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
 }
 
 /* Image attachment styling */
@@ -3843,6 +3847,26 @@
 }
 
 /* --- Direct Messages Light Mode Refinements --- */
+.light .ce-direct-messages-layout {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+}
+.light .ce-direct-messages-layout .dm-conversations-panel {
+  background: #f8fafc !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+.light .ce-direct-messages-layout .dm-chat-panel {
+  background: #ffffff !important;
+}
+.light .conversations-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+.light .conversations-header .panel-title {
+  background: linear-gradient(135deg, #0f172a 0%, #334155 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
 .light .conversations-search-input {
   background: rgba(0, 0, 0, 0.02) !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
@@ -3870,9 +3894,34 @@
   color: #0f172a !important;
 }
 .light .conversations-subtab-bg-slide {
-  background: #f0f2f5 !important;
+  background: rgba(139, 92, 246, 0.12) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  box-shadow: 0 1px 4px rgba(139, 92, 246, 0.1) !important;
+}
+.light .conversation-item:hover {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+.light .conversation-item.selected {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.12), rgba(99, 102, 241, 0.06)) !important;
+  border-left: 3px solid #8b5cf6 !important;
+}
+.light .chat-input-form {
+  background: #f8fafc !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+.light .message-textarea {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+}
+.light .message-textarea:focus {
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2) !important;
+}
+.light .message-bubble-wrapper.received .message-bubble {
+  background: #f1f5f9 !important;
   border: 1px solid rgba(0, 0, 0, 0.06) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  color: #0f172a !important;
 }
 .light .conversation-item.unread .last-message,
 .light .conversation-item.unread .username {
