@@ -131,7 +131,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  
+
   // Group creation states
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -146,7 +146,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const [codeLang, setCodeLang] = useState("javascript");
 
   // Typing indicator states
-  const [isTyping, setIsTyping] = useState(false); 
+  const [isTyping, setIsTyping] = useState(false);
   const [partnerTypers, setPartnerTypers] = useState([]); // array of { userId, username, avatar }
 
   // Refs
@@ -161,7 +161,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const justLoadedHistoryRef = useRef(false);
 
   // Attachment states
-  const [attachment, setAttachment] = useState(null); 
+  const [attachment, setAttachment] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
   const activeChatRef = useRef(activeChat);
@@ -208,7 +208,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     setShowChatMenu((prev) => (prev ? false : prev));
     setShowGroupInfoPanel((prev) => (prev ? false : prev));
     setPartnerTypers((prev) => (prev.length > 0 ? [] : prev));
-    
+
     // Clear all typing timeouts
     Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
     typingTimeoutsRef.current = {};
@@ -337,7 +337,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       if (res.success) {
         let list = res.conversations || [];
         const activeChatVal = activeChatRef.current;
-        
+
         if (activeChatVal) {
           list = list.map((c) => {
             const target = c.isGroup ? c.group : c.user;
@@ -360,11 +360,11 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   useEffect(() => {
     const handleReceiveMessage = (msg) => {
       const activeChatVal = activeChatRef.current;
-      
+
       const isMsgForCurrentGroup = msg.groupChat && activeChatVal?.isGroup && String(msg.groupChat) === String(activeChatVal._id);
       const isMsgForCurrentDirect = !msg.groupChat && activeChatVal && !activeChatVal.isGroup &&
         (String(msg.sender?._id || msg.sender) === String(activeChatVal._id) ||
-         String(msg.recipient?._id || msg.recipient) === String(activeChatVal._id));
+          String(msg.recipient?._id || msg.recipient) === String(activeChatVal._id));
 
       if (isMsgForCurrentGroup || isMsgForCurrentDirect) {
         if (String(msg.sender?._id || msg.sender) !== String(currentUserIdRef.current)) {
@@ -374,8 +374,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         }
 
         setMessages((prev) => {
-          const filtered = prev.filter((m) => 
-            m._id !== msg._id && 
+          const filtered = prev.filter((m) =>
+            m._id !== msg._id &&
             !(m.isTemp && String(m.sender?._id || m.sender) === String(msg.sender?._id || msg.sender) && m.message === msg.message)
           );
           if (filtered.some((m) => m._id === msg._id)) return filtered;
@@ -421,10 +421,10 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         setPartnerTypers((prev) => {
           const exists = prev.some((t) => String(t.userId) === String(senderId));
           if (exists) return prev;
-          
+
           const defaultUsername = activeChatVal.isGroup ? "Someone" : (activeChatVal.username || activeChatVal.name);
           const defaultAvatar = activeChatVal.isGroup ? "" : (activeChatVal.avatar || "");
-          
+
           return [
             ...prev,
             {
@@ -597,7 +597,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   useEffect(() => {
     if (activeChatId) {
       const isInitialLoad = justLoadedHistoryRef.current || prevChatIdRef.current !== activeChatId || prevMessagesCountRef.current === 0;
-      
+
       if (isInitialLoad) {
         scrollToBottom("auto");
         justLoadedHistoryRef.current = false;
@@ -714,7 +714,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         if (!confirmBlock) return;
         await blockUser(userId);
       }
-      
+
       // Update activeChat
       setActiveChat(prev => {
         if (prev && String(prev._id) === String(userId)) {
@@ -733,7 +733,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         }
         return c;
       }));
-      
+
       setShowChatMenu(false);
     } catch (err) {
       console.error("Error toggling block:", err);
@@ -777,10 +777,10 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
   const handleRemoveMemberSubmit = async (targetUserId, username) => {
     const isSelf = String(targetUserId) === String(currentUserId);
-    const confirmMsg = isSelf 
-      ? "Are you sure you want to leave this group?" 
+    const confirmMsg = isSelf
+      ? "Are you sure you want to leave this group?"
       : `Are you sure you want to remove @${username} from the group?`;
-      
+
     if (!window.confirm(confirmMsg)) return;
 
     try {
@@ -966,7 +966,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const handleInsertCode = () => {
     if (!codeText.trim()) return;
     const codeBlock = `\n\`\`\`${codeLang}\n${codeText}\n\`\`\`\n`;
-    
+
     const input = inputRef.current;
     if (!input) {
       setNewMessageText(prev => prev + codeBlock);
@@ -978,7 +978,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       const after = text.substring(end, text.length);
       setNewMessageText(before + codeBlock + after);
     }
-    
+
     setShowCodeModal(false);
     setCodeText("");
   };
@@ -1007,8 +1007,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           <div key={index} className="chat-message-code-block-wrapper" onClick={(e) => e.stopPropagation()}>
             <div className="code-block-header">
               <span className="code-block-lang-badge">{lang || "code"}</span>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigator.clipboard.writeText(content);
@@ -1096,7 +1096,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     setSelectedMembers([]);
     setGroupAvatar(null);
     setGroupAvatarPreview("");
-    
+
     try {
       setLoadingCandidates(true);
       const [followersRes, followingRes] = await Promise.all([
@@ -1117,7 +1117,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   };
 
   const handleToggleMember = (memberId) => {
-    setSelectedMembers(prev => 
+    setSelectedMembers(prev =>
       prev.includes(memberId)
         ? prev.filter(id => id !== memberId)
         : [...prev, memberId]
@@ -1146,7 +1146,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       alert("Please select at least one member to create a group!");
       return;
     }
-    
+
     try {
       setCreatingGroup(true);
       const formData = new FormData();
@@ -1156,7 +1156,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       if (groupAvatar) {
         formData.append("avatar", groupAvatar);
       }
-      
+
       const { createGroupChat } = await import("../../services/directMessageService");
       const res = await createGroupChat(formData);
       if (res.success) {
@@ -1178,7 +1178,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     return conversations.filter((conv) => {
       const chatPartner = conv.isGroup ? conv.group : conv.user;
       if (!chatPartner) return false;
-      
+
       const name = conv.isGroup ? chatPartner.name : chatPartner.username;
       const matchesSearch = name.toLowerCase().includes(convSearchQuery.toLowerCase());
       if (!matchesSearch) return false;
@@ -1213,7 +1213,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               </button>
             </div>
           </div>
-          
+
           {/* Search box with filter sliders */}
           <div className="conversations-search-row">
             <div className="conversations-search-container">
@@ -1270,11 +1270,11 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
             filteredConversations.map((conv) => {
               const chatPartner = conv.isGroup ? conv.group : conv.user;
               if (!chatPartner) return null;
-              
+
               const isSelected = activeChat && activeChat._id === chatPartner._id;
               const hasUnread = conv.unreadCount > 0;
               const partnerName = conv.isGroup ? chatPartner.name : chatPartner.username;
-              
+
               return (
                 <div
                   key={chatPartner._id}
@@ -1291,7 +1291,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     );
                   }}
                 >
-                  <div 
+                  <div
                     className="avatar-wrapper chat-list-avatar-clickable"
                     onClick={(e) => {
                       if (onViewProfile && !conv.isGroup) {
@@ -1319,7 +1319,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     )}
                     {!conv.isGroup && chatPartner.isOnline && <span className="online-dot-badge" />}
                   </div>
-                  
+
                   <div className="item-details">
                     <div className="details-top">
                       <span className="username">{partnerName}</span>
@@ -1344,7 +1344,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                       )}
                     </p>
                   </div>
-                  
+
                   {hasUnread && (
                     <div className="unread-count-badge">
                       {conv.unreadCount}
@@ -1363,16 +1363,16 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           <>
             {/* Chat header */}
             <div className="chat-header animate-fade-in">
-              <button 
-                type="button" 
-                className="chat-back-btn" 
+              <button
+                type="button"
+                className="chat-back-btn"
                 onClick={() => setActiveChat(null)}
                 title="Back to chats"
               >
                 <ArrowLeft size={18} />
               </button>
-              
-              <div 
+
+              <div
                 className="header-user-info active-chat-header-clickable"
                 onClick={() => {
                   if (activeChat.isGroup) {
@@ -1402,7 +1402,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                   )}
                   {activeChat.isOnline && !activeChat.isGroup && <span className="online-dot-badge header" />}
                 </div>
-                
+
                 <div className="user-status-text">
                   <span className="chat-partner-name">{activeChat.isGroup ? activeChat.name : activeChat.username}</span>
                   <span className={`status-label ${activeChat.isOnline || activeChat.isGroup ? "online" : ""}`}>
@@ -1410,7 +1410,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                   </span>
                 </div>
               </div>
-              
+
               <div className="chat-header-actions" style={{ position: "relative" }}>
                 {declinedCallIds?.has(String(activeChat._id || activeChat.id)) ? (
                   <button
@@ -1661,7 +1661,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                   )}
                                 </div>
                               )}
-                              
+
                               <div className={`message-bubble ${msg.fileType === 'call' ? 'call-history-bubble' : ''}`}>
                                 {activeChat.isGroup && !isMe && (
                                   <div className="group-message-sender-name">
@@ -1698,7 +1698,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                             title="Click to view image"
                                           />
                                         </div>
-                                        
+
                                         {msg.fileUrl && !msg.message && (
                                           <span className="attachment-meta-overlay">
                                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1715,7 +1715,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                         )}
                                       </div>
                                     )}
-                                    
+
                                     {msg.message && (
                                       <div className="message-text">
                                         {renderMessageText(msg.message)}
@@ -1883,7 +1883,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     const isAdminOfGroup = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId));
                     return (
                       <div className="group-info-meta-card">
-                        <div 
+                        <div
                           className={`group-info-avatar-box ${isAdminOfGroup ? "editable" : ""}`}
                           onClick={() => {
                             if (isAdminOfGroup) {
@@ -1945,10 +1945,10 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                         const isCreator = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(member._id));
                         const isAdminOfGroup = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId));
                         const isMe = String(member._id) === String(currentUserId);
-                        
+
                         return (
                           <div key={member._id} className="group-member-row">
-                            <div 
+                            <div
                               className={`member-row-left ${onViewProfile ? "clickable" : ""}`}
                               onClick={() => {
                                 if (onViewProfile) {
@@ -2289,17 +2289,17 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           </form>
         </div>
       )}
-      
+
       {/* CODE BLOCK GENERATOR MODAL */}
       {showCodeModal && (
         <div className="code-block-modal-overlay">
           <div className="code-block-modal-card">
             <h3>Insert Code Block</h3>
-            
+
             <div className="code-block-form-group">
               <label>Select Language</label>
-              <select 
-                value={codeLang} 
+              <select
+                value={codeLang}
                 onChange={(e) => setCodeLang(e.target.value)}
                 className="code-block-select-lang"
               >
@@ -2325,16 +2325,16 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
             </div>
 
             <div className="code-block-modal-actions">
-              <button 
-                type="button" 
-                onClick={() => { setShowCodeModal(false); setCodeText(""); }} 
+              <button
+                type="button"
+                onClick={() => { setShowCodeModal(false); setCodeText(""); }}
                 className="code-block-modal-btn cancel"
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
-                onClick={handleInsertCode} 
+              <button
+                type="button"
+                onClick={handleInsertCode}
                 className="code-block-modal-btn insert"
               >
                 Insert Code

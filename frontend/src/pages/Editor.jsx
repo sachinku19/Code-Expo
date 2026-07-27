@@ -5524,27 +5524,29 @@ function Editor() {
 
         {/* Kick Confirmation Modal */}
         {kickModalOpen && createPortal(
-          <div className="ce-modal-overlay">
-            <div className="ce-modal-card warning-glow">
-              <div className="modal-icon error" style={{ width: "60px", height: "60px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", marginBottom: "16px" }}>
-                <UserMinus size={32} />
+          <div className="ce-modal-overlay" onClick={() => setKickModalOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 999999, background: "rgba(0, 0, 0, 0.78)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyCenter: "center", padding: "20px" }}>
+            <div className="ce-modal-card confirm-modal-card warning-glow" onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "420px", maxWidth: "90vw", padding: "32px 24px", borderRadius: "24px", background: "var(--ce-surface, #12121a)", border: "1px solid var(--ce-border, rgba(255,255,255,0.12))", boxShadow: "0 25px 70px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", margin: "auto" }}>
+              <div className="modal-icon-circle error" style={{ width: "64px", height: "64px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(239, 68, 68, 0.15)", border: "2px solid rgba(239, 68, 68, 0.4)", color: "#ef4444", marginBottom: "16px", boxShadow: "0 0 25px rgba(239, 68, 68, 0.3)" }}>
+                <UserMinus size={30} />
               </div>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: "700", color: "var(--ce-text)", marginBottom: "8px" }}>Remove Participant?</h2>
-              <p style={{ fontSize: "0.85rem", color: "var(--ce-text-muted)", marginBottom: "20px", lineHeight: "1.4" }}>
-                Are you sure you want to remove <strong>{kickTarget.username}</strong> from this workspace? They will be immediately disconnected.
+              <h2 style={{ fontSize: "1.3rem", fontWeight: "800", color: "var(--ce-text, #ffffff)", marginBottom: "8px" }}>Remove Participant?</h2>
+              <p style={{ fontSize: "0.86rem", color: "var(--ce-text-muted, #9ca3af)", marginBottom: "24px", lineHeight: "1.5" }}>
+                Are you sure you want to remove <strong style={{ color: "var(--ce-text, #ffffff)" }}>{kickTarget?.username}</strong> from this workspace? They will be immediately disconnected.
               </p>
-              <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+              <div style={{ display: "flex", gap: "12px", width: "100%" }}>
                 <button
+                  type="button"
                   className="ce-btn-secondary"
                   onClick={() => setKickModalOpen(false)}
-                  style={{ flex: 1, padding: "10px 0", fontWeight: "600", borderRadius: "6px", cursor: "pointer" }}
+                  style={{ flex: 1, padding: "12px", fontWeight: "700", borderRadius: "12px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e4e4e7", cursor: "pointer", fontSize: "0.9rem" }}
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   className="ce-btn-danger"
                   onClick={confirmKickUser}
-                  style={{ flex: 1, padding: "10px 0", fontWeight: "600", borderRadius: "6px", cursor: "pointer", background: "var(--ce-danger, #f85149)", color: "#ffffff", border: "none" }}
+                  style={{ flex: 1, padding: "12px", fontWeight: "700", borderRadius: "12px", background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", color: "#ffffff", border: "none", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 20px rgba(239,68,68,0.4)" }}
                 >
                   Remove User
                 </button>

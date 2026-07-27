@@ -5,7 +5,10 @@ import {
   Minimize2, Maximize2, User, Hand,
   MessageSquare, Users, Signal,
   Search, Send, X, Check, Pin, PinOff,
-  MoreVertical, Shield, Maximize, Grid, Info, Plus
+  MoreVertical, Shield, Maximize, Grid, Info, Plus,
+  UserPlus, SlidersHorizontal, ChevronRight, ChevronDown,
+  Trash2, LogOut, AlertTriangle, Paperclip, Code2, AtSign,
+  Smile
 } from "lucide-react";
 import "./CallOverlay.css";
 
@@ -18,6 +21,18 @@ const formatTime = (seconds) => {
 const getCurrentFormattedTime = () => {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
+
+// Animated Audio Waves component
+function AudioEqualizer() {
+  return (
+    <div className="gm-audio-waves" title="Speaking actively">
+      <span />
+      <span />
+      <span />
+      <span />
+    </div>
+  );
+}
 
 // ----------------------------------------------------------------------
 // PRE-CALL SETUP MODAL
@@ -144,7 +159,7 @@ function PreCallSetupModal() {
 }
 
 // ----------------------------------------------------------------------
-// INDIVIDUAL VIDEO TILE COMPONENT (With Hover Pinning)
+// INDIVIDUAL VIDEO TILE COMPONENT
 // ----------------------------------------------------------------------
 function ParticipantVideoTile({ feed, isLocal, isSpeaking, isPinned, onTogglePin }) {
   const videoRef = useRef(null);
@@ -210,10 +225,12 @@ function ParticipantVideoTile({ feed, isLocal, isSpeaking, isPinned, onTogglePin
       {/* Bottom Name & Audio Status Overlay */}
       <div className="gm-tile-bottom-bar">
         <div className="gm-tile-name-tag">
-          {isMuted ? (
+          {isSpeaking ? (
+            <AudioEqualizer />
+          ) : isMuted ? (
             <MicOff size={13} className="gm-mic-icon muted" />
           ) : (
-            <Mic size={13} className={`gm-mic-icon ${isSpeaking ? "active" : ""}`} />
+            <Mic size={13} className="gm-mic-icon active" />
           )}
           <span className="gm-tile-username">{username}</span>
           {isLocal && <span className="gm-you-pill">YOU</span>}
@@ -228,113 +245,25 @@ function ParticipantVideoTile({ feed, isLocal, isSpeaking, isPinned, onTogglePin
 }
 
 // ----------------------------------------------------------------------
-// PEOPLE / PARTICIPANTS DRAWER (Matching Image 3 Reference Layout)
+// HIGH-POWERED UNIFIED SIDE PANEL (WITH SEARCH & TAB SWITCHER)
 // ----------------------------------------------------------------------
-function ParticipantsDrawer({ onClose, pinnedId, setPinnedId }) {
-  const { remoteStreams, isMuted, isVideoOff, isHandRaised } = useCall();
+function UnifiedSidePanel({ onClose, pinnedId, setPinnedId }) {
+  const {
+    remoteStreams,
+    isMuted,
+    isVideoOff,
+    isHandRaised,
+    inCallMessages,
+    sendInCallMessage,
+    setUnreadCount,
+    handleEndCall
+  } = useCall();
+
   const [search, setSearch] = useState("");
   const [activeMenuId, setActiveMenuId] = useState(null);
-
-  const remoteList = Object.keys(remoteStreams || {}).map((sId) => ({
-    id: sId,
-    socketId: sId,
-    ...remoteStreams[sId]
-  }));
-
-  const allMembers = [
-    { id: "local", username: "Sachin Kumar (You)", isMuted, isCameraOff: isVideoOff, handRaised: isHandRaised, isHost: true },
-    ...remoteList
-  ].filter((m) => (m.username || "").toLowerCase().includes(search.toLowerCase()));
-
-  return (
-    <div className="gm-drawer-panel glassmorphism people-drawer">
-      <div className="gm-drawer-header">
-        <div className="gm-drawer-title">
-          <h3>People ({allMembers.length})</h3>
-        </div>
-        <button type="button" className="gm-close-icon-btn" onClick={onClose}>
-          <X size={16} />
-        </button>
-      </div>
-
-      <div className="gm-drawer-search">
-        <Search size={14} className="search-icon" />
-        <input
-          type="text"
-          placeholder="Search people"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      <div className="gm-drawer-section-label">IN CALL</div>
-
-      <div className="gm-drawer-list">
-        {allMembers.map((member) => {
-          const isPinned = pinnedId === member.id;
-          return (
-            <div key={member.id} className="gm-member-row">
-              <div className="gm-member-avatar-box">
-                <User size={16} />
-              </div>
-              <div className="gm-member-info">
-                <span className="gm-member-name">{member.username}</span>
-                {member.isHost && <span className="gm-host-badge">Host</span>}
-              </div>
-              <div className="gm-member-status-icons">
-                {member.isMuted ? (
-                  <MicOff size={14} className="gm-status-muted" />
-                ) : (
-                  <Mic size={14} className="gm-status-active" />
-                )}
-                
-                <div className="gm-member-options-wrapper" style={{ position: "relative" }}>
-                  <button
-                    type="button"
-                    className="gm-icon-menu-btn"
-                    onClick={() => setActiveMenuId(activeMenuId === member.id ? null : member.id)}
-                  >
-                    <MoreVertical size={14} />
-                  </button>
-
-                  {activeMenuId === member.id && (
-                    <div className="gm-menu-dropdown animate-fade-in" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="gm-dropdown-item"
-                        onClick={() => {
-                          setPinnedId(isPinned ? null : member.id);
-                          setActiveMenuId(null);
-                        }}
-                      >
-                        <Pin size={13} />
-                        <span>{isPinned ? "Unpin from screen" : "Pin to main screen"}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="gm-drawer-footer">
-        <button type="button" className="gm-add-people-btn">
-          <Plus size={16} />
-          <span>Add people</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------------
-// IN-CALL CHAT DRAWER
-// ----------------------------------------------------------------------
-function InCallChatDrawer({ onClose }) {
-  const { inCallMessages, sendInCallMessage, setUnreadCount } = useCall();
   const [text, setText] = useState("");
+  const [chatTab, setChatTab] = useState("room"); // 'room' | 'direct'
+  const [showAllParticipants, setShowAllParticipants] = useState(false);
   const chatBottomRef = useRef(null);
 
   useEffect(() => {
@@ -345,6 +274,63 @@ function InCallChatDrawer({ onClose }) {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [inCallMessages]);
 
+  const remoteList = Object.keys(remoteStreams || {}).map((sId, index) => ({
+    id: sId,
+    socketId: sId,
+    username: remoteStreams[sId].username || `Developer ${index + 1}`,
+    handle: `@dev_${index + 1}`,
+    role: index === 0 ? "MEMBER" : index === 1 ? "VIEWER" : "MEMBER",
+    isSpeaking: index === 0,
+    ...remoteStreams[sId]
+  }));
+
+  const allMembers = [
+    {
+      id: "local",
+      username: "Sachin Kumar",
+      handle: "@sachin_kumar",
+      role: "OWNER",
+      isMuted,
+      isCameraOff: isVideoOff,
+      handRaised: isHandRaised,
+      isLocal: true,
+      isSpeaking: !isMuted
+    },
+    {
+      id: "user_raviraj",
+      username: "RAVIRAJ KUMAR",
+      handle: "@raviraj_kumar",
+      role: "OWNER",
+      isMuted: false,
+      isCameraOff: false,
+      isSpeaking: false
+    },
+    {
+      id: "user_rohit",
+      username: "Rohit Sharma",
+      handle: "@rohit_sharma",
+      role: "MEMBER",
+      isMuted: false,
+      isCameraOff: false,
+      isSpeaking: true
+    },
+    {
+      id: "user_sachin2",
+      username: "sachin kumar",
+      handle: "@sachin_k",
+      role: "MEMBER",
+      isMuted: true,
+      isCameraOff: false,
+      isSpeaking: false
+    },
+    ...remoteList
+  ].filter((m) =>
+    m.username.toLowerCase().includes(search.toLowerCase()) ||
+    m.handle.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const displayedMembers = showAllParticipants ? allMembers : allMembers.slice(0, 4);
+
   const handleSend = (e) => {
     e.preventDefault();
     if (!text.trim()) return;
@@ -352,63 +338,236 @@ function InCallChatDrawer({ onClose }) {
     setText("");
   };
 
-  const handleEmojiClick = (emoji) => {
-    sendInCallMessage(emoji);
-  };
-
   return (
-    <div className="gm-drawer-panel glassmorphism">
-      <div className="gm-drawer-header">
-        <div className="gm-drawer-title">
-          <MessageSquare size={18} />
-          <h3>In-Call Chat</h3>
-        </div>
-        <button type="button" className="gm-close-icon-btn" onClick={onClose}>
-          <X size={16} />
-        </button>
-      </div>
+    <div className="gm-unified-side-panel glassmorphism">
+      <div className="panel-scroll-content">
 
-      <div className="gm-chat-messages-container">
-        {inCallMessages.length === 0 ? (
-          <div className="gm-chat-empty">
-            <MessageSquare size={32} />
-            <p>Messages sent here will be visible to everyone in this call.</p>
-          </div>
-        ) : (
-          inCallMessages.map((msg) => (
-            <div key={msg.id} className="gm-chat-msg-row">
-              <div className="gm-chat-msg-header">
-                <span className="gm-msg-author">{msg.senderName}</span>
-                <span className="gm-msg-time">{msg.time}</span>
-              </div>
-              <p className="gm-msg-body">{msg.text}</p>
+        {/* =================================================================== */}
+        {/* 1. PARTICIPANTS SECTION WITH SEARCH BUTTON & FILTER */}
+        {/* =================================================================== */}
+        <div className="gm-panel-section card-box">
+          <div className="section-header">
+            <div className="section-title">
+              <Users size={16} className="title-icon" />
+              <h3>PARTICIPANTS ({allMembers.length})</h3>
             </div>
-          ))
-        )}
-        <div ref={chatBottomRef} />
-      </div>
+            <button type="button" className="invite-btn">
+              <UserPlus size={13} />
+              <span>+ Invite</span>
+            </button>
+          </div>
 
-      {/* Quick Reaction Pills */}
-      <div className="gm-quick-reactions">
-        {["👍", "❤️", "👏", "🔥", "🎉"].map((emoji) => (
-          <button key={emoji} type="button" className="gm-emoji-pill" onClick={() => handleEmojiClick(emoji)}>
-            {emoji}
+          {/* Dedicated Search Input Bar with Filter */}
+          <div className="section-search">
+            <Search size={14} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search participants..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="clear-search-btn" onClick={() => setSearch("")}>
+                <X size={12} />
+              </button>
+            )}
+            <button type="button" className="filter-btn" title="Search & Filter">
+              <SlidersHorizontal size={14} />
+            </button>
+          </div>
+
+          {/* Member Card Rows */}
+          <div className="participants-card-list">
+            {displayedMembers.map((member) => {
+              const isPinned = pinnedId === member.id;
+              return (
+                <div key={member.id} className={`member-card-row ${member.isLocal ? "highlight-local" : ""}`}>
+                  <div className="member-avatar-box">
+                    <div className="avatar-img-circle">
+                      {member.username.charAt(0)}
+                    </div>
+                    <span className={`status-dot ${member.isMuted ? "offline" : "online"}`} />
+                  </div>
+
+                  <div className="member-details">
+                    <div className="name-line">
+                      <span className="member-name">{member.username}</span>
+                      {member.isLocal && <span className="you-pill">YOU</span>}
+                    </div>
+                  </div>
+
+                  <div className="member-controls">
+                    {member.isSpeaking && <AudioEqualizer />}
+
+                    {/* Role Pill Badge */}
+                    <span className={`role-badge ${member.role.toLowerCase()}`}>
+                      {member.role === "OWNER" && "👑 "}
+                      {member.role}
+                    </span>
+
+                    <div className="options-menu-anchor" style={{ position: "relative" }}>
+                      <button
+                        type="button"
+                        className="three-dots-btn"
+                        onClick={() => setActiveMenuId(activeMenuId === member.id ? null : member.id)}
+                      >
+                        <MoreVertical size={14} />
+                      </button>
+
+                      {activeMenuId === member.id && (
+                        <div className="gm-menu-dropdown animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="gm-dropdown-item"
+                            onClick={() => {
+                              setPinnedId(isPinned ? null : member.id);
+                              setActiveMenuId(null);
+                            }}
+                          >
+                            <Pin size={13} />
+                            <span>{isPinned ? "Unpin from screen" : "Pin to main screen"}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {allMembers.length > 4 && (
+            <button
+              type="button"
+              className="view-all-link"
+              onClick={() => setShowAllParticipants(!showAllParticipants)}
+            >
+              <span>{showAllParticipants ? "Show fewer" : "View all participants"}</span>
+              <ChevronRight size={14} className={showAllParticipants ? "rotate-90" : ""} />
+            </button>
+          )}
+        </div>
+
+        {/* =================================================================== */}
+        {/* 2. ROOM & DIRECT MESSAGE CHAT PANEL (MATCHING IMAGE 2 TAB SWITCHER) */}
+        {/* =================================================================== */}
+        <div className="gm-panel-section card-box margin-top">
+
+          {/* Segmented Tab Switcher: Room vs Direct Message */}
+          <div className="chat-tab-switcher">
+            <button
+              type="button"
+              className={`tab-pill ${chatTab === "room" ? "active" : ""}`}
+              onClick={() => setChatTab("room")}
+            >
+              Room
+            </button>
+            <button
+              type="button"
+              className={`tab-pill ${chatTab === "direct" ? "active" : ""}`}
+              onClick={() => setChatTab("direct")}
+            >
+              Direct Message
+            </button>
+          </div>
+
+          {/* Chat Messages Stream with Outgoing / Incoming Aligned Bubbles */}
+          <div className="room-chat-messages">
+
+            {/* Demo Incoming Message */}
+            <div className="chat-bubble-card incoming">
+              <div className="msg-avatar">s</div>
+              <div className="msg-content-block">
+                <span className="msg-author-name">sachin kumar</span>
+                <div className="msg-text-bubble">
+                  <span>hello</span>
+                  <span className="msg-time-sub">22 Jun, 12:39 pm</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Demo Outgoing Message */}
+            <div className="chat-bubble-card outgoing">
+              <div className="msg-content-block">
+                <div className="msg-text-bubble emerald">
+                  <span>hello</span>
+                  <span className="msg-time-sub">Jun 22, 12:39 PM</span>
+                </div>
+              </div>
+              <div className="msg-avatar local">s</div>
+            </div>
+
+            {/* Demo Incoming Message */}
+            <div className="chat-bubble-card incoming">
+              <div className="msg-avatar">L</div>
+              <div className="msg-content-block">
+                <span className="msg-author-name">Lulu_developer</span>
+                <div className="msg-text-bubble">
+                  <span>hi</span>
+                  <span className="msg-time-sub">22 Jun, 12:39 pm</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Demo Outgoing Message */}
+            <div className="chat-bubble-card outgoing">
+              <div className="msg-content-block">
+                <div className="msg-text-bubble emerald">
+                  <span>hai</span>
+                  <span className="msg-time-sub">Jun 22, 12:40 PM</span>
+                </div>
+              </div>
+              <div className="msg-avatar local">s</div>
+            </div>
+
+            {/* Real In-Call Socket Messages Stream */}
+            {inCallMessages.map((msg) => (
+              <div key={msg.id} className="chat-bubble-card outgoing">
+                <div className="msg-content-block">
+                  <div className="msg-text-bubble emerald">
+                    <span>{msg.text}</span>
+                    <span className="msg-time-sub">{msg.time}</span>
+                  </div>
+                </div>
+                <div className="msg-avatar local">Y</div>
+              </div>
+            ))}
+
+            <div ref={chatBottomRef} />
+          </div>
+
+          {/* Chat Input Box */}
+          <form onSubmit={handleSend} className="room-chat-form">
+            <div className="chat-input-row">
+              <input
+                type="text"
+                placeholder={chatTab === "room" ? "Message room..." : "Direct message user..."}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
+              <button type="submit" className="send-arrow-btn" disabled={!text.trim()}>
+                <Send size={15} />
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* =================================================================== */}
+        {/* 3. DANGER ACTION BUTTONS (MATCHING IMAGE 2) */}
+        {/* =================================================================== */}
+        <div className="danger-footer-actions">
+          <button type="button" className="btn-danger-outline" onClick={handleEndCall}>
+            <Trash2 size={16} />
+            <span>Delete Room</span>
           </button>
-        ))}
-      </div>
 
-      {/* Input Form */}
-      <form onSubmit={handleSend} className="gm-chat-input-box">
-        <input
-          type="text"
-          placeholder="Send a message..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button type="submit" className="gm-send-btn" disabled={!text.trim()}>
-          <Send size={16} />
-        </button>
-      </form>
+          <button type="button" className="btn-danger-outline" onClick={handleEndCall}>
+            <LogOut size={16} />
+            <span>Exit Workspace</span>
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }
@@ -495,8 +654,6 @@ export default function CallOverlay() {
   ];
 
   const totalCount = allTiles.length;
-
-  // Determine active pinned tile or fallback
   const pinnedTile = allTiles.find((t) => t.id === pinnedId);
   const isSplitLayout = !!pinnedTile;
 
@@ -512,7 +669,7 @@ export default function CallOverlay() {
 
   return (
     <div className={`gm-call-root ${isCallMinimized ? "minimized" : ""}`}>
-      
+
       {/* ---------------------------------------------------------------- */}
       {/* 1. INCOMING CALL POPUP (Google Meet Style) */}
       {/* ---------------------------------------------------------------- */}
@@ -553,8 +710,8 @@ export default function CallOverlay() {
         /* 2. ACTIVE GOOGLE MEET CALL ROOM LAYOUT */
         /* ---------------------------------------------------------------- */
         <div className="gm-call-viewport">
-          
-          {/* Header Bar (Matching Image 3 Reference) */}
+
+          {/* Header Bar */}
           <div className="gm-top-header">
             <div className="gm-header-left">
               <div className="gm-room-name-dropdown">
@@ -573,8 +730,8 @@ export default function CallOverlay() {
               <button
                 type="button"
                 className="gm-icon-btn"
-                onClick={() => setActiveDrawer(activeDrawer === "participants" ? null : "participants")}
-                title="People"
+                onClick={() => setActiveDrawer(activeDrawer === "sidepanel" ? null : "sidepanel")}
+                title="People & Room Settings"
               >
                 <Users size={16} />
                 <span className="header-badge">{totalCount}</span>
@@ -582,8 +739,8 @@ export default function CallOverlay() {
               <button
                 type="button"
                 className="gm-icon-btn"
-                onClick={() => setActiveDrawer(activeDrawer === "chat" ? null : "chat")}
-                title="In-call chat"
+                onClick={() => setActiveDrawer(activeDrawer === "sidepanel" ? null : "sidepanel")}
+                title="Room Chat"
               >
                 <MessageSquare size={16} />
                 {unreadCount > 0 && <span className="header-badge dot">{unreadCount}</span>}
@@ -610,7 +767,7 @@ export default function CallOverlay() {
           {/* Main Stage & Drawers */}
           {!isCallMinimized && (
             <div className="gm-stage-container">
-              
+
               {/* SPOTLIGHT PINNED SPLIT-SCREEN LAYOUT */}
               {isSplitLayout ? (
                 <div className="gm-split-stage">
@@ -658,22 +815,19 @@ export default function CallOverlay() {
                 </div>
               )}
 
-              {/* Side Drawer Panels */}
-              {activeDrawer === "participants" && (
-                <ParticipantsDrawer
+              {/* Ultra-Powerful Unified Side Panel */}
+              {(activeDrawer === "sidepanel" || activeDrawer === "participants" || activeDrawer === "chat") && (
+                <UnifiedSidePanel
                   onClose={() => setActiveDrawer(null)}
                   pinnedId={pinnedId}
                   setPinnedId={setPinnedId}
                 />
               )}
-              {activeDrawer === "chat" && (
-                <InCallChatDrawer onClose={() => setActiveDrawer(null)} />
-              )}
             </div>
           )}
 
           {/* ---------------------------------------------------------------- */}
-          {/* 3. FLOATING BOTTOM CONTROL TOOLBAR (Matching Reference Image 3) */}
+          {/* FLOATING BOTTOM CONTROL TOOLBAR */}
           {/* ---------------------------------------------------------------- */}
           {!isCallMinimized && (
             <div className="gm-bottom-bar-wrapper">
@@ -735,17 +889,17 @@ export default function CallOverlay() {
                 </button>
                 <button
                   type="button"
-                  className={`gm-bar-icon-btn ${activeDrawer === "participants" ? "active" : ""}`}
-                  onClick={() => setActiveDrawer(activeDrawer === "participants" ? null : "participants")}
-                  title="People"
+                  className={`gm-bar-icon-btn ${activeDrawer === "sidepanel" ? "active" : ""}`}
+                  onClick={() => setActiveDrawer(activeDrawer === "sidepanel" ? null : "sidepanel")}
+                  title="Side Panel & Settings"
                 >
                   <Users size={18} />
                   <span className="bar-badge">{totalCount}</span>
                 </button>
                 <button
                   type="button"
-                  className={`gm-bar-icon-btn ${activeDrawer === "chat" ? "active" : ""}`}
-                  onClick={() => setActiveDrawer(activeDrawer === "chat" ? null : "chat")}
+                  className={`gm-bar-icon-btn ${activeDrawer === "sidepanel" ? "active" : ""}`}
+                  onClick={() => setActiveDrawer(activeDrawer === "sidepanel" ? null : "sidepanel")}
                   title="In-call chat"
                 >
                   <MessageSquare size={18} />
