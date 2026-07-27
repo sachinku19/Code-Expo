@@ -22,11 +22,21 @@ export function CallProvider({ children }) {
   const [isCallMinimized, setIsCallMinimized] = useState(false);
   const [callSize, setCallSize] = useState("compressed");
 
+  // Google Meet UI states
+  const [preCallModal, setPreCallModal] = useState(null); // { partner, selectedType }
+  const [declinedCallIds, setDeclinedCallIds] = useState(new Set());
+  const [isHandRaised, setIsHandRaised] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [inCallMessages, setInCallMessages] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [activeDrawer, setActiveDrawer] = useState(null); // 'chat' | 'participants' | 'settings' | null
+
   const localStreamRef = useRef(null);
   const callConnectTimeoutRef = useRef(null);
   const peerConnectionsRef = useRef({});
   const activeCallRef = useRef(null);
   const callStartTimeRef = useRef(null);
+  const screenTrackRef = useRef(null);
 
   useEffect(() => {
     activeCallRef.current = activeCall;
@@ -308,10 +318,56 @@ export function CallProvider({ children }) {
     });
   };
 
+  const openPreCallModal = (partner, defaultType = "audio") => {
+    if (!partner) return;
+    setPreCallModal({ partner, selectedType: defaultType });
+  };
+
+  const closePreCallModal = () => {
+    setPreCallModal(null);
+  };
+
+  const toggleHandRaise = () => {
+    const next = !isHandRaised;
+    setIsHandRaised(next);
+    const targetId = activeCall?.partner?.isGroup ? (activeCall.partner._id || activeCall.partner.id) : (activeCall?.partner?._id || activeCall?.partner?.id);
+    if (targetId) {
+      socket.emit("toggle-media", {
+        roomId: targetId,
+        isMuted,
+        isCameraOff: isVideoOff,
+        isHandRaised: next
+      });
+    }
+  };
+
+  const sendInCallMessage = (text) => {
+    if (!text || !text.trim() || !user) return;
+    const newMsg = {
+      id: Date.now(),
+      senderId: currentUserId,
+      senderName: user.username || "You",
+      senderAvatar: user.avatar || "",
+      text: text.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setInCallMessages(prev => [...prev, newMsg]);
+    if (activeDrawer !== "chat") {
+      setUnreadCount(prev => prev + 1);
+    }
+    const targetId = activeCall?.partner?.isGroup ? (activeCall.partner._id || activeCall.partner.id) : (activeCall?.partner?._id || activeCall?.partner?.id);
+    if (targetId) {
+      socket.emit("in-call-chat-message", { roomId: targetId, msg: newMsg });
+    }
+  };
+
   const handleDeclineCall = () => {
     if (!activeCall) return;
 
     const callerId = activeCall.caller?._id || activeCall.partner._id || activeCall.partner.id;
+    if (callerId) {
+      setDeclinedCallIds(prev => new Set(prev).add(String(callerId)));
+    }
     socket.emit("dm:call:decline", {
       callerId,
       declinerInfo: {
@@ -665,7 +721,21 @@ export function CallProvider({ children }) {
         handleAcceptCall,
         handleDeclineCall,
         handleEndCall,
-        stopLocalStream
+        stopLocalStream,
+        // Pre-call & Google Meet features
+        preCallModal,
+        openPreCallModal,
+        closePreCallModal,
+        declinedCallIds,
+        isHandRaised,
+        toggleHandRaise,
+        isScreenSharing,
+        inCallMessages,
+        sendInCallMessage,
+        unreadCount,
+        setUnreadCount,
+        activeDrawer,
+        setActiveDrawer
       }}
     >
       {children}

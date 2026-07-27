@@ -248,7 +248,9 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   // Global calling context
   const {
     activeCall,
-    handleStartCall
+    handleStartCall,
+    openPreCallModal,
+    declinedCallIds
   } = useCall();
 
   // Auto-focus chat input field when activeChat changes
@@ -1410,24 +1412,40 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               </div>
               
               <div className="chat-header-actions" style={{ position: "relative" }}>
-                <button
-                  type="button"
-                  className="header-action-btn"
-                  onClick={() => handleStartCall("audio", activeChat)}
-                  title={activeChat.isGroup ? `Start Group Audio Call in ${activeChat.name}` : `Start Audio Call with ${activeChat.username}`}
-                  disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
-                >
-                  <Phone size={18} />
-                </button>
-                <button
-                  type="button"
-                  className="header-action-btn"
-                  onClick={() => handleStartCall("video", activeChat)}
-                  title={activeChat.isGroup ? `Start Group Video Call in ${activeChat.name}` : `Start Video Call with ${activeChat.username}`}
-                  disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
-                >
-                  <Video size={18} />
-                </button>
+                {declinedCallIds?.has(String(activeChat._id || activeChat.id)) ? (
+                  <button
+                    type="button"
+                    className="header-action-btn join-call-btn-highlight"
+                    onClick={() => openPreCallModal ? openPreCallModal(activeChat, "audio") : handleStartCall("audio", activeChat)}
+                    title="Join active call"
+                    disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
+                    style={{ background: "#10b981", color: "#fff", padding: "6px 12px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "6px", border: "none", fontWeight: 700, fontSize: "0.78rem" }}
+                  >
+                    <Phone size={14} />
+                    <span>Join Call</span>
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="header-action-btn"
+                      onClick={() => openPreCallModal ? openPreCallModal(activeChat, "audio") : handleStartCall("audio", activeChat)}
+                      title={activeChat.isGroup ? `Start Group Audio Call in ${activeChat.name}` : `Start Audio Call with ${activeChat.username}`}
+                      disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
+                    >
+                      <Phone size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      className="header-action-btn"
+                      onClick={() => openPreCallModal ? openPreCallModal(activeChat, "video") : handleStartCall("video", activeChat)}
+                      title={activeChat.isGroup ? `Start Group Video Call in ${activeChat.name}` : `Start Video Call with ${activeChat.username}`}
+                      disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
+                    >
+                      <Video size={18} />
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   className={`header-action-btn options-menu-btn ${showChatMenu ? "active" : ""}`}

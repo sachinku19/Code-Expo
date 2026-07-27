@@ -9,115 +9,171 @@ const MediaService = require("../services/MediaService");
 exports.getConversations = async (req, res) => {
   try {
     const myId = req.user._id;
-    const currentUser = await User.findById(myId);
+    const currentUser = await User.findById(myId).select("blockedUsers").lean();
     const blockedList = (currentUser?.blockedUsers || []).map(id => String(id));
     const io = req.app.get("io");
 
-    // Get direct messages
-    const messages = await DirectMessage.find({
-      $or: [
-        { sender: myId },
-        { recipient: myId }
-      ],
-      groupChat: { $exists: false }
-    })
-    .sort({ createdAt: -1 })
-    .populate("sender", "username avatar bio blockedUsers")
-    .populate("recipient", "username avatar bio blockedUsers");
+    // 1. Ultra-fast MongoDB Aggregation Pipeline for Direct Messages (Grouped by Conversation)
+    const directConversations = await DirectMessage.aggregate([
+      {
+        $match: {
+          $or: [{ sender: myId }, { recipient: myId }],
+          groupChat: { $exists: false }
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ["$sender", myId] },
+              "$recipient",
+              "$sender"
+            ]
+          },
+          lastMessage: { $first: "$$ROOT" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$sender", myId] },
+                    { $eq: ["$isRead", false] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "userInfo"
+        }
+      },
+      { $unwind: "$userInfo" },
+      {
+        $project: {
+          _id: 1,
+          unreadCount: 1,
+          lastMessage: 1,
+          "userInfo._id": 1,
+          "userInfo.username": 1,
+          "userInfo.avatar": 1,
+          "userInfo.bio": 1,
+          "userInfo.blockedUsers": 1
+        }
+      }
+    ]);
 
-    const conversationsMap = {};
-    messages.forEach(msg => {
-      if (!msg.sender || !msg.recipient) return;
-      const otherUser = String(msg.sender._id) === String(myId) ? msg.recipient : msg.sender;
+    const formattedDirectList = directConversations.map(conv => {
+      const otherUser = conv.userInfo;
       const otherUserId = String(otherUser._id);
-      if (!conversationsMap[otherUserId]) {
-        const userRoom = io?.sockets?.adapter?.rooms?.get(otherUserId);
-        const isBlocked = blockedList.includes(otherUserId);
-        const otherBlockedList = (otherUser.blockedUsers || []).map(id => String(id));
-        const hasBlockedMe = otherBlockedList.includes(String(myId));
+      const userRoom = io?.sockets?.adapter?.rooms?.get(otherUserId);
+      const isBlocked = blockedList.includes(otherUserId);
+      const otherBlockedList = (otherUser.blockedUsers || []).map(id => String(id));
+      const hasBlockedMe = otherBlockedList.includes(String(myId));
 
-        conversationsMap[otherUserId] = {
-          _id: otherUserId,
-          isGroup: false,
-          user: {
-            _id: otherUser._id,
-            username: otherUser.username,
-            avatar: otherUser.avatar,
-            bio: otherUser.bio,
-            isOnline: !!(userRoom && userRoom.size > 0),
-            isBlocked,
-            hasBlockedMe
-          },
-          lastMessage: {
-            text: msg.message,
-            fileUrl: msg.fileUrl,
-            fileType: msg.fileType,
-            senderId: msg.sender._id,
-            createdAt: msg.createdAt,
-            isRead: msg.isRead
-          },
-          unreadCount: 0
-        };
-      }
-      if (String(msg.sender._id) === otherUserId && !msg.isRead) {
-        conversationsMap[otherUserId].unreadCount += 1;
-      }
+      return {
+        _id: otherUserId,
+        isGroup: false,
+        user: {
+          _id: otherUser._id,
+          username: otherUser.username,
+          avatar: otherUser.avatar,
+          bio: otherUser.bio,
+          isOnline: !!(userRoom && userRoom.size > 0),
+          isBlocked,
+          hasBlockedMe
+        },
+        lastMessage: {
+          text: conv.lastMessage.message,
+          fileUrl: conv.lastMessage.fileUrl,
+          fileType: conv.lastMessage.fileType,
+          senderId: conv.lastMessage.sender,
+          createdAt: conv.lastMessage.createdAt,
+          isRead: conv.lastMessage.isRead
+        },
+        unreadCount: conv.unreadCount
+      };
     });
 
-    // Get group chats
+    // 2. Fetch Group Conversations with Parallel Aggregation
     const myGroups = await GroupChat.find({ members: myId })
       .populate("members", "username avatar bio isOnline")
-      .populate("createdBy", "username avatar");
-    const groupConversations = [];
+      .populate("createdBy", "username avatar")
+      .lean();
 
-    for (const group of myGroups) {
-      const lastMsg = await DirectMessage.findOne({ groupChat: group._id })
-        .sort({ createdAt: -1 })
-        .populate("sender", "username avatar");
+    const groupIds = myGroups.map(g => g._id);
 
-      groupConversations.push({
+    const groupLastMessages = groupIds.length > 0 ? await DirectMessage.aggregate([
+      { $match: { groupChat: { $in: groupIds } } },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$groupChat",
+          lastMessage: { $first: "$$ROOT" }
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "lastMessage.sender",
+          foreignField: "_id",
+          as: "senderInfo"
+        }
+      }
+    ]) : [];
+
+    const groupLastMsgMap = {};
+    groupLastMessages.forEach(item => {
+      const sender = item.senderInfo[0];
+      groupLastMsgMap[String(item._id)] = {
+        text: item.lastMessage.message,
+        fileUrl: item.lastMessage.fileUrl,
+        fileType: item.lastMessage.fileType,
+        senderId: item.lastMessage.sender,
+        senderName: sender?.username || "Unknown",
+        createdAt: item.lastMessage.createdAt,
+        isRead: item.lastMessage.isRead
+      };
+    });
+
+    const formattedGroupList = myGroups.map(group => ({
+      _id: group._id,
+      isGroup: true,
+      group: {
         _id: group._id,
+        name: group.name,
+        avatar: group.avatar,
+        bio: group.bio,
+        members: group.members,
         isGroup: true,
-        group: {
-          _id: group._id,
-          name: group.name,
-          avatar: group.avatar,
-          bio: group.bio,
-          members: group.members,
-          isGroup: true,
-          createdBy: group.createdBy
-        },
-        lastMessage: lastMsg ? {
-          text: lastMsg.message,
-          fileUrl: lastMsg.fileUrl,
-          fileType: lastMsg.fileType,
-          senderId: lastMsg.sender?._id || lastMsg.sender,
-          senderName: lastMsg.sender?.username || "Unknown",
-          createdAt: lastMsg.createdAt,
-          isRead: lastMsg.isRead
-        } : null,
-        unreadCount: 0
-      });
-    }
+        createdBy: group.createdBy
+      },
+      lastMessage: groupLastMsgMap[String(group._id)] || null,
+      unreadCount: 0
+    }));
 
-    const conversations = [
-      ...Object.values(conversationsMap),
-      ...groupConversations
-    ];
-
-    // Sort conversations by last message timestamp
-    conversations.sort((a, b) => {
+    // 3. Merge & Sort by newest message
+    const conversations = [...formattedDirectList, ...formattedGroupList].sort((a, b) => {
       const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
       const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
       return timeB - timeA;
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       conversations
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Error in getConversations:", error);
+    return res.status(500).json({
       success: false,
       message: error.message
     });

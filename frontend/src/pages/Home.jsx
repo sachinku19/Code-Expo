@@ -2056,7 +2056,24 @@ yDoc.getText('monaco')
                 </div>
 
                 <div className="ce-sq-footer">
-                  <button className="ce-btn ce-btn-secondary sq-btn" onClick={(e) => { e.stopPropagation(); navigate(user ? "/dashboard" : "/register"); }}>
+                  <button 
+                    className="ce-btn ce-btn-secondary sq-btn" 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      const token = localStorage.getItem("token");
+                      if (user || token) {
+                        navigate("/dashboard?tab=planner");
+                      } else {
+                        localStorage.setItem("redirectAfterLogin", "/dashboard?tab=planner");
+                        navigate("/login", {
+                          state: {
+                            from: { pathname: "/dashboard", search: "?tab=planner" },
+                            message: "Please log in to access the Sprint Planner."
+                          }
+                        });
+                      }
+                    }}
+                  >
                     Open Sprint Planner <ArrowRight size={14} />
                   </button>
                 </div>
