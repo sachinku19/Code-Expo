@@ -87,6 +87,13 @@ const roomSchema=new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: "User"
         }
+    ],
+    kickedUsers: [
+        {
+            user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            username: String,
+            kickedAt: { type: Date, default: Date.now }
+        }
     ]
 },{timestamps:true});
 

@@ -51,6 +51,8 @@ const saveYDocToDB = (fileId, roomId) => {
 const roomUsers = {};
 // Store call participants by room
 const callUsers = {};
+// Store Google Meet active participants by room
+const meetUsers = {};
 // Store active interactive child execution processes
 const activeExecutions = {};
 
@@ -325,6 +327,67 @@ const socketHandler = (io) => {
     // ======================
     // JOIN ROOM
     // ======================
+    // ===================================
+    // GOOGLE MEET ROOM SOCKET EVENTS
+    // ===================================
+    socket.on("meet:join", ({ roomId, userId, username, avatar, isMicOn, isVideoOn }) => {
+      if (!roomId || !userId) return;
+      socket.join(roomId);
+      if (!meetUsers[roomId]) meetUsers[roomId] = [];
+      const userIndex = meetUsers[roomId].findIndex(
+        (u) => u.socketId === socket.id || String(u.userId) === String(userId)
+      );
+      const userEntry = {
+        userId,
+        username,
+        avatar: avatar || "",
+        socketId: socket.id,
+        isMicOn: isMicOn !== undefined ? isMicOn : true,
+        isVideoOn: isVideoOn !== undefined ? isVideoOn : true
+      };
+      if (userIndex !== -1) {
+        meetUsers[roomId][userIndex] = userEntry;
+      } else {
+        meetUsers[roomId].push(userEntry);
+      }
+      io.to(roomId).emit("meet:update-users", meetUsers[roomId]);
+    });
+
+    socket.on("meet:leave", ({ roomId, userId }) => {
+      if (!roomId || !userId || !meetUsers[roomId]) return;
+      meetUsers[roomId] = meetUsers[roomId].filter(
+        (u) => u.socketId !== socket.id && String(u.userId) !== String(userId)
+      );
+      if (meetUsers[roomId].length === 0) {
+        delete meetUsers[roomId];
+        io.to(roomId).emit("meet:update-users", []);
+      } else {
+        io.to(roomId).emit("meet:update-users", meetUsers[roomId]);
+      }
+    });
+
+    socket.on("meet:signal", ({ targetSocketId, signalData, signalType, fromUserId }) => {
+      if (targetSocketId) {
+        io.to(targetSocketId).emit("meet:signal", {
+          fromSocketId: socket.id,
+          fromUserId: fromUserId || socket.userId,
+          signalData,
+          signalType
+        });
+      }
+    });
+
+    socket.on("meet:state-change", ({ roomId, userId, isMicOn, isVideoOn, isHandRaised }) => {
+      if (!roomId || !userId || !meetUsers[roomId]) return;
+      const userObj = meetUsers[roomId].find((u) => String(u.userId) === String(userId));
+      if (userObj) {
+        userObj.isMicOn = isMicOn;
+        userObj.isVideoOn = isVideoOn;
+        userObj.isHandRaised = isHandRaised;
+        io.to(roomId).emit("meet:update-users", meetUsers[roomId]);
+      }
+    });
+
     socket.on("join-room", async ({
       roomId,
       username,
@@ -339,6 +402,25 @@ const socketHandler = (io) => {
 
       try {
         const room = await Room.findOne({ roomId });
+
+        // Check if user was previously kicked from this room and not yet re-approved
+        if (room) {
+          const isKicked = room.kickedUsers && room.kickedUsers.some(
+            (k) => k.user && String(k.user) === String(userId)
+          );
+          const isParticipant = room.participants && room.participants.some(
+            (p) => p.user && String(p.user) === String(userId)
+          );
+
+          if (isKicked && !isParticipant) {
+            socket.emit("kicked-reentry-blocked", {
+              message: "You were previously removed from this room. You must request permission from the host to enter.",
+              requiresApproval: true,
+              roomId
+            });
+            return;
+          }
+        }
 
         // Create room if not exists
         if (!roomUsers[roomId]) {
@@ -510,6 +592,11 @@ const socketHandler = (io) => {
           // Clean up from rejectedRequests
           room.rejectedRequests = (room.rejectedRequests || []).filter(r => r.user.toString() !== userId);
 
+          // Clean up from kickedUsers
+          if (room.kickedUsers) {
+            room.kickedUsers = room.kickedUsers.filter(k => k.user && k.user.toString() !== userId.toString());
+          }
+
           const alreadyJoined = room.participants.some(p => p.user && p.user.toString() === userId.toString());
           if (!alreadyJoined) {
             room.participants.push({ user: userId, role: "MEMBER" });
@@ -585,6 +672,15 @@ const socketHandler = (io) => {
           if (targetParticipant.role === "OWNER" || targetParticipant.role === "MODERATOR") {
             return;
           }
+        }
+
+        if (!room.kickedUsers) room.kickedUsers = [];
+        if (!room.kickedUsers.some(k => k.user && String(k.user) === String(userId))) {
+          room.kickedUsers.push({
+            user: userId,
+            username: targetParticipant.user?.username || "User",
+            kickedAt: new Date()
+          });
         }
 
         room.participants = room.participants.filter(p => p.user && p.user.toString() !== String(userId));
@@ -1829,6 +1925,24 @@ const socketHandler = (io) => {
         }
         io.emit("live-rooms-update");
       }
+
+      // Clean up Google Meet active participants on disconnect
+      Object.keys(meetUsers).forEach((rId) => {
+        if (meetUsers[rId] && Array.isArray(meetUsers[rId])) {
+          const initialLen = meetUsers[rId].length;
+          meetUsers[rId] = meetUsers[rId].filter(
+            (u) => u.socketId !== socket.id && String(u.userId) !== String(socket.userId)
+          );
+          if (meetUsers[rId].length !== initialLen) {
+            if (meetUsers[rId].length === 0) {
+              delete meetUsers[rId];
+              io.to(rId).emit("meet:update-users", []);
+            } else {
+              io.to(rId).emit("meet:update-users", meetUsers[rId]);
+            }
+          }
+        }
+      });
 
       if (socket.userId) {
         const userId = socket.userId;

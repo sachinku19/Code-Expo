@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import MonacoEditor, { DiffEditor } from "@monaco-editor/react";
@@ -20,6 +20,8 @@ import AIHistoryTab from "../components/ai/AIHistoryTab";
 import * as workspaceService from "../services/workspaceService";
 import * as collabService from "../services/collaborationService";
 import MainLayout from "../layouts/MainLayout";
+import GoogleMeetLobbyModal from "../components/meet/GoogleMeetLobbyModal";
+import GoogleMeetStage from "../components/meet/GoogleMeetStage";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { logoutUser } from "../services/authService";
@@ -134,10 +136,11 @@ function Editor() {
   const navigate = useNavigate();
   const { user: authUser, setUser } = useAuth();
   const storedUser = authUser || JSON.parse(localStorage.getItem("user")) || { username: "Guest", _id: "guest" };
-  const user = {
+  const user = useMemo(() => ({
     ...storedUser,
     id: storedUser.id || storedUser._id || "guest"
-  };
+  }), [storedUser?.id, storedUser?._id, storedUser?.username, storedUser?.avatar]);
+
   const { roomId } = useParams();
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -196,6 +199,69 @@ function Editor() {
   const [joinRequests, setJoinRequests] = useState([]);
   const [notification, setNotification] = useState("");
   const [roomNotifications, setRoomNotifications] = useState([]);
+
+  // Google Meet Call States
+  const [showMeetLobby, setShowMeetLobby] = useState(false);
+  const [inMeet, setInMeet] = useState(false);
+  const [meetMicOn, setMeetMicOn] = useState(true);
+  const [meetVideoOn, setMeetVideoOn] = useState(true);
+  const [activeMeetUsers, setActiveMeetUsers] = useState([]);
+
+  const handleOpenMeetLobby = () => {
+    setShowMeetLobby(true);
+  };
+
+  const handleStartMeeting = ({ isMicOn, isVideoOn }) => {
+    setMeetMicOn(isMicOn);
+    setMeetVideoOn(isVideoOn);
+    setShowMeetLobby(false);
+    setInMeet(true);
+    socket.emit("meet:join", {
+      roomId,
+      userId: user.id || user._id,
+      username: user.username,
+      avatar: user.avatar,
+      isMicOn,
+      isVideoOn
+    });
+    triggerNotification("Joined Google Meet Workspace Session");
+  };
+
+  const handleLeaveMeeting = () => {
+    setInMeet(false);
+    setShowMeetLobby(false);
+    socket.emit("meet:leave", {
+      roomId,
+      userId: user.id || user._id
+    });
+    triggerNotification("Left Google Meet Workspace Session");
+  };
+
+  // Socket listener for Google Meet users update
+  useEffect(() => {
+    if (!socket) return;
+    const handleMeetUpdateUsers = (meetUsersList) => {
+      setActiveMeetUsers(meetUsersList || []);
+    };
+
+    socket.on("meet:update-users", handleMeetUpdateUsers);
+
+    return () => {
+      socket.off("meet:update-users", handleMeetUpdateUsers);
+    };
+  }, [socket]);
+
+  // Clean up meeting status on unmount or meeting leave
+  useEffect(() => {
+    return () => {
+      if (inMeet && roomId && socket && userRef.current) {
+        socket.emit("meet:leave", {
+          roomId,
+          userId: userRef.current.id || userRef.current._id
+        });
+      }
+    };
+  }, [inMeet, roomId, socket]);
 
   // Invite Followers Modal State
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -2362,6 +2428,11 @@ function Editor() {
       setDuplicateSessionModalOpen(true);
     };
 
+    const handleKickedReentryBlocked = (data) => {
+      setKickMessage(data?.message || "You were previously removed from this room. You must request permission from the host to enter.");
+      setDuplicateSessionModalOpen(true);
+    };
+
     const handleLayoutChange = (data) => {
       if (data.layoutMode) {
         changeLayoutMode(data.layoutMode, false);
@@ -2557,6 +2628,8 @@ function Editor() {
     socket.on("already-online", handleAlreadyOnline);
     socket.off("kicked");
     socket.on("kicked", handleKicked);
+    socket.off("kicked-reentry-blocked");
+    socket.on("kicked-reentry-blocked", handleKickedReentryBlocked);
     socket.off("layout-change");
     socket.on("layout-change", handleLayoutChange);
     socket.off("message-deleted");
@@ -3751,11 +3824,11 @@ function Editor() {
       notifications={roomNotifications}
       clearNotifications={() => setRoomNotifications([])}
       onSearchSelect={handleSearchSelect}
-      inCall={inCall}
-      callType={callType}
-      onJoinCall={showCallButtons ? handleJoinCall : null}
-      onLeaveCall={handleLeaveCallManual}
-      activeCallUsers={activeCallUsers}
+      inCall={inMeet}
+      callType="video"
+      onJoinCall={showCallButtons ? handleOpenMeetLobby : null}
+      onLeaveCall={handleLeaveMeeting}
+      activeCallUsers={activeMeetUsers}
     >
       <div className={`ce-editor-page mobile-tab-${mobileTab}`}>
         {/* Main Core Body */}
@@ -6229,9 +6302,32 @@ function Editor() {
             setReportEvidenceId("");
           }}
           reportedUser={reportedTargetUser}
-          evidenceType={reportEvidenceType}
           evidenceId={reportEvidenceId}
           addToast={addToast}
+        />
+
+        {/* Google Meet Pre-Join Lobby Modal */}
+        <GoogleMeetLobbyModal
+          isOpen={showMeetLobby}
+          onClose={() => setShowMeetLobby(false)}
+          onJoinMeeting={handleStartMeeting}
+          roomTitle={room?.title}
+          currentUser={user}
+          initialMicOn={meetMicOn}
+          initialVideoOn={meetVideoOn}
+        />
+
+        {/* Google Meet Dynamic In-Call Grid Stage */}
+        <GoogleMeetStage
+          isOpen={inMeet}
+          onLeaveMeeting={handleLeaveMeeting}
+          roomId={roomId}
+          roomTitle={room?.title}
+          currentUser={user}
+          participants={activeMeetUsers}
+          initialMicOn={meetMicOn}
+          initialVideoOn={meetVideoOn}
+          socket={socket}
         />
       </div>
     </MainLayout>

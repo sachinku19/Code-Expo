@@ -1629,14 +1629,14 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               </div>
 
               <div className="chat-header-actions" style={{ position: "relative" }}>
-                {declinedCallIds?.has(String(activeChat._id || activeChat.id)) ? (
+                {activeChat.isGroup && declinedCallIds?.has(String(activeChat._id || activeChat.id)) ? (
                   <button
                     type="button"
                     className="header-action-btn join-call-btn-highlight"
                     onClick={() => handleStartCall("audio", activeChat)}
-                    title="Join active call"
+                    title="Join active group call"
                     disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
-                    style={{ background: "#10b981", color: "#fff", padding: "6px 12px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "6px", border: "none", fontWeight: 700, fontSize: "0.78rem" }}
+                    style={{ background: "#10b981", color: "#fff", padding: "6px 14px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "6px", border: "none", fontWeight: 700, fontSize: "0.78rem" }}
                   >
                     <Phone size={14} />
                     <span>Join Call</span>
@@ -2599,7 +2599,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         evidenceId={reportEvidenceId}
         addToast={addToast}
       />
-      {/* WhatsApp-Style Delete Message Confirmation Modal */}
+      {/* WhatsApp-Style Light Mode Delete Message Confirmation Modal */}
       <AnimatePresence>
         {deleteModalMsg && (
           <div
@@ -2615,86 +2615,131 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               left: 0,
               right: 0,
               bottom: 0,
-              background: "rgba(0,0,0,0.7)",
-              backdropFilter: "blur(6px)"
+              background: "rgba(0, 0, 0, 0.55)",
+              backdropFilter: "blur(8px)"
             }}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="ce-modal-card"
+              initial={{ scale: 0.88, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.88, opacity: 0, y: 10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="ce-modal-card whatsapp-light-delete-card"
               onClick={(e) => e.stopPropagation()}
               style={{
                 maxWidth: "380px",
                 width: "90%",
-                padding: "24px",
+                padding: "26px 24px",
                 textAlign: "center",
-                background: "rgba(16, 16, 26, 0.96)",
-                border: "1px solid rgba(255, 255, 255, 0.12)",
-                borderRadius: "16px",
-                boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
+                background: "#ffffff",
+                border: "1px solid rgba(0, 0, 0, 0.08)",
+                borderRadius: "20px",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center"
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "12px" }}>
-                <Trash2 size={22} color="#ef4444" />
-                <h3 style={{ margin: 0, color: "#fff", fontSize: "1.15rem", fontWeight: 700 }}>Delete message?</h3>
+              <div
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "50%",
+                  background: "rgba(239, 68, 68, 0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "14px"
+                }}
+              >
+                <Trash2 size={24} color="#ef4444" />
               </div>
-              <p style={{ margin: "0 0 20px 0", color: "rgba(255, 255, 255, 0.65)", fontSize: "0.85rem", lineHeight: 1.5 }}>
+
+              <h3 style={{ margin: "0 0 8px 0", color: "#111827", fontSize: "1.2rem", fontWeight: "700", letterSpacing: "-0.01em" }}>
+                Delete message?
+              </h3>
+
+              <p style={{ margin: "0 0 22px 0", color: "#4b5563", fontSize: "0.88rem", lineHeight: 1.55 }}>
                 {String(deleteModalMsg.sender?._id || deleteModalMsg.sender) === String(currentUserId)
                   ? "Do you want to delete this message for everyone or only for yourself?"
                   : "This message will be removed from your device only."}
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
                 {String(deleteModalMsg.sender?._id || deleteModalMsg.sender) === String(currentUserId) && (
                   <button
                     type="button"
                     onClick={() => confirmDeleteMessage(deleteModalMsg, "everyone")}
                     style={{
-                      padding: "11px 16px",
-                      borderRadius: "10px",
+                      width: "100%",
+                      padding: "12px 18px",
+                      borderRadius: "12px",
                       border: "none",
                       background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-                      color: "#fff",
-                      fontSize: "0.85rem",
+                      color: "#ffffff",
+                      fontSize: "0.88rem",
                       fontWeight: "700",
                       cursor: "pointer",
                       boxShadow: "0 4px 14px rgba(239, 68, 68, 0.35)",
-                      transition: "transform 0.15s ease"
+                      transition: "transform 0.15s ease, box-shadow 0.15s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 6px 18px rgba(239, 68, 68, 0.45)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 4px 14px rgba(239, 68, 68, 0.35)";
                     }}
                   >
                     Delete for Everyone
                   </button>
                 )}
+
                 <button
                   type="button"
                   onClick={() => confirmDeleteMessage(deleteModalMsg, "me")}
                   style={{
-                    padding: "11px 16px",
-                    borderRadius: "10px",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    background: "rgba(255, 255, 255, 0.08)",
-                    color: "#fff",
-                    fontSize: "0.85rem",
+                    width: "100%",
+                    padding: "12px 18px",
+                    borderRadius: "12px",
+                    border: "1px solid #e5e7eb",
+                    background: "#f9fafb",
+                    color: "#1f2937",
+                    fontSize: "0.88rem",
                     fontWeight: "600",
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    transition: "background 0.15s ease, border-color 0.15s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f3f4f6";
+                    e.currentTarget.style.borderColor = "#d1d5db";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#f9fafb";
+                    e.currentTarget.style.borderColor = "#e5e7eb";
                   }}
                 >
                   Delete for Me
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setDeleteModalMsg(null)}
                   style={{
-                    padding: "8px 16px",
-                    borderRadius: "10px",
+                    width: "100%",
+                    padding: "9px 18px",
+                    borderRadius: "12px",
                     border: "none",
                     background: "transparent",
-                    color: "rgba(255, 255, 255, 0.5)",
-                    fontSize: "0.82rem",
+                    color: "#6b7280",
+                    fontSize: "0.85rem",
                     fontWeight: "600",
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    transition: "color 0.15s ease"
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = "#111827"}
+                  onMouseLeave={(e) => e.currentTarget.style.color = "#6b7280"}
                 >
                   Cancel
                 </button>

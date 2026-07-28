@@ -1316,33 +1316,38 @@ export default function MainLayout({
                   <button
                     className="ce-nav-action-btn active-call"
                     onClick={onLeaveCall}
-                    title="Leave Call"
-                    style={{ backgroundColor: "#ef4444" }}
+                    title="In Meeting - Click to Open / Leave"
+                    style={{ backgroundColor: "#10b981", color: "#ffffff", fontWeight: 700 }}
                   >
-                    <Phone size={13} style={{ transform: "rotate(135deg)" }} />
-                    <span>Leave Call</span>
+                    <Video size={13} />
+                    <span>In Meeting</span>
                   </button>
                 ) : (
-                  <div className="ce-call-dropdown-wrapper">
-                    <button
-                      className={`ce-nav-action-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
-                      title={activeCallUsers && activeCallUsers.length > 0 ? "Active Call in Progress - Click to Join" : "Start a Call"}
-                    >
-                      <Phone size={13} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
-                      <span>{activeCallUsers && activeCallUsers.length > 0 ? `Join Call (${activeCallUsers.length})` : "Call"}</span>
-                      <ChevronDown size={11} style={{ marginLeft: "2px" }} />
-                    </button>
-                    <div className="ce-call-dropdown-menu">
-                      <button className="ce-call-dropdown-item" onClick={() => onJoinCall("audio")}>
-                        <Phone size={12} />
-                        <span>Audio Call</span>
-                      </button>
-                      <button className="ce-call-dropdown-item" onClick={() => onJoinCall("video")}>
-                        <Video size={12} />
-                        <span>Video Call</span>
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    className={`ce-nav-action-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
+                    onClick={() => onJoinCall("video")}
+                    title="Google Meet Room - Join Workspace Meeting"
+                    style={{
+                      background: activeCallUsers && activeCallUsers.length > 0
+                        ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                        : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                      color: "#ffffff",
+                      border: "none",
+                      fontWeight: 700,
+                      padding: "6px 14px",
+                      borderRadius: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    <Video size={14} color="#ffffff" />
+                    <span style={{ color: "#ffffff", fontWeight: 700 }}>
+                      {activeCallUsers && activeCallUsers.length > 0
+                        ? `Join Meeting (${activeCallUsers.length})`
+                        : "Meeting"}
+                    </span>
+                  </button>
                 )
               )}
 

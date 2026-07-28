@@ -106,6 +106,25 @@ const joinRoom = async (req, res) => {
             });
         }
 
+        const isKicked = room.kickedUsers && room.kickedUsers.some(k => k.user && k.user.toString() === req.user._id.toString());
+        if (isKicked) {
+            const isPending = room.pendingRequests && room.pendingRequests.some(r => r.user && r.user.toString() === req.user._id.toString());
+            if (isPending) {
+                return res.status(200).json({
+                    success: true,
+                    requiresApproval: true,
+                    isPending: true,
+                    message: "Your request to re-enter this room is pending approval from the host."
+                });
+            }
+            return res.status(200).json({
+                success: true,
+                requiresApproval: true,
+                isKicked: true,
+                message: "You were previously removed from this room and must request permission from the host to enter."
+            });
+        }
+
         if (room.isPrivate) {
             return res.status(200).json({
                 success: true,
@@ -463,6 +482,9 @@ const respondToJoinRequest = async (req, res) => {
             const alreadyParticipant = room.participants.some(p => p.user && p.user.toString() === requesterId.toString());
             if (!alreadyParticipant) {
                 room.participants.push({ user: requesterId, role: "MEMBER" });
+            }
+            if (room.kickedUsers) {
+                room.kickedUsers = room.kickedUsers.filter(k => k.user && k.user.toString() !== requesterId.toString());
             }
         } else if (action === "reject") {
             if (!room.rejectedRequests) room.rejectedRequests = [];
@@ -841,6 +863,15 @@ const kickUser = async (req, res) => {
             }
         } else {
             return res.status(403).json({ success: false, message: "Access denied. Only owners and moderators can kick users" });
+        }
+
+        if (!room.kickedUsers) room.kickedUsers = [];
+        if (!room.kickedUsers.some(k => k.user && k.user.toString() === userId.toString())) {
+            room.kickedUsers.push({
+                user: userId,
+                username: target.user?.username || "User",
+                kickedAt: new Date()
+            });
         }
 
         room.participants = room.participants.filter(p => p.user && p.user.toString() !== userId.toString());
