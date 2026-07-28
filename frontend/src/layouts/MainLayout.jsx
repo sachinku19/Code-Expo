@@ -208,8 +208,13 @@ export default function MainLayout({
         setUnreadMessageCount(c => c + 1);
       }
 
+      const isCallLog =
+        msg.fileType === "call" ||
+        (typeof msg.message === "string" && msg.message.trim().startsWith('{"callType"')) ||
+        (typeof msg.text === "string" && msg.text.trim().startsWith('{"callType"'));
+
       const dmTonesEnabled = localStorage.getItem("send_message_notification") !== "false";
-      if (dmTonesEnabled) {
+      if (dmTonesEnabled && !isCallLog) {
         dmReceiveAudio.currentTime = 0;
         dmReceiveAudio.play().catch(() => { });
       }

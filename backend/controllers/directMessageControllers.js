@@ -19,7 +19,8 @@ exports.getConversations = async (req, res) => {
       {
         $match: {
           $or: [{ sender: myId }, { recipient: myId }],
-          groupChat: { $exists: false }
+          groupChat: { $exists: false },
+          deletedFor: { $ne: myId }
         }
       },
       { $sort: { createdAt: -1 } },
@@ -193,7 +194,10 @@ exports.getChatHistory = async (req, res) => {
 
     if (group) {
       // Return group history
-      const messages = await DirectMessage.find({ groupChat: group._id })
+      const messages = await DirectMessage.find({
+        groupChat: group._id,
+        deletedFor: { $ne: myId }
+      })
         .sort({ createdAt: 1 })
         .populate("sender", "username avatar")
         .lean();
@@ -237,7 +241,8 @@ exports.getChatHistory = async (req, res) => {
         { sender: myId, recipient: realTargetId },
         { sender: realTargetId, recipient: myId }
       ],
-      groupChat: { $exists: false }
+      groupChat: { $exists: false },
+      deletedFor: { $ne: myId }
     })
     .sort({ createdAt: 1 })
     .populate("sender", "username avatar")
@@ -503,25 +508,44 @@ exports.deleteDirectMessage = async (req, res) => {
       });
     }
 
-    if (String(message.sender) !== String(myId)) {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized to delete this message"
-      });
-    }
-
-    await DirectMessage.findByIdAndDelete(messageId);
+    const mode = (req.body?.mode || req.query?.mode || "me").toLowerCase();
+    const isSender = String(message.sender) === String(myId);
 
     const io = req.app.get("io");
-    if (io) {
-      io.to(String(message.recipient)).emit("dm:delete", { messageId, senderId: myId, recipientId: message.recipient });
-      io.to(String(myId)).emit("dm:delete", { messageId, senderId: myId, recipientId: message.recipient });
-    }
 
-    res.status(200).json({
-      success: true,
-      message: "Message deleted successfully"
-    });
+    if (mode === "everyone" && isSender) {
+      await DirectMessage.findByIdAndDelete(messageId);
+
+      if (io) {
+        const payload = { messageId, mode: "everyone", senderId: myId, recipientId: message.recipient, groupChatId: message.groupChat };
+        if (message.groupChat) {
+          io.to(String(message.groupChat)).emit("dm:delete", payload);
+        } else {
+          if (message.recipient) io.to(String(message.recipient)).emit("dm:delete", payload);
+          io.to(String(myId)).emit("dm:delete", payload);
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        mode: "everyone",
+        message: "Message deleted for everyone"
+      });
+    } else {
+      await DirectMessage.findByIdAndUpdate(messageId, {
+        $addToSet: { deletedFor: myId }
+      });
+
+      if (io) {
+        io.to(String(myId)).emit("dm:delete", { messageId, mode: "me", senderId: myId });
+      }
+
+      return res.status(200).json({
+        success: true,
+        mode: "me",
+        message: "Message deleted for you"
+      });
+    }
   } catch (error) {
     res.status(500).json({
       success: false,

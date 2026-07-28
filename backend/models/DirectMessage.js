@@ -37,7 +37,11 @@ const directMessageSchema = new mongoose.Schema({
   isRead: {
     type: Boolean,
     default: false
-  }
+  },
+  deletedFor: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }]
 }, { timestamps: true });
 
 directMessageSchema.index({ sender: 1, recipient: 1, createdAt: -1 });

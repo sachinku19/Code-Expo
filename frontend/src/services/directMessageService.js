@@ -39,8 +39,11 @@ export const sendDirectMessageAttachment = async (formData) => {
   return response.data;
 };
 
-export const deleteDirectMessage = async (messageId) => {
-  const response = await API.delete(`/delete/${messageId}`, getHeaders());
+export const deleteDirectMessage = async (messageId, mode = "me") => {
+  const response = await API.delete(`/delete/${messageId}`, {
+    ...getHeaders(),
+    data: { mode }
+  });
   return response.data;
 };
 

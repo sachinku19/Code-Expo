@@ -195,8 +195,29 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const [reportEvidenceType, setReportEvidenceType] = useState("");
   const [reportEvidenceId, setReportEvidenceId] = useState("");
   const [activeMessageMenuId, setActiveMessageMenuId] = useState(null);
-  const [messageToDelete, setMessageToDelete] = useState(null);
-  const [isDeletingMessage, setIsDeletingMessage] = useState(false);
+  const [deleteModalMsg, setDeleteModalMsg] = useState(null);
+
+  const confirmDeleteMessage = async (msgObj, mode) => {
+    if (!msgObj) return;
+    const msgId = msgObj._id;
+    setDeleteModalMsg(null);
+
+    // Optimistic UI update: instantly hide message locally (<1ms)
+    setMessages((prev) => {
+      const next = prev.filter((m) => m._id !== msgId);
+      if (activeChatRef.current) {
+        const key = activeChatRef.current._id || activeChatRef.current.id;
+        chatHistoryCacheRef.current[key] = next;
+      }
+      return next;
+    });
+
+    try {
+      await deleteDirectMessage(msgId, mode);
+    } catch (err) {
+      console.error("Error deleting message:", err);
+    }
+  };
 
   // Conversations list & active chat state (Instant zero-delay refresh cache)
   const [conversations, setConversations] = useState(() => {
@@ -880,30 +901,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     }
   };
 
-  const handleDeleteMessage = (messageId) => {
-    setMessageToDelete(messageId);
-  };
 
-  const confirmDeleteMessage = async () => {
-    if (!messageToDelete) return;
-    setIsDeletingMessage(true);
-    try {
-      await deleteDirectMessage(messageToDelete);
-      setMessages((prev) => {
-        const next = prev.filter((m) => m._id !== messageToDelete);
-        if (activeChatId) {
-          chatHistoryCacheRef.current[activeChatId] = next;
-        }
-        return next;
-      });
-      fetchConversations();
-    } catch (err) {
-      console.error("Error deleting message:", err);
-    } finally {
-      setIsDeletingMessage(false);
-      setMessageToDelete(null);
-    }
-  };
 
   const handleToggleBlock = async (userId, currentlyBlocked) => {
     try {
@@ -1615,10 +1613,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                 <div className="user-status-text">
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span className="chat-partner-name">{activeChat.isGroup ? activeChat.name : (activeChat.displayName || activeChat.username)}</span>
-                    {!activeChat.isGroup && activeChat.username && (
-                      <span className="chat-partner-handle" style={{ fontSize: "0.78rem", color: "var(--ce-accent)", fontFamily: "monospace" }}>
-                        @{activeChat.username}
-                      </span>
+                    {!activeChat.isGroup &&
+                      activeChat.username &&
+                      activeChat.displayName &&
+                      activeChat.displayName.trim().toLowerCase() !== activeChat.username.trim().toLowerCase() && (
+                        <span className="chat-partner-handle" style={{ fontSize: "0.78rem", color: "var(--ce-accent)", fontFamily: "monospace" }}>
+                          @{activeChat.username}
+                        </span>
                     )}
                   </div>
                   <span className={`status-label ${activeChat.isOnline || activeChat.isGroup ? "online" : ""}`}>
@@ -1784,7 +1785,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                 <div className="message-bubble-actions">
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteMessage(msg._id)}
+                                    onClick={() => setDeleteModalMsg(msg)}
                                     className="bubble-action-btn delete-btn"
                                     title="Delete message"
                                   >
@@ -1839,10 +1840,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                       <button
                                         onClick={() => {
                                           setActiveMessageMenuId(null);
-                                          setReportedTargetUser(msg.sender || activeChat);
-                                          setReportEvidenceType("MESSAGE");
-                                          setReportEvidenceId(msg._id);
-                                          setReportModalOpen(true);
+                                          setDeleteModalMsg(msg);
                                         }}
                                         style={{
                                           background: "transparent",
@@ -1863,6 +1861,35 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                         onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
                                         onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                                       >
+                                        <Trash2 size={13} /> Delete for Me
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setActiveMessageMenuId(null);
+                                          setReportedTargetUser(msg.sender || activeChat);
+                                          setReportEvidenceType("MESSAGE");
+                                          setReportEvidenceId(msg._id);
+                                          setReportModalOpen(true);
+                                        }}
+                                        style={{
+                                          background: "transparent",
+                                          border: "none",
+                                          color: "rgba(255, 255, 255, 0.7)",
+                                          fontSize: "0.74rem",
+                                          fontWeight: "600",
+                                          padding: "8px 12px",
+                                          textAlign: "left",
+                                          cursor: "pointer",
+                                          width: "100%",
+                                          borderRadius: "4px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          transition: "background 0.2s ease"
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)"}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                      >
                                         ⚠️ Report Msg
                                       </button>
                                     </div>
@@ -1874,10 +1901,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                 {activeChat.isGroup && !isMe && (
                                   <div className="group-message-sender-name" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                     <span>{msg.sender?.displayName || msg.sender?.username || "Developer"}</span>
-                                    {msg.sender?.username && (
-                                      <span style={{ fontSize: "10.5px", color: "var(--ce-accent)", opacity: 0.85, fontFamily: "monospace" }}>
-                                        @{msg.sender.username}
-                                      </span>
+                                    {msg.sender?.username &&
+                                      msg.sender?.displayName &&
+                                      msg.sender.displayName.trim().toLowerCase() !== msg.sender.username.trim().toLowerCase() && (
+                                        <span style={{ fontSize: "10.5px", color: "var(--ce-accent)", opacity: 0.85, fontFamily: "monospace" }}>
+                                          @{msg.sender.username}
+                                        </span>
                                     )}
                                   </div>
                                 )}
@@ -2570,37 +2599,104 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         evidenceId={reportEvidenceId}
         addToast={addToast}
       />
-      {/* Delete Direct Message Confirmation Modal */}
+      {/* WhatsApp-Style Delete Message Confirmation Modal */}
       <AnimatePresence>
-        {messageToDelete && (
-          <div className="ce-modal-overlay" onClick={() => setMessageToDelete(null)} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+        {deleteModalMsg && (
+          <div
+            className="ce-modal-overlay"
+            onClick={() => setDeleteModalMsg(null)}
+            style={{
+              zIndex: 100000,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(6px)"
+            }}
+          >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               className="ce-modal-card"
-              style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center", background: "#0a0a0f", border: "1px solid var(--ce-premium-border)" }}
               onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: "380px",
+                width: "90%",
+                padding: "24px",
+                textAlign: "center",
+                background: "rgba(16, 16, 26, 0.96)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                borderRadius: "16px",
+                boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
+              }}
             >
-              <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.1rem", fontWeight: "700" }}>Delete Message?</h3>
-              <p style={{ margin: "0 0 20px 0", color: "var(--ce-premium-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
-                Are you sure you want to delete this message? This action will permanently remove it from your chat history.
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "12px" }}>
+                <Trash2 size={22} color="#ef4444" />
+                <h3 style={{ margin: 0, color: "#fff", fontSize: "1.15rem", fontWeight: 700 }}>Delete message?</h3>
+              </div>
+              <p style={{ margin: "0 0 20px 0", color: "rgba(255, 255, 255, 0.65)", fontSize: "0.85rem", lineHeight: 1.5 }}>
+                {String(deleteModalMsg.sender?._id || deleteModalMsg.sender) === String(currentUserId)
+                  ? "Do you want to delete this message for everyone or only for yourself?"
+                  : "This message will be removed from your device only."}
               </p>
-              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {String(deleteModalMsg.sender?._id || deleteModalMsg.sender) === String(currentUserId) && (
+                  <button
+                    type="button"
+                    onClick={() => confirmDeleteMessage(deleteModalMsg, "everyone")}
+                    style={{
+                      padding: "11px 16px",
+                      borderRadius: "10px",
+                      border: "none",
+                      background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                      color: "#fff",
+                      fontSize: "0.85rem",
+                      fontWeight: "700",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(239, 68, 68, 0.35)",
+                      transition: "transform 0.15s ease"
+                    }}
+                  >
+                    Delete for Everyone
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => setMessageToDelete(null)}
-                  style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#fff", fontSize: "0.75rem", fontWeight: "600", cursor: "pointer" }}
+                  onClick={() => confirmDeleteMessage(deleteModalMsg, "me")}
+                  style={{
+                    padding: "11px 16px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    background: "rgba(255, 255, 255, 0.08)",
+                    color: "#fff",
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
                 >
-                  Cancel
+                  Delete for Me
                 </button>
                 <button
                   type="button"
-                  onClick={confirmDeleteMessage}
-                  disabled={isDeletingMessage}
-                  style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer" }}
+                  onClick={() => setDeleteModalMsg(null)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "10px",
+                    border: "none",
+                    background: "transparent",
+                    color: "rgba(255, 255, 255, 0.5)",
+                    fontSize: "0.82rem",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
                 >
-                  {isDeletingMessage ? "Deleting..." : "Delete"}
+                  Cancel
                 </button>
               </div>
             </motion.div>
