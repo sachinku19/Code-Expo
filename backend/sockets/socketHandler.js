@@ -2,6 +2,9 @@ const Room = require("../models/Room");
 const Message = require("../models/Message");
 const WorkspaceItem = require("../models/WorkspaceItem");
 const User = require("../models/User");
+const DirectMessage = require("../models/DirectMessage");
+const GroupChat = require("../models/GroupChat");
+const mongoose = require("mongoose");
 const { executeCode } = require("../services/jdoodleService");
 
 // Import Collaboration models
@@ -198,6 +201,74 @@ const socketHandler = (io) => {
       if (!groupId) return;
       socket.join(String(groupId));
       console.log(`👥 Socket ${socket.id} dynamically joined Group Room: ${groupId}`);
+    });
+
+    // High-speed Socket Direct Messaging (<2ms transport)
+    socket.on("dm:send", async (data, ackCallback) => {
+      try {
+        const senderId = socket.userId;
+        if (!senderId || !data || !data.recipientId) return;
+
+        const { recipientId, message, tempId, fileType, fileUrl, fileName } = data;
+        const cleanRecipient = String(recipientId).trim();
+        const isObjId = mongoose.Types.ObjectId.isValid(cleanRecipient);
+
+        const group = isObjId ? await GroupChat.findById(cleanRecipient).lean() : null;
+
+        let newMessage;
+        if (group) {
+          newMessage = await DirectMessage.create({
+            sender: senderId,
+            groupChat: group._id,
+            message: message || "",
+            fileType,
+            fileUrl,
+            fileName
+          });
+        } else {
+          const targetUser = await User.findOne(
+            isObjId
+              ? { $or: [{ _id: cleanRecipient }, { username: cleanRecipient.toLowerCase() }] }
+              : { username: cleanRecipient.toLowerCase() }
+          ).select("_id username avatar blockedUsers").lean();
+
+          if (!targetUser) return;
+          const realRecipientId = targetUser._id;
+
+          newMessage = await DirectMessage.create({
+            sender: senderId,
+            recipient: realRecipientId,
+            message: message || "",
+            fileType,
+            fileUrl,
+            fileName
+          });
+        }
+
+        const populated = await DirectMessage.findById(newMessage._id)
+          .populate("sender", "username avatar")
+          .populate("recipient", "username avatar")
+          .lean();
+
+        const payload = { ...populated, tempId };
+
+        if (group) {
+          io.to(String(group._id)).emit("dm:receive", payload);
+        } else {
+          const targetId = String(populated.recipient?._id || populated.recipient);
+          io.to(targetId).emit("dm:receive", payload);
+          io.to(String(senderId)).emit("dm:receive", payload);
+        }
+
+        if (typeof ackCallback === "function") {
+          ackCallback({ success: true, message: payload });
+        }
+      } catch (err) {
+        console.error("Error in dm:send socket handler:", err);
+        if (typeof ackCallback === "function") {
+          ackCallback({ success: false, error: err.message });
+        }
+      }
     });
 
     // Typing indicators for direct messaging

@@ -40,7 +40,9 @@ const directMessageSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-directMessageSchema.index({ sender: 1, recipient: 1, createdAt: 1 });
-directMessageSchema.index({ groupChat: 1, createdAt: 1 });
+directMessageSchema.index({ sender: 1, recipient: 1, createdAt: -1 });
+directMessageSchema.index({ sender: 1, createdAt: -1 });
+directMessageSchema.index({ recipient: 1, createdAt: -1 });
+directMessageSchema.index({ groupChat: 1, createdAt: -1 });
 
 module.exports = mongoose.model("DirectMessage", directMessageSchema);

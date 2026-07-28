@@ -195,7 +195,8 @@ exports.getChatHistory = async (req, res) => {
       // Return group history
       const messages = await DirectMessage.find({ groupChat: group._id })
         .sort({ createdAt: 1 })
-        .populate("sender", "username avatar");
+        .populate("sender", "username avatar")
+        .lean();
 
       return res.status(200).json({
         success: true,
@@ -207,7 +208,7 @@ exports.getChatHistory = async (req, res) => {
       isObjId 
         ? { $or: [{ _id: cleanUserId }, { username: cleanUserId.toLowerCase() }] } 
         : { username: cleanUserId.toLowerCase() }
-    );
+    ).select("_id username").lean();
 
     if (!targetUser) {
       return res.status(200).json({ success: true, messages: [] });
@@ -240,7 +241,8 @@ exports.getChatHistory = async (req, res) => {
     })
     .sort({ createdAt: 1 })
     .populate("sender", "username avatar")
-    .populate("recipient", "username avatar");
+    .populate("recipient", "username avatar")
+    .lean();
 
     res.status(200).json({
       success: true,

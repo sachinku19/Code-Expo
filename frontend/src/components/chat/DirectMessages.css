@@ -421,15 +421,31 @@
   position: relative;
   margin-right: 14px;
   flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 44px;
+  max-height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .user-avatar {
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 44px;
+  max-height: 44px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(255, 255, 255, 0.1);
   transition: border-color 0.2s;
+  flex-shrink: 0;
 }
 
 .conversation-item:hover .user-avatar {
@@ -443,14 +459,21 @@
 .user-avatar-placeholder {
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 44px;
+  max-height: 44px;
   border-radius: 50%;
-  background: rgba(139, 92, 246, 0.15);
-  color: #a78bfa;
-  display: grid;
-  place-items: center;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35) 0%, rgba(99, 102, 241, 0.25) 100%);
+  color: #d8b4fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 800;
-  font-size: 1.15rem;
-  border: 2px solid rgba(139, 92, 246, 0.3);
+  font-size: 1.1rem;
+  border: 2px solid rgba(139, 92, 246, 0.4);
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .online-dot-badge {

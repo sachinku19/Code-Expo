@@ -320,7 +320,7 @@ export function CallProvider({ children }) {
 
   const openPreCallModal = (partner, defaultType = "audio") => {
     if (!partner) return;
-    setPreCallModal({ partner, selectedType: defaultType });
+    handleStartCall(defaultType, partner);
   };
 
   const closePreCallModal = () => {

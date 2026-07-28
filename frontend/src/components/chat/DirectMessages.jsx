@@ -99,6 +99,92 @@ const renderCallHistory = (msg, currentUserId) => {
   );
 };
 
+function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, size = 44 }) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
+  const displayName = name || "User";
+  const firstChar = displayName.trim().charAt(0).toUpperCase();
+
+  if (isGroup && !src) {
+    return (
+      <div className="group-avatar-icon-box">
+        <Users size={size > 36 ? 18 : 14} className="group-avatar-icon" />
+      </div>
+    );
+  }
+
+  if (!src || imgError) {
+    return (
+      <div
+        className="user-avatar-placeholder"
+        style={{
+          width: size,
+          height: size,
+          minWidth: size,
+          minHeight: size,
+          maxWidth: size,
+          maxHeight: size,
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: size > 36 ? "1.1rem" : "0.85rem",
+          overflow: "hidden",
+          flexShrink: 0
+        }}
+      >
+        {firstChar}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={displayName}
+      className={className}
+      onError={() => setImgError(true)}
+      style={{
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size,
+        maxWidth: size,
+        maxHeight: size,
+        borderRadius: "50%",
+        objectFit: "cover",
+        flexShrink: 0
+      }}
+    />
+  );
+}
+
+function formatLastMessageText(lastMsg) {
+  if (!lastMsg) return "No messages yet";
+  let text = lastMsg.text || lastMsg.message || "";
+  if (lastMsg.fileUrl && !text) return "📷 Attachment";
+
+  if (typeof text === "string" && text.trim().startsWith('{"callType"')) {
+    try {
+      const parsed = JSON.parse(text);
+      const isVideo = parsed.callType === "video";
+      const isMissed = parsed.status === "missed" || parsed.status === "declined";
+      if (isMissed) {
+        return isVideo ? "📹 Missed Video Call" : "📞 Missed Voice Call";
+      }
+      return isVideo ? "📹 Video Call" : "📞 Voice Call";
+    } catch {
+      return "📞 Call Log";
+    }
+  }
+
+  return text || (lastMsg.fileUrl ? "📷 Attachment" : "No messages yet");
+}
+
 export default function DirectMessages({ preselectedUser, onChatLoaded, onViewProfile, addToast }) {
   const { user } = useAuth();
   const currentUserId = user?.id || user?._id;
@@ -112,12 +198,50 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const [messageToDelete, setMessageToDelete] = useState(null);
   const [isDeletingMessage, setIsDeletingMessage] = useState(false);
 
-  // Conversations list & active chat state
-  const [conversations, setConversations] = useState([]);
+  // Conversations list & active chat state (Instant zero-delay refresh cache)
+  const [conversations, setConversations] = useState(() => {
+    try {
+      const globalCached = localStorage.getItem("ce_global_conversations_cache");
+      if (globalCached) {
+        const parsed = JSON.parse(globalCached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const uid = storedUser?.id || storedUser?._id;
+      if (uid) {
+        const userCached = localStorage.getItem(`ce_conversations_${uid}`);
+        if (userCached) {
+          const parsed = JSON.parse(userCached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      }
+    } catch (e) {
+      console.error("Cache init error:", e);
+    }
+    return [];
+  });
   const [activeChat, setActiveChat] = useState(null); // Partner user or group object
   const [messages, setMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState("");
-  const [loadingConversations, setLoadingConversations] = useState(true);
+  const [loadingConversations, setLoadingConversations] = useState(() => {
+    try {
+      const globalCached = localStorage.getItem("ce_global_conversations_cache");
+      if (globalCached) {
+        const parsed = JSON.parse(globalCached);
+        if (Array.isArray(parsed) && parsed.length > 0) return false;
+      }
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const uid = storedUser?.id || storedUser?._id;
+      if (uid) {
+        const userCached = localStorage.getItem(`ce_conversations_${uid}`);
+        if (userCached) {
+          const parsed = JSON.parse(userCached);
+          if (Array.isArray(parsed) && parsed.length > 0) return false;
+        }
+      }
+    } catch (e) {}
+    return true;
+  });
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Search & filter tab states
@@ -327,10 +451,20 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     }
   }, [preselectedUser, onChatLoaded]);
 
+  const saveConversationsCache = (list) => {
+    try {
+      const json = JSON.stringify(list);
+      localStorage.setItem("ce_global_conversations_cache", json);
+      if (currentUserIdRef.current) {
+        localStorage.setItem(`ce_conversations_${currentUserIdRef.current}`, json);
+      }
+    } catch (e) {}
+  };
+
   // Fetch active conversations
   async function fetchConversations(showLoader = false) {
     try {
-      if (showLoader) {
+      if (showLoader && conversations.length === 0) {
         setLoadingConversations(true);
       }
       const res = await getConversations();
@@ -347,6 +481,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           });
         }
         setConversations(list);
+        saveConversationsCache(list);
         window.dispatchEvent(new CustomEvent("ce-unread-messages-update"));
       }
     } catch (err) {
@@ -355,6 +490,55 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       setLoadingConversations(false);
     }
   }
+
+  // Helper to update conversation list in memory instantly without HTTP call
+  const updateConversationInMemory = (msg) => {
+    setConversations((prev) => {
+      const isGroup = !!msg.groupChat;
+      const targetId = isGroup
+        ? String(msg.groupChat)
+        : String(msg.sender?._id || msg.sender) === String(currentUserIdRef.current)
+          ? String(msg.recipient?._id || msg.recipient)
+          : String(msg.sender?._id || msg.sender);
+
+      const existsIndex = prev.findIndex((c) => {
+        const id = c.isGroup ? String(c.group?._id) : String(c.user?._id || c.user?.id);
+        return id === targetId || String(c._id) === targetId;
+      });
+
+      const updatedLastMsg = {
+        text: msg.message || (msg.fileType ? `Sent a ${msg.fileType}` : ""),
+        fileUrl: msg.fileUrl,
+        fileType: msg.fileType,
+        senderId: msg.sender?._id || msg.sender,
+        createdAt: msg.createdAt || new Date().toISOString(),
+        isRead: activeChatRef.current && String(activeChatRef.current._id) === targetId
+      };
+
+      let newList;
+      if (existsIndex >= 0) {
+        const existing = prev[existsIndex];
+        const isSelf = String(msg.sender?._id || msg.sender) === String(currentUserIdRef.current);
+        const isActive = activeChatRef.current && String(activeChatRef.current._id) === targetId;
+        const newUnread = isSelf || isActive ? 0 : (existing.unreadCount || 0) + 1;
+
+        const updatedConv = {
+          ...existing,
+          lastMessage: updatedLastMsg,
+          unreadCount: newUnread
+        };
+
+        newList = [...prev];
+        newList.splice(existsIndex, 1);
+        newList.unshift(updatedConv);
+      } else {
+        newList = prev;
+        fetchConversations(false);
+      }
+      saveConversationsCache(newList);
+      return newList;
+    });
+  };
 
   // Socket listeners for real-time messages, typing, and presence updates
   useEffect(() => {
@@ -394,7 +578,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           delete typingTimeoutsRef.current[senderId];
         }
       }
-      fetchConversations();
+      updateConversationInMemory(msg);
     };
 
     const handlePartnerTyping = ({ senderId, senderInfo }) => {
@@ -461,7 +645,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     const handleReceiveReadReceipt = ({ readerId, senderId }) => {
       const activeChatVal = activeChatRef.current;
       const currentUserIdVal = currentUserIdRef.current;
-      
+
       setMessages((prev) => {
         const next = prev.map((m) => {
           const mSender = String(m.sender?._id || m.sender);
@@ -596,11 +780,16 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     setPartnerTypers((prev) => (prev.length > 0 ? [] : prev));
   }, [activeChatId]);
 
-  // Helper to scroll messages board to bottom programmatically
-  const scrollToBottom = (behavior = "smooth") => {
-    setTimeout(() => {
-      chatEndRef.current?.scrollIntoView({ behavior });
-    }, 50);
+  // Helper to scroll messages board to bottom programmatically (Instant WhatsApp style)
+  const scrollToBottom = (behavior = "instant") => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior, block: "end" });
+    }
+    requestAnimationFrame(() => {
+      if (chatEndRef.current) {
+        chatEndRef.current.scrollIntoView({ behavior: "instant", block: "end" });
+      }
+    });
   };
 
   // Auto-scroll chat history using refined logic for instant vs smooth scroll
@@ -609,7 +798,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       const isInitialLoad = justLoadedHistoryRef.current || prevChatIdRef.current !== activeChatId || prevMessagesCountRef.current === 0;
 
       if (isInitialLoad) {
-        scrollToBottom("auto");
+        scrollToBottom("instant");
         justLoadedHistoryRef.current = false;
         prevChatIdRef.current = activeChatId;
       } else if (
@@ -634,6 +823,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     if (hasCache) {
       setMessages(chatHistoryCacheRef.current[userId]);
       justLoadedHistoryRef.current = true;
+      scrollToBottom("instant");
     } else {
       setLoadingHistory(true);
     }
@@ -644,8 +834,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         chatHistoryCacheRef.current[userId] = fetchedMsgs;
         setMessages(fetchedMsgs);
         justLoadedHistoryRef.current = true;
+        scrollToBottom("instant");
         window.dispatchEvent(new CustomEvent("ce-unread-messages-update"));
-        fetchConversations();
       }
     } catch (err) {
       console.error("Error loading chat history:", err);
@@ -937,22 +1127,33 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           handleRemoveAttachment();
         }
       } else {
-        const res = await sendDirectMessage(activeChat._id, messageToSend);
-        if (res.success) {
-          setMessages((prev) => {
-            // Replace the optimistic message with the resolved server message
-            const filtered = prev.filter((m) => m._id !== tempId);
-            if (filtered.some((m) => m._id === res.message._id)) return filtered;
-            const next = [...filtered, res.message];
-            if (activeChat) {
-              const key = activeChat._id || activeChat.id;
-              chatHistoryCacheRef.current[key] = next;
+        if (socket.connected) {
+          socket.emit("dm:send", { recipientId: activeChat._id, message: messageToSend, tempId }, (ack) => {
+            if (ack && ack.success && ack.message) {
+              setMessages((prev) => {
+                const filtered = prev.filter((m) => m._id !== tempId && m._id !== ack.message._id);
+                const next = [...filtered, ack.message];
+                if (activeChat) {
+                  const key = activeChat._id || activeChat.id;
+                  chatHistoryCacheRef.current[key] = next;
+                }
+                return next;
+              });
             }
-            return next;
           });
         } else {
-          // Remove optimistic message if API failed
-          if (tempMessage) {
+          const res = await sendDirectMessage(activeChat._id, messageToSend);
+          if (res.success) {
+            setMessages((prev) => {
+              const filtered = prev.filter((m) => m._id !== tempId && m._id !== res.message._id);
+              const next = [...filtered, res.message];
+              if (activeChat) {
+                const key = activeChat._id || activeChat.id;
+                chatHistoryCacheRef.current[key] = next;
+              }
+              return next;
+            });
+          } else if (tempMessage) {
             setMessages((prev) => prev.filter((m) => m._id !== tempId));
           }
         }
@@ -1332,21 +1533,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     style={{ cursor: onViewProfile && !conv.isGroup ? "pointer" : "default" }}
                     title={conv.isGroup ? "" : `View @${partnerName}'s profile`}
                   >
-                    {conv.isGroup ? (
-                      chatPartner.avatar ? (
-                        <img src={chatPartner.avatar} alt={partnerName} className="user-avatar" />
-                      ) : (
-                        <div className="group-avatar-icon-box">
-                          <Users size={16} className="group-avatar-icon" />
-                        </div>
-                      )
-                    ) : chatPartner.avatar ? (
-                      <img src={chatPartner.avatar} alt={partnerName} className="user-avatar" />
-                    ) : (
-                      <div className="user-avatar-placeholder">
-                        {partnerName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <SafeAvatar
+                      src={chatPartner.avatar}
+                      name={partnerName}
+                      className="user-avatar"
+                      isGroup={conv.isGroup}
+                      size={44}
+                    />
                     {!conv.isGroup && chatPartner.isOnline && <span className="online-dot-badge" />}
                   </div>
 
@@ -1361,13 +1554,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                       {conv.lastMessage ? (
                         <>
                           {conv.lastMessage.senderId === currentUserId ? "You: " : conv.isGroup ? `${conv.lastMessage.senderName}: ` : ""}
-                          {conv.lastMessage.fileUrl ? (
-                            <span className="attachment-indicator">
-                              📷 Image
-                            </span>
-                          ) : (
-                            conv.lastMessage.text
-                          )}
+                          {formatLastMessageText(conv.lastMessage)}
                         </>
                       ) : (
                         <span className="no-messages">No messages yet</span>
@@ -1415,21 +1602,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                 title={activeChat.isGroup ? "View Group Info" : `View @${activeChat.username || activeChat.name}'s profile`}
               >
                 <div className="avatar-wrapper">
-                  {activeChat.isGroup ? (
-                    activeChat.avatar ? (
-                      <img src={activeChat.avatar} alt={activeChat.name} className="user-avatar-header" />
-                    ) : (
-                      <div className="group-avatar-icon-box header">
-                        <Users size={18} className="group-avatar-icon" />
-                      </div>
-                    )
-                  ) : activeChat.avatar ? (
-                    <img src={activeChat.avatar} alt={activeChat.username} className="user-avatar-header" />
-                  ) : (
-                    <div className="user-avatar-placeholder header">
-                      {(activeChat.username || activeChat.name).charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  <SafeAvatar
+                    src={activeChat.avatar}
+                    name={activeChat.name || activeChat.username}
+                    className="user-avatar-header"
+                    isGroup={activeChat.isGroup}
+                    size={40}
+                  />
                   {activeChat.isOnline && !activeChat.isGroup && <span className="online-dot-badge header" />}
                 </div>
 
@@ -1453,7 +1632,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                   <button
                     type="button"
                     className="header-action-btn join-call-btn-highlight"
-                    onClick={() => openPreCallModal ? openPreCallModal(activeChat, "audio") : handleStartCall("audio", activeChat)}
+                    onClick={() => handleStartCall("audio", activeChat)}
                     title="Join active call"
                     disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
                     style={{ background: "#10b981", color: "#fff", padding: "6px 12px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "6px", border: "none", fontWeight: 700, fontSize: "0.78rem" }}
@@ -1466,7 +1645,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     <button
                       type="button"
                       className="header-action-btn"
-                      onClick={() => openPreCallModal ? openPreCallModal(activeChat, "audio") : handleStartCall("audio", activeChat)}
+                      onClick={() => handleStartCall("audio", activeChat)}
                       title={activeChat.isGroup ? `Start Group Audio Call in ${activeChat.name}` : `Start Audio Call with ${activeChat.username}`}
                       disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
                     >
@@ -1475,7 +1654,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     <button
                       type="button"
                       className="header-action-btn"
-                      onClick={() => openPreCallModal ? openPreCallModal(activeChat, "video") : handleStartCall("video", activeChat)}
+                      onClick={() => handleStartCall("video", activeChat)}
                       title={activeChat.isGroup ? `Start Group Video Call in ${activeChat.name}` : `Start Video Call with ${activeChat.username}`}
                       disabled={!!activeCall || isChatBlocked || hasChatBlockedMe}
                     >
@@ -1590,21 +1769,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                           <div className={`message-bubble-wrapper ${isMe ? "sent" : "received"}`}>
                             {!isMe && (
                               <div className="bubble-avatar-container">
-                                {activeChat.isGroup ? (
-                                  msg.sender?.avatar ? (
-                                    <img src={msg.sender.avatar} alt={msg.sender.username} className="bubble-partner-avatar" />
-                                  ) : (
-                                    <div className="msg-sender-avatar-placeholder">
-                                      {msg.sender?.username?.charAt(0).toUpperCase() || "U"}
-                                    </div>
-                                  )
-                                ) : activeChat.avatar ? (
-                                  <img src={activeChat.avatar} alt={activeChat.username} className="bubble-partner-avatar" />
-                                ) : (
-                                  <div className="bubble-partner-avatar-placeholder">
-                                    {activeChat.username.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
+                                <SafeAvatar
+                                  src={activeChat.isGroup ? msg.sender?.avatar : activeChat.avatar}
+                                  name={activeChat.isGroup ? msg.sender?.username : activeChat.username}
+                                  className="bubble-partner-avatar"
+                                  isGroup={false}
+                                  size={32}
+                                />
                               </div>
                             )}
 
