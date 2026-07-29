@@ -1736,7 +1736,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       {/* Emojis Popup */}
                       {showEmojiGrid && (
                         <div style={{ position: "absolute", bottom: "50px", right: "10px", background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", borderRadius: "8px", padding: "8px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px", zIndex: 12 }}>
-                          {["💻", "🚀", "🔥", "💡", "⚡", "🧠", "🎉", "🤝", "📦", "🎨"].map(e => (
+                          {["💻", "🛠️", "🔥", "💡", "⚡", "🧠", "🎉", "🤝", "📦", "🎨"].map(e => (
                             <span key={e} onClick={() => insertEmoji(e)} style={{ cursor: "pointer", fontSize: "1.1rem" }}>{e}</span>
                           ))}
                         </div>

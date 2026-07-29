@@ -177,7 +177,7 @@ export default function CPDashboard({ user }) {
   const [linkedinCopied, setLinkedinCopied] = useState(false);
 
   const handleCopyLinkedinPost = () => {
-    const text = `🚀 Excited to share my developer stats on CodeExpo MyVerse!\n\n` +
+    const text = `Excited to share my developer stats on CodeExpo MyVerse!\n\n` +
       `🏆 CodeExpo Score: ${unifiedStats?.score || 0}/1000 (${unifiedStats?.level || "Grandmaster"})\n` +
       `⚡ Problems Solved: ${unifiedStats?.overallSolved || 0}\n` +
       `🔥 Active Streak: ${unifiedStats?.codingStreak || 0} Days\n` +

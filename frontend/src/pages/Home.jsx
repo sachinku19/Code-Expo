@@ -84,6 +84,16 @@ function Home() {
   const isMobile = useIsMobile(768);
   const { isVisible: navVisible, isScrolled: navScrolled, isMounted } = useSmartNavbar();
 
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
+
+  if (user) {
+    return null;
+  }
+
   // Stats state
   const [totalUser, setTotalUser] = useState(0);
   const [dbStats, setDbStats] = useState({ developers: 0, rooms: 0, messages: 0, executions: 0 });

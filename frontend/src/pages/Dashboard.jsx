@@ -7214,7 +7214,7 @@ function Dashboard() {
                                     return (
                                       <tr key={room.roomId} style={{ borderBottom: "1px solid var(--ce-border)", transition: "background 0.2s" }} className="table-row-hover">
                                         <td style={{ padding: "14px 16px" }}>
-                                          <div style={{ fontWeight: "700", fontSize: "0.92rem", color: "var(--ce-text)", display: "flex", alignItems: "center", gap: "6px" }}>🚀 {room.title}</div>
+                                          <div style={{ fontWeight: "700", fontSize: "0.92rem", color: "var(--ce-text)", display: "flex", alignItems: "center", gap: "6px" }}><Terminal size={14} style={{ color: "var(--ce-accent)" }} /> {room.title}</div>
                                           <div style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", marginTop: "2px" }}>{room.roomId}</div>
                                         </td>
                                         <td style={{ padding: "14px 16px" }}>
@@ -7327,7 +7327,7 @@ function Dashboard() {
                           return (
                             <tr key={room.roomId}>
                               <td>
-                                <div className="table-room-title">🚀 {room.title}</div>
+                                <div className="table-room-title"><Terminal size={13} style={{ marginRight: "6px", color: "var(--ce-accent)", verticalAlign: "middle" }} />{room.title}</div>
                                 <div className="table-room-id">{room.roomId}</div>
                               </td>
                               <td>
@@ -8329,7 +8329,7 @@ function Dashboard() {
                                   <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                                     <div className="profile-room-card-header">
                                       <div className="profile-room-card-title-group">
-                                        <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                        <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
                                         <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
                                       </div>
                                       {isRoomOwner(room) && (
@@ -8508,7 +8508,7 @@ function Dashboard() {
                                   <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                                     <div className="profile-room-card-header">
                                       <div className="profile-room-card-title-group">
-                                        <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                        <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
                                         <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
                                       </div>
                                       {isRoomOwner(room) && (
@@ -8604,7 +8604,7 @@ function Dashboard() {
                                   <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                                     <div className="profile-room-card-header">
                                       <div className="profile-room-card-title-group">
-                                        <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                        <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
                                         <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
                                       </div>
                                       {isRoomOwner(room) && (
@@ -9406,7 +9406,7 @@ function Dashboard() {
 
               <div className="modal-header-new">
                 <span className="modal-label-tag">Room Overview</span>
-                <h3 className="modal-title-new">🚀 {selectedRoomDetails.title}</h3>
+                <h3 className="modal-title-new"><Terminal size={18} style={{ marginRight: "8px", color: "var(--ce-accent)", verticalAlign: "middle" }} />{selectedRoomDetails.title}</h3>
               </div>
 
               <div className="modal-details-grid">

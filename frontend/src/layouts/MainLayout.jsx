@@ -345,7 +345,7 @@ export default function MainLayout({
   const [tickerIndex, setTickerIndex] = useState(0);
   const tickerStats = [
     { label: "12,453 Developers Online", icon: "🌍" },
-    { label: "8,923 Active Rooms", icon: "🚀" },
+    { label: "8,923 Active Rooms", icon: "💻" },
     { label: "1.2M Code Executions", icon: "⚡" }
   ];
 

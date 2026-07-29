@@ -9,11 +9,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import "./Auth.css";
 
 function Auth({ mode }) {
-  const { setUser } = useAuth();
+  const { user, setUser } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const { triggerGateTransition } = useGateTransition();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
+
+  if (user) {
+    return null;
+  }
 
   const [activeMode, setActiveMode] = useState(mode);
   const [localSuccessMessage, setLocalSuccessMessage] = useState(null);
@@ -359,7 +369,7 @@ function Auth({ mode }) {
               <strong>Saurabh</strong>
               <span>Collab chat</span>
             </div>
-            <p className="bubble-chat-message">"Code runs perfectly! Let's deploy the project. 🚀"</p>
+            <p className="bubble-chat-message">"Code runs perfectly! Let's deploy the project. ⚡"</p>
           </div>
         </div>
 

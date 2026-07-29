@@ -17,7 +17,7 @@ function SocialHubShowcase() {
       badge: "System Admin",
       avatarColor: "#8b5cf6",
       time: "2 hours ago",
-      text: "Just deployed the new WebRTC video calling feature to CodeExpo! Check out the simplified connection logic below. Let me know if you want to test it in a live room! 🚀",
+      text: "Just deployed the new WebRTC video calling feature to CodeExpo! Check out the simplified connection logic below. Let me know if you want to test it in a live room! 💻",
       code: `// Initialize WebRTC Peer Connection
 const pc = new RTCPeerConnection(iceConfig);
 stream.getTracks().forEach(track => pc.addTrack(track, stream));`,

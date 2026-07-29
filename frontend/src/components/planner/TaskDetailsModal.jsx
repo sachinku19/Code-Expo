@@ -727,7 +727,7 @@ export default function TaskDetailsModal({
                     onClick={handleToggleAssignAll}
                     className="assign-all-btn"
                   >
-                    🚀 {task.isAssignedToAll ? "All Room Members Assigned" : "Assign Entire Room"}
+                    <User size={13} style={{ marginRight: "6px" }} /> {task.isAssignedToAll ? "All Room Members Assigned" : "Assign Entire Room"}
                   </button>
                 )}
  

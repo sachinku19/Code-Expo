@@ -868,7 +868,7 @@ const Profile = () => {
                         <div key={room.roomId || room._id} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId || room._id)}>
                           <div className="profile-room-card-header">
                             <div className="profile-room-card-title-group">
-                              <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                              <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
                               <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
                             </div>
                             {isRoomOwner(room) && (
@@ -965,7 +965,7 @@ const Profile = () => {
                         <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                           <div className="profile-room-card-header">
                             <div className="profile-room-card-title-group">
-                              <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                              <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
                               <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
                             </div>
                             {isRoomOwner(room) && (
@@ -1061,7 +1061,7 @@ const Profile = () => {
                         <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                           <div className="profile-room-card-header">
                             <div className="profile-room-card-title-group">
-                              <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                              <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
                               <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
                             </div>
                             {isRoomOwner(room) && (
