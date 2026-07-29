@@ -20,8 +20,15 @@
 }
 
 @keyframes ceMeetFadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Light Mode Overlay */
@@ -545,11 +552,34 @@ body.light .ce-meet-room-title {
   width: 100%;
 }
 
-.ce-meet-grid.grid-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
-.ce-meet-grid.grid-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
-.ce-meet-grid.grid-3, .ce-meet-grid.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-.ce-meet-grid.grid-5, .ce-meet-grid.grid-6 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
-.ce-meet-grid.grid-7, .ce-meet-grid.grid-8, .ce-meet-grid.grid-9 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+.ce-meet-grid.grid-1 {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.ce-meet-grid.grid-2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.ce-meet-grid.grid-3,
+.ce-meet-grid.grid-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.ce-meet-grid.grid-5,
+.ce-meet-grid.grid-6 {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.ce-meet-grid.grid-7,
+.ce-meet-grid.grid-8,
+.ce-meet-grid.grid-9 {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
 
 /* Video / Participant Tile Card */
 .ce-meet-tile {
@@ -662,9 +692,20 @@ body.light .ce-meet-tile {
   animation: waveBar 0.8s ease-in-out infinite alternate;
 }
 
-.ce-meet-audio-wave span:nth-child(1) { height: 40%; animation-delay: 0.1s; }
-.ce-meet-audio-wave span:nth-child(2) { height: 100%; animation-delay: 0.3s; }
-.ce-meet-audio-wave span:nth-child(3) { height: 60%; animation-delay: 0.2s; }
+.ce-meet-audio-wave span:nth-child(1) {
+  height: 40%;
+  animation-delay: 0.1s;
+}
+
+.ce-meet-audio-wave span:nth-child(2) {
+  height: 100%;
+  animation-delay: 0.3s;
+}
+
+.ce-meet-audio-wave span:nth-child(3) {
+  height: 60%;
+  animation-delay: 0.2s;
+}
 
 /* 3. GOOGLE MEET FLOATING BOTTOM CONTROL BAR */
 .ce-meet-bottom-bar {
@@ -912,62 +953,6 @@ body.light .ce-meet-stack-avatar {
 }
 
 /* Participants Search Input Box */
-.ce-meet-search-box {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.ce-meet-search-icon {
-  position: absolute;
-  left: 12px;
-  color: #94a3b8;
-  pointer-events: none;
-}
-
-.ce-meet-search-input {
-  width: 100%;
-  padding: 8px 30px 8px 34px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: inherit;
-  font-size: 0.82rem;
-  outline: none;
-  transition: all 0.15s ease;
-}
-
-.light .ce-meet-search-input,
-[data-theme-mode="light"] .ce-meet-search-input,
-body.light .ce-meet-search-input {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #0f172a;
-}
-
-.ce-meet-search-input:focus {
-  border-color: #6366f1;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.light .ce-meet-search-input:focus,
-[data-theme-mode="light"] .ce-meet-search-input:focus,
-body.light .ce-meet-search-input:focus {
-  background: #ffffff;
-}
-
-.ce-meet-search-clear {
-  position: absolute;
-  right: 10px;
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 .ce-meet-empty-search {
   padding: 20px 10px;
@@ -1044,18 +1029,39 @@ body.light .ce-meet-side-user-info span {
 }
 
 @keyframes meetFadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes meetPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.3); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(1.3);
+  }
 }
 
 @keyframes waveBar {
-  0% { height: 30%; }
-  100% { height: 100%; }
+  0% {
+    height: 30%;
+  }
+
+  100% {
+    height: 100%;
+  }
 }
 
 /* 5. MINIMIZED FLOATING MEETING PILL */
@@ -1160,9 +1166,121 @@ body.light .ce-meet-minimized-btn {
   color: #ffffff !important;
 }
 
+/* Real-Time Audio Sound Wave Equalizer Animation (4 Vertical Green Bouncing Bars) */
+.ce-audio-wave-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.ce-audio-wave-bars .wave-bar {
+  width: 3px;
+  background-color: #10b981;
+  border-radius: 2px;
+  animation: ceWaveBounce 0.75s ease-in-out infinite alternate;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+
+.ce-audio-wave-bars .wave-bar:nth-child(1) {
+  height: 45%;
+  animation-delay: 0s;
+}
+
+.ce-audio-wave-bars .wave-bar:nth-child(2) {
+  height: 90%;
+  animation-delay: 0.2s;
+}
+
+.ce-audio-wave-bars .wave-bar:nth-child(3) {
+  height: 100%;
+  animation-delay: 0.4s;
+}
+
+.ce-audio-wave-bars .wave-bar:nth-child(4) {
+  height: 65%;
+  animation-delay: 0.15s;
+}
+
+@keyframes ceWaveBounce {
+  0% {
+    transform: scaleY(0.25);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* Minimized Meeting Active Speaker Tracking Badge */
+.ce-meet-minimized-speaker-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 4px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
+}
+
+.ce-meet-minimized-speaker-badge:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.ce-meet-minimized-speaker-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ce-meet-minimized-speaker-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ce-meet-minimized-speaker-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.light .ce-meet-minimized-speaker-name,
+[data-theme-mode="light"] .ce-meet-minimized-speaker-name {
+  color: #0f172a;
+}
+
 @keyframes meetPillSlideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* 6. SCREEN SHARE SPOTLIGHT */
@@ -1270,7 +1388,7 @@ body.light .ce-meet-filmstrip-tile {
 .ce-meet-pin-btn {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   z-index: 10;
   width: 32px;
   height: 32px;
@@ -1317,4 +1435,1258 @@ body.light .ce-meet-filmstrip-tile {
 .ce-meet-pin-btn.active {
   background: #6366f1;
   color: #ffffff;
+}
+
+/* =========================================================
+   REDESIGNED GOOGLE MEET STAGE STYLE (MATCHING REFERENCE INTERFACE)
+   ========================================================= */
+
+/* Grid background on stage body */
+.ce-meet-stage-body {
+  position: relative !important;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px) !important;
+  background-size: 24px 24px !important;
+  background-color: #0b0b0f !important;
+  display: flex !important;
+  gap: 16px !important;
+  padding: 16px !important;
+  height: 100% !important;
+  /* Full height with floating controls overlay */
+}
+
+/* Featured Speaker View (Concentric pulse rings + Side waves) */
+.ce-meet-featured-speaker-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.ce-meet-featured-pulse-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  position: relative;
+  height: 280px;
+}
+
+.ce-meet-speaker-avatar-ring {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: #181824;
+  border: 4px solid #3f3f46;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.ce-meet-speaker-avatar-ring.pulsing {
+  border-color: #8b5cf6;
+}
+
+/* Pulsing concentric rings */
+.ce-meet-speaker-avatar-ring.pulsing::before,
+.ce-meet-speaker-avatar-ring.pulsing::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ce-meet-speaker-avatar-ring.pulsing::before {
+  width: 220px;
+  height: 220px;
+  animation: ceSpeakingPulseRing 3s infinite linear;
+}
+
+.ce-meet-speaker-avatar-ring.pulsing::after {
+  width: 300px;
+  height: 300px;
+  animation: ceSpeakingPulseRing 3s infinite linear;
+  animation-delay: 1.5s;
+}
+
+@keyframes ceSpeakingPulseRing {
+  0% {
+    transform: translate(-50%, -50%) scale(0.65);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 0;
+  }
+}
+
+.ce-meet-speaker-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 11;
+}
+
+.ce-meet-speaker-avatar-letter {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #a855f7;
+  z-index: 11;
+}
+
+/* Speaker Side Wave Equalizers */
+.ce-meet-speaker-equalizer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 60px;
+  width: 50px;
+  justify-content: center;
+  z-index: 5;
+}
+
+.ce-meet-speaker-equalizer span {
+  width: 4px;
+  background: #a855f7;
+  border-radius: 2px;
+  animation: ceMeetSpeakerEqualizerAnim 0.8s ease-in-out infinite alternate;
+}
+
+.ce-meet-speaker-equalizer span:nth-child(1) {
+  height: 30%;
+  animation-delay: 0.1s;
+}
+
+.ce-meet-speaker-equalizer span:nth-child(2) {
+  height: 75%;
+  animation-delay: 0.3s;
+}
+
+.ce-meet-speaker-equalizer span:nth-child(3) {
+  height: 100%;
+  animation-delay: 0.5s;
+}
+
+.ce-meet-speaker-equalizer span:nth-child(4) {
+  height: 60%;
+  animation-delay: 0.2s;
+}
+
+.ce-meet-speaker-equalizer span:nth-child(5) {
+  height: 40%;
+  animation-delay: 0.4s;
+}
+
+@keyframes ceMeetSpeakerEqualizerAnim {
+  0% {
+    transform: scaleY(0.2);
+  }
+
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+.ce-meet-featured-speaker-details {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.ce-meet-featured-speaker-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.ce-meet-featured-speaking-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  padding: 5px 12px;
+  border-radius: 20px;
+  color: #c084fc;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.ce-meet-speaking-pill-waves {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 12px;
+}
+
+.ce-meet-speaking-pill-waves span {
+  width: 2px;
+  height: 100%;
+  background: #c084fc;
+  border-radius: 1px;
+  animation: ceMeetSpeakerEqualizerAnim 0.6s ease-in-out infinite alternate;
+}
+
+.ce-meet-speaking-pill-waves span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.ce-meet-speaking-pill-waves span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ce-meet-speaking-pill-waves span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Side Participants drawer header count */
+.ce-meet-purple-count {
+  color: #a855f7;
+  font-weight: 700;
+}
+
+/* Sidebar Search Row with Filter icon */
+.ce-meet-search-row {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+
+.ce-meet-filter-btn {
+  background: #181824;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #9ca3af;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ce-meet-filter-btn:hover {
+  background: #27273a;
+  color: #ffffff;
+}
+
+/* Tab Pills in Sidebar */
+.ce-meet-side-tabs {
+  display: flex !important;
+  gap: 6px !important;
+  padding: 0 16px !important;
+  margin-bottom: 10px !important;
+  overflow-x: auto !important;
+}
+
+.ce-meet-side-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ce-meet-side-tab-pill {
+  background: #181824;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #9ca3af;
+  padding: 5px 10px !important;
+  border-radius: 14px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ce-meet-side-tab-pill:hover {
+  background: #242438;
+  color: #ffffff;
+}
+
+.ce-meet-side-tab-pill.active {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+  border-color: #8b5cf6 !important;
+}
+
+.ce-meet-side-tab-pill.speaking.active {
+  background: #059669 !important;
+  border-color: #10b981 !important;
+}
+
+.ce-meet-side-tab-pill.raised.active {
+  background: #d97706 !important;
+  border-color: #f59e0b !important;
+}
+
+/* List Items Custom Styling */
+.ce-meet-side-panel {
+  width: 360px !important;
+  background: #0d0d14 !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ce-meet-side-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+.ce-meet-side-close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.ce-meet-side-close:hover {
+  color: #ffffff;
+}
+
+.ce-meet-side-list {
+  padding: 0 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  flex: 1 !important;
+  overflow-y: auto !important;
+}
+
+.ce-meet-side-item {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  margin-bottom: 0 !important;
+  transition: all 0.2s ease;
+}
+
+.ce-meet-side-item:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+
+.ce-meet-side-username {
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  color: #f3f4f6 !important;
+}
+
+.ce-meet-side-user-status {
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+}
+
+.ce-meet-side-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ce-meet-side-pin,
+.ce-meet-side-more {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.ce-meet-side-pin:hover,
+.ce-meet-side-pin.active {
+  color: #a855f7;
+}
+
+.ce-meet-side-more:hover {
+  color: #ffffff;
+}
+
+.ce-meet-side-hand-badge {
+  font-size: 0.85rem;
+}
+
+/* Sidebar Pagination Footer */
+.ce-meet-side-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: auto;
+}
+
+.ce-meet-page-arrow,
+.ce-meet-page-num {
+  background: #181824;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #9ca3af;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ce-meet-page-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.ce-meet-page-arrow:not(:disabled):hover,
+.ce-meet-page-num:hover {
+  background: #242438;
+  color: #ffffff;
+}
+
+.ce-meet-page-num.active {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+  border-color: #8b5cf6 !important;
+}
+
+.ce-meet-page-dots {
+  color: #4b5563;
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+/* Bottom Bar Dashboard Scale Controls */
+.ce-meet-bar-left-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #9ca3af;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ce-meet-bar-left-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.ce-meet-scale-control {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 32px;
+}
+
+.ce-meet-scale-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  width: 24px;
+  height: 100%;
+  cursor: pointer;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.ce-meet-scale-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.ce-meet-scale-text {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffffff;
+  padding: 0 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Floating Bottom Control Bar Center Buttons with Labels */
+.ce-meet-bottom-bar {
+  background: #07070a !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 16px 24px !important;
+  height: 90px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.ce-meet-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+}
+
+.ce-meet-bar-center {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ce-meet-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.ce-meet-action-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #9ca3af;
+  transition: color 0.2s;
+}
+
+.ce-meet-ctrl-btn {
+  background: #181824 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #e5e7eb !important;
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.25s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ce-meet-ctrl-btn:hover {
+  background: #252536 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-2px) !important;
+}
+
+.ce-meet-ctrl-btn.off {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #f87171 !important;
+}
+
+.ce-meet-ctrl-btn.off:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+}
+
+.ce-meet-ctrl-btn.active-feature {
+  background: rgba(139, 92, 246, 0.18) !important;
+  border-color: rgba(139, 92, 246, 0.4) !important;
+  color: #a78bfa !important;
+}
+
+/* Right End Call Split Leave Button Pill */
+.ce-meet-bar-right {
+  display: flex;
+  justify-content: flex-end;
+  width: 240px;
+}
+
+.ce-meet-leave-group {
+  display: flex;
+  align-items: center;
+  background: #ef4444;
+  border-radius: 20px;
+  overflow: hidden;
+  height: 36px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transition: all 0.2s ease;
+}
+
+.ce-meet-leave-group:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.ce-meet-end-call-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #ffffff !important;
+  padding: 0 16px !important;
+  height: 100% !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.ce-meet-leave-caret {
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  color: #ffffff;
+  width: 28px;
+  height: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  transition: background 0.2s;
+}
+
+.ce-meet-leave-caret:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Float participant name tag at the bottom-left corner of the video tile */
+.ce-meet-tile-bottom-bar {
+  position: absolute !important;
+  bottom: 12px !important;
+  left: 12px !important;
+  right: auto !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  backdrop-filter: blur(8px) !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  z-index: 10 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.ce-meet-tile-user-name {
+  color: #ffffff !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+}
+
+.ce-meet-tile-icons {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* Left bar controls & spotlight unpin styling */
+.ce-meet-unpin-spotlight-btn {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+  color: #c084fc !important;
+  padding: 0 12px !important;
+  height: 32px !important;
+  border-radius: 16px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.ce-meet-unpin-spotlight-btn:hover {
+  background: rgba(168, 85, 247, 0.25) !important;
+  border-color: rgba(168, 85, 247, 0.5) !important;
+}
+
+.ce-meet-bar-left-btn.active {
+  background: rgba(168, 85, 247, 0.18) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #c084fc !important;
+}
+
+/* Floating controls container overlays actual video stage */
+.ce-meet-floating-controls {
+  position: absolute !important;
+  bottom: 24px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+  background: rgba(15, 15, 24, 0.78) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 30px !important;
+  padding: 8px 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(139, 92, 246, 0.15) !important;
+  transition: all 0.3s ease !important;
+}
+
+.ce-meet-floating-divider {
+  width: 1px !important;
+  height: 20px !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  margin: 0 4px !important;
+}
+
+.ce-meet-float-btn {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #f3f4f6 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  position: relative !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+}
+
+.ce-meet-float-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-2px) !important;
+  color: #ffffff !important;
+}
+
+.ce-meet-float-btn.off {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+}
+
+.ce-meet-float-btn.off:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+}
+
+.ce-meet-float-btn.active-feature {
+  background: rgba(168, 85, 247, 0.2) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #c084fc !important;
+}
+
+.ce-meet-float-btn.active-feature:hover {
+  background: rgba(168, 85, 247, 0.3) !important;
+}
+
+.ce-meet-float-btn.end {
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.ce-meet-float-btn.end:hover {
+  background: #dc2626 !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Dedicated Video Canvas Container for Video Feeds + Floating HUD */
+.ce-meet-video-canvas {
+  flex: 1 !important;
+  height: 100% !important;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Floating overlay actions at the top-right corner of the video canvas */
+.ce-meet-stage-top-right-actions {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  z-index: 1000 !important;
+}
+
+/* Pill-shaped floating controls (auto-width with horizontal padding) */
+.ce-meet-float-btn-pill {
+  height: 38px !important;
+  border-radius: 20px !important;
+  padding: 0 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #f3f4f6 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+}
+
+.ce-meet-float-btn-pill:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-2px) !important;
+  color: #ffffff !important;
+}
+
+.ce-meet-float-btn-pill.active-feature {
+  background: rgba(168, 85, 247, 0.2) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #c084fc !important;
+}
+
+.ce-meet-float-btn-pill.active-feature:hover {
+  background: rgba(168, 85, 247, 0.3) !important;
+}
+
+/* =========================================================
+   LIGHT MODE STYLING FOR GOOGLE MEET STAGE & HUD CONTROLS
+   ========================================================= */
+
+:root[data-theme-mode="light"] .ce-meet-stage-overlay,
+.light .ce-meet-stage-overlay,
+[data-theme-mode="light"] .ce-meet-stage-overlay,
+body.light .ce-meet-stage-overlay {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-stage-body,
+.light .ce-meet-stage-body,
+[data-theme-mode="light"] .ce-meet-stage-body,
+body.light .ce-meet-stage-body {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.06) 1.5px, transparent 1.5px) !important;
+  background-size: 24px 24px !important;
+  background-color: #f1f5f9 !important;
+}
+
+/* Speaker Details & Names in Light Mode */
+:root[data-theme-mode="light"] .ce-meet-featured-speaker-name-row,
+:root[data-theme-mode="light"] .ce-meet-featured-speaker-name-row span,
+.light .ce-meet-featured-speaker-name-row,
+.light .ce-meet-featured-speaker-name-row span,
+[data-theme-mode="light"] .ce-meet-featured-speaker-name-row,
+[data-theme-mode="light"] .ce-meet-featured-speaker-name-row span,
+body.light .ce-meet-featured-speaker-name-row,
+body.light .ce-meet-featured-speaker-name-row span {
+  color: #0f172a !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-tile-user-name,
+:root[data-theme-mode="light"] .ce-meet-tile-user-name span,
+.light .ce-meet-tile-user-name,
+.light .ce-meet-tile-user-name span,
+[data-theme-mode="light"] .ce-meet-tile-user-name,
+[data-theme-mode="light"] .ce-meet-tile-user-name span,
+body.light .ce-meet-tile-user-name,
+body.light .ce-meet-tile-user-name span {
+  color: #0f172a !important;
+}
+
+/* Video Tiles in Light Mode */
+:root[data-theme-mode="light"] .ce-meet-tile,
+.light .ce-meet-tile,
+[data-theme-mode="light"] .ce-meet-tile,
+body.light .ce-meet-tile,
+:root[data-theme-mode="light"] .ce-meet-filmstrip-tile,
+.light .ce-meet-filmstrip-tile,
+[data-theme-mode="light"] .ce-meet-filmstrip-tile,
+body.light .ce-meet-filmstrip-tile {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-tile:hover,
+.light .ce-meet-tile:hover,
+[data-theme-mode="light"] .ce-meet-tile:hover,
+body.light .ce-meet-tile:hover,
+:root[data-theme-mode="light"] .ce-meet-filmstrip-tile:hover,
+.light .ce-meet-filmstrip-tile:hover,
+[data-theme-mode="light"] .ce-meet-filmstrip-tile:hover,
+body.light .ce-meet-filmstrip-tile:hover {
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.12) !important;
+}
+
+/* Name Tag Capsule inside Video Tile */
+:root[data-theme-mode="light"] .ce-meet-tile-bottom-bar,
+.light .ce-meet-tile-bottom-bar,
+[data-theme-mode="light"] .ce-meet-tile-bottom-bar,
+body.light .ce-meet-tile-bottom-bar {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+.light .ce-meet-tile-user-name,
+[data-theme-mode="light"] .ce-meet-tile-user-name,
+body.light .ce-meet-tile-user-name {
+  color: #0f172a !important;
+}
+
+/* Floating Bottom Controls Capsule */
+.light .ce-meet-floating-controls,
+[data-theme-mode="light"] .ce-meet-floating-controls,
+body.light .ce-meet-floating-controls {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 0 20px rgba(139, 92, 246, 0.12) !important;
+}
+
+.light .ce-meet-floating-divider,
+[data-theme-mode="light"] .ce-meet-floating-divider,
+body.light .ce-meet-floating-divider {
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Floating Control Circular Buttons */
+.light .ce-meet-float-btn,
+[data-theme-mode="light"] .ce-meet-float-btn,
+body.light .ce-meet-float-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+.light .ce-meet-float-btn:hover,
+[data-theme-mode="light"] .ce-meet-float-btn:hover,
+body.light .ce-meet-float-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+.light .ce-meet-float-btn.off,
+[data-theme-mode="light"] .ce-meet-float-btn.off,
+body.light .ce-meet-float-btn.off {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #dc2626 !important;
+}
+
+.light .ce-meet-float-btn.active-feature,
+[data-theme-mode="light"] .ce-meet-float-btn.active-feature,
+body.light .ce-meet-float-btn.active-feature {
+  background: rgba(147, 51, 234, 0.12) !important;
+  border-color: rgba(147, 51, 234, 0.3) !important;
+  color: #7e22ce !important;
+}
+
+.light .ce-meet-float-btn.end,
+[data-theme-mode="light"] .ce-meet-float-btn.end,
+body.light .ce-meet-float-btn.end {
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Floating Pill Button (Participants Count) */
+.light .ce-meet-float-btn-pill,
+[data-theme-mode="light"] .ce-meet-float-btn-pill,
+body.light .ce-meet-float-btn-pill {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+.light .ce-meet-float-btn-pill:hover,
+[data-theme-mode="light"] .ce-meet-float-btn-pill:hover,
+body.light .ce-meet-float-btn-pill:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+.light .ce-meet-float-btn-pill.active-feature,
+[data-theme-mode="light"] .ce-meet-float-btn-pill.active-feature,
+body.light .ce-meet-float-btn-pill.active-feature {
+  background: rgba(147, 51, 234, 0.12) !important;
+  border-color: rgba(147, 51, 234, 0.3) !important;
+  color: #7e22ce !important;
+}
+
+/* Side Participants Drawer in Light Mode */
+.light .ce-meet-side-panel,
+[data-theme-mode="light"] .ce-meet-side-panel,
+body.light .ce-meet-side-panel {
+  background: #ffffff !important;
+  border-left: 1px solid #e2e8f0 !important;
+  box-shadow: -6px 0 24px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .ce-meet-side-header,
+[data-theme-mode="light"] .ce-meet-side-header,
+body.light .ce-meet-side-header {
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light .ce-meet-side-close,
+[data-theme-mode="light"] .ce-meet-side-close,
+body.light .ce-meet-side-close {
+  color: #64748b !important;
+}
+
+.light .ce-meet-side-close:hover,
+[data-theme-mode="light"] .ce-meet-side-close:hover,
+body.light .ce-meet-side-close:hover {
+  color: #0f172a !important;
+}
+
+.light .ce-meet-search-box,
+[data-theme-mode="light"] .ce-meet-search-box,
+body.light .ce-meet-search-box {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light .ce-meet-search-input,
+[data-theme-mode="light"] .ce-meet-search-input,
+body.light .ce-meet-search-input {
+  color: #0f172a !important;
+}
+
+.light .ce-meet-search-input::placeholder,
+[data-theme-mode="light"] .ce-meet-search-input::placeholder,
+body.light .ce-meet-search-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light .ce-meet-filter-btn,
+[data-theme-mode="light"] .ce-meet-filter-btn,
+body.light .ce-meet-filter-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+.light .ce-meet-filter-btn:hover,
+[data-theme-mode="light"] .ce-meet-filter-btn:hover,
+body.light .ce-meet-filter-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light .ce-meet-side-tab-pill,
+[data-theme-mode="light"] .ce-meet-side-tab-pill,
+body.light .ce-meet-side-tab-pill {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+.light .ce-meet-side-tab-pill:hover,
+[data-theme-mode="light"] .ce-meet-side-tab-pill:hover,
+body.light .ce-meet-side-tab-pill:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light .ce-meet-side-item,
+[data-theme-mode="light"] .ce-meet-side-item,
+body.light .ce-meet-side-item {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.light .ce-meet-side-item:hover,
+[data-theme-mode="light"] .ce-meet-side-item:hover,
+body.light .ce-meet-side-item:hover {
+  background: #f1f5f9 !important;
+  border-color: #8b5cf6 !important;
+}
+
+.light .ce-meet-side-username,
+[data-theme-mode="light"] .ce-meet-side-username,
+body.light .ce-meet-side-username {
+  color: #0f172a !important;
+}
+
+.light .ce-meet-speaker-avatar-ring,
+[data-theme-mode="light"] .ce-meet-speaker-avatar-ring,
+body.light .ce-meet-speaker-avatar-ring {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%) !important;
+  border-color: #c084fc !important;
+}
+
+.light .ce-meet-speaker-avatar-letter,
+[data-theme-mode="light"] .ce-meet-speaker-avatar-letter,
+body.light .ce-meet-speaker-avatar-letter {
+  color: #7e22ce !important;
+}
+
+/* Real-time Search Row & Search Box in Participants Drawer */
+.ce-meet-search-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 16px !important;
+}
+
+.ce-meet-search-box {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 6px 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ce-meet-search-box:focus-within {
+  border-color: rgba(168, 85, 247, 0.5) !important;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.15) !important;
+}
+
+.ce-meet-search-icon {
+  color: #9ca3af !important;
+  flex-shrink: 0 !important;
+}
+
+.ce-meet-search-input {
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #f3f4f6 !important;
+  font-size: 0.85rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+.ce-meet-search-input::placeholder {
+  color: #6b7280 !important;
+}
+
+.ce-meet-search-clear {
+  background: transparent !important;
+  border: none !important;
+  color: #9ca3af !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 2px !important;
+}
+
+.ce-meet-search-clear:hover {
+  color: #ffffff !important;
+}
+
+.ce-meet-filter-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #9ca3af !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.ce-meet-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Light Mode Overrides for Search Box & Filter Button */
+:root[data-theme-mode="light"] .ce-meet-search-box,
+.light .ce-meet-search-box,
+[data-theme-mode="light"] .ce-meet-search-box,
+body.light .ce-meet-search-box {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-search-box:focus-within,
+.light .ce-meet-search-box:focus-within,
+[data-theme-mode="light"] .ce-meet-search-box:focus-within,
+body.light .ce-meet-search-box:focus-within {
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15) !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-search-input,
+.light .ce-meet-search-input,
+[data-theme-mode="light"] .ce-meet-search-input,
+body.light .ce-meet-search-input {
+  color: #0f172a !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-search-input::placeholder,
+.light .ce-meet-search-input::placeholder,
+[data-theme-mode="light"] .ce-meet-search-input::placeholder,
+body.light .ce-meet-search-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-search-icon,
+.light .ce-meet-search-icon,
+[data-theme-mode="light"] .ce-meet-search-icon,
+body.light .ce-meet-search-icon {
+  color: #64748b !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-filter-btn,
+.light .ce-meet-filter-btn,
+[data-theme-mode="light"] .ce-meet-filter-btn,
+body.light .ce-meet-filter-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+:root[data-theme-mode="light"] .ce-meet-filter-btn:hover,
+.light .ce-meet-filter-btn:hover,
+[data-theme-mode="light"] .ce-meet-filter-btn:hover,
+body.light .ce-meet-filter-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
 }

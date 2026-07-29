@@ -10,6 +10,12 @@ import {
   Hand,
   Monitor,
   Volume2,
+  SlidersHorizontal,
+  LayoutGrid,
+  Maximize,
+  MoreHorizontal,
+  ChevronDown,
+  MoreVertical,
   X,
   Minus,
   Maximize2,
@@ -26,7 +32,7 @@ const getAvatarUrl = (avatar) => {
   return null;
 };
 
-function PersistentRemoteAudio({ stream }) {
+function PersistentRemoteAudio({ userId, stream, onSpeakingChange }) {
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -37,6 +43,55 @@ function PersistentRemoteAudio({ stream }) {
       audioRef.current.play().catch(() => {});
     }
   }, [stream]);
+
+  useEffect(() => {
+    if (!stream) return;
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) return;
+
+    let audioContext;
+    let analyser;
+    let animFrame;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioCtx();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const checkVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        const speaking = average > 12;
+
+        if (onSpeakingChange && userId) {
+          onSpeakingChange(userId, speaking);
+        }
+
+        animFrame = requestAnimationFrame(checkVolume);
+      };
+
+      checkVolume();
+    } catch (e) {
+      console.warn("Remote audio speaking check error:", e);
+    }
+
+    return () => {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      if (audioContext && audioContext.state !== "closed") {
+        audioContext.close().catch(() => {});
+      }
+    };
+  }, [stream, userId, onSpeakingChange]);
 
   if (!stream) return null;
   return <audio ref={audioRef} autoPlay playsInline style={{ display: "none" }} />;
@@ -103,11 +158,6 @@ function RemoteVideoTile({ member, isSpeaking, initial }) {
           ) : (
             <div className="ce-meet-tile-avatar">{initial}</div>
           )}
-          {isSpeaking && (
-            <div className="ce-meet-audio-wave">
-              <span /><span /><span />
-            </div>
-          )}
         </div>
       )}
     </>
@@ -136,10 +186,19 @@ const GoogleMeetStage = ({
   const [activeSpeakerId, setActiveSpeakerId] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStreams, setRemoteStreams] = useState({});
+  const [remoteSpeakingMap, setRemoteSpeakingMap] = useState({});
   const [participantSearchQuery, setParticipantSearchQuery] = useState("");
+  const [participantsTab, setParticipantsTab] = useState("all");
   const [pillPos, setPillPos] = useState({ x: null, y: null });
   const isDraggingPillRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+  const handleRemoteSpeakingChange = useCallback((userId, isSpeaking) => {
+    setRemoteSpeakingMap((prev) => {
+      if (prev[userId] === isSpeaking) return prev;
+      return { ...prev, [userId]: isSpeaking };
+    });
+  }, []);
 
   const handlePillMouseDown = (e) => {
     if (e.button !== 0) return;
@@ -205,14 +264,13 @@ const GoogleMeetStage = ({
   const screenVideoRef = useRef(null);
   const peersRef = useRef({});
 
-  const setLocalVideoRef = useCallback((node) => {
-    localVideoRef.current = node;
-    if (node && localStream) {
-      if (node.srcObject !== localStream) {
-        node.srcObject = localStream;
+  useEffect(() => {
+    if (localVideoRef.current) {
+      if (localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
       }
-      if (isVideoOn) {
-        node.play().catch(() => {});
+      if (localStream && isVideoOn) {
+        localVideoRef.current.play().catch(() => {});
       }
     }
   }, [localStream, isVideoOn]);
@@ -295,7 +353,7 @@ const GoogleMeetStage = ({
     async function initLocalStream() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: initialVideoOn,
           audio: true
         });
       } catch (err) {
@@ -343,9 +401,44 @@ const GoogleMeetStage = ({
   }, [isOpen]);
 
   useEffect(() => {
-    if (localStream) {
+    async function updateVideoState() {
+      if (!localStream) return;
+
       const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) videoTrack.enabled = isVideoOn;
+
+      if (!isVideoOn) {
+        // Stop hardware camera sensor so physical laptop camera LED turns OFF
+        if (videoTrack) {
+          videoTrack.stop();
+          localStream.removeTrack(videoTrack);
+          setLocalStream(new MediaStream(localStream.getTracks()));
+        }
+      } else {
+        // Re-enable camera: if track is ended/missing, get fresh camera track from hardware
+        if (!videoTrack || videoTrack.readyState === "ended") {
+          try {
+            const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const newTrack = camStream.getVideoTracks()[0];
+            if (newTrack) {
+              localStream.addTrack(newTrack);
+              setLocalStream(new MediaStream(localStream.getTracks()));
+              // Update track on active WebRTC peer connections
+              Object.values(peersRef.current).forEach((pc) => {
+                const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
+                if (sender) {
+                  sender.replaceTrack(newTrack);
+                } else {
+                  pc.addTrack(newTrack, localStream);
+                }
+              });
+            }
+          } catch (err) {
+            console.warn("Re-enabling hardware camera failed:", err);
+          }
+        } else {
+          videoTrack.enabled = true;
+        }
+      }
 
       const audioTrack = localStream.getAudioTracks()[0];
       if (audioTrack) audioTrack.enabled = isMicOn;
@@ -354,6 +447,8 @@ const GoogleMeetStage = ({
         localVideoRef.current.srcObject = localStream;
       }
     }
+
+    updateVideoState();
 
     if (socket) {
       socket.emit("meet:state-change", {
@@ -547,7 +642,7 @@ const GoogleMeetStage = ({
     {
       userId: myId,
       socketId: socket?.id,
-      username: `${myName} (You)`,
+      username: (myName || "You").replace(/\s*\(You\)\s*/gi, ""),
       isLocal: true,
       isMicOn,
       isVideoOn,
@@ -575,16 +670,39 @@ const GoogleMeetStage = ({
 
   const remoteAudioElements = allMembers
     .filter((m) => !m.isLocal && m.stream)
-    .map((m) => <PersistentRemoteAudio key={m.userId || m.socketId} stream={m.stream} />);
+    .map((m) => (
+      <PersistentRemoteAudio 
+        key={m.userId || m.socketId} 
+        userId={m.userId}
+        stream={m.stream} 
+        onSpeakingChange={handleRemoteSpeakingChange}
+      />
+    ));
+
+  const activeSpeakingMember = allMembers.find(
+    (m) =>
+      String(activeSpeakerId) === String(m.userId) ||
+      remoteSpeakingMap[m.userId] ||
+      (m.isLocal && isMicOn && activeSpeakerId === myId)
+  );
 
   const pinnedMember = allMembers.find((m) => String(m.userId) === String(pinnedUserId));
   const unpinnedMembers = allMembers.filter((m) => String(m.userId) !== String(pinnedUserId));
 
   const renderSingleTile = (member, isFilmstrip = false) => {
-    const isSpeaking = String(activeSpeakerId) === String(member.userId);
+    const isSpeaking = String(activeSpeakerId) === String(member.userId) || remoteSpeakingMap[member.userId];
     const initial = (member.username || "U").charAt(0).toUpperCase();
     const avatarUrl = getAvatarUrl(member.avatar);
     const isPinned = String(pinnedUserId) === String(member.userId);
+
+    const localVideoTracks = localStream ? localStream.getVideoTracks() : [];
+    const hasVideoActive = member.isLocal
+      ? Boolean(isVideoOn && localStream && localVideoTracks.length > 0 && localVideoTracks.some((t) => t.enabled && t.readyState === "live"))
+      : (() => {
+          const videoTracks = member.stream ? member.stream.getVideoTracks() : [];
+          const hasActiveVideoTrack = videoTracks.length > 0 && videoTracks.some((t) => t.enabled && t.readyState === "live");
+          return Boolean(member.stream && hasActiveVideoTrack && member.isVideoOn);
+        })();
 
     return (
       <div
@@ -609,45 +727,23 @@ const GoogleMeetStage = ({
           {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
         </button>
 
-        {member.isLocal ? (
-          (() => {
-            const localVideoTracks = localStream ? localStream.getVideoTracks() : [];
-            const hasLocalActiveVideo = Boolean(isVideoOn && localStream && localVideoTracks.length > 0 && localVideoTracks.some((t) => t.enabled && t.readyState === "live"));
-            return (
-              <>
-                <video
-                  ref={setLocalVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="ce-meet-tile-video"
-                  style={{ display: hasLocalActiveVideo ? "block" : "none", transform: "scaleX(-1)" }}
-                />
-                {!hasLocalActiveVideo && (
-                  <div className="ce-meet-tile-avatar-wrapper">
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt={member.username}
-                        className="ce-meet-tile-avatar-img"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="ce-meet-tile-avatar">{initial}</div>
-                    )}
-                    {isSpeaking && (
-                      <div className="ce-meet-audio-wave">
-                        <span /><span /><span />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            );
-          })()
-        ) : (
+        {member.isLocal && (
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="ce-meet-tile-video"
+            style={{
+              display: hasVideoActive ? "block" : "none",
+              width: "100%",
+              height: "100%",
+              objectFit: "cover"
+            }}
+          />
+        )}
+
+        {!member.isLocal && hasVideoActive && (
           <RemoteVideoTile
             member={member}
             isSpeaking={isSpeaking}
@@ -655,28 +751,78 @@ const GoogleMeetStage = ({
           />
         )}
 
-        {/* Name & Mute Tag */}
-        <div className="ce-meet-tile-name-tag">
-          <div className={`ce-meet-mic-badge ${!member.isMicOn ? "muted" : "talking"}`}>
-            {member.isMicOn ? (
-              isSpeaking ? (
-                <Volume2 size={13} color="#10b981" />
+        {!hasVideoActive && (
+          !isFilmstrip ? (
+            <div className="ce-meet-featured-speaker-view">
+              <div className="ce-meet-featured-pulse-container">
+                {isSpeaking && (
+                  <div className="ce-meet-speaker-equalizer left">
+                    <span /><span /><span /><span /><span />
+                  </div>
+                )}
+                
+                <div className={`ce-meet-speaker-avatar-ring ${isSpeaking ? "pulsing" : ""}`}>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={member.username} className="ce-meet-speaker-avatar-img" />
+                  ) : (
+                    <div className="ce-meet-speaker-avatar-letter">{initial}</div>
+                  )}
+                </div>
+
+                {isSpeaking && (
+                  <div className="ce-meet-speaker-equalizer right">
+                    <span /><span /><span /><span /><span />
+                  </div>
+                )}
+              </div>
+              
+              <div className="ce-meet-featured-speaker-details">
+                <div className="ce-meet-featured-speaker-name-row">
+                  <span>{(member.username || "").replace(/\s*\(You\)\s*/gi, "")}{member.isLocal ? " (You)" : ""}</span>
+                  {member.isMicOn ? <Mic size={14} color="#10b981" /> : <MicOff size={14} color="#ef4444" />}
+                </div>
+                {isSpeaking && (
+                  <div className="ce-meet-featured-speaking-pill">
+                    <div className="ce-meet-speaking-pill-waves">
+                      <span /><span /><span />
+                    </div>
+                    <span>Speaking</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="ce-meet-tile-avatar-wrapper">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={member.username} className="ce-meet-tile-avatar-img" />
               ) : (
-                <Mic size={13} color="#10b981" />
-              )
-            ) : (
-              <MicOff size={13} color="#ef4444" />
-            )}
+                <div className="ce-meet-tile-avatar">{initial}</div>
+              )}
+            </div>
+          )
+        )}
+
+        {(isFilmstrip || hasVideoActive) && (
+          <div className="ce-meet-tile-bottom-bar">
+            <div className="ce-meet-tile-user-name">
+              <span>{(member.username || "").replace(/\s*\(You\)\s*/gi, "")}{member.isLocal ? " (You)" : ""}</span>
+            </div>
+            <div className="ce-meet-tile-icons">
+              {member.isHandRaised && <span className="ce-meet-raised-hand-badge" title="Hand raised">✋</span>}
+              {member.isMicOn ? (
+                <Mic size={14} color="#10b981" />
+              ) : (
+                <MicOff size={14} color="#ef4444" />
+              )}
+            </div>
           </div>
-          <span>{member.username}</span>
-          {member.isHandRaised && <span>🖐️</span>}
-        </div>
+        )}
       </div>
     );
   };
 
   if (isMinimized) {
-    const pillStyle = pillPos.x !== null && pillPos.y !== null
+    const pillStyle = pillPos.x !== null
       ? { left: `${pillPos.x}px`, top: `${pillPos.y}px`, bottom: "auto", right: "auto" }
       : {};
 
@@ -688,10 +834,31 @@ const GoogleMeetStage = ({
         onTouchStart={handlePillTouchStart}
       >
         {remoteAudioElements}
-        <div className="ce-meet-minimized-info" onClick={() => setIsMinimized(false)}>
-          <div className="ce-meet-live-dot" />
-          <span className="ce-meet-minimized-title">Meeting ({allMembers.length})</span>
-        </div>
+        
+        {/* Active Speaker Tracking Badge when Minimized */}
+        {activeSpeakingMember ? (
+          <div className="ce-meet-minimized-speaker-badge" onClick={() => setIsMinimized(false)} title={`${activeSpeakingMember.username} is speaking`}>
+            <div className="ce-meet-minimized-speaker-avatar">
+              {getAvatarUrl(activeSpeakingMember.avatar) ? (
+                <img src={getAvatarUrl(activeSpeakingMember.avatar)} alt={activeSpeakingMember.username} />
+              ) : (
+                <span>{(activeSpeakingMember.username || "U").charAt(0).toUpperCase()}</span>
+              )}
+            </div>
+            <span className="ce-meet-minimized-speaker-name">{activeSpeakingMember.username}</span>
+            <div className="ce-audio-wave-bars" title="Speaking">
+              <span className="wave-bar" />
+              <span className="wave-bar" />
+              <span className="wave-bar" />
+              <span className="wave-bar" />
+            </div>
+          </div>
+        ) : (
+          <div className="ce-meet-minimized-info" onClick={() => setIsMinimized(false)}>
+            <div className="ce-meet-live-dot" />
+            <span className="ce-meet-minimized-title">Meeting ({allMembers.length})</span>
+          </div>
+        )}
 
         <div className="ce-meet-minimized-actions">
           <button
@@ -747,79 +914,6 @@ const GoogleMeetStage = ({
   return (
     <div className="ce-meet-stage-overlay">
       {remoteAudioElements}
-      {/* Top Stage Header */}
-      <div className="ce-meet-stage-header">
-        <div className="ce-meet-room-title">
-          <div className="ce-meet-live-dot" />
-          <span>{roomTitle || "Workspace Meeting"}</span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {pinnedUserId && (
-            <button
-              type="button"
-              className="ce-meet-ctrl-btn active-feature"
-              style={{ width: "auto", padding: "0 12px", height: "36px", borderRadius: "18px", fontSize: "0.78rem", fontWeight: "700" }}
-              onClick={() => setPinnedUserId(null)}
-              title="Unpin and return to equal grid view"
-            >
-              Unpin Spotlight
-            </button>
-          )}
-
-          {/* 3 Overlapping Avatar Bubbles Trigger */}
-          <div
-            className="ce-meet-avatar-stack-btn"
-            onClick={() => setShowParticipantsPanel(!showParticipantsPanel)}
-            title="View all participants"
-          >
-            <div className="ce-meet-avatar-stack">
-              {allMembers.slice(0, 3).map((m, idx) => {
-                const avUrl = getAvatarUrl(m.avatar);
-                const letter = (m.username || "U").charAt(0).toUpperCase();
-                return (
-                  <div
-                    key={m.userId}
-                    className="ce-meet-stack-avatar"
-                    style={{ zIndex: 3 - idx, marginLeft: idx > 0 ? "-10px" : "0" }}
-                  >
-                    {avUrl ? (
-                      <img src={avUrl} alt={m.username} />
-                    ) : (
-                      <span>{letter}</span>
-                    )}
-                  </div>
-                );
-              })}
-              {allMembers.length > 3 && (
-                <div className="ce-meet-stack-avatar count-pill" style={{ zIndex: 0, marginLeft: "-10px" }}>
-                  +{allMembers.length - 3}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className={`ce-meet-ctrl-btn ${showParticipantsPanel ? "active-feature" : ""}`}
-            style={{ width: "40px", height: "40px" }}
-            onClick={() => setShowParticipantsPanel(!showParticipantsPanel)}
-            title="In-Meeting Participants"
-          >
-            <Users size={18} />
-          </button>
-
-          <button
-            type="button"
-            className="ce-meet-ctrl-btn"
-            style={{ width: "40px", height: "40px" }}
-            onClick={() => setIsMinimized(true)}
-            title="Minimize Meeting Stage"
-          >
-            <Minus size={18} />
-          </button>
-        </div>
-      </div>
 
       {isScreenSharing && (
         <div style={{ padding: "12px 24px 0 24px" }}>
@@ -847,207 +941,303 @@ const GoogleMeetStage = ({
 
       {/* Main Grid Stage & Side Panel */}
       <div className="ce-meet-stage-body">
-        {/* Pinned / Spotlight View Mode */}
-        {pinnedMember ? (
-          <div className="ce-meet-pinned-stage">
-            {/* Big Featured Main Stage */}
-            <div className="ce-meet-pinned-main">
-              {renderSingleTile(pinnedMember, false)}
-            </div>
+        {/* Dedicated Video Canvas Area for Video Grid + HUD Floating Controls */}
+        <div className="ce-meet-video-canvas">
+          {/* Floating Utilities at Top Right of Video Canvas */}
+          <div className="ce-meet-stage-top-right-actions">
+            <button
+              type="button"
+              className="ce-meet-float-btn"
+              onClick={() => setIsMinimized(true)}
+              title="Minimize Stage"
+            >
+              <Minus size={15} />
+            </button>
 
-            {/* Vertical Right Filmstrip of Small Thumbnails */}
-            <div className="ce-meet-filmstrip-column">
-              {unpinnedMembers.map((m) => renderSingleTile(m, true))}
-            </div>
+            <button
+              type="button"
+              className={`ce-meet-float-btn-pill ${showParticipantsPanel ? "active-feature" : ""}`}
+              onClick={() => setShowParticipantsPanel(!showParticipantsPanel)}
+              title="Participants list"
+            >
+              <Users size={15} />
+              <span style={{ fontSize: "0.72rem", fontWeight: "700" }}>{allMembers.length}</span>
+            </button>
           </div>
-        ) : (
-          /* Dynamic Equal Video Grid Mode */
-          <div className={`ce-meet-grid ${gridClass}`}>
-            {allMembers.map((m) => renderSingleTile(m, false))}
-          </div>
-        )}
 
-        {/* Side Participants Drawer */}
-        {showParticipantsPanel && (
-          <div className="ce-meet-side-panel">
-            <div className="ce-meet-side-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div className="ce-meet-avatar-stack">
-                  {allMembers.slice(0, 3).map((m, idx) => {
-                    const avUrl = getAvatarUrl(m.avatar);
-                    const letter = (m.username || "U").charAt(0).toUpperCase();
-                    return (
-                      <div
-                        key={m.userId}
-                        className="ce-meet-stack-avatar"
-                        style={{ width: "24px", height: "24px", fontSize: "0.65rem", zIndex: 3 - idx, marginLeft: idx > 0 ? "-8px" : "0" }}
-                      >
-                        {avUrl ? <img src={avUrl} alt={m.username} /> : <span>{letter}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-                <span>Participants ({allMembers.length})</span>
+          {/* Pinned / Spotlight View Mode */}
+          {pinnedMember ? (
+            <div className="ce-meet-pinned-stage">
+              {/* Big Featured Main Stage */}
+              <div className="ce-meet-pinned-main">
+                {renderSingleTile(pinnedMember, false)}
               </div>
-              <button
-                type="button"
-                onClick={() => setShowParticipantsPanel(false)}
-                style={{ background: "transparent", border: "none", color: "#9ca3af", cursor: "pointer" }}
-              >
-                <X size={16} />
-              </button>
-            </div>
 
-            {/* Real-time Search Box */}
-            <div className="ce-meet-search-box">
-              <Search size={15} className="ce-meet-search-icon" />
-              <input
-                type="text"
-                placeholder="Search participants..."
-                value={participantSearchQuery}
-                onChange={(e) => setParticipantSearchQuery(e.target.value)}
-                className="ce-meet-search-input"
-              />
-              {participantSearchQuery && (
+              {/* Vertical Right Filmstrip of Small Thumbnails */}
+              <div className="ce-meet-filmstrip-column">
+                {unpinnedMembers.map((m) => renderSingleTile(m, true))}
+              </div>
+            </div>
+          ) : (
+            /* Dynamic Equal Video Grid Mode */
+            <div className={`ce-meet-grid ${gridClass}`}>
+              {allMembers.map((m) => renderSingleTile(m, false))}
+            </div>
+          )}
+
+          {/* Floating Bottom Control Bar (Centered over Video Canvas) */}
+          <div className="ce-meet-floating-controls">
+            {/* Media Controls */}
+            <button
+              type="button"
+              className={`ce-meet-float-btn ${!isMicOn ? "off" : ""}`}
+              onClick={() => setIsMicOn(!isMicOn)}
+              title={isMicOn ? "Mute Microphone" : "Unmute Microphone"}
+            >
+              {isMicOn ? <Mic size={16} /> : <MicOff size={16} />}
+            </button>
+
+            <button
+              type="button"
+              className={`ce-meet-float-btn ${!isVideoOn ? "off" : ""}`}
+              onClick={() => setIsVideoOn(!isVideoOn)}
+              title={isVideoOn ? "Turn off Camera" : "Turn on Camera"}
+            >
+              {isVideoOn ? <Video size={16} /> : <VideoOff size={16} />}
+            </button>
+
+            <button
+              type="button"
+              className={`ce-meet-float-btn ${isHandRaised ? "active-feature" : ""}`}
+              onClick={() => setIsHandRaised(!isHandRaised)}
+              title="Raise / Lower Hand"
+            >
+              <Hand size={16} />
+            </button>
+
+            <button
+              type="button"
+              className={`ce-meet-float-btn ${isScreenSharing ? "active-feature" : ""}`}
+              onClick={toggleScreenShare}
+              title={isScreenSharing ? "Stop sharing Screen" : "Share Screen"}
+            >
+              <Monitor size={16} />
+            </button>
+
+            {pinnedUserId && (
+              <>
+                <div className="ce-meet-floating-divider" />
                 <button
                   type="button"
-                  onClick={() => setParticipantSearchQuery("")}
-                  className="ce-meet-search-clear"
+                  className="ce-meet-unpin-spotlight-btn"
+                  onClick={() => setPinnedUserId(null)}
+                  title="Unpin Spotlight"
                 >
-                  <X size={12} />
+                  Unpin
                 </button>
-              )}
-            </div>
+              </>
+            )}
 
-            <div className="ce-meet-side-list">
-              {filteredMembers.length > 0 ? (
-                filteredMembers.map((member) => {
-                  const memberAvatarUrl = getAvatarUrl(member.avatar);
-                  const isPinned = String(pinnedUserId) === String(member.userId);
-                  const isMe = member.isLocal;
+            <div className="ce-meet-floating-divider" />
 
-                  return (
-                    <div key={member.userId} className="ce-meet-side-item">
-                      <div className="ce-meet-side-user-info">
-                        {memberAvatarUrl ? (
-                          <img
-                            src={memberAvatarUrl}
-                            alt={member.username}
-                            className="ce-meet-side-avatar"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <div className="ce-meet-side-avatar">
-                            {(member.username || "U").charAt(0).toUpperCase()}
+            {/* Leave Call */}
+            <button
+              type="button"
+              className="ce-meet-float-btn end"
+              onClick={() => {
+                if (localStream) {
+                  localStream.getTracks().forEach((t) => t.stop());
+                }
+                onLeaveMeeting();
+              }}
+              title="Leave Meeting"
+            >
+              <PhoneOff size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Side Participants Drawer */}
+        {showParticipantsPanel && (() => {
+          const speakingCount = allMembers.filter(m => String(activeSpeakerId) === String(m.userId) || remoteSpeakingMap[m.userId]).length;
+          const raisedCount = allMembers.filter(m => m.isHandRaised).length;
+          const mutedCount = allMembers.filter(m => !m.isMicOn).length;
+
+          const tabFilteredMembers = allMembers.filter((m) => {
+            if (participantsTab === "speaking") {
+              return String(activeSpeakerId) === String(m.userId) || remoteSpeakingMap[m.userId];
+            }
+            if (participantsTab === "raised") {
+              return m.isHandRaised;
+            }
+            if (participantsTab === "muted") {
+              return !m.isMicOn;
+            }
+            return true; // 'all'
+          });
+
+          const filteredMembers = tabFilteredMembers.filter((m) =>
+            (m.username || "").toLowerCase().includes(participantSearchQuery.toLowerCase())
+          );
+
+          return (
+            <div className="ce-meet-side-panel">
+              <div className="ce-meet-side-header">
+                <span>Participants <span className="ce-meet-purple-count">({allMembers.length})</span></span>
+                <button
+                  type="button"
+                  className="ce-meet-side-close"
+                  onClick={() => setShowParticipantsPanel(false)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Real-time Search Box */}
+              <div className="ce-meet-search-row">
+                <div className="ce-meet-search-box">
+                  <Search size={15} className="ce-meet-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search participants..."
+                    value={participantSearchQuery}
+                    onChange={(e) => setParticipantSearchQuery(e.target.value)}
+                    className="ce-meet-search-input"
+                  />
+                  {participantSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setParticipantSearchQuery("")}
+                      className="ce-meet-search-clear"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tab Pills */}
+              <div className="ce-meet-side-tabs">
+                <button
+                  className={`ce-meet-side-tab-pill ${participantsTab === "all" ? "active" : ""}`}
+                  onClick={() => setParticipantsTab("all")}
+                >
+                  All {allMembers.length}
+                </button>
+                <button
+                  className={`ce-meet-side-tab-pill speaking ${participantsTab === "speaking" ? "active" : ""}`}
+                  onClick={() => setParticipantsTab("speaking")}
+                >
+                  Speaking {speakingCount}
+                </button>
+                <button
+                  className={`ce-meet-side-tab-pill raised ${participantsTab === "raised" ? "active" : ""}`}
+                  onClick={() => setParticipantsTab("raised")}
+                >
+                  Raised {raisedCount}
+                </button>
+                <button
+                  className={`ce-meet-side-tab-pill muted ${participantsTab === "muted" ? "active" : ""}`}
+                  onClick={() => setParticipantsTab("muted")}
+                >
+                  Muted {mutedCount}
+                </button>
+              </div>
+
+              {/* Participants list */}
+              <div className="ce-meet-side-list">
+                {filteredMembers.length > 0 ? (
+                  filteredMembers.map((member) => {
+                    const memberAvatarUrl = getAvatarUrl(member.avatar);
+                    const isPinned = String(pinnedUserId) === String(member.userId);
+                    const isMe = member.isLocal;
+                    const isSpeaking = String(activeSpeakerId) === String(member.userId) || remoteSpeakingMap[member.userId];
+
+                    return (
+                      <div key={member.userId} className="ce-meet-side-item">
+                        <div className="ce-meet-side-user-info">
+                          {memberAvatarUrl ? (
+                            <img
+                              src={memberAvatarUrl}
+                              alt={member.username}
+                              className="ce-meet-side-avatar"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="ce-meet-side-avatar">
+                              {(member.username || "U").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <span className="ce-meet-side-username">
+                              {(member.username || "").replace(/\s*\(You\)\s*/gi, "")}{isMe ? " (You)" : ""}
+                            </span>
+                            <span className="ce-meet-side-user-status" style={{ color: isSpeaking ? "#10b981" : isMe ? "#8b5cf6" : "#9ca3af" }}>
+                              {isMe ? "Host" : isSpeaking ? "Speaking" : "Participant"}
+                            </span>
                           </div>
-                        )}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                          <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "#ffffff" }}>
-                            {member.username}
-                          </span>
-                          <span style={{ fontSize: "0.68rem", fontWeight: "700", color: isMe ? "#10b981" : "#818cf8" }}>
-                            {isMe ? "YOU" : "MEMBER"}
-                          </span>
+                        </div>
+
+                        <div className="ce-meet-side-item-actions">
+                          {isSpeaking && (
+                            <div className="ce-audio-wave-bars" title="Speaking">
+                              <span className="wave-bar" />
+                              <span className="wave-bar" />
+                              <span className="wave-bar" />
+                              <span className="wave-bar" />
+                            </div>
+                          )}
+
+                          {member.isHandRaised && (
+                            <span className="ce-meet-side-hand-badge" title="Hand raised">✋</span>
+                          )}
+
+                          <button
+                            type="button"
+                            className={`ce-meet-side-pin ${isPinned ? "active" : ""}`}
+                            onClick={() => setPinnedUserId(isPinned ? null : member.userId)}
+                            title={isPinned ? "Unpin" : "Pin participant"}
+                          >
+                            <Pin size={13} />
+                          </button>
+
+                          <div className="ce-meet-side-mic">
+                            {member.isMicOn ? (
+                              <Mic size={13} color="#10b981" />
+                            ) : (
+                              <MicOff size={13} color="#ef4444" />
+                            )}
+                          </div>
+
+                          <button type="button" className="ce-meet-side-more">
+                            <MoreVertical size={14} />
+                          </button>
                         </div>
                       </div>
+                    );
+                  })
+                ) : (
+                  <div className="ce-meet-empty-search">
+                    No participants found matching "{participantSearchQuery}"
+                  </div>
+                )}
+              </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <button
-                          type="button"
-                          onClick={() => setPinnedUserId(isPinned ? null : member.userId)}
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            color: isPinned ? "#6366f1" : "#9ca3af",
-                            cursor: "pointer"
-                          }}
-                          title={isPinned ? "Unpin" : "Pin participant"}
-                        >
-                          <Pin size={14} />
-                        </button>
-
-                        {member.isMicOn ? (
-                          <Mic size={14} color="#10b981" />
-                        ) : (
-                          <MicOff size={14} color="#ef4444" />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="ce-meet-empty-search">
-                  No participants found matching "{participantSearchQuery}"
-                </div>
-              )}
+              {/* Sidebar Pagination Footer */}
+              <div className="ce-meet-side-pagination">
+                <button type="button" className="ce-meet-page-arrow" disabled>&lt;</button>
+                <button type="button" className="ce-meet-page-num active">1</button>
+                <button type="button" className="ce-meet-page-num">2</button>
+                <button type="button" className="ce-meet-page-num">3</button>
+                <span className="ce-meet-page-dots">...</span>
+                <button type="button" className="ce-meet-page-num">17</button>
+                <button type="button" className="ce-meet-page-arrow">&gt;</button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Floating Bottom Control Bar */}
-      <div className="ce-meet-bottom-bar">
-        <div className="ce-meet-bar-left">
-          <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-        </div>
-
-        <div className="ce-meet-bar-center">
-          <button
-            type="button"
-            className={`ce-meet-ctrl-btn ${!isMicOn ? "off" : ""}`}
-            onClick={() => setIsMicOn(!isMicOn)}
-            title={isMicOn ? "Mute microphone" : "Unmute microphone"}
-          >
-            {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
-          </button>
-
-          <button
-            type="button"
-            className={`ce-meet-ctrl-btn ${!isVideoOn ? "off" : ""}`}
-            onClick={() => setIsVideoOn(!isVideoOn)}
-            title={isVideoOn ? "Turn off camera" : "Turn on camera"}
-          >
-            {isVideoOn ? <Video size={20} /> : <VideoOff size={20} />}
-          </button>
-
-          <div className="ce-meet-bar-divider" />
-
-          <button
-            type="button"
-            className={`ce-meet-ctrl-btn ${isHandRaised ? "active-feature" : ""}`}
-            onClick={() => setIsHandRaised(!isHandRaised)}
-            title="Raise or lower hand"
-          >
-            <Hand size={20} />
-          </button>
-
-          <button
-            type="button"
-            className={`ce-meet-ctrl-btn ${isScreenSharing ? "active-feature" : ""}`}
-            title={isScreenSharing ? "Stop presenting screen" : "Share screen"}
-            onClick={toggleScreenShare}
-          >
-            <Monitor size={20} />
-          </button>
-        </div>
-
-        <div className="ce-meet-bar-right">
-          <button
-            type="button"
-            className="ce-meet-end-call-btn"
-            onClick={() => {
-              if (localStream) {
-                localStream.getTracks().forEach((t) => t.stop());
-              }
-              onLeaveMeeting();
-            }}
-            title="Leave Meeting"
-          >
-            <PhoneOff size={20} />
-          </button>
-        </div>
+          );
+        })()}
       </div>
     </div>
   );

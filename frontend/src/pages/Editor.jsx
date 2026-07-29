@@ -1201,19 +1201,46 @@ function Editor() {
     }
   };
 
-  const toggleCamera = () => {
-    if (localStreamRef.current) {
-      const videoTrack = localStreamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsCameraOff(!videoTrack.enabled);
-        socket.emit("toggle-media", {
-          roomId,
-          isMuted,
-          isCameraOff: !videoTrack.enabled,
-          activeFilter: activeVideoFilter
-        });
+  const toggleCamera = async () => {
+    if (!localStreamRef.current) return;
+    const currentTrack = localStreamRef.current.getVideoTracks()[0];
+    const turningOff = isCameraOff ? false : (currentTrack && currentTrack.enabled);
+
+    if (turningOff) {
+      // Stop hardware camera sensor so laptop camera light turns OFF completely
+      if (currentTrack) {
+        currentTrack.stop();
+        localStreamRef.current.removeTrack(currentTrack);
+        setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
       }
+      setIsCameraOff(true);
+    } else {
+      // Re-enable camera hardware: request fresh stream track
+      try {
+        const freshStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const freshTrack = freshStream.getVideoTracks()[0];
+        if (freshTrack) {
+          localStreamRef.current.addTrack(freshTrack);
+          setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
+          Object.values(peerConnectionsRef.current).forEach((pc) => {
+            const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
+            if (sender) sender.replaceTrack(freshTrack);
+            else pc.addTrack(freshTrack, localStreamRef.current);
+          });
+        }
+        setIsCameraOff(false);
+      } catch (e) {
+        console.warn("Could not restart hardware camera:", e);
+      }
+    }
+
+    if (socket) {
+      socket.emit("toggle-media", {
+        roomId,
+        isMuted,
+        isCameraOff: turningOff,
+        activeFilter: activeVideoFilter
+      });
     }
   };
 
@@ -4973,18 +5000,18 @@ function Editor() {
                     <Sparkles size={14} style={{ color: "#818cf8" }} />
                     <span>AI History</span>
                   </button>
-                </div>
-
-                <div className="console-actions">
                   <button
                     type="button"
-                    className={`ce-btn-ai-copilot ${isAIPanelOpen ? "active" : ""}`}
+                    className={`console-tab-btn ce-btn-ai-copilot-tab ${isAIPanelOpen ? "active" : ""}`}
                     onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
                     title="Open ExpoAI Copilot Assistant"
                   >
-                    <Sparkles size={13} className="sparkle-pulse" />
-                    <span>{isAIPanelOpen ? "Close ExpoAI" : "ExpoAI Copilot"}</span>
+                    <Sparkles size={13} className="sparkle-pulse" style={{ color: "#a855f7" }} />
+                    <span>ExpoAI Copilot</span>
                   </button>
+                </div>
+
+                <div className="console-actions">
                   {currentUserRole !== "VIEWER" && (
                     <>
                       <button className="ce-btn-save" onClick={handleSaveCode} title="Save file content">
@@ -5285,8 +5312,16 @@ function Editor() {
                                   </div>
                                 </div>
 
-                                {/* Right Column: Actions and Mute Status */}
+                                {/* Right Column: Actions, Speaking Animation, and Mute Status */}
                                 <div className="user-pane-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  {(p.isSpeaking || (!p.isMuted && online && p.isAudioActive)) && (
+                                    <div className="ce-audio-wave-bars" title="Speaking">
+                                      <span className="wave-bar" />
+                                      <span className="wave-bar" />
+                                      <span className="wave-bar" />
+                                      <span className="wave-bar" />
+                                    </div>
+                                  )}
                                   {p.isMuted && (
                                     <span className="user-mute-status" title="Muted">
                                       <MicOff size={11} className="mute-icon-red" />

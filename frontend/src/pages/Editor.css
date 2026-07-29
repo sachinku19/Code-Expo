@@ -1148,6 +1148,55 @@ body.light .search-box-input:focus {
   transform: translateY(-1px);
 }
 
+/* Audio Sound Wave Animation for Room Participants */
+.ce-audio-wave-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.ce-audio-wave-bars .wave-bar {
+  width: 3px;
+  background-color: #10b981;
+  border-radius: 2px;
+  animation: ceWaveBounce 0.75s ease-in-out infinite alternate;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+
+.ce-audio-wave-bars .wave-bar:nth-child(1) {
+  height: 45%;
+  animation-delay: 0s;
+}
+
+.ce-audio-wave-bars .wave-bar:nth-child(2) {
+  height: 90%;
+  animation-delay: 0.2s;
+}
+
+.ce-audio-wave-bars .wave-bar:nth-child(3) {
+  height: 100%;
+  animation-delay: 0.4s;
+}
+
+.ce-audio-wave-bars .wave-bar:nth-child(4) {
+  height: 65%;
+  animation-delay: 0.15s;
+}
+
+@keyframes ceWaveBounce {
+  0% {
+    transform: scaleY(0.25);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
 .light .user-pane-item:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
@@ -6192,4 +6241,67 @@ body.light .monaco-editor .current-line {
   border-color: #6366f1;
   color: #ffffff !important;
   box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+/* ExpoAI Copilot Tab Button Styling */
+.console-tab-btn.ce-btn-ai-copilot-tab.active {
+  background-color: rgba(168, 85, 247, 0.08) !important;
+  color: #c7d2fe !important;
+  border-bottom: 1.5px solid #a855f7 !important;
+}
+
+.light .console-tab-btn.ce-btn-ai-copilot-tab.active {
+  background-color: rgba(168, 85, 247, 0.06) !important;
+  color: #6d28d9 !important;
+  border-bottom: 1.5px solid #8b5cf6 !important;
+}
+
+/* Responsive bottom console layout (VS Code inspired) */
+@media (max-width: 992px) {
+  .console-tab-btn span {
+    display: none !important; /* Hide labels, show only icons like VS Code */
+  }
+  .console-tab-btn {
+    padding: 0 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ce-btn-ai-copilot span,
+  .ce-btn-save span,
+  .ce-btn-run span,
+  .running-stop-btn span {
+    display: none !important; /* Hide button text labels on small screens */
+  }
+  .console-actions {
+    gap: 5px;
+  }
+  .ce-btn-ai-copilot,
+  .ce-btn-save,
+  .ce-btn-run,
+  .running-stop-btn {
+    padding: 0 8px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 500px) {
+  .console-tab-header {
+    padding: 0 4px;
+    gap: 4px;
+  }
+  .console-tabs {
+    gap: 2px;
+  }
+  .console-tab-btn {
+    padding: 0 6px;
+    border-right: none;
+  }
+  .console-actions {
+    gap: 3px;
+  }
 }

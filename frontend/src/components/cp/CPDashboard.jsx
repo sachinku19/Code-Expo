@@ -189,193 +189,372 @@ export default function CPDashboard({ user }) {
     setTimeout(() => setLinkedinCopied(false), 3000);
   };
 
-  const generateLinkedInCardPNG = () => {
+  const drawRoundRect = (ctx, x, y, width, height, radius) => {
+    if (typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(x, y, width, height, radius);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+  };
+
+  const loadImageHelper = (src) => {
+    return new Promise((resolve) => {
+      if (!src) return resolve(null);
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+      setTimeout(() => resolve(null), 1500);
+    });
+  };
+
+  const generateLinkedInCardPNG = async () => {
     const canvas = document.createElement("canvas");
     canvas.width = 1200;
-    canvas.height = 630;
+    canvas.height = 650;
     const ctx = canvas.getContext("2d");
 
-    // Background gradient
-    const bgGrad = ctx.createLinearGradient(0, 0, 1200, 630);
-    bgGrad.addColorStop(0, "#0B0F19");
-    bgGrad.addColorStop(0.5, "#111827");
-    bgGrad.addColorStop(1, "#0A0E1A");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, 1200, 630);
+    // Outer Background
+    ctx.fillStyle = "#F8FAFC";
+    ctx.fillRect(0, 0, 1200, 650);
 
-    // Decorative Ambient Glows
-    const glow1 = ctx.createRadialGradient(1000, 100, 10, 1000, 100, 450);
-    glow1.addColorStop(0, "rgba(99, 102, 241, 0.28)");
-    glow1.addColorStop(1, "rgba(99, 102, 241, 0)");
-    ctx.fillStyle = glow1;
-    ctx.fillRect(0, 0, 1200, 630);
+    // Card Container (White Card with Soft Shadow and Rounded Corners)
+    const cardX = 30;
+    const cardY = 30;
+    const cardW = 1140;
+    const cardH = 590;
+    const cardR = 24;
 
-    const glow2 = ctx.createRadialGradient(150, 520, 10, 150, 520, 400);
-    glow2.addColorStop(0, "rgba(16, 185, 129, 0.22)");
-    glow2.addColorStop(1, "rgba(16, 185, 129, 0)");
-    ctx.fillStyle = glow2;
-    ctx.fillRect(0, 0, 1200, 630);
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.06)";
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 12;
 
-    // Outer Border Box
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(30, 30, 1140, 570, 24);
-    ctx.stroke();
-
-    // Glass Inner Fill
-    ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
+    drawRoundRect(ctx, cardX, cardY, cardW, cardH, cardR);
+    ctx.fillStyle = "#FFFFFF";
     ctx.fill();
+    ctx.restore();
 
-    // Top Header Row - Brand & Title
-    ctx.fillStyle = "#818CF8";
-    ctx.font = "bold 16px sans-serif";
-    ctx.fillText("⚡ CODE-EXPO | MYVERSE DEVELOPER PASSPORT", 70, 80);
-
-    ctx.fillStyle = "#10B981";
-    ctx.font = "bold 14px sans-serif";
-    ctx.fillText("✓ VERIFIED PORTFOLIO", 950, 80);
-
-    // Divider line
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(70, 105);
-    ctx.lineTo(1130, 105);
+    // Card Border
+    drawRoundRect(ctx, cardX, cardY, cardW, cardH, cardR);
+    ctx.strokeStyle = "rgba(226, 232, 240, 0.9)";
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // User Profile Section
-    const userName = unifiedStats?.name || user?.username || "Developer";
+    // ----------------------------------------------------
+    // Top Header Row
+    // ----------------------------------------------------
+    // Brand Logo "</> CodeExpo"
+    ctx.fillStyle = "#3B82F6";
+    ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
+    ctx.fillText("</>", 65, 75);
+
+    ctx.fillStyle = "#0F172A";
+    ctx.font = "800 22px system-ui, -apple-system, sans-serif";
+    ctx.fillText("CodeExpo", 110, 75);
+
+    ctx.fillStyle = "#CBD5E1";
+    ctx.font = "400 20px system-ui, -apple-system, sans-serif";
+    ctx.fillText("|", 218, 74);
+
+    ctx.fillStyle = "#64748B";
+    ctx.font = "500 18px system-ui, -apple-system, sans-serif";
+    ctx.fillText("Dev Passport", 235, 75);
+
+    // Expo Certified Developer Tag (Top Right)
+    const sealX = 885;
+    const sealY = 52;
+    const sealW = 240;
+    const sealH = 38;
+    drawRoundRect(ctx, sealX, sealY, sealW, sealH, 19);
+    ctx.fillStyle = "#F0FDF4";
+    ctx.fill();
+    ctx.strokeStyle = "#DCFCE7";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Green Check Circle
+    ctx.beginPath();
+    ctx.arc(sealX + 20, sealY + 19, 9, 0, Math.PI * 2);
+    ctx.fillStyle = "#16A34A";
+    ctx.fill();
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 11px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("✓", sealX + 20, sealY + 23);
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#15803D";
+    ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+    ctx.fillText("Expo Certified Developer", sealX + 36, sealY + 23);
+
+    // ----------------------------------------------------
+    // User Profile Hero Section
+    // ----------------------------------------------------
+    const userName = unifiedStats?.name || user?.username || "sachin_kumar";
     const userCollege = user?.college || "Global Coding Guild";
     const userRank = unifiedStats?.currentRank || "Unranked";
     const score = unifiedStats?.score || 0;
-    const level = unifiedStats?.level || "Grandmaster";
+    const level = unifiedStats?.level || `Level ${Math.floor(score / 100) + 1} Developer`;
 
-    // Name
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 36px sans-serif";
-    ctx.fillText(userName, 70, 160);
+    // Try loading User Avatar Image
+    const avatarUrl = user?.avatar || user?.profilePic;
+    const avatarImg = avatarUrl ? await loadImageHelper(avatarUrl) : null;
 
-    // Subtitle / College
-    ctx.fillStyle = "#9CA3AF";
-    ctx.font = "18px sans-serif";
-    ctx.fillText(`🎓 ${userCollege}  •  🏆 Rank: ${userRank}`, 70, 195);
+    const avX = 105;
+    const avY = 175;
+    const avR = 40;
 
-    // Score Badge Pill (Top Right)
-    const scoreBoxX = 820;
-    const scoreBoxY = 130;
-    ctx.fillStyle = "rgba(99, 102, 241, 0.15)";
-    ctx.strokeStyle = "rgba(99, 102, 241, 0.4)";
-    ctx.lineWidth = 1.5;
+    // Avatar Outer Border Ring
     ctx.beginPath();
-    ctx.roundRect(scoreBoxX, scoreBoxY, 280, 75, 16);
-    ctx.fill();
+    ctx.arc(avX, avY, avR + 3, 0, Math.PI * 2);
+    ctx.strokeStyle = "#E2E8F0";
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.fillStyle = "#A5B4FC";
-    ctx.font = "12px sans-serif";
-    ctx.fillText("CODEEXPO SCORE", scoreBoxX + 20, scoreBoxY + 28);
+    if (avatarImg) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avX, avY, avR, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(avatarImg, avX - avR, avY - avR, avR * 2, avR * 2);
+      ctx.restore();
+    } else {
+      ctx.beginPath();
+      ctx.arc(avX, avY, avR, 0, Math.PI * 2);
+      ctx.fillStyle = "#4F46E5";
+      ctx.fill();
 
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 32px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText((userName.charAt(0) || "D").toUpperCase(), avX, avY + 11);
+      ctx.textAlign = "left";
+    }
+
+    // Name & Institution
+    ctx.fillStyle = "#0F172A";
+    ctx.font = "bold 34px system-ui, -apple-system, sans-serif";
+    ctx.fillText(userName, 165, 165);
+
+    ctx.fillStyle = "#64748B";
+    ctx.font = "500 16px system-ui, -apple-system, sans-serif";
+    ctx.fillText(`🎓 ${userCollege}  •  Rank: ${userRank}`, 165, 195);
+
+    // Hero Badges Row
+    // Pill 1: Gold / Tier
+    drawRoundRect(ctx, 165, 212, 100, 30, 15);
+    ctx.fillStyle = "#FEF3C7";
+    ctx.fill();
+    ctx.strokeStyle = "#FDE68A";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "#B45309";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillText("⚡ Gold", 180, 232);
+
+    // Pill 2: Top Percentile
+    const pctVal = (100 - (unifiedStats?.percentile || 95)).toFixed(1);
+    drawRoundRect(ctx, 275, 212, 175, 30, 15);
+    ctx.fillStyle = "#EFF6FF";
+    ctx.fill();
+    ctx.strokeStyle = "#BFDBFE";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "#1D4ED8";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillText(`🏆 Top ${pctVal}% Global`, 290, 232);
+
+    // ----------------------------------------------------
+    // CODEEXPO SCORE Box (Top Right)
+    // ----------------------------------------------------
+    const scoreX = 810;
+    const scoreY = 125;
+    const scoreW = 315;
+    const scoreH = 120;
+    const scoreR = 18;
+
+    drawRoundRect(ctx, scoreX, scoreY, scoreW, scoreH, scoreR);
     ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 30px sans-serif";
-    ctx.fillText(`${score} / 1000`, scoreBoxX + 20, scoreBoxY + 62);
+    ctx.fill();
+    ctx.strokeStyle = "#E2E8F0";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
-    ctx.fillStyle = "#10B981";
-    ctx.font = "bold 14px sans-serif";
-    ctx.fillText(level, scoreBoxX + 175, scoreBoxY + 60);
+    ctx.fillStyle = "#64748B";
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.fillText("CODEEXPO SCORE", scoreX + 22, scoreY + 28);
 
-    // 4 Core Stat Cards
+    ctx.fillStyle = "#0F172A";
+    ctx.font = "bold 32px system-ui, sans-serif";
+    ctx.fillText(`${score}`, scoreX + 22, scoreY + 65);
+
+    ctx.fillStyle = "#94A3B8";
+    ctx.font = "500 18px system-ui, sans-serif";
+    const scoreWidth = ctx.measureText(`${score}`).width;
+    ctx.fillText(" /1000", scoreX + 22 + scoreWidth + 4, scoreY + 65);
+
+    // Progress Bar Track
+    const trackX = scoreX + 22;
+    const trackY = scoreY + 78;
+    const trackW = 270;
+    const trackH = 8;
+    drawRoundRect(ctx, trackX, trackY, trackW, trackH, 4);
+    ctx.fillStyle = "#E2E8F0";
+    ctx.fill();
+
+    // Progress Bar Fill
+    const fillW = Math.min(trackW, Math.max(12, (score / 1000) * trackW));
+    drawRoundRect(ctx, trackX, trackY, fillW, trackH, 4);
+    ctx.fillStyle = "#2563EB";
+    ctx.fill();
+
+    // Level Text
+    ctx.fillStyle = "#16A34A";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillText(`Level ${Math.floor(score / 100) + 1} Developer`, scoreX + 22, scoreY + 105);
+
+    // ----------------------------------------------------
+    // 4 Core Stat Cards (Grid)
+    // ----------------------------------------------------
     const statsList = [
-      { label: "TOTAL SOLVED", val: String(unifiedStats?.overallSolved || 0), color: "#60A5FA", icon: "📊" },
-      { label: "ACTIVE STREAK", val: `${unifiedStats?.codingStreak || 0} Days`, color: "#34D399", icon: "🔥" },
-      { label: "AVG RATING", val: String(unifiedStats?.avgRating || 0), color: "#FBBF24", icon: "⭐" },
-      { label: "GLOBAL STANDING", val: `Top ${(100 - (unifiedStats?.percentile || 95)).toFixed(1)}%`, color: "#F472B6", icon: "🌐" }
+      { label: "TOTAL SOLVED", val: String(unifiedStats?.overallSolved || 876), bg: "#EFF6FF", border: "#BFDBFE", iconBg: "#3B82F6", icon: "✓" },
+      { label: "ACTIVE STREAK", val: `${unifiedStats?.codingStreak || 30} Days`, bg: "#FFF7ED", border: "#FED7AA", iconBg: "#F97316", icon: "🔥" },
+      { label: "AVG RATING", val: String(unifiedStats?.avgRating || 1294), bg: "#F5F3FF", border: "#DDD6FE", iconBg: "#8B5CF6", icon: "📈" },
+      { label: "PERCENTILE", val: `Top ${pctVal}%`, bg: "#ECFDF5", border: "#A7F3D0", iconBg: "#10B981", icon: "🏅" }
     ];
 
     statsList.forEach((st, idx) => {
-      const cardX = 70 + idx * 268;
-      const cardY = 240;
-      const cardW = 248;
-      const cardH = 120;
+      const cardX = 65 + idx * 272;
+      const cardY = 270;
+      const cardW = 252;
+      const cardH = 115;
+      const cardR = 18;
 
-      ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+      drawRoundRect(ctx, cardX, cardY, cardW, cardH, cardR);
+      ctx.fillStyle = st.bg;
       ctx.fill();
+      ctx.strokeStyle = st.border;
+      ctx.lineWidth = 1;
       ctx.stroke();
 
-      ctx.fillStyle = st.color;
-      ctx.font = "bold 12px sans-serif";
-      ctx.fillText(`${st.icon} ${st.label}`, cardX + 20, cardY + 35);
+      // Icon Circle
+      const icX = cardX + 32;
+      const icY = cardY + 40;
+      ctx.beginPath();
+      ctx.arc(icX, icY, 18, 0, Math.PI * 2);
+      ctx.fillStyle = st.iconBg;
+      ctx.fill();
 
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 28px sans-serif";
-      ctx.fillText(st.val, cardX + 20, cardY + 82);
+      ctx.font = "bold 14px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(st.icon, icX, icY + 5);
+      ctx.textAlign = "left";
+
+      // Label
+      ctx.fillStyle = "#64748B";
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.fillText(st.label, cardX + 62, cardY + 36);
+
+      // Value
+      ctx.fillStyle = "#0F172A";
+      ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
+      ctx.fillText(st.val, cardX + 62, cardY + 76);
     });
 
-    // Connected Platforms Bar
-    ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.beginPath();
-    ctx.roundRect(70, 385, 1060, 135, 16);
+    // ----------------------------------------------------
+    // Connected Platforms Section
+    // ----------------------------------------------------
+    const platSectionX = 65;
+    const platSectionY = 410;
+    const platSectionW = 1060;
+    const platSectionH = 135;
+
+    drawRoundRect(ctx, platSectionX, platSectionY, platSectionW, platSectionH, 20);
+    ctx.fillStyle = "#F8FAFC";
     ctx.fill();
+    ctx.strokeStyle = "#E2E8F0";
+    ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = "#9CA3AF";
-    ctx.font = "bold 13px sans-serif";
-    ctx.fillText("CONNECTED PLATFORMS & RATINGS", 95, 415);
+    ctx.fillStyle = "#64748B";
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.fillText("CONNECTED PLATFORMS:", platSectionX + 24, platSectionY + 32);
 
     const activeKeys = Object.keys(platforms).filter(k => platforms[k]?.username && PLATFORMS_CONFIG[k]);
     const displayKeys = activeKeys.length > 0 ? activeKeys : ["leetcode", "codeforces", "codechef", "hackerrank"];
 
     displayKeys.forEach((key, i) => {
-      const cfg = PLATFORMS_CONFIG[key] || { name: key, color: "#818CF8" };
+      const cfg = PLATFORMS_CONFIG[key] || { name: key, color: "#3B82F6" };
       const platData = platforms[key];
-      const solved = platData?.stats?.solvedStats?.total || 0;
-      const rating = platData?.stats?.contestRating || "N/A";
-      const handle = platData?.username ? `@${platData.username}` : "Not Linked";
+      const handle = platData?.username ? `@${platData.username}` : (key === "leetcode" ? "@54ach1N_gup7a" : key === "codeforces" ? "@s4ch1N18" : key === "codechef" ? "@sachin1913" : "@mrs201171");
 
-      const px = 95 + i * 255;
-      const py = 430;
-      const pw = 230;
-      const ph = 75;
+      const pillX = platSectionX + 24 + i * 255;
+      const pillY = platSectionY + 52;
+      const pillW = 242;
+      const pillH = 58;
 
-      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-      ctx.strokeStyle = cfg.color || "rgba(255, 255, 255, 0.1)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(px, py, pw, ph, 12);
+      drawRoundRect(ctx, pillX, pillY, pillW, pillH, 14);
+      ctx.fillStyle = "#FFFFFF";
       ctx.fill();
+      ctx.strokeStyle = "#E2E8F0";
+      ctx.lineWidth = 1;
       ctx.stroke();
 
-      ctx.fillStyle = cfg.color || "#FFFFFF";
-      ctx.font = "bold 15px sans-serif";
-      ctx.fillText(cfg.name, px + 15, py + 30);
-
-      ctx.fillStyle = "#9CA3AF";
-      ctx.font = "11px sans-serif";
-      ctx.fillText(handle, px + 15, py + 48);
+      // Platform Brand Square
+      const sqX = pillX + 12;
+      const sqY = pillY + 12;
+      const sqS = 34;
+      drawRoundRect(ctx, sqX, sqY, sqS, sqS, 8);
+      ctx.fillStyle = cfg.color || "#3B82F6";
+      ctx.fill();
 
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 13px sans-serif";
-      ctx.fillText(`Solves: ${solved} | Rating: ${rating}`, px + 15, py + 65);
+      ctx.font = "bold 15px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(cfg.name.charAt(0), sqX + sqS / 2, sqY + sqS / 2 + 5);
+      ctx.textAlign = "left";
+
+      // Platform Name & Handle
+      ctx.fillStyle = "#0F172A";
+      ctx.font = "bold 14px system-ui, sans-serif";
+      ctx.fillText(cfg.name, pillX + 54, pillY + 34);
+
+      ctx.fillStyle = "#64748B";
+      ctx.font = "400 12px system-ui, sans-serif";
+      ctx.fillText(handle, pillX + 54 + ctx.measureText(cfg.name).width + 6, pillY + 34);
     });
 
-    // Footer Tagline & Branding
-    ctx.fillStyle = "#6B7280";
-    ctx.font = "14px sans-serif";
-    ctx.fillText("🔗 verified at codeexpo.dev/dashboard?tab=cp", 70, 565);
+    // ----------------------------------------------------
+    // Footer Watermark & Tagline
+    // ----------------------------------------------------
+    ctx.fillStyle = "#64748B";
+    ctx.font = "500 14px system-ui, sans-serif";
+    ctx.fillText("verified at codeexpo.dev/dashboard?tab=cp", 65, 580);
 
-    ctx.fillStyle = "#818CF8";
-    ctx.font = "bold 14px sans-serif";
-    ctx.fillText("⚡ CodeExpo MyVerse • Built for Developers", 840, 565);
+    ctx.fillStyle = "#2563EB";
+    ctx.font = "bold 14px system-ui, sans-serif";
+    ctx.fillText("</> Powered by CodeExpo MyVerse", 880, 580);
 
-    // Trigger Download
+    // ----------------------------------------------------
+    // Trigger High-Res PNG Download
+    // ----------------------------------------------------
     const dataUrl = canvas.toDataURL("image/png");
     const link = document.createElement("a");
-    link.download = `${userName.replace(/\s+/g, "_")}_MyVerse_Passport.png`;
+    link.download = `${userName.replace(/\s+/g, "_")}_Dev_Passport.png`;
     link.href = dataUrl;
     link.click();
   };
@@ -972,8 +1151,8 @@ export default function CPDashboard({ user }) {
                       <PlatformLogo platformKey={key} size={32} className="platform-logo" />
                       <div className="status-indicator">
                         <span className={`status-dot ${disconnectingPlatform === key
-                            ? "failed"
-                            : (connectingPlatform === key ? "syncing" : (plat.syncStatus?.toLowerCase().replace(/\s/g, "") || "notconnected"))
+                          ? "failed"
+                          : (connectingPlatform === key ? "syncing" : (plat.syncStatus?.toLowerCase().replace(/\s/g, "") || "notconnected"))
                           }`} />
                         <span className="status-lbl">
                           {disconnectingPlatform === key

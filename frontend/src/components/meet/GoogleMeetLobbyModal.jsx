@@ -37,7 +37,7 @@ const GoogleMeetLobbyModal = ({
     async function initPreview() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: initialVideoOn,
           audio: true
         });
         setMediaStream(stream);
@@ -59,9 +59,29 @@ const GoogleMeetLobbyModal = ({
   }, [isOpen]);
 
   useEffect(() => {
-    if (mediaStream) {
+    async function updateLobbyMedia() {
+      if (!mediaStream) return;
+
       const videoTrack = mediaStream.getVideoTracks()[0];
-      if (videoTrack) videoTrack.enabled = isVideoOn;
+
+      if (!isVideoOn) {
+        if (videoTrack) {
+          videoTrack.stop();
+          mediaStream.removeTrack(videoTrack);
+        }
+      } else {
+        if (!videoTrack || videoTrack.readyState === "ended") {
+          try {
+            const freshCam = await navigator.mediaDevices.getUserMedia({ video: true });
+            const freshTrack = freshCam.getVideoTracks()[0];
+            if (freshTrack) mediaStream.addTrack(freshTrack);
+          } catch (e) {
+            console.warn("Lobby camera restart error:", e);
+          }
+        } else {
+          videoTrack.enabled = true;
+        }
+      }
 
       const audioTrack = mediaStream.getAudioTracks()[0];
       if (audioTrack) audioTrack.enabled = isMicOn;
@@ -70,6 +90,8 @@ const GoogleMeetLobbyModal = ({
         videoRef.current.srcObject = mediaStream;
       }
     }
+
+    updateLobbyMedia();
   }, [isVideoOn, isMicOn, mediaStream]);
 
   // Real-time mic audio visualizer
@@ -115,7 +137,7 @@ const GoogleMeetLobbyModal = ({
     return () => {
       if (animFrame) cancelAnimationFrame(animFrame);
       if (audioContext && audioContext.state !== "closed") {
-        audioContext.close().catch(() => {});
+        audioContext.close().catch(() => { });
       }
     };
   }, [isOpen, isMicOn, mediaStream]);
