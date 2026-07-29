@@ -6,7 +6,7 @@ import { logoutUser } from "../services/authService";
 import {
   LayoutDashboard, Code2, DoorOpen, History, User, Settings,
   Pin, Search, Bell, Sun, Moon, LogOut, Terminal, Palette,
-  Hash, Copy, Check, Share2, Layers, ChevronDown, ChevronRight, Menu, X,
+  Hash, Copy, Check, Share2, UserPlus, Layers, ChevronDown, ChevronRight, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
   Gem, Sparkles, FolderKanban, NotebookPen
@@ -77,6 +77,7 @@ export default function MainLayout({
   callType = null,
   onJoinCall = null,
   onLeaveCall = null,
+  onOpenInvite = null,
   userXP = 0,
   userRank = "Junior Coder",
   activeCallUsers = []
@@ -1317,7 +1318,7 @@ export default function MainLayout({
                     className="ce-nav-action-btn active-call"
                     onClick={onLeaveCall}
                     title="In Meeting - Click to Open / Leave"
-                    style={{ backgroundColor: "#10b981", color: "#ffffff", fontWeight: 700 }}
+                    style={{ backgroundColor: "#10b981", color: "#ffffff", fontWeight: 700, flexShrink: 0 }}
                   >
                     <Video size={13} />
                     <span>In Meeting</span>
@@ -1338,7 +1339,8 @@ export default function MainLayout({
                       borderRadius: "20px",
                       display: "flex",
                       alignItems: "center",
-                      gap: "6px"
+                      gap: "6px",
+                      flexShrink: 0
                     }}
                   >
                     <Video size={14} color="#ffffff" />
@@ -1351,9 +1353,25 @@ export default function MainLayout({
                 )
               )}
 
-              <button className="ce-nav-action-btn" onClick={copyRoomId} title="Share Room Invite">
-                <Share2 size={13} />
-                <span>Share</span>
+              <button
+                className="ce-nav-action-btn invite-btn"
+                onClick={onOpenInvite || copyRoomId}
+                title="Invite Followers to Workspace"
+                style={{
+                  background: "linear-gradient(135deg, #a855f7 0%, #9333ea 100%)",
+                  color: "#ffffff",
+                  border: "none",
+                  fontWeight: 700,
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  flexShrink: 0
+                }}
+              >
+                <UserPlus size={14} color="#ffffff" />
+                <span style={{ color: "#ffffff", fontWeight: 700 }}>Invite</span>
               </button>
 
               {joinRequests.length > 0 && (

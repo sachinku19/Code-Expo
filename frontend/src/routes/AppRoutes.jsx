@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from "
 import GateOverlay from "../components/GateOverlay";
 import { ModalProvider } from "../context/ModalContext";
 import { ThemeProvider } from "../context/ThemeContext";
+import { Toaster } from "react-hot-toast";
+import NetworkStatusTracker from "../components/NetworkStatusTracker";
 
 // Page components (statically imported for instant transitions)
 import Home from "../pages/Home";
@@ -134,6 +136,20 @@ const AppRoutes = () => {
                 </Routes>
               </Suspense>
               <CallOverlay />
+              <NetworkStatusTracker />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  style: {
+                    background: "#0d0d15",
+                    color: "#fff",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    fontFamily: "'Outfit', 'Inter', sans-serif",
+                    fontSize: "0.82rem",
+                    borderRadius: "10px",
+                  },
+                }}
+              />
             </GateTransitionProvider>
           </CallProvider>
         </ModalProvider>

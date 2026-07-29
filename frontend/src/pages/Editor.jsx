@@ -15,6 +15,7 @@ import Whiteboard from "../components/Whiteboard";
 import FileExplorer from "../components/FileExplorer";
 import TaskPlanner from "../components/planner/TaskPlanner";
 import ReportUserModal from "../components/social/ReportUserModal";
+import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
 import AIAssistantPanel from "../components/ai/AIAssistantPanel";
 import AIHistoryTab from "../components/ai/AIHistoryTab";
 import * as workspaceService from "../services/workspaceService";
@@ -1435,9 +1436,15 @@ function Editor() {
     localStorage.getItem("editor_bracketColorization") !== "false"
   );
   const [participantsDropdownOpen, setParticipantsDropdownOpen] = useState(false);
+  const [roomParticipantSearchOpen, setRoomParticipantSearchOpen] = useState(false);
+  const [roomParticipantSearchQuery, setRoomParticipantSearchQuery] = useState("");
+  const [roomParticipantsExpanded, setRoomParticipantsExpanded] = useState(false);
+  const [deleteConfirmMsgId, setDeleteConfirmMsgId] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
   const [whiteboardActivities, setWhiteboardActivities] = useState([]);
   const [roomDeletedModalOpen, setRoomDeletedModalOpen] = useState(false);
+  const [securityDeleteRoomTarget, setSecurityDeleteRoomTarget] = useState(null);
+  const [isDeletingRoomTarget, setIsDeletingRoomTarget] = useState(false);
   const [duplicateSessionModalOpen, setDuplicateSessionModalOpen] = useState(false);
   const [kickMessage, setKickMessage] = useState("");
   const [kickModalOpen, setKickModalOpen] = useState(false);
@@ -3025,9 +3032,9 @@ function Editor() {
     decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations);
   }, [remoteCursors]);
 
-  // Math helper for cursor colors
+  // Math helper for cursor colors (Curated professional developer palette)
   const getCursorColor = (name) => {
-    const colors = ["#58A6FF", "#58a6ff", "#38bdf8", "#4ade80", "#fb923c", "#c084fc", "#f87171", "#fbbf24"];
+    const colors = ["#6366f1", "#06b6d4", "#10b981", "#8b5cf6", "#3b82f6", "#0284c7", "#f59e0b", "#14b8a6"];
     if (!name) return colors[0];
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -3081,7 +3088,7 @@ function Editor() {
     styleTag.innerHTML = `
       .${className} {
         border-left: 3px solid ${color} !important;
-        background-color: ${color}0d !important;
+        background-color: transparent !important;
       }
     `;
 
@@ -3091,7 +3098,7 @@ function Editor() {
       newDecorations.push({
         range: new monaco.Range(l, 1, l, 1),
         options: {
-          isWholeLine: true,
+          isWholeLine: false,
           className: `${className} line-recent-edited-decoration`
         }
       });
@@ -3172,18 +3179,36 @@ function Editor() {
       base: "vs-dark",
       inherit: true,
       rules: [
-        { token: "comment", foreground: "6a737d", fontStyle: "italic" },
-        { token: "keyword", foreground: "ff7b72" },
-        { token: "string", foreground: "a5d6ff" },
-        { token: "number", foreground: "79c0ff" },
+        { token: "", foreground: "d4d4d4" },
+        { token: "invalid", foreground: "#f87171", background: "121218" },
+        { token: "invalid.illegal", foreground: "#f87171", background: "121218" },
+        { token: "keyword.directive", foreground: "#c586c0", fontStyle: "bold" },
+        { token: "keyword.directive.include", foreground: "#c586c0", fontStyle: "bold" },
+        { token: "meta.preprocessor", foreground: "#c586c0" },
+        { token: "comment", foreground: "6a9955", fontStyle: "italic" },
+        { token: "keyword", foreground: "569cd6", fontStyle: "bold" },
+        { token: "string", foreground: "ce9178" },
+        { token: "number", foreground: "b5cea8" },
+        { token: "type", foreground: "4ec9b0" },
+        { token: "function", foreground: "dcdcaa" },
       ],
       colors: {
         "editor.background": "#121218",
-        "editor.lineHighlightBackground": "#aa3bff15",
-        "editorCursor.foreground": "#aa3bff",
-        "editor.inactiveSelectionBackground": "#aa3bff10",
-        "editor.selectionBackground": "#aa3bff25",
-        "editor.lineHighlightBorder": "#00000000"
+        "editor.foreground": "#d4d4d4",
+        "editor.lineHighlightBackground": "rgba(255, 255, 255, 0.04)",
+        "editor.lineHighlightBorder": "#00000000",
+        "editorCursor.foreground": "#569cd6",
+        "editor.selectionBackground": "#264f78",
+        "editor.inactiveSelectionBackground": "rgba(38, 79, 120, 0.5)",
+        "editor.selectionHighlightBackground": "rgba(99, 102, 241, 0.25)",
+        "editor.wordHighlightBackground": "rgba(99, 102, 241, 0.3)",
+        "editor.wordHighlightStrongBackground": "rgba(99, 102, 241, 0.4)",
+        "editorLineNumber.foreground": "#5a5a5a",
+        "editorLineNumber.activeForeground": "#c6c6c6",
+        "editorGutter.background": "#121218",
+        "editorGutter.modifiedBackground": "#10b981",
+        "editorGutter.addedBackground": "#3b82f6",
+        "editorGutter.deletedBackground": "#ef4444"
       }
     });
 
@@ -3191,17 +3216,36 @@ function Editor() {
       base: "vs",
       inherit: true,
       rules: [
-        { token: "comment", foreground: "57606a", fontStyle: "italic" },
-        { token: "keyword", foreground: "cf222e" },
-        { token: "string", foreground: "0a3069" },
+        { token: "", foreground: "000000" },
+        { token: "invalid", foreground: "#dc2626", background: "ffffff" },
+        { token: "invalid.illegal", foreground: "#dc2626", background: "ffffff" },
+        { token: "keyword.directive", foreground: "#af00db", fontStyle: "bold" },
+        { token: "keyword.directive.include", foreground: "#af00db", fontStyle: "bold" },
+        { token: "meta.preprocessor", foreground: "#af00db" },
+        { token: "comment", foreground: "008000", fontStyle: "italic" },
+        { token: "keyword", foreground: "0000ff", fontStyle: "bold" },
+        { token: "string", foreground: "a31515" },
+        { token: "number", foreground: "098658" },
+        { token: "type", foreground: "267f99" },
+        { token: "function", foreground: "795e26" },
       ],
       colors: {
         "editor.background": "#ffffff",
-        "editor.lineHighlightBackground": "#8b5cf615",
-        "editorCursor.foreground": "#8b5cf6",
-        "editor.inactiveSelectionBackground": "#8b5cf610",
-        "editor.selectionBackground": "#8b5cf625",
-        "editor.lineHighlightBorder": "#00000000"
+        "editor.foreground": "#000000",
+        "editor.lineHighlightBackground": "rgba(0, 0, 0, 0.03)",
+        "editor.lineHighlightBorder": "#00000000",
+        "editorCursor.foreground": "#0000ff",
+        "editor.selectionBackground": "#add6ff",
+        "editor.inactiveSelectionBackground": "rgba(173, 214, 255, 0.5)",
+        "editor.selectionHighlightBackground": "rgba(99, 102, 241, 0.18)",
+        "editor.wordHighlightBackground": "rgba(99, 102, 241, 0.22)",
+        "editor.wordHighlightStrongBackground": "rgba(99, 102, 241, 0.3)",
+        "editorLineNumber.foreground": "#237893",
+        "editorLineNumber.activeForeground": "#0b216f",
+        "editorGutter.background": "#ffffff",
+        "editorGutter.modifiedBackground": "#059669",
+        "editorGutter.addedBackground": "#2563eb",
+        "editorGutter.deletedBackground": "#dc2626"
       }
     });
 
@@ -3509,16 +3553,23 @@ function Editor() {
     }
   };
 
-  const handleDeleteRoomAction = async () => {
-    const confirmDelete = await window.showConfirm("Are you sure you want to delete this room? This action cannot be undone.", "Delete Room", "error");
-    if (!confirmDelete) return;
+  const handleDeleteRoomAction = () => {
+    setSecurityDeleteRoomTarget({ id: roomId, title: room?.title || "Workspace" });
+  };
+
+  const executeSecurityRoomDeleteInEditor = async () => {
+    if (!securityDeleteRoomTarget) return;
+    setIsDeletingRoomTarget(true);
     try {
-      socket.emit("room-deleted", { roomId });
-      await deleteRoom(roomId);
+      socket.emit("room-deleted", { roomId: securityDeleteRoomTarget.id });
+      await deleteRoom(securityDeleteRoomTarget.id);
       localStorage.removeItem("ceLastActiveRoomId");
+      setSecurityDeleteRoomTarget(null);
       navigate("/dashboard");
     } catch (error) {
-      console.error(error.message);
+      alert(error.response?.data?.message || error.message);
+    } finally {
+      setIsDeletingRoomTarget(false);
     }
   };
 
@@ -3557,11 +3608,15 @@ function Editor() {
     setMessage("");
   };
 
-  const handleDeleteMessage = async (messageId) => {
+  const handleDeleteMessage = (messageId) => {
     if (!messageId) return;
-    const confirmDelete = await window.showConfirm("Are you sure you want to delete this message?", "Delete Message", "warning");
-    if (!confirmDelete) return;
-    socket.emit("delete-message", { roomId, messageId, userId: user.id });
+    setDeleteConfirmMsgId(messageId);
+  };
+
+  const confirmDeleteMessage = () => {
+    if (!deleteConfirmMsgId) return;
+    socket.emit("delete-message", { roomId, messageId: deleteConfirmMsgId, userId: user.id });
+    setDeleteConfirmMsgId(null);
   };
 
   // Copy Room ID
@@ -3829,6 +3884,7 @@ function Editor() {
       onJoinCall={showCallButtons ? handleOpenMeetLobby : null}
       onLeaveCall={handleLeaveMeeting}
       activeCallUsers={activeMeetUsers}
+      onOpenInvite={handleOpenInviteModal}
     >
       <div className={`ce-editor-page mobile-tab-${mobileTab}`}>
         {/* Main Core Body */}
@@ -4226,7 +4282,7 @@ function Editor() {
                   <div className="room-history-timeline-pane" style={{ padding: "16px", display: "flex", flexDirection: "column", height: "100%", overflowY: "auto" }}>
                     <div className="room-history-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                       <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>Creator Audit Logs</span>
-                      <button 
+                      <button
                         onClick={fetchRoomHistory}
                         disabled={roomHistoryLoading}
                         style={{ background: "transparent", border: "none", color: "var(--ce-accent, #6366f1)", cursor: "pointer", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px" }}
@@ -4242,12 +4298,12 @@ function Editor() {
                     ) : roomHistory.length > 0 ? (
                       <div className="room-history-list" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                         {roomHistory.map((item) => (
-                          <div 
-                            key={item._id} 
-                            style={{ 
-                              background: "rgba(255, 255, 255, 0.02)", 
-                              border: "1px solid rgba(255, 255, 255, 0.05)", 
-                              padding: "10px", 
+                          <div
+                            key={item._id}
+                            style={{
+                              background: "rgba(255, 255, 255, 0.02)",
+                              border: "1px solid rgba(255, 255, 255, 0.05)",
+                              padding: "10px",
                               borderRadius: "8px",
                               display: "flex",
                               flexDirection: "column",
@@ -4641,26 +4697,114 @@ function Editor() {
               >
                 <div className="ce-editor-pane-container" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                   {activeFileId && explorerPath.length > 0 && (
-                    <div className="ce-breadcrumbs-bar" style={{ display: "flex", alignItems: "center", width: "100%" }}>
-                      <span className="ce-breadcrumbs-room">{room?.title || "Workspace"}</span>
-                      {explorerPath.map((item) => (
-                        <span key={item._id} className="ce-breadcrumbs-item-wrapper" style={{ display: "inline-flex", alignItems: "center" }}>
-                          <ChevronRight size={12} className="ce-breadcrumbs-separator" style={{ margin: "0 4px" }} />
-                          <span className={`ce-breadcrumbs-item ${item.type === "folder" ? "is-folder" : "is-file"}`}>
-                            {item.type === "folder" ? (
-                              <FolderOpen size={12} className="ce-breadcrumbs-icon folder" style={{ color: "#fca035", marginRight: "4px" }} />
-                            ) : (
-                              <FileCode size={12} className="ce-breadcrumbs-icon file" style={{ color: getFileIconInfo(item.name).color, marginRight: "4px" }} />
-                            )}
-                            {item.name}
+                    <div className="ce-breadcrumbs-bar" style={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <span className="ce-breadcrumbs-room">{room?.title || "Workspace"}</span>
+                        {explorerPath.map((item) => (
+                          <span key={item._id} className="ce-breadcrumbs-item-wrapper" style={{ display: "inline-flex", alignItems: "center" }}>
+                            <ChevronRight size={12} className="ce-breadcrumbs-separator" style={{ margin: "0 4px" }} />
+                            <span className={`ce-breadcrumbs-item ${item.type === "folder" ? "is-folder" : "is-file"}`}>
+                              {item.type === "folder" ? (
+                                <FolderOpen size={12} className="ce-breadcrumbs-icon folder" style={{ color: "#fca035", marginRight: "4px" }} />
+                              ) : (
+                                <FileCode size={12} className="ce-breadcrumbs-icon file" style={{ color: getFileIconInfo(item.name).color, marginRight: "4px" }} />
+                              )}
+                              {item.name}
+                            </span>
                           </span>
-                        </span>
-                      ))}
-                      {isMemberReadOnly && (
-                        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#fca5a5", paddingRight: "8px" }}>
-                          <Lock size={12} /> Read-only (created by {creatorUsername})
-                        </span>
-                      )}
+                        ))}
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", paddingRight: "8px" }}>
+                        {isMemberReadOnly && (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#fca5a5", marginRight: "8px" }}>
+                            <Lock size={12} /> Read-only (created by {creatorUsername})
+                          </span>
+                        )}
+
+                        {/* Interactive Zoom Indicator Pill & Controls */}
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "2px 8px",
+                            borderRadius: "12px",
+                            background: "rgba(255, 255, 255, 0.05)",
+                            border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.1))",
+                            fontSize: "0.68rem"
+                          }}
+                        >
+                          <span style={{ color: "var(--ce-text-muted)", fontWeight: 600, opacity: 0.8 }} title="Pinch with 2 fingers or Ctrl + Scroll to zoom">
+                            Zoom: {Math.round(editorFontSize)}px
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSize = Math.max(10, Math.round(editorFontSize) - 1);
+                              setEditorFontSize(newSize);
+                              if (editorRef.current) editorRef.current.updateOptions({ fontSize: newSize });
+                            }}
+                            title="Zoom Out (2-finger pinch in / Ctrl + Scroll Down)"
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--ce-text)",
+                              cursor: "pointer",
+                              padding: "0 2px",
+                              fontWeight: "bold",
+                              fontSize: "0.75rem",
+                              lineHeight: 1
+                            }}
+                          >
+                            -
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSize = Math.min(32, Math.round(editorFontSize) + 1);
+                              setEditorFontSize(newSize);
+                              if (editorRef.current) editorRef.current.updateOptions({ fontSize: newSize });
+                            }}
+                            title="Zoom In (2-finger pinch out / Ctrl + Scroll Up)"
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--ce-text)",
+                              cursor: "pointer",
+                              padding: "0 2px",
+                              fontWeight: "bold",
+                              fontSize: "0.75rem",
+                              lineHeight: 1
+                            }}
+                          >
+                            +
+                          </button>
+                          {editorFontSize !== 14 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditorFontSize(14);
+                                if (editorRef.current) editorRef.current.updateOptions({ fontSize: 14 });
+                              }}
+                              title="Reset Zoom to 14px"
+                              style={{
+                                background: "rgba(99, 102, 241, 0.2)",
+                                border: "1px solid rgba(99, 102, 241, 0.4)",
+                                color: "#818cf8",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                                fontSize: "0.62rem",
+                                padding: "1px 4px",
+                                marginLeft: "2px",
+                                fontWeight: 700
+                              }}
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                   {activeFileId ? (
@@ -4676,6 +4820,7 @@ function Editor() {
                           readOnly: isEditorReadOnly,
                           fontSize: editorFontSize,
                           fontFamily: editorFontFamily,
+                          mouseWheelZoom: true,
                           minimap: { enabled: editorShowMinimap },
                           tabSize: editorTabSize,
                           wordWrap: editorWordWrap,
@@ -4983,87 +5128,192 @@ function Editor() {
             <aside className="ce-right-sidebar">
               <div className="right-sidebar-content">
 
-                {/* Section 1: Participants */}
-                <section className="ce-right-section">
-                  <div className="section-header">
-                    <h3>PARTICIPANTS ({(room?.participants || []).length})</h3>
-                    <button type="button" className="ce-btn-xs" onClick={handleOpenInviteModal} title="Invite Followers to Workspace">
-                      <UserPlus size={11} />
-                      <span>Invite</span>
-                    </button>
-                  </div>
+                {/* Section 1: Room Participants */}
+                <section className="ce-right-section participants-section-card">
+                  <div className="section-header-row">
+                    <div className="participants-title-group">
+                      <h3 className="participants-heading">PARTICIPANTS</h3>
+                      <span className="participants-count-pill">{(room?.participants || []).length}</span>
+                    </div>
 
-                  <div className="users-list-pane">
-                    {(room?.participants || []).map((p) => {
-                      if (!p || !p.user) return null;
-                      const targetUserId = p.user._id || p.user;
-                      const online = users.some(u => String(u.userId) === String(targetUserId));
-                      const isSelf = String(targetUserId) === String(user?.id);
+                    <div className="participants-header-actions">
+                      {/* Overlapping 3-User Avatar Bubble Stack Toggle */}
+                      <div
+                        className={`room-avatar-stack-pill ${roomParticipantsExpanded ? "active" : ""}`}
+                        onClick={() => setRoomParticipantsExpanded(!roomParticipantsExpanded)}
+                        title={roomParticipantsExpanded ? "Click to collapse participant details" : "Click to view participant details"}
+                      >
+                        <div className="room-avatar-stack">
+                          {(room?.participants || []).slice(0, 3).map((p, idx) => {
+                            if (!p || !p.user) return null;
+                            const uname = p.user.username || "U";
+                            const letter = uname.charAt(0).toUpperCase();
+                            const bgCol = getCursorColor(uname);
 
-                      const isTargetPrivileged = p.role === "OWNER" || p.role === "MODERATOR";
-                      const canIControlTarget = (currentUserRole === "OWNER" || currentUserRole === "MODERATOR") && !isTargetPrivileged && !isSelf;
-
-                      return (
-                        <div
-                          key={p._id}
-                          className={`user-pane-item ${canIControlTarget ? "manageable" : ""}`}
-                          onContextMenu={(e) => handleContextMenu(e, p)}
-                          onClick={(e) => handleUserRowClick(e, p)}
-                          style={{ cursor: canIControlTarget ? "pointer" : "default" }}
-                        >
-                          {/* Left Column: Avatar & Presence Dot */}
-                          <div className="user-avatar-wrapper">
-                            {p.user.avatar ? (
-                              <img src={p.user.avatar} alt={p.user.username} className="user-pane-avatar" style={{ objectFit: "cover" }} />
-                            ) : (
-                              <div className="user-pane-avatar" style={{ backgroundColor: getCursorColor(p.user.username) }}>
-                                {p.user.username?.charAt(0)?.toUpperCase() || "U"}
-                              </div>
-                            )}
-                            <span className={`presence-badge ${online ? "online" : "offline"}`} title={online ? "Online" : "Offline"} />
-                          </div>
-
-                          {/* Center Column: Name and Role stacked */}
-                          <div className="user-pane-info">
-                            <div className="user-pane-row">
-                              <span className="username-text" title={p.user.username}>{p.user.username}</span>
-                              {isSelf && <span className="label-you">you</span>}
-                            </div>
-                            <div className="user-pane-row">
-                              {p.role === "OWNER" && <span className="role-badge owner-badge">👑 Owner</span>}
-                              {p.role === "MODERATOR" && <span className="role-badge moderator-badge">🛡️ Mod</span>}
-                              {p.role === "MEMBER" && <span className="role-badge member-badge">👤 Member</span>}
-                              {p.role === "VIEWER" && <span className="role-badge viewer-badge">👀 Viewer</span>}
-                            </div>
-                          </div>
-
-                          {/* Right Column: Actions and Mute Status */}
-                          {/* Right Column: Actions and Mute Status */}
-                          <div className="user-pane-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            {p.isMuted && (
-                              <span className="user-mute-status" title="Muted">
-                                <MicOff size={11} className="mute-icon-red" />
-                              </span>
-                            )}
-                            {!isSelf && (
-                              <button
-                                type="button"
-                                className="user-pane-more-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleUserRowClick(e, p);
+                            return (
+                              <div
+                                key={p._id || idx}
+                                className="stack-avatar-circle"
+                                style={{
+                                  zIndex: 3 - idx,
+                                  marginLeft: idx > 0 ? "-7px" : "0"
                                 }}
-                                style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", cursor: "pointer", color: "var(--ce-premium-muted)" }}
-                                title="Options"
                               >
-                                <MoreVertical size={14} />
-                              </button>
-                            )}
-                          </div>
+                                {p.user.avatar ? (
+                                  <img src={p.user.avatar} alt={uname} />
+                                ) : (
+                                  <div className="stack-avatar-initial" style={{ backgroundColor: bgCol }}>
+                                    {letter}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {(room?.participants || []).length > 3 && (
+                            <div className="stack-avatar-circle count-badge" style={{ zIndex: 0, marginLeft: "-7px" }}>
+                              +{(room?.participants || []).length - 3}
+                            </div>
+                          )}
                         </div>
-                      );
-                    })}
+                        <ChevronDown
+                          size={12}
+                          style={{
+                            transform: roomParticipantsExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                            transition: "transform 0.2s ease",
+                            marginLeft: "3px",
+                            color: "var(--ce-text-muted)"
+                          }}
+                        />
+                      </div>
+
+                      {/* Search Icon Toggle Button */}
+                      <button
+                        type="button"
+                        className={`ce-btn-xs ${roomParticipantsExpanded ? "active-search-btn" : ""}`}
+                        onClick={() => setRoomParticipantsExpanded(!roomParticipantsExpanded)}
+                        title="Search Participants"
+                        style={{ padding: "4px 7px" }}
+                      >
+                        <Search size={11} />
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Dropdown Participant Details (Search Bar + Participant Cards) */}
+                  {roomParticipantsExpanded && (
+                    <div className="participants-dropdown-container">
+                      {/* Integrated Search Input Bar */}
+                      <div className="room-participant-search-box">
+                        <Search size={13} className="search-box-icon" />
+                        <input
+                          type="text"
+                          placeholder="Search participants..."
+                          value={roomParticipantSearchQuery}
+                          onChange={(e) => setRoomParticipantSearchQuery(e.target.value)}
+                          className="search-box-input"
+                          autoFocus
+                        />
+                        {roomParticipantSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setRoomParticipantSearchQuery("")}
+                            className="search-box-clear"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Detailed Participants List */}
+                      <div className="users-list-pane">
+                        {(() => {
+                          const allRoomParts = room?.participants || [];
+                          const filtered = allRoomParts.filter((p) => {
+                            if (!p || !p.user) return false;
+                            const uname = (p.user.username || "").toLowerCase();
+                            return uname.includes(roomParticipantSearchQuery.toLowerCase());
+                          });
+
+                          if (filtered.length === 0) {
+                            return (
+                              <div style={{ padding: "12px 8px", textAlign: "center", fontSize: "0.75rem", color: "var(--ce-text-muted)" }}>
+                                No room participants found matching "{roomParticipantSearchQuery}"
+                              </div>
+                            );
+                          }
+
+                          return filtered.map((p) => {
+                            if (!p || !p.user) return null;
+                            const targetUserId = p.user._id || p.user;
+                            const online = users.some(u => String(u.userId) === String(targetUserId));
+                            const isSelf = String(targetUserId) === String(user?.id);
+
+                            const isTargetPrivileged = p.role === "OWNER" || p.role === "MODERATOR";
+                            const canIControlTarget = (currentUserRole === "OWNER" || currentUserRole === "MODERATOR") && !isTargetPrivileged && !isSelf;
+
+                            return (
+                              <div
+                                key={p._id}
+                                className={`user-pane-item ${canIControlTarget ? "manageable" : ""}`}
+                                onContextMenu={(e) => handleContextMenu(e, p)}
+                                onClick={(e) => handleUserRowClick(e, p)}
+                                style={{ cursor: canIControlTarget ? "pointer" : "default" }}
+                              >
+                                {/* Left Column: Avatar & Presence Dot */}
+                                <div className="user-avatar-wrapper">
+                                  {p.user.avatar ? (
+                                    <img src={p.user.avatar} alt={p.user.username} className="user-pane-avatar" style={{ objectFit: "cover" }} />
+                                  ) : (
+                                    <div className="user-pane-avatar" style={{ backgroundColor: getCursorColor(p.user.username) }}>
+                                      {p.user.username?.charAt(0)?.toUpperCase() || "U"}
+                                    </div>
+                                  )}
+                                  <span className={`presence-badge ${online ? "online" : "offline"}`} title={online ? "Online" : "Offline"} />
+                                </div>
+
+                                {/* Center Column: Name and Role stacked */}
+                                <div className="user-pane-info">
+                                  <div className="user-pane-row">
+                                    <span className="username-text" title={p.user.username}>{p.user.username}</span>
+                                    {isSelf && <span className="label-you">you</span>}
+                                  </div>
+                                  <div className="user-pane-row">
+                                    {p.role === "OWNER" && <span className="role-badge owner-badge">👑 Owner</span>}
+                                    {p.role === "MODERATOR" && <span className="role-badge moderator-badge">🛡️ Mod</span>}
+                                    {p.role === "MEMBER" && <span className="role-badge member-badge">👤 Member</span>}
+                                    {p.role === "VIEWER" && <span className="role-badge viewer-badge">👀 Viewer</span>}
+                                  </div>
+                                </div>
+
+                                {/* Right Column: Actions and Mute Status */}
+                                <div className="user-pane-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  {p.isMuted && (
+                                    <span className="user-mute-status" title="Muted">
+                                      <MicOff size={11} className="mute-icon-red" />
+                                    </span>
+                                  )}
+                                  {!isSelf && (
+                                    <button
+                                      type="button"
+                                      className="user-pane-more-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleUserRowClick(e, p);
+                                      }}
+                                      style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", cursor: "pointer", color: "var(--ce-premium-muted)" }}
+                                      title="Options"
+                                    >
+                                      <MoreVertical size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 {/* Section 2: Join Requests */}
@@ -5092,55 +5342,88 @@ function Editor() {
 
                 {/* Section 3: Chat */}
                 <section className="ce-right-section chat-section-wrapper">
+                  {/* Scoped In-Box Delete Confirmation Overlay */}
+                  {deleteConfirmMsgId && (
+                    <div className="chat-inbox-delete-overlay">
+                      <div className="chat-inbox-delete-card">
+                        <div className="delete-card-header">
+                          <Trash2 size={15} className="delete-card-icon" />
+                          <span>Delete Chat Message?</span>
+                        </div>
+                        <p className="delete-card-desc">
+                          Are you sure you want to delete this message? It will be removed from the chat history.
+                        </p>
+                        <div className="delete-card-actions">
+                          <button
+                            type="button"
+                            className="delete-card-btn cancel"
+                            onClick={() => setDeleteConfirmMsgId(null)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="delete-card-btn confirm"
+                            onClick={confirmDeleteMessage}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="chat-tabs-header">
                     <div className="chat-tab-triggers">
                       <button
                         className={`chat-tab-btn ${chatTab === "room" ? "active" : ""}`}
                         onClick={() => setChatTab("room")}
                       >
-                        Room
+                        <span>Room</span>
                         {roomTabUnread && <span className="chat-tab-unread-dot" />}
                       </button>
                       <button
                         className={`chat-tab-btn ${chatTab === "private" ? "active" : ""}`}
                         onClick={() => setChatTab("private")}
                       >
-                        Direct Message
+                        <span>Direct Message</span>
                         {privateTabUnread && <span className="chat-tab-unread-dot" />}
                       </button>
                     </div>
 
-                    <div className="chat-call-actions">
-                      {inCall ? (
-                        <button
-                          type="button"
-                          className="chat-call-btn active-call"
-                          onClick={handleLeaveCallManual}
-                          title="Leave Call"
-                        >
-                          <Phone size={14} />
-                        </button>
-                      ) : (
-                        <>
+                    {chatTab === "private" && (
+                      <div className="chat-call-actions">
+                        {inCall ? (
                           <button
                             type="button"
-                            className={`chat-call-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
-                            onClick={() => handleJoinCall("audio")}
-                            title={activeCallUsers && activeCallUsers.length > 0 ? "Join Active Audio Call" : "Start Audio Call"}
+                            className="chat-call-btn active-call"
+                            onClick={handleLeaveCallManual}
+                            title="Leave Call"
                           >
-                            <Phone size={14} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
+                            <Phone size={14} />
                           </button>
-                          <button
-                            type="button"
-                            className={`chat-call-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
-                            onClick={() => handleJoinCall("video")}
-                            title={activeCallUsers && activeCallUsers.length > 0 ? "Join Active Video Call" : "Start Video Call"}
-                          >
-                            <Video size={14} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
-                          </button>
-                        </>
-                      )}
-                    </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className={`chat-call-btn audio-call-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
+                              onClick={() => handleJoinCall("audio")}
+                              title={activeCallUsers && activeCallUsers.length > 0 ? "Join Active Audio Call" : "Start Audio Call"}
+                            >
+                              <Phone size={14} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
+                            </button>
+                            <button
+                              type="button"
+                              className={`chat-call-btn video-call-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
+                              onClick={() => handleJoinCall("video")}
+                              title={activeCallUsers && activeCallUsers.length > 0 ? "Join Active Video Call" : "Start Video Call"}
+                            >
+                              <Video size={14} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {chatTab === "private" && (
@@ -5554,6 +5837,16 @@ function Editor() {
             </button>
           </div>
         )}
+
+        {/* Security Delete Room Modal */}
+        <SecurityDeleteRoomModal
+          isOpen={!!securityDeleteRoomTarget}
+          onClose={() => setSecurityDeleteRoomTarget(null)}
+          onConfirmDelete={executeSecurityRoomDeleteInEditor}
+          roomTitle={securityDeleteRoomTarget?.title || room?.title || "Workspace"}
+          roomId={securityDeleteRoomTarget?.id || roomId}
+          isDeleting={isDeletingRoomTarget}
+        />
 
         {/* Room Deleted Modal */}
         {roomDeletedModalOpen && createPortal(

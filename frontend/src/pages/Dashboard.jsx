@@ -23,6 +23,7 @@ import socket from "../socket/socket";
 import { useAuth } from "../context/AuthContext";
 import { getUserProfile, changePassword, getPublicUserProfile } from "../services/authService";
 import ReportUserModal from "../components/social/ReportUserModal";
+import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
 import {
   Plus, LogIn, History as HistoryIcon, User,
   Sun, Moon, Sparkles, Globe, Lock, Settings as SettingsIcon,
@@ -1162,6 +1163,8 @@ function Dashboard() {
   const [activeRoomMemberMenuId, setActiveRoomMemberMenuId] = useState(null);
   const [postToDeleteFromProfile, setPostToDeleteFromProfile] = useState(null);
   const [isDeletingProfilePost, setIsDeletingProfilePost] = useState(false);
+  const [securityDeleteRoomTarget, setSecurityDeleteRoomTarget] = useState(null);
+  const [isDeletingRoomTarget, setIsDeletingRoomTarget] = useState(false);
   const [showMobileCreateModal, setShowMobileCreateModal] = useState(false);
   const [showMobileJoinModal, setShowMobileJoinModal] = useState(false);
 
@@ -3762,16 +3765,37 @@ function Dashboard() {
     }
   };
 
-  const handleDeleteRoom = async (targetRoomId) => {
-    const confirmDelete = await window.showConfirm("Are you sure you want to delete this room? This action cannot be undone.", "Delete Room", "error");
-    if (!confirmDelete) return;
+  const isRoomOwner = (room) => {
+    if (!user || !room) return false;
+    const creatorId = String(room.createdBy?._id || room.createdBy?.id || room.createdBy || "");
+    const currentUserId = String(user._id || user.id || "");
+    const creatorName = (room.createdBy?.username || "").toLowerCase();
+    const currentUserName = (user.username || "").toLowerCase();
+    return (creatorId && currentUserId && creatorId === currentUserId) || (creatorName && currentUserName && creatorName === currentUserName);
+  };
+
+  const handleDeleteRoomClick = (targetRoomId, targetRoomTitle = "Workspace") => {
+    setSecurityDeleteRoomTarget({ id: targetRoomId, title: targetRoomTitle });
+  };
+
+  const executeSecurityRoomDelete = async () => {
+    if (!securityDeleteRoomTarget) return;
+    setIsDeletingRoomTarget(true);
     try {
-      socket.emit("room-deleted", { roomId: targetRoomId });
-      await deleteRoom(targetRoomId);
+      socket.emit("room-deleted", { roomId: securityDeleteRoomTarget.id });
+      await deleteRoom(securityDeleteRoomTarget.id);
+      addToast("Workspace permanently deleted", "success");
+      setSecurityDeleteRoomTarget(null);
       fetchDashboardData();
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      addToast(error.response?.data?.message || error.message, "error");
+    } finally {
+      setIsDeletingRoomTarget(false);
     }
+  };
+
+  const handleDeleteRoom = (targetRoomId, targetRoomTitle = "Workspace") => {
+    handleDeleteRoomClick(targetRoomId, targetRoomTitle);
   };
 
   useEffect(() => {
@@ -8304,8 +8328,24 @@ function Dashboard() {
                                 (viewingUserProfile ? viewingUserRooms : historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id)).map(room => (
                                   <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                                     <div className="profile-room-card-header">
-                                      <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                                      <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                      <div className="profile-room-card-title-group">
+                                        <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                        <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                      </div>
+                                      {isRoomOwner(room) && (
+                                        <button
+                                          type="button"
+                                          className="profile-card-header-delete-btn"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                          }}
+                                          title="Delete Workspace (High Security GitHub Deletion)"
+                                        >
+                                          <Trash2 size={13} />
+                                          <span>Delete</span>
+                                        </button>
+                                      )}
                                     </div>
                                     <p className="profile-room-card-id">ID: {room.roomId}</p>
                                     <div className="profile-room-card-footer">
@@ -8467,8 +8507,24 @@ function Dashboard() {
                                 (viewingUserProfile ? viewingUserLikedRooms : likedRooms).map(room => (
                                   <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                                     <div className="profile-room-card-header">
-                                      <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                                      <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                      <div className="profile-room-card-title-group">
+                                        <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                        <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                      </div>
+                                      {isRoomOwner(room) && (
+                                        <button
+                                          type="button"
+                                          className="profile-card-header-delete-btn"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                          }}
+                                          title="Delete Workspace (High Security GitHub Deletion)"
+                                        >
+                                          <Trash2 size={13} />
+                                          <span>Delete</span>
+                                        </button>
+                                      )}
                                     </div>
                                     <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
                                     <div className="profile-room-card-footer">
@@ -8547,8 +8603,24 @@ function Dashboard() {
                                 savedRooms.map(room => (
                                   <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                                     <div className="profile-room-card-header">
-                                      <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                                      <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                      <div className="profile-room-card-title-group">
+                                        <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                                        <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                                      </div>
+                                      {isRoomOwner(room) && (
+                                        <button
+                                          type="button"
+                                          className="profile-card-header-delete-btn"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                          }}
+                                          title="Delete Workspace (High Security GitHub Deletion)"
+                                        >
+                                          <Trash2 size={13} />
+                                          <span>Delete</span>
+                                        </button>
+                                      )}
                                     </div>
                                     <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
                                     <div className="profile-room-card-footer">
@@ -10577,6 +10649,16 @@ function Dashboard() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* High-Security Workspace Deletion Modal */}
+        <SecurityDeleteRoomModal
+          isOpen={!!securityDeleteRoomTarget}
+          onClose={() => setSecurityDeleteRoomTarget(null)}
+          onConfirmDelete={executeSecurityRoomDelete}
+          roomTitle={securityDeleteRoomTarget?.title || "Workspace"}
+          roomId={securityDeleteRoomTarget?.id || ""}
+          isDeleting={isDeletingRoomTarget}
+        />
 
       </div>
     </MainLayout>

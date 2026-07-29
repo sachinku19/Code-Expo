@@ -3,7 +3,9 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getUserProfile } from "../services/authService";
-import { getUserRoomsHistory, getActivityFeed, joinRoom } from "../services/roomService";
+import { getUserRoomsHistory, getActivityFeed, joinRoom, deleteRoom } from "../services/roomService";
+import socket from "../socket/socket";
+import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
 import {
   getFollowers,
   getFollowing,
@@ -19,7 +21,7 @@ import { useTheme } from "../context/ThemeContext";
 import {
   X, Heart, Bookmark, Users, Sparkles, Terminal, Mail,
   Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin,
-  LayoutGrid, Activity
+  LayoutGrid, Activity, Trash2
 } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
 import "./Profile.css";
@@ -100,6 +102,28 @@ const Profile = () => {
   const [showJoinConfirmModal, setShowJoinConfirmModal] = useState(false);
   const [joinTargetRoom, setJoinTargetRoom] = useState(null);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [securityDeleteRoomTarget, setSecurityDeleteRoomTarget] = useState(null);
+  const [isDeletingRoomTarget, setIsDeletingRoomTarget] = useState(false);
+
+  const handleDeleteRoomClick = (targetRoomId, targetRoomTitle = "Workspace") => {
+    setSecurityDeleteRoomTarget({ id: targetRoomId, title: targetRoomTitle });
+  };
+
+  const executeSecurityRoomDelete = async () => {
+    if (!securityDeleteRoomTarget) return;
+    setIsDeletingRoomTarget(true);
+    try {
+      socket.emit("room-deleted", { roomId: securityDeleteRoomTarget.id });
+      await deleteRoom(securityDeleteRoomTarget.id);
+      addToast("Workspace permanently deleted", "success");
+      setSecurityDeleteRoomTarget(null);
+      fetchProfileData();
+    } catch (error) {
+      addToast(error.response?.data?.message || error.message, "error");
+    } finally {
+      setIsDeletingRoomTarget(false);
+    }
+  };
 
   const addToast = (message, type = "success") => {
     const id = Date.now() + Math.random().toString(36).substr(2, 9);
@@ -516,14 +540,29 @@ const Profile = () => {
     return <div className="profile-loading">Loading Portfolio profile...</div>;
   }
 
-  const myCreatedRooms = historyRooms.filter(
-    r => r.createdBy?._id === profileUser._id || r.createdBy === profileUser._id
-  );
-
   const isOwnProfile = authUser && profileUser && (
     String(authUser._id || authUser.id) === String(profileUser._id || profileUser.id) ||
     (authUser.username && profileUser.username && authUser.username.toLowerCase() === profileUser.username.toLowerCase())
   );
+
+  const isRoomOwner = (room) => {
+    if (!authUser || !room) return false;
+    const creatorId = String(room.createdBy?._id || room.createdBy?.id || room.createdBy || "");
+    const authId = String(authUser._id || authUser.id || "");
+    const creatorName = (room.createdBy?.username || "").toLowerCase();
+    const authName = (authUser.username || "").toLowerCase();
+    return (creatorId && authId && creatorId === authId) || (creatorName && authName && creatorName === authName);
+  };
+
+  const myCreatedRooms = historyRooms.filter(r => {
+    if (!r) return false;
+    const creatorId = String(r.createdBy?._id || r.createdBy?.id || r.createdBy || "");
+    const profId = String(profileUser?._id || profileUser?.id || "");
+    const creatorName = (r.createdBy?.username || "").toLowerCase();
+    const profName = (profileUser?.username || "").toLowerCase();
+    const isMatchedCreator = (creatorId && profId && creatorId === profId) || (creatorName && profName && creatorName === profName);
+    return isMatchedCreator || isOwnProfile || isRoomOwner(r);
+  });
 
   return (
     <div className="profile-page-main-wrapper">
@@ -826,12 +865,28 @@ const Profile = () => {
                       <p className="profile-rooms-empty-msg">No rooms created yet.</p>
                     ) : (
                       myCreatedRooms.map(room => (
-                        <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                        <div key={room.roomId || room._id} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId || room._id)}>
                           <div className="profile-room-card-header">
-                            <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                            <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                            <div className="profile-room-card-title-group">
+                              <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                              <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                            </div>
+                            {isRoomOwner(room) && (
+                              <button
+                                type="button"
+                                className="profile-card-header-delete-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                }}
+                                title="Delete Workspace (High Security GitHub Deletion)"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </button>
+                            )}
                           </div>
-                          <p className="profile-room-card-id">ID: {room.roomId}</p>
+                          <p className="profile-room-card-id">ID: {room.roomId || room._id}</p>
                           <div className="profile-room-card-footer">
                             <div className="profile-room-card-footer-left">
                               <span className="profile-room-card-date">{new Date(room.createdAt).toLocaleDateString()}</span>
@@ -892,7 +947,7 @@ const Profile = () => {
                                 />
                                 <span className="like-count-text">{room.likesCount || 0}</span>
                               </button>
-                              <button className="profile-room-bookmark-btn" onClick={() => handleBookmarkRoom(room.roomId)}><Bookmark size={12} /></button>
+                               <button className="profile-room-bookmark-btn" onClick={() => handleBookmarkRoom(room.roomId)} title="Bookmark Workspace"><Bookmark size={12} /></button>
                             </div>
                           </div>
                         </div>
@@ -909,8 +964,24 @@ const Profile = () => {
                       likedRooms.map(room => (
                         <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                           <div className="profile-room-card-header">
-                            <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                            <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                            <div className="profile-room-card-title-group">
+                              <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                              <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                            </div>
+                            {isRoomOwner(room) && (
+                              <button
+                                type="button"
+                                className="profile-card-header-delete-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                }}
+                                title="Delete Workspace (High Security GitHub Deletion)"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </button>
+                            )}
                           </div>
                           <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
                           <div className="profile-room-card-footer">
@@ -989,8 +1060,24 @@ const Profile = () => {
                       savedRooms.map(room => (
                         <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
                           <div className="profile-room-card-header">
-                            <h4 className="profile-room-card-title">🚀 {room.title}</h4>
-                            <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                            <div className="profile-room-card-title-group">
+                              <h4 className="profile-room-card-title">🚀 {room.title}</h4>
+                              <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
+                            </div>
+                            {isRoomOwner(room) && (
+                              <button
+                                type="button"
+                                className="profile-card-header-delete-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                }}
+                                title="Delete Workspace (High Security GitHub Deletion)"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </button>
+                            )}
                           </div>
                           <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
                           <div className="profile-room-card-footer">
@@ -1271,6 +1358,16 @@ const Profile = () => {
         </div>,
         document.body
       )}
+
+      {/* High-Security Workspace Deletion Modal */}
+      <SecurityDeleteRoomModal
+        isOpen={!!securityDeleteRoomTarget}
+        onClose={() => setSecurityDeleteRoomTarget(null)}
+        onConfirmDelete={executeSecurityRoomDelete}
+        roomTitle={securityDeleteRoomTarget?.title || "Workspace"}
+        roomId={securityDeleteRoomTarget?.id || ""}
+        isDeleting={isDeletingRoomTarget}
+      />
     </div>
   );
 };

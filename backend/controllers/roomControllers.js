@@ -234,28 +234,85 @@ const leaveRoom = async (req, res) => {
 const deleteRoom = async (req, res) => {
     try {
         const { roomId } = req.params;
-        const room = await Room.findOne({ roomId });
+        const room = await Room.findOne({
+            $or: [{ roomId: roomId }, { _id: roomId.match(/^[0-9a-fA-F]{24}$/) ? roomId : null }]
+        });
 
         if (!room) {
             return res.status(404).json({
                 success: false,
-                message: "Room Does Not Exist"
+                message: "Room does not exist"
             });
         }
 
-        //check creater
+        // Only owner can delete room
         if (req.user._id.toString() !== room.createdBy.toString()) {
             return res.status(403).json({
                 success: false,
-                message: "Only Owner can delete this group"
+                message: "Unauthorized: Only the room owner can delete this room"
             });
         }
 
+        const targetRoomId = room.roomId;
+        const targetRoomObjId = room._id;
+
+        // Import related models locally to handle cleanup safely
+        const Message = require("../models/Message");
+        const RoomLike = require("../models/RoomLike");
+        const Bookmark = require("../models/Bookmark");
+        const AIConversation = require("../models/AIConversation");
+        const Activity = require("../models/Activity");
+        const Version = require("../models/Version");
+        const RoomTask = require("../models/RoomTask");
+        const TimerSession = require("../models/TimerSession");
+        const TaskActivity = require("../models/TaskActivity");
+        const Checklist = require("../models/Checklist");
+        const LineOwnership = require("../models/LineOwnership");
+        const EditActivity = require("../models/EditActivity");
+
+        // 1. Delete Workspace Files and Folders
+        await WorkspaceItem.deleteMany({ roomId: targetRoomId });
+
+        // 2. Delete Chat Messages
+        await Message.deleteMany({ roomId: targetRoomId });
+
+        // 3. Delete Room Likes
+        await RoomLike.deleteMany({ room: targetRoomObjId });
+
+        // 4. Delete Room Bookmarks
+        await Bookmark.deleteMany({ room: targetRoomObjId });
+
+        // 5. Delete AI Conversations
+        await AIConversation.deleteMany({ roomId: targetRoomId });
+
+        // 6. Delete Activities referencing the Room
+        await Activity.deleteMany({ room: targetRoomObjId });
+
+        // 7. Delete File Version History
+        await Version.deleteMany({ roomId: targetRoomId });
+
+        // 8. Delete Line Ownership records
+        await LineOwnership.deleteMany({ roomId: targetRoomId });
+
+        // 9. Delete Edit Activities
+        await EditActivity.deleteMany({ roomId: targetRoomId });
+
+        // 10. Delete Room Tasks, Checklists, Activities, and Timers
+        const tasks = await RoomTask.find({ roomId: targetRoomId });
+        if (tasks && tasks.length > 0) {
+            const taskIds = tasks.map(t => t._id);
+            await TimerSession.deleteMany({ taskId: { $in: taskIds } });
+            await TaskActivity.deleteMany({ taskId: { $in: taskIds } });
+            await Checklist.deleteMany({ taskId: { $in: taskIds } });
+            await RoomTask.deleteMany({ roomId: targetRoomId });
+        }
+
+        // 11. Finally, delete the Room itself
         await room.deleteOne();
 
         res.status(200).json({
             success: true,
-            message: "Group deleted"
+            message: "Room deleted successfully"
         });
 
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   Mic,
@@ -14,7 +14,8 @@ import {
   Minus,
   Maximize2,
   Pin,
-  PinOff
+  PinOff,
+  Search
 } from "lucide-react";
 import "./GoogleMeet.css";
 
@@ -29,12 +30,24 @@ function RemoteVideoTile({ member, isSpeaking, initial }) {
   const videoRef = useRef(null);
   const avatarUrl = getAvatarUrl(member.avatar);
 
+  const setVideoRef = useCallback((node) => {
+    videoRef.current = node;
+    if (node && member.stream) {
+      if (node.srcObject !== member.stream) {
+        node.srcObject = member.stream;
+      }
+      if (member.isVideoOn) {
+        node.play().catch(() => {});
+      }
+    }
+  }, [member.stream, member.isVideoOn]);
+
   useEffect(() => {
-    if (videoRef.current) {
-      if (member.stream && videoRef.current.srcObject !== member.stream) {
+    if (videoRef.current && member.stream) {
+      if (videoRef.current.srcObject !== member.stream) {
         videoRef.current.srcObject = member.stream;
       }
-      if (member.stream && member.isVideoOn) {
+      if (member.isVideoOn) {
         videoRef.current.play().catch(() => {});
       }
     }
@@ -47,7 +60,7 @@ function RemoteVideoTile({ member, isSpeaking, initial }) {
   return (
     <>
       <video
-        ref={videoRef}
+        ref={setVideoRef}
         autoPlay
         playsInline
         className="ce-meet-tile-video"
@@ -106,10 +119,86 @@ const GoogleMeetStage = ({
   const [activeSpeakerId, setActiveSpeakerId] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStreams, setRemoteStreams] = useState({});
+  const [participantSearchQuery, setParticipantSearchQuery] = useState("");
+  const [pillPos, setPillPos] = useState({ x: null, y: null });
+  const isDraggingPillRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+  const handlePillMouseDown = (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest("button")) return;
+
+    const pillEl = e.currentTarget;
+    const rect = pillEl.getBoundingClientRect();
+
+    isDraggingPillRef.current = true;
+    dragOffsetRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+
+    const handleMouseMove = (moveEv) => {
+      if (!isDraggingPillRef.current) return;
+      const newX = Math.max(10, Math.min(window.innerWidth - rect.width - 10, moveEv.clientX - dragOffsetRef.current.x));
+      const newY = Math.max(10, Math.min(window.innerHeight - rect.height - 10, moveEv.clientY - dragOffsetRef.current.y));
+      setPillPos({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      isDraggingPillRef.current = false;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handlePillTouchStart = (e) => {
+    if (e.target.closest("button")) return;
+    const touch = e.touches[0];
+    const pillEl = e.currentTarget;
+    const rect = pillEl.getBoundingClientRect();
+
+    isDraggingPillRef.current = true;
+    dragOffsetRef.current = {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+
+    const handleTouchMove = (moveEv) => {
+      if (!isDraggingPillRef.current) return;
+      const t = moveEv.touches[0];
+      const newX = Math.max(10, Math.min(window.innerWidth - rect.width - 10, t.clientX - dragOffsetRef.current.x));
+      const newY = Math.max(10, Math.min(window.innerHeight - rect.height - 10, t.clientY - dragOffsetRef.current.y));
+      setPillPos({ x: newX, y: newY });
+    };
+
+    const handleTouchEnd = () => {
+      isDraggingPillRef.current = false;
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd);
+  };
 
   const localVideoRef = useRef(null);
   const screenVideoRef = useRef(null);
   const peersRef = useRef({});
+
+  const setLocalVideoRef = useCallback((node) => {
+    localVideoRef.current = node;
+    if (node && localStream) {
+      if (node.srcObject !== localStream) {
+        node.srcObject = localStream;
+      }
+      if (isVideoOn) {
+        node.play().catch(() => {});
+      }
+    }
+  }, [localStream, isVideoOn]);
 
   const myId = currentUser?.id || currentUser?._id;
 
@@ -506,7 +595,7 @@ const GoogleMeetStage = ({
             return (
               <>
                 <video
-                  ref={localVideoRef}
+                  ref={setLocalVideoRef}
                   autoPlay
                   playsInline
                   muted
@@ -566,8 +655,17 @@ const GoogleMeetStage = ({
   };
 
   if (isMinimized) {
+    const pillStyle = pillPos.x !== null && pillPos.y !== null
+      ? { left: `${pillPos.x}px`, top: `${pillPos.y}px`, bottom: "auto", right: "auto" }
+      : {};
+
     return createPortal(
-      <div className="ce-meet-minimized-pill">
+      <div
+        className="ce-meet-minimized-pill"
+        style={pillStyle}
+        onMouseDown={handlePillMouseDown}
+        onTouchStart={handlePillTouchStart}
+      >
         <div className="ce-meet-minimized-info" onClick={() => setIsMinimized(false)}>
           <div className="ce-meet-live-dot" />
           <span className="ce-meet-minimized-title">Meeting ({allMembers.length})</span>
@@ -620,6 +718,10 @@ const GoogleMeetStage = ({
     );
   }
 
+  const filteredMembers = allMembers.filter((m) =>
+    (m.username || "").toLowerCase().includes(participantSearchQuery.toLowerCase())
+  );
+
   return (
     <div className="ce-meet-stage-overlay">
       {/* Top Stage Header */}
@@ -629,7 +731,7 @@ const GoogleMeetStage = ({
           <span>{roomTitle || "Workspace Meeting"}</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {pinnedUserId && (
             <button
               type="button"
@@ -641,6 +743,48 @@ const GoogleMeetStage = ({
               Unpin Spotlight
             </button>
           )}
+
+          {/* 3 Overlapping Avatar Bubbles Trigger */}
+          <div
+            className="ce-meet-avatar-stack-btn"
+            onClick={() => setShowParticipantsPanel(!showParticipantsPanel)}
+            title="View all participants"
+          >
+            <div className="ce-meet-avatar-stack">
+              {allMembers.slice(0, 3).map((m, idx) => {
+                const avUrl = getAvatarUrl(m.avatar);
+                const letter = (m.username || "U").charAt(0).toUpperCase();
+                return (
+                  <div
+                    key={m.userId}
+                    className="ce-meet-stack-avatar"
+                    style={{ zIndex: 3 - idx, marginLeft: idx > 0 ? "-10px" : "0" }}
+                  >
+                    {avUrl ? (
+                      <img src={avUrl} alt={m.username} />
+                    ) : (
+                      <span>{letter}</span>
+                    )}
+                  </div>
+                );
+              })}
+              {allMembers.length > 3 && (
+                <div className="ce-meet-stack-avatar count-pill" style={{ zIndex: 0, marginLeft: "-10px" }}>
+                  +{allMembers.length - 3}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={`ce-meet-ctrl-btn ${showParticipantsPanel ? "active-feature" : ""}`}
+            style={{ width: "40px", height: "40px" }}
+            onClick={() => setShowParticipantsPanel(!showParticipantsPanel)}
+            title="In-Meeting Participants"
+          >
+            <Users size={18} />
+          </button>
 
           <button
             type="button"
@@ -704,7 +848,24 @@ const GoogleMeetStage = ({
         {showParticipantsPanel && (
           <div className="ce-meet-side-panel">
             <div className="ce-meet-side-header">
-              <span>In-Meeting ({allMembers.length})</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div className="ce-meet-avatar-stack">
+                  {allMembers.slice(0, 3).map((m, idx) => {
+                    const avUrl = getAvatarUrl(m.avatar);
+                    const letter = (m.username || "U").charAt(0).toUpperCase();
+                    return (
+                      <div
+                        key={m.userId}
+                        className="ce-meet-stack-avatar"
+                        style={{ width: "24px", height: "24px", fontSize: "0.65rem", zIndex: 3 - idx, marginLeft: idx > 0 ? "-8px" : "0" }}
+                      >
+                        {avUrl ? <img src={avUrl} alt={m.username} /> : <span>{letter}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <span>Participants ({allMembers.length})</span>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowParticipantsPanel(false)}
@@ -714,58 +875,90 @@ const GoogleMeetStage = ({
               </button>
             </div>
 
+            {/* Real-time Search Box */}
+            <div className="ce-meet-search-box">
+              <Search size={15} className="ce-meet-search-icon" />
+              <input
+                type="text"
+                placeholder="Search participants..."
+                value={participantSearchQuery}
+                onChange={(e) => setParticipantSearchQuery(e.target.value)}
+                className="ce-meet-search-input"
+              />
+              {participantSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setParticipantSearchQuery("")}
+                  className="ce-meet-search-clear"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
             <div className="ce-meet-side-list">
-              {allMembers.map((member) => {
-                const memberAvatarUrl = getAvatarUrl(member.avatar);
-                const isPinned = String(pinnedUserId) === String(member.userId);
+              {filteredMembers.length > 0 ? (
+                filteredMembers.map((member) => {
+                  const memberAvatarUrl = getAvatarUrl(member.avatar);
+                  const isPinned = String(pinnedUserId) === String(member.userId);
+                  const isMe = member.isLocal;
 
-                return (
-                  <div key={member.userId} className="ce-meet-side-item">
-                    <div className="ce-meet-side-user-info">
-                      {memberAvatarUrl ? (
-                        <img
-                          src={memberAvatarUrl}
-                          alt={member.username}
-                          className="ce-meet-side-avatar"
-                          style={{ objectFit: "cover" }}
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div className="ce-meet-side-avatar">
-                          {(member.username || "U").charAt(0).toUpperCase()}
+                  return (
+                    <div key={member.userId} className="ce-meet-side-item">
+                      <div className="ce-meet-side-user-info">
+                        {memberAvatarUrl ? (
+                          <img
+                            src={memberAvatarUrl}
+                            alt={member.username}
+                            className="ce-meet-side-avatar"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="ce-meet-side-avatar">
+                            {(member.username || "U").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "#ffffff" }}>
+                            {member.username}
+                          </span>
+                          <span style={{ fontSize: "0.68rem", fontWeight: "700", color: isMe ? "#10b981" : "#818cf8" }}>
+                            {isMe ? "YOU" : "MEMBER"}
+                          </span>
                         </div>
-                      )}
-                      <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "#ffffff" }}>
-                        {member.username}
-                      </span>
-                    </div>
+                      </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <button
-                        type="button"
-                        onClick={() => setPinnedUserId(isPinned ? null : member.userId)}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: isPinned ? "#6366f1" : "#9ca3af",
-                          cursor: "pointer"
-                        }}
-                        title={isPinned ? "Unpin" : "Pin participant"}
-                      >
-                        <Pin size={14} />
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <button
+                          type="button"
+                          onClick={() => setPinnedUserId(isPinned ? null : member.userId)}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: isPinned ? "#6366f1" : "#9ca3af",
+                            cursor: "pointer"
+                          }}
+                          title={isPinned ? "Unpin" : "Pin participant"}
+                        >
+                          <Pin size={14} />
+                        </button>
 
-                      {member.isMicOn ? (
-                        <Mic size={14} color="#10b981" />
-                      ) : (
-                        <MicOff size={14} color="#ef4444" />
-                      )}
+                        {member.isMicOn ? (
+                          <Mic size={14} color="#10b981" />
+                        ) : (
+                          <MicOff size={14} color="#ef4444" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="ce-meet-empty-search">
+                  No participants found matching "{participantSearchQuery}"
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -773,8 +966,8 @@ const GoogleMeetStage = ({
 
       {/* Floating Bottom Control Bar */}
       <div className="ce-meet-bottom-bar">
-        <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#ffffff" }}>
-          {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        <div className="ce-meet-bar-left">
+          <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
         </div>
 
         <div className="ce-meet-bar-center">
@@ -782,7 +975,7 @@ const GoogleMeetStage = ({
             type="button"
             className={`ce-meet-ctrl-btn ${!isMicOn ? "off" : ""}`}
             onClick={() => setIsMicOn(!isMicOn)}
-            title={isMicOn ? "Turn off mic" : "Turn on mic"}
+            title={isMicOn ? "Mute microphone" : "Unmute microphone"}
           >
             {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
           </button>
@@ -796,11 +989,13 @@ const GoogleMeetStage = ({
             {isVideoOn ? <Video size={20} /> : <VideoOff size={20} />}
           </button>
 
+          <div className="ce-meet-bar-divider" />
+
           <button
             type="button"
             className={`ce-meet-ctrl-btn ${isHandRaised ? "active-feature" : ""}`}
             onClick={() => setIsHandRaised(!isHandRaised)}
-            title="Raise / Lower Hand"
+            title="Raise or lower hand"
           >
             <Hand size={20} />
           </button>
@@ -808,12 +1003,14 @@ const GoogleMeetStage = ({
           <button
             type="button"
             className={`ce-meet-ctrl-btn ${isScreenSharing ? "active-feature" : ""}`}
-            title={isScreenSharing ? "Stop Presenting Screen" : "Share Screen"}
+            title={isScreenSharing ? "Stop presenting screen" : "Share screen"}
             onClick={toggleScreenShare}
           >
             <Monitor size={20} />
           </button>
+        </div>
 
+        <div className="ce-meet-bar-right">
           <button
             type="button"
             className="ce-meet-end-call-btn"
@@ -826,17 +1023,6 @@ const GoogleMeetStage = ({
             title="Leave Meeting"
           >
             <PhoneOff size={20} />
-          </button>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <button
-            type="button"
-            className={`ce-meet-ctrl-btn ${showParticipantsPanel ? "active-feature" : ""}`}
-            onClick={() => setShowParticipantsPanel(!showParticipantsPanel)}
-            title="In-Meeting Participants"
-          >
-            <Users size={18} />
           </button>
         </div>
       </div>
