@@ -114,6 +114,11 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
   const [slides, setSlides] = useState([{ elements: [] }]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
+  const currentSlideIndexRef = useRef(currentSlideIndex);
+  useEffect(() => {
+    currentSlideIndexRef.current = currentSlideIndex;
+  }, [currentSlideIndex]);
+
   // Drawing states
   const [isDrawing, setIsDrawing] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -218,8 +223,12 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
       } else if (data.elements.slides) {
         // Slides format
         setSlides(data.elements.slides);
-        setCurrentSlideIndex(data.elements.currentSlideIndex);
-        const nextElements = data.elements.slides[data.elements.currentSlideIndex]?.elements || [];
+        const localIndex = currentSlideIndexRef.current;
+        const safeIndex = Math.min(localIndex, data.elements.slides.length - 1);
+        if (safeIndex !== localIndex) {
+          setCurrentSlideIndex(safeIndex);
+        }
+        const nextElements = data.elements.slides[safeIndex]?.elements || [];
         setElements(nextElements);
         setHistory((prev) => {
           const next = prev.slice(0, historyIndex + 1);
