@@ -3821,7 +3821,7 @@ function Dashboard() {
   // Filtered and Sorted History Rooms
   const getFilteredHistory = () => {
     let list = historyRooms.filter(room => {
-      const matchesSearch = room.title.toLowerCase().includes(historySearch.toLowerCase()) || room.roomId.includes(historySearch);
+      const matchesSearch = (room.title || "").toLowerCase().includes((historySearch || "").toLowerCase()) || (room.roomId || "").includes(historySearch);
       const matchesLang = historyFilterLang === "all" || room.language === historyFilterLang;
       return matchesSearch && matchesLang;
     });
@@ -6913,7 +6913,7 @@ function Dashboard() {
                         ) : (() => {
                           const filteredPublic = publicRooms.filter(room => {
                             const term = publicRoomsSearch.toLowerCase();
-                            return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                            return (room.title || "").toLowerCase().includes(term) || (room.roomId || "").toLowerCase().includes(term);
                           });
 
                           if (filteredPublic.length === 0) {
@@ -6981,7 +6981,7 @@ function Dashboard() {
 
                           const filteredOwned = ownedRooms.filter(room => {
                             const term = myRoomsTabSearch.toLowerCase();
-                            return room.title.toLowerCase().includes(term) || room.roomId.toLowerCase().includes(term);
+                            return (room.title || "").toLowerCase().includes(term) || (room.roomId || "").toLowerCase().includes(term);
                           });
 
                           if (filteredOwned.length === 0) {
