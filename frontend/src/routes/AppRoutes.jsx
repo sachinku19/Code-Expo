@@ -112,6 +112,19 @@ const OwnProfileRedirect = () => {
   return <Navigate to="/dashboard?tab=profile" replace />;
 };
 
+const PostRouteHandler = () => {
+  const token = localStorage.getItem("token");
+  const storedUser = localStorage.getItem("user");
+  if (token && storedUser && storedUser !== "null" && storedUser !== "undefined") {
+    return (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    );
+  }
+  return <PublicPostView />;
+};
+
 const AppRoutes = () => {
   return (
     <ThemeProvider>
@@ -128,7 +141,7 @@ const AppRoutes = () => {
                   <Route path="/u/:username" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/profile" element={<OwnProfileRedirect />} />
                   <Route path="/user/:userId" element={<UserProfileRedirect />} />
-                  <Route path="/post/:postId" element={<PublicPostView />} />
+                  <Route path="/post/:postId" element={<PostRouteHandler />} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
                   <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

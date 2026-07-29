@@ -3,13 +3,60 @@ import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getPostById, toggleLikePost, addCommentPost } from "../services/socialService";
 import socket from "../socket/socket";
-import { 
-  Heart, Bookmark, ChevronLeft, ChevronRight, MessageSquare, 
+import {
+  Heart, Bookmark, ChevronLeft, ChevronRight, MessageSquare,
   Send, Share2, ArrowLeft, ShieldAlert, Sparkles, Copy, Check
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Logo from "../components/shared/Logo";
 import "../components/social/PremiumFeed.css";
+
+const ExpandableText = ({ children, text, lines = 3 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const textStr = text || (typeof children === "string" ? children : "");
+  const shouldShowButton = textStr && (textStr.length > 200 || textStr.split("\n").length > lines);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        style={{
+          display: "-webkit-box",
+          WebkitLineClamp: isExpanded ? "none" : lines,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: "1.5",
+          maxHeight: isExpanded ? "none" : `${lines * 1.5}em`
+        }}
+      >
+        {children}
+      </div>
+      {shouldShowButton && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#60a5fa",
+            fontSize: "0.82rem",
+            fontWeight: "700",
+            cursor: "pointer",
+            padding: "2px 0",
+            marginTop: "4px",
+            display: "inline-flex",
+            alignItems: "center"
+          }}
+        >
+          {isExpanded ? "Read Less" : "Read More"}
+        </button>
+      )}
+    </div>
+  );
+};
 
 export default function PublicPostView() {
   const { postId } = useParams();
@@ -26,6 +73,12 @@ export default function PublicPostView() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [revealedSensitive, setRevealedSensitive] = useState(false);
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    if (user && postId) {
+      navigate(`/dashboard?post=${postId}`, { replace: true });
+    }
+  }, [user, postId, navigate]);
 
   const addToast = (message, type = "success") => {
     const id = Date.now() + Math.random().toString(36).substr(2, 9);
@@ -165,7 +218,7 @@ export default function PublicPostView() {
         addToast("Post saved to bookmarks", "success");
       }
       localStorage.setItem("codeexpo_bookmarked_post_ids", JSON.stringify(Array.from(next)));
-      setPost(prev => ({ ...prev })); 
+      setPost(prev => ({ ...prev }));
     } catch (err) {
       addToast("Error saving bookmark", "error");
     }
@@ -249,8 +302,8 @@ export default function PublicPostView() {
         top: 0,
         zIndex: 100
       }}>
-        <Link 
-          to={user ? "/dashboard" : "/"} 
+        <Link
+          to={user ? "/dashboard" : "/"}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -268,7 +321,7 @@ export default function PublicPostView() {
         >
           <ArrowLeft size={16} /> <span>{user ? "Back to Workspace" : "Back to CodeExpo"}</span>
         </Link>
-        
+
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <Logo size={28} showText={true} />
         </div>
@@ -276,7 +329,7 @@ export default function PublicPostView() {
 
       {/* Main Instagram-Style Post Area */}
       <main style={{ maxWidth: "1100px", margin: "40px auto", padding: "0 20px" }}>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
@@ -294,22 +347,22 @@ export default function PublicPostView() {
           {/* Left Column: Media Attachment Carousel */}
           {hasImage && (
             <div style={{ flex: "1 1 60%", background: "#000", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", minHeight: "450px" }}>
-              <img 
-                src={postImages[activeImageIdx]} 
-                alt={`Media attachment ${activeImageIdx}`} 
+              <img
+                src={postImages[activeImageIdx]}
+                alt={`Media attachment ${activeImageIdx}`}
                 style={{ width: "100%", height: "100%", maxHeight: "700px", objectFit: "contain", display: "block" }}
               />
 
               {postImages.length > 1 && (
                 <>
-                  <button 
-                    onClick={() => setActiveImageIdx(prev => (prev - 1 + postImages.length) % postImages.length)} 
+                  <button
+                    onClick={() => setActiveImageIdx(prev => (prev - 1 + postImages.length) % postImages.length)}
                     style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", width: "36px", height: "36px", borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
                     <ChevronLeft size={20} />
                   </button>
-                  <button 
-                    onClick={() => setActiveImageIdx(prev => (prev + 1) % postImages.length)} 
+                  <button
+                    onClick={() => setActiveImageIdx(prev => (prev + 1) % postImages.length)}
                     style={{ position: "absolute", right: "16px", top: "50%", transform: "translateY(-50%)", width: "36px", height: "36px", borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
                     <ChevronRight size={20} />
@@ -326,7 +379,7 @@ export default function PublicPostView() {
 
           {/* Right Column: Author, Description & Live Comments */}
           <div style={{ flex: hasImage ? "0 0 420px" : "1", display: "flex", flexDirection: "column", borderLeft: hasImage ? "1px solid rgba(255, 255, 255, 0.08)" : "none", background: "rgba(18, 19, 30, 0.98)" }}>
-            
+
             {/* Header: Author Meta */}
             <div style={{ padding: "18px 20px", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", display: "flex", alignItems: "center", gap: "12px" }}>
               <div style={{ width: "42px", height: "42px", borderRadius: "50%", overflow: "hidden", background: "rgba(99,102,241,0.15)", border: "1.5 solid #6366f1", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -361,10 +414,12 @@ export default function PublicPostView() {
                     )}
                   </div>
                   <div style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px", borderRadius: "12px", flex: 1 }}>
-                    <p style={{ margin: 0, color: "#e2e8f0", fontSize: "0.86rem", lineHeight: "1.5" }}>
-                      <strong style={{ color: "#fff", marginRight: "6px" }}>@{post.author?.username}:</strong>
-                      {postContentText}
-                    </p>
+                    <ExpandableText lines={3} text={postContentText}>
+                      <p style={{ margin: 0, color: "#e2e8f0", fontSize: "0.86rem", lineHeight: "1.5" }}>
+                        <strong style={{ color: "#fff", marginRight: "6px" }}>@{post.author?.username}:</strong>
+                        {postContentText}
+                      </p>
+                    </ExpandableText>
                   </div>
                 </div>
               )}
@@ -386,10 +441,12 @@ export default function PublicPostView() {
                         )}
                       </div>
                       <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.04)", padding: "10px 12px", borderRadius: "10px", flex: 1 }}>
-                        <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.82rem", lineHeight: "1.4" }}>
-                          <strong style={{ color: "#8b5cf6", marginRight: "6px" }}>@{c.username}:</strong>
-                          {c.text}
-                        </p>
+                        <ExpandableText lines={3} text={c.text}>
+                          <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.82rem", lineHeight: "1.4" }}>
+                            <strong style={{ color: "#8b5cf6", marginRight: "6px" }}>@{c.username}:</strong>
+                            {c.text}
+                          </p>
+                        </ExpandableText>
                       </div>
                     </div>
                   ))
@@ -406,8 +463,8 @@ export default function PublicPostView() {
             <div style={{ padding: "16px 20px", borderTop: "1px solid rgba(255, 255, 255, 0.08)", background: "rgba(13, 14, 22, 0.6)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                 <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
-                  <button 
-                    onClick={handleLike} 
+                  <button
+                    onClick={handleLike}
                     disabled={post.likesDisabled}
                     style={{ background: "none", border: "none", color: isLiked ? "#ef4444" : "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", padding: 0 }}
                   >
@@ -415,15 +472,15 @@ export default function PublicPostView() {
                   </button>
 
                   <div style={{ position: "relative" }}>
-                    <button 
-                      onClick={() => setShareOpen(!shareOpen)} 
+                    <button
+                      onClick={() => setShareOpen(!shareOpen)}
                       style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
                     >
                       <Share2 size={20} />
                     </button>
                     {shareOpen && (
                       <div style={{ position: "absolute", bottom: "35px", left: 0, background: "#181926", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "10px", padding: "6px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)", zIndex: 10, width: "150px" }}>
-                        <button 
+                        <button
                           onClick={() => {
                             navigator.clipboard.writeText(window.location.href);
                             setCopiedLink(true);
@@ -440,8 +497,8 @@ export default function PublicPostView() {
                   </div>
                 </div>
 
-                <button 
-                  onClick={handleBookmark} 
+                <button
+                  onClick={handleBookmark}
                   style={{ background: "none", border: "none", color: isBookmarked() ? "#3b82f6" : "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
                 >
                   <Bookmark size={20} fill={isBookmarked() ? "#3b82f6" : "none"} color={isBookmarked() ? "#3b82f6" : "currentColor"} />
@@ -455,8 +512,8 @@ export default function PublicPostView() {
 
               {/* Comment Input */}
               <form onSubmit={handleAddComment} style={{ display: "flex", gap: "8px" }}>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder={user ? "Add a comment..." : "Log in to write a comment..."}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
@@ -466,9 +523,9 @@ export default function PublicPostView() {
                   }}
                   style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", padding: "10px 14px", borderRadius: "10px", fontSize: "0.84rem", outline: "none" }}
                 />
-                <button 
-                  type="submit" 
-                  disabled={!user || !commentText.trim()} 
+                <button
+                  type="submit"
+                  disabled={!user || !commentText.trim()}
                   style={{ background: user && commentText.trim() ? "linear-gradient(135deg, #6366f1, #8b5cf6)" : "rgba(255,255,255,0.08)", border: "none", color: "#fff", width: "38px", height: "38px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", cursor: user && commentText.trim() ? "pointer" : "not-allowed", opacity: user && commentText.trim() ? 1 : 0.5 }}
                 >
                   <Send size={15} />

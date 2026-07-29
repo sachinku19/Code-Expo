@@ -224,46 +224,68 @@ export default function FileExplorer({
       return;
     }
     isSubmittingRef.current = true;
+
+    // 1. Create optimistic item
+    const tempId = "temp-" + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+    const optimisticItem = {
+      _id: tempId,
+      name,
+      type: creatingType,
+      parentId: creatingParentId,
+      language: getLanguageByExtension(name),
+      isOptimistic: true,
+      createdBy: currentUser
+    };
+
+    // Add it to tree immediately
+    setItems((prev) => [...prev, optimisticItem].sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name)));
+
+    // Auto expand parent folder
+    if (creatingParentId) {
+      const next = new Set(expandedFolders);
+      next.add(creatingParentId);
+      setExpandedFolders(next);
+    }
+
+    // Reset input fields instantly
+    const currentCreatingType = creatingType;
+    setNewItemName("");
+    setCreatingType(null);
+    setCreatingParentId(null);
+    isSubmittingRef.current = false; // allow next inputs immediately!
+
     try {
       const language = getLanguageByExtension(name);
       const data = await workspaceService.createWorkspaceItem(
         roomId,
         name,
-        creatingType,
-        creatingParentId,
+        optimisticItem.type,
+        optimisticItem.parentId,
         language
       );
 
       const createdItem = data.item;
-      setItems((prev) => [...prev, createdItem].sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name)));
 
-      // Auto expand parent folder
-      if (creatingParentId) {
-        const next = new Set(expandedFolders);
-        next.add(creatingParentId);
-        setExpandedFolders(next);
-      }
+      // Replace optimistic item with actual item
+      setItems((prev) =>
+        prev.map((i) => (i._id === tempId ? createdItem : i)).sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name))
+      );
 
       // Emit socket event
-      socket.emit(creatingType === "file" ? "file-created" : "folder-created", {
+      socket.emit(createdItem.type === "file" ? "file-created" : "folder-created", {
         roomId,
         item: createdItem
       });
 
       // Auto-select the newly created item
       setSelectedItemId(createdItem._id);
-      if (creatingType === "file") {
+      if (createdItem.type === "file") {
         onFileSelect(createdItem._id, createdItem);
       }
-
-      // Clear state
-      setNewItemName("");
-      setCreatingType(null);
-      setCreatingParentId(null);
     } catch (error) {
+      // Remove optimistic item on error
+      setItems((prev) => prev.filter((i) => i._id !== tempId));
       toast.error(error.response?.data?.message || "Failed to create item.");
-    } finally {
-      isSubmittingRef.current = false;
     }
   };
 
@@ -439,6 +461,7 @@ export default function FileExplorer({
               >
                 <div
                   className={`tree-node folder-node ${isSelected ? "active selected-node" : ""}`}
+                  style={{ opacity: item.isOptimistic ? 0.6 : 1, pointerEvents: item.isOptimistic ? "none" : "auto" }}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleFolder(item._id);
@@ -529,6 +552,7 @@ export default function FileExplorer({
               >
                 <div
                   className={`tree-node file-node ${isActiveFile || isSelected ? "active selected-node" : ""}`}
+                  style={{ opacity: item.isOptimistic ? 0.6 : 1, pointerEvents: item.isOptimistic ? "none" : "auto" }}
                   onClick={(e) => {
                     e.stopPropagation();
                     onFileSelect(item._id, item);

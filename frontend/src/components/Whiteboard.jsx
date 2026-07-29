@@ -457,7 +457,12 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
 
     // Render other users' active drawings
     Object.values(activeDrawings).forEach((el) => {
-      if (el) drawElement(ctx, el);
+      if (el) {
+        const elSlideIndex = el.slideIndex !== undefined ? el.slideIndex : 0;
+        if (elSlideIndex === currentSlideIndex) {
+          drawElement(ctx, el);
+        }
+      }
     });
 
     // Render client's current drawing
@@ -650,8 +655,10 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left - pan.x) / zoom;
-    const y = (e.clientY - rect.top - pan.y) / zoom;
+    const clientX = e.clientX - rect.left;
+    const clientY = e.clientY - rect.top;
+    const x = ((clientX * canvas.width) / rect.width - pan.x) / zoom;
+    const y = ((clientY * canvas.height) / rect.height - pan.y) / zoom;
     return { x, y };
   };
 
@@ -718,7 +725,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
         type: tool === "pen" ? "pencil" : tool === "highlighter" ? "highlighter" : "eraser",
         points: [{ x, y }],
         color: tool === "eraser" ? "rgba(0,0,0,1)" : color,
-        size: brushSize
+        size: brushSize,
+        slideIndex: currentSlideIndex
       };
       setCurrentElement(newEl);
       socket.emit("draw-element-update", { roomId, element: newEl, isDrawing: true, userId: currentUser?.id });
@@ -738,7 +746,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
         width: 0,
         height: 0,
         color,
-        size: brushSize
+        size: brushSize,
+        slideIndex: currentSlideIndex
       };
       setCurrentElement(newEl);
       socket.emit("draw-element-update", { roomId, element: newEl, isDrawing: true, userId: currentUser?.id });
@@ -751,7 +760,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
         x2: x,
         y2: y,
         color,
-        size: brushSize
+        size: brushSize,
+        slideIndex: currentSlideIndex
       };
       setCurrentElement(newEl);
       socket.emit("draw-element-update", { roomId, element: newEl, isDrawing: true, userId: currentUser?.id });
@@ -947,7 +957,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
       y: textEditor.modelY,
       text: textEditor.text,
       color,
-      size: brushSize
+      size: brushSize,
+      slideIndex: currentSlideIndex
     };
 
     const newElements = [...elements, textEl];
@@ -1551,17 +1562,20 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
           // Prevent showing own cursor twice
           if (id === socket.id) return null;
           
-          const screenX = cursor.x * zoom + pan.x;
-          const screenY = cursor.y * zoom + pan.y;
-
           const canvas = canvasRef.current;
           if (!canvas) return null;
-          if (screenX < 0 || screenX > canvas.width || screenY < 0 || screenY > canvas.height) {
+          const rect = canvas.getBoundingClientRect();
+
+          // Map canvas coordinate back to display client coordinate
+          const displayX = (cursor.x * zoom + pan.x) * (rect.width / canvas.width);
+          const displayY = (cursor.y * zoom + pan.y) * (rect.height / canvas.height);
+
+          if (displayX < 0 || displayX > rect.width || displayY < 0 || displayY > rect.height) {
             return null;
           }
 
           return (
-            <div key={id} className="wb-collaborator-cursor" style={{ left: screenX, top: screenY }}>
+            <div key={id} className="wb-collaborator-cursor" style={{ left: displayX, top: displayY }}>
               <svg className="wb-cursor-pointer" width="16" height="16" viewBox="0 0 24 24" fill={cursor.color} stroke={cursor.color}>
                 <polygon points="5 5 20 10 13 13 10 20" />
               </svg>

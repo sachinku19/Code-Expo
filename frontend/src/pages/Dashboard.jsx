@@ -58,6 +58,53 @@ import {
   deletePost
 } from "../services/socialService";
 import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBanner, deleteCoverBanner } from "../services/userService";
+
+const ExpandableText = ({ children, text, lines = 3 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const textStr = text || (typeof children === "string" ? children : "");
+  const shouldShowButton = textStr && (textStr.length > 200 || textStr.split("\n").length > lines);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        style={{
+          display: "-webkit-box",
+          WebkitLineClamp: isExpanded ? "none" : lines,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: "1.5",
+          maxHeight: isExpanded ? "none" : `${lines * 1.5}em`
+        }}
+      >
+        {children}
+      </div>
+      {shouldShowButton && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#60a5fa",
+            fontSize: "0.82rem",
+            fontWeight: "700",
+            cursor: "pointer",
+            padding: "2px 0",
+            marginTop: "4px",
+            display: "inline-flex",
+            alignItems: "center"
+          }}
+        >
+          {isExpanded ? "Read Less" : "Read More"}
+        </button>
+      )}
+    </div>
+  );
+};
 import { getTrustSafetyStatus } from "../services/trustSafetyService";
 import "./Dashboard.css";
 import MainLayout from "../layouts/MainLayout";
@@ -1377,22 +1424,32 @@ function Dashboard() {
   const [modalActiveImageIdx, setModalActiveImageIdx] = useState(0);
   const [modalShareOpen, setModalShareOpen] = useState(false);
 
+  const isClosingPostModalRef = useRef(false);
+
   const handleOpenPostModal = (postToOpen) => {
     if (!postToOpen) return;
+    isClosingPostModalRef.current = false;
     setSelectedPostModal(postToOpen);
     setModalShareOpen(false);
     if (postToOpen._id) {
-      window.history.pushState({ postId: postToOpen._id }, "", `/post/${postToOpen._id}`);
+      const searchParams = new URLSearchParams(location.search);
+      searchParams.set("post", postToOpen._id);
+      navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
     }
   };
 
   const handleClosePostModal = () => {
+    isClosingPostModalRef.current = true;
     setSelectedPostModal(null);
     setModalShareOpen(false);
     if (location.pathname.startsWith("/post/")) {
-      navigate(-1);
+      navigate("/dashboard", { replace: true });
     } else {
-      window.history.pushState(null, "", location.pathname + location.search);
+      const searchParams = new URLSearchParams(location.search);
+      searchParams.delete("post");
+      const newSearch = searchParams.toString();
+      const targetUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
+      navigate(targetUrl, { replace: true });
     }
   };
 
@@ -1400,6 +1457,16 @@ function Dashboard() {
     const pathMatch = location.pathname.match(/^\/post\/([a-zA-Z0-9_]+)/);
     const searchParams = new URLSearchParams(location.search);
     const postId = (pathMatch ? pathMatch[1] : null) || searchParams.get("post");
+
+    if (!postId) {
+      isClosingPostModalRef.current = false;
+      return;
+    }
+
+    if (isClosingPostModalRef.current) {
+      return;
+    }
+
     if (postId) {
       const matchedPost = allFeedPosts.find(p => p._id === postId);
       if (matchedPost) {
@@ -10376,8 +10443,10 @@ function Dashboard() {
                           )}
                         </div>
                         <div style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)", flex: 1 }}>
-                          <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{selectedPostModal.author?.username}:</strong>
-                          {parseMarkdown(hasCode ? getRightSideText(selectedPostModal.text) : selectedPostModal.text)}
+                          <ExpandableText lines={3} text={selectedPostModal.text}>
+                            <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{selectedPostModal.author?.username}:</strong>
+                            {parseMarkdown(hasCode ? getRightSideText(selectedPostModal.text) : selectedPostModal.text)}
+                          </ExpandableText>
                         </div>
                       </div>
 
@@ -10398,10 +10467,12 @@ function Dashboard() {
                                   </div>
                                 )}
                               </div>
-                              <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)" }}>
-                                <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{comment.username}:</strong>
-                                {comment.text}
-                              </p>
+                              <div style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)", flex: 1 }}>
+                                <ExpandableText lines={3} text={comment.text}>
+                                  <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{comment.username}:</strong>
+                                  {comment.text}
+                                </ExpandableText>
+                              </div>
                             </div>
                           ))
                         ) : (

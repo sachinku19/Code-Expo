@@ -278,26 +278,15 @@ const CodeBlock = ({ lang, code, addToast }) => {
   );
 };
 
-// Reusable ExpandableText component for post descriptions to clamp long text
-const ExpandableText = ({ children, maxHeight = 240, onReadMore }) => {
+// Reusable ExpandableText component for post descriptions and comments to clamp long text to exactly 3 lines
+const ExpandableText = ({ children, text, lines = 3, onReadMore }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [shouldShowButton, setShouldShowButton] = useState(false);
-  const textRef = useRef(null);
 
-  useEffect(() => {
-    if (textRef.current) {
-      const checkHeight = () => {
-        if (textRef.current) {
-          setShouldShowButton(textRef.current.scrollHeight > maxHeight);
-        }
-      };
-      checkHeight();
-      const timeoutId = setTimeout(checkHeight, 150);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [children, maxHeight]);
+  const textStr = text || (typeof children === "string" ? children : "");
+  const shouldShowButton = textStr && (textStr.length > 260 || textStr.split("\n").length > lines);
 
-  const handleButtonClick = () => {
+  const handleButtonClick = (e) => {
+    e.stopPropagation();
     setIsExpanded(!isExpanded);
     if (onReadMore) {
       onReadMore();
@@ -305,33 +294,24 @@ const ExpandableText = ({ children, maxHeight = 240, onReadMore }) => {
   };
 
   return (
-    <div style={{ position: "relative", marginBottom: "8px" }}>
+    <div style={{ position: "relative", marginBottom: "4px" }}>
       <div 
-        ref={textRef}
         style={{ 
-          maxHeight: !isExpanded ? `${maxHeight}px` : "none", 
+          display: "-webkit-box",
+          WebkitLineClamp: isExpanded ? "none" : lines,
+          WebkitBoxOrient: "vertical",
           overflow: "hidden",
-          transition: "max-height 0.3s ease",
+          textOverflow: "ellipsis",
+          lineHeight: "1.5",
+          maxHeight: isExpanded ? "none" : `${lines * 1.5}em`,
           position: "relative"
         }}
       >
         {children}
-        {!isExpanded && shouldShowButton && (
-          <div 
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: "45px",
-              background: "linear-gradient(to top, var(--ce-premium-bg) 20%, transparent 100%)",
-              pointerEvents: "none"
-            }}
-          />
-        )}
       </div>
       {shouldShowButton && (
         <button 
+          type="button"
           onClick={handleButtonClick}
           style={{
             background: "none",
@@ -340,8 +320,8 @@ const ExpandableText = ({ children, maxHeight = 240, onReadMore }) => {
             fontSize: "0.82rem",
             fontWeight: "700",
             cursor: "pointer",
-            padding: "4px 0",
-            marginTop: "6px",
+            padding: "2px 0",
+            marginTop: "4px",
             display: "inline-flex",
             alignItems: "center"
           }}
@@ -724,45 +704,43 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       setExpandedCommentThreads(prev => ({ ...prev, [targetParentId]: true }));
     }
 
-    setTimeout(async () => {
-      const tempComment = {
-        _id: String(Date.now()),
-        user: user?.id || user?._id,
-        username: user?.username || "You",
-        avatar: user?.avatar || "",
-        text: textToSend,
-        parentCommentId: targetParentId,
-        createdAt: new Date()
-      };
+    const tempComment = {
+      _id: String(Date.now()),
+      user: user?.id || user?._id,
+      username: user?.username || "You",
+      avatar: user?.avatar || "",
+      text: textToSend,
+      parentCommentId: targetParentId,
+      createdAt: new Date()
+    };
 
-      setPosts(prev => prev.map(post => {
-        if (post._id === postId) {
-          return { ...post, comments: [...post.comments, tempComment] };
-        }
-        return post;
-      }));
-
-      setTypingPostIds(prev => {
-        const next = new Set(prev);
-        next.delete(postId);
-        return next;
-      });
-
-      try {
-        const res = await addCommentPost(postId, textToSend);
-        if (res.success) {
-          setPosts(prev => prev.map(post => {
-            if (post._id === postId) {
-              return { ...post, comments: res.comments };
-            }
-            return post;
-          }));
-        }
-      } catch (err) {
-        fetchPosts();
-        if (addToast) addToast("Failed to submit reply comment", "error");
+    setPosts(prev => prev.map(post => {
+      if (post._id === postId) {
+        return { ...post, comments: [...post.comments, tempComment] };
       }
-    }, 800);
+      return post;
+    }));
+
+    setTypingPostIds(prev => {
+      const next = new Set(prev);
+      next.delete(postId);
+      return next;
+    });
+
+    try {
+      const res = await addCommentPost(postId, textToSend);
+      if (res.success) {
+        setPosts(prev => prev.map(post => {
+          if (post._id === postId) {
+            return { ...post, comments: res.comments };
+          }
+          return post;
+        }));
+      }
+    } catch (err) {
+      fetchPosts();
+      if (addToast) addToast("Failed to submit reply comment", "error");
+    }
   };
 
   const handleSubmitInlineReply = async (postId, targetCommentId, targetUsername) => {
@@ -1363,44 +1341,42 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
     setCommentInputs(prev => ({ ...prev, [postId]: "" }));
 
-    setTimeout(async () => {
-      const tempComment = {
-        _id: String(Date.now()),
-        user: user?.id || user?._id,
-        username: user?.username || "You",
-        avatar: user?.avatar || "",
-        text: commentText,
-        createdAt: new Date()
-      };
+    const tempComment = {
+      _id: String(Date.now()),
+      user: user?.id || user?._id,
+      username: user?.username || "You",
+      avatar: user?.avatar || "",
+      text: commentText,
+      createdAt: new Date()
+    };
 
-      setPosts(prev => prev.map(post => {
-        if (post._id === postId) {
-          return { ...post, comments: [...post.comments, tempComment] };
-        }
-        return post;
-      }));
-
-      setTypingPostIds(prev => {
-        const next = new Set(prev);
-        next.delete(postId);
-        return next;
-      });
-
-      try {
-        const res = await addCommentPost(postId, commentText);
-        if (res.success) {
-          setPosts(prev => prev.map(post => {
-            if (post._id === postId) {
-              return { ...post, comments: res.comments };
-            }
-            return post;
-          }));
-        }
-      } catch (err) {
-        fetchPosts();
-        addToast("Failed to submit reply comment", "error");
+    setPosts(prev => prev.map(post => {
+      if (post._id === postId) {
+        return { ...post, comments: [...post.comments, tempComment] };
       }
-    }, 900);
+      return post;
+    }));
+
+    setTypingPostIds(prev => {
+      const next = new Set(prev);
+      next.delete(postId);
+      return next;
+    });
+
+    try {
+      const res = await addCommentPost(postId, commentText);
+      if (res.success) {
+        setPosts(prev => prev.map(post => {
+          if (post._id === postId) {
+            return { ...post, comments: res.comments };
+          }
+          return post;
+        }));
+      }
+    } catch (err) {
+      fetchPosts();
+      addToast("Failed to submit reply comment", "error");
+    }
   };
 
   const handleDeletePostClick = (postId) => {
@@ -2353,7 +2329,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                         onClick={() => onOpenPost && onOpenPost(post)}
                         style={{ cursor: onOpenPost ? "pointer" : "default" }}
                       >
-                        <ExpandableText maxHeight={240}>
+                        <ExpandableText lines={3} text={post.text}>
                           {renderPostContent(post.text, addToast)}
                         </ExpandableText>
                       </div>
@@ -2929,10 +2905,12 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                                     {formatPostTime(c.createdAt)}
                                   </span>
                                 </div>
-                                <p className="panel-comment-text">
-                                  {rToUser && <span className="reply-mention">@{rToUser}</span>}
-                                  {rDisplayContent}
-                                </p>
+                                <div className="panel-comment-text">
+                                  <ExpandableText lines={3} text={rDisplayContent}>
+                                    {rToUser && <span className="reply-mention" style={{ marginRight: "4px" }}>@{rToUser}</span>}
+                                    {rDisplayContent}
+                                  </ExpandableText>
+                                </div>
                                 <div className="panel-comment-actions">
                                   <div className="panel-comment-btn-group">
                                     <button
@@ -3182,7 +3160,11 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
                 {/* Content scroll area */}
                 <div className="popup-post-content-area">
-                  <p className="popup-post-text">{activeCommentsPanelPost.text}</p>
+                  <div className="popup-post-text">
+                    <ExpandableText lines={3} text={activeCommentsPanelPost.text}>
+                      {activeCommentsPanelPost.text}
+                    </ExpandableText>
+                  </div>
                   {activeCommentsPanelPost.image && (
                     <div className="popup-post-image-wrapper">
                       <img src={activeCommentsPanelPost.image} alt="Attached content" className="popup-post-image" />

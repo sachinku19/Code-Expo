@@ -46,4 +46,8 @@ const activitySchema = new mongoose.Schema({
   }
 });
 
+// Prevent slow collection scans by indexing frequently queried fields
+activitySchema.index({ user: 1, room: 1, action: 1, timestamp: -1 });
+activitySchema.index({ timestamp: -1 });
+
 module.exports = mongoose.model("Activity", activitySchema);
