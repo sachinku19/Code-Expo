@@ -131,7 +131,11 @@ function Auth({ mode }) {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const isExpired = searchParams.get("expired") === "true" || localStorage.getItem("session_expired") === "true";
-    if (isExpired) {
+    const reason = searchParams.get("reason");
+    if (reason === "suspended") {
+      setLoginError("Access Denied: Your account has been suspended or permanently banned by an administrator.");
+      localStorage.removeItem("session_expired");
+    } else if (isExpired) {
       setLoginError("Your session has expired. Please log in again to continue.");
       localStorage.removeItem("session_expired");
     }

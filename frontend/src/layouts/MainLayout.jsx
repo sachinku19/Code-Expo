@@ -276,9 +276,17 @@ export default function MainLayout({
       }
     };
 
+    const handleSessionDisconnected = (data) => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login?expired=true&reason=suspended";
+    };
+
     socket.on("notification-received", handleRealtimeNotif);
+    socket.on("session-disconnected", handleSessionDisconnected);
     return () => {
       socket.off("notification-received", handleRealtimeNotif);
+      socket.off("session-disconnected", handleSessionDisconnected);
     };
   }, [user, roomId]);
 

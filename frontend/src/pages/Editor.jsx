@@ -5387,43 +5387,8 @@ function Editor() {
                         onClick={() => setChatTab("private")}
                       >
                         <span>Direct Message</span>
-                        {privateTabUnread && <span className="chat-tab-unread-dot" />}
-                      </button>
-                    </div>
-
-                    {chatTab === "private" && (
-                      <div className="chat-call-actions">
-                        {inCall ? (
-                          <button
-                            type="button"
-                            className="chat-call-btn active-call"
-                            onClick={handleLeaveCallManual}
-                            title="Leave Call"
-                          >
-                            <Phone size={14} />
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              className={`chat-call-btn audio-call-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
-                              onClick={() => handleJoinCall("audio")}
-                              title={activeCallUsers && activeCallUsers.length > 0 ? "Join Active Audio Call" : "Start Audio Call"}
-                            >
-                              <Phone size={14} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
-                            </button>
-                            <button
-                              type="button"
-                              className={`chat-call-btn video-call-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
-                              onClick={() => handleJoinCall("video")}
-                              title={activeCallUsers && activeCallUsers.length > 0 ? "Join Active Video Call" : "Start Video Call"}
-                            >
-                              <Video size={14} className={activeCallUsers && activeCallUsers.length > 0 ? "call-pulse-icon" : ""} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
+                    </button>
+                  </div>
                   </div>
 
                   {chatTab === "private" && (

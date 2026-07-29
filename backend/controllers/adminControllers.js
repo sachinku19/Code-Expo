@@ -784,6 +784,24 @@ const toggleUserSuspension = async (req, res) => {
     }
     await user.save();
 
+    // Disconnect active socket sessions instantly if suspended
+    if (user.isSuspended) {
+      const io = req.app.get("io");
+      if (io) {
+        try {
+          const defaultNamespaceSockets = io.of("/").sockets;
+          for (const [id, socketObj] of defaultNamespaceSockets) {
+            if (socketObj.userId && String(socketObj.userId) === String(user._id)) {
+              socketObj.emit("session-disconnected", { message: "Your account has been suspended by an administrator." });
+              socketObj.disconnect(true);
+            }
+          }
+        } catch (socketErr) {
+          console.error("Error disconnecting suspended user sockets:", socketErr);
+        }
+      }
+    }
+
     await logModerationAction(
       user._id,
       user.isSuspended ? "Suspension" : "Account Reactivated",
@@ -835,6 +853,24 @@ const adminIssueUserAction = async (req, res) => {
       reason || `Administrative action: ${actionType}`,
       req.user?.username || "Admin"
     );
+
+    // Disconnect active socket sessions instantly if suspended or banned
+    if (actionType === "Suspension" || actionType === "Ban") {
+      const io = req.app.get("io");
+      if (io) {
+        try {
+          const defaultNamespaceSockets = io.of("/").sockets;
+          for (const [id, socketObj] of defaultNamespaceSockets) {
+            if (socketObj.userId && String(socketObj.userId) === String(user._id)) {
+              socketObj.emit("session-disconnected", { message: `Your account has been ${actionType === "Ban" ? "permanently banned" : "suspended"} by an administrator.` });
+              socketObj.disconnect(true);
+            }
+          }
+        } catch (socketErr) {
+          console.error("Error disconnecting moderated user sockets:", socketErr);
+        }
+      }
+    }
 
     const updatedUser = await User.findById(userId);
 

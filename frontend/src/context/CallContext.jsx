@@ -4,6 +4,142 @@ import { useAuth } from "./AuthContext";
 import socket from "../socket/socket";
 import { sendDirectMessage } from "../services/directMessageService";
 
+class CallSoundSynthesizer {
+  constructor() {
+    this.audioCtx = null;
+    this.ringbackInterval = null;
+    this.incomingInterval = null;
+    this.activeNodes = [];
+  }
+
+  init() {
+    if (!this.audioCtx) {
+      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (this.audioCtx.state === "suspended") {
+      this.audioCtx.resume();
+    }
+  }
+
+  // Dial tone for caller ("trun trun" sound on repeat)
+  playTrunTrun() {
+    this.stopAll();
+    this.init();
+
+    const playPulse = () => {
+      if (!this.audioCtx) return;
+      if (this.audioCtx.state === "suspended") {
+        this.audioCtx.resume();
+      }
+      const now = this.audioCtx.currentTime;
+
+      // Pulse 1: "trun" (mixed frequencies for realistic phone dial tone sound)
+      this.createDualTone(400, 450, now, 0.35);
+
+      // Pulse 2: "trun" (after 0.5s)
+      this.createDualTone(400, 450, now + 0.5, 0.35);
+    };
+
+    playPulse();
+    this.ringbackInterval = setInterval(playPulse, 2600);
+  }
+
+  createDualTone(f1, f2, startTime, duration) {
+    if (!this.audioCtx) return;
+    try {
+      const osc1 = this.audioCtx.createOscillator();
+      const osc2 = this.audioCtx.createOscillator();
+      const gainNode = this.audioCtx.createGain();
+
+      osc1.frequency.setValueAtTime(f1, startTime);
+      osc2.frequency.setValueAtTime(f2, startTime);
+
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.08, startTime + 0.05); // pleasant low volume
+      gainNode.gain.setValueAtTime(0.08, startTime + duration - 0.05);
+      gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(this.audioCtx.destination);
+
+      osc1.start(startTime);
+      osc2.start(startTime);
+      osc1.stop(startTime + duration);
+      osc2.stop(startTime + duration);
+
+      this.activeNodes.push(osc1, osc2, gainNode);
+    } catch (e) {
+      console.warn("Could not create synthesized dial tone node:", e);
+    }
+  }
+
+  // Ringtone for receiver (incoming call chime)
+  playIncomingRing() {
+    this.stopAll();
+    this.init();
+
+    const playRing = () => {
+      if (!this.audioCtx) return;
+      if (this.audioCtx.state === "suspended") {
+        this.audioCtx.resume();
+      }
+      const now = this.audioCtx.currentTime;
+
+      // WhatsApp-style electronic chime melody
+      this.createMelodicRing(now, 0.35, 880);
+      this.createMelodicRing(now + 0.45, 0.35, 980);
+    };
+
+    playRing();
+    this.incomingInterval = setInterval(playRing, 2200);
+  }
+
+  createMelodicRing(startTime, duration, freq) {
+    if (!this.audioCtx) return;
+    try {
+      const osc = this.audioCtx.createOscillator();
+      const gainNode = this.audioCtx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.08, startTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+      osc.connect(gainNode);
+      gainNode.connect(this.audioCtx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+
+      this.activeNodes.push(osc, gainNode);
+    } catch (e) {
+      console.warn("Could not create synthesized ringtone node:", e);
+    }
+  }
+
+  stopAll() {
+    if (this.ringbackInterval) {
+      clearInterval(this.ringbackInterval);
+      this.ringbackInterval = null;
+    }
+    if (this.incomingInterval) {
+      clearInterval(this.incomingInterval);
+      this.incomingInterval = null;
+    }
+    this.activeNodes.forEach(node => {
+      try {
+        node.disconnect();
+      } catch (e) {}
+    });
+    this.activeNodes = [];
+  }
+}
+
+const callSynth = new CallSoundSynthesizer();
+
 const CallContext = createContext(null);
 
 export const useCall = () => useContext(CallContext);
@@ -82,6 +218,7 @@ export function CallProvider({ children }) {
 
   const cleanUpAllCallConnections = () => {
     console.log("WebRTC: Cleaning up all connections");
+    callSynth.stopAll();
     Object.keys(peerConnectionsRef.current).forEach((socketId) => {
       const pc = peerConnectionsRef.current[socketId];
       if (pc) {
@@ -278,6 +415,11 @@ export function CallProvider({ children }) {
 
     await startLocalStream(type);
 
+    const isOnline = partnerUser.isGroup || partnerUser.isOnline;
+    if (isOnline) {
+      callSynth.playTrunTrun();
+    }
+
     socket.emit("dm:call:invite", {
       recipientId: partnerUser._id || partnerUser.id,
       type,
@@ -295,6 +437,7 @@ export function CallProvider({ children }) {
     if (!activeCall) return;
 
     setIsCallMinimized(false);
+    callSynth.stopAll();
     await startLocalStream(activeCall.type);
 
     const callerId = activeCall.caller?._id || activeCall.partner._id || activeCall.partner.id;
@@ -429,6 +572,7 @@ export function CallProvider({ children }) {
         return;
       }
       setIsCallMinimized(false);
+      callSynth.playIncomingRing();
       setActiveCall({
         type,
         status: "incoming",
@@ -441,6 +585,7 @@ export function CallProvider({ children }) {
     const handleCallAccepted = ({ accepterInfo, groupId, accepterSocketId }) => {
       console.log("WebRTC: handleCallAccepted from", accepterInfo?.username, "socket:", accepterSocketId);
       
+      callSynth.stopAll();
       callStartTimeRef.current = Date.now();
 
       setActiveCall((prev) => {

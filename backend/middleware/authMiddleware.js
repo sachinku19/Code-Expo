@@ -26,6 +26,15 @@ const auth_protect = async (req, res, next) => {
                     message: "User not found"
                 });
             }
+
+            // Immediately reject suspended or banned users
+            if (req.user.isSuspended || req.user.accountStatus === "Suspended" || req.user.accountStatus === "Permanently Banned") {
+                return res.status(401).json({
+                    success: false,
+                    message: "Access Denied: Your account has been suspended or permanently banned."
+                });
+            }
+
             return next();
         } else {
             return res.status(401).json({
