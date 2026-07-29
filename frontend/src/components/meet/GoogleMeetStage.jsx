@@ -26,6 +26,22 @@ const getAvatarUrl = (avatar) => {
   return null;
 };
 
+function PersistentRemoteAudio({ stream }) {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (audioRef.current && stream) {
+      if (audioRef.current.srcObject !== stream) {
+        audioRef.current.srcObject = stream;
+      }
+      audioRef.current.play().catch(() => {});
+    }
+  }, [stream]);
+
+  if (!stream) return null;
+  return <audio ref={audioRef} autoPlay playsInline style={{ display: "none" }} />;
+}
+
 function RemoteVideoTile({ member, isSpeaking, initial }) {
   const videoRef = useRef(null);
   const avatarUrl = getAvatarUrl(member.avatar);
@@ -63,6 +79,7 @@ function RemoteVideoTile({ member, isSpeaking, initial }) {
         ref={setVideoRef}
         autoPlay
         playsInline
+        muted
         className="ce-meet-tile-video"
         style={{
           display: hasVideo ? "block" : "none",
@@ -556,6 +573,10 @@ const GoogleMeetStage = ({
   const gridCount = allMembers.length;
   const gridClass = `grid-${Math.min(gridCount, 9)}`;
 
+  const remoteAudioElements = allMembers
+    .filter((m) => !m.isLocal && m.stream)
+    .map((m) => <PersistentRemoteAudio key={m.userId || m.socketId} stream={m.stream} />);
+
   const pinnedMember = allMembers.find((m) => String(m.userId) === String(pinnedUserId));
   const unpinnedMembers = allMembers.filter((m) => String(m.userId) !== String(pinnedUserId));
 
@@ -666,6 +687,7 @@ const GoogleMeetStage = ({
         onMouseDown={handlePillMouseDown}
         onTouchStart={handlePillTouchStart}
       >
+        {remoteAudioElements}
         <div className="ce-meet-minimized-info" onClick={() => setIsMinimized(false)}>
           <div className="ce-meet-live-dot" />
           <span className="ce-meet-minimized-title">Meeting ({allMembers.length})</span>
@@ -724,6 +746,7 @@ const GoogleMeetStage = ({
 
   return (
     <div className="ce-meet-stage-overlay">
+      {remoteAudioElements}
       {/* Top Stage Header */}
       <div className="ce-meet-stage-header">
         <div className="ce-meet-room-title">
