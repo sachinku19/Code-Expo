@@ -331,10 +331,10 @@ const socketHandler = (io) => {
     // GOOGLE MEET ROOM SOCKET EVENTS
     // ===================================
     socket.on("meet:join", ({ roomId, userId, username, avatar, isMicOn, isVideoOn }) => {
+      console.log(`[MEET_OBSERVER][${new Date().toISOString()}] meet:join - Socket: ${socket.id}, User: ${userId} (${username}), Room: ${roomId}, Mic: ${isMicOn}, Cam: ${isVideoOn}`);
       if (!roomId || !userId) return;
       socket.join(roomId);
-      if (!meetUsers[roomId]) meetUsers[roomId] = [];
-      const userIndex = meetUsers[roomId].findIndex((u) => u.socketId === socket.id);
+      if (!meetUsers[roomId]) meetUsers[roomId] = {};
       const userEntry = {
         userId,
         username,
@@ -343,26 +343,24 @@ const socketHandler = (io) => {
         isMicOn: isMicOn !== undefined ? isMicOn : true,
         isVideoOn: isVideoOn !== undefined ? isVideoOn : true
       };
-      if (userIndex !== -1) {
-        meetUsers[roomId][userIndex] = userEntry;
-      } else {
-        meetUsers[roomId].push(userEntry);
-      }
-      io.to(roomId).emit("meet:update-users", meetUsers[roomId]);
+      meetUsers[roomId][socket.id] = userEntry;
+      io.to(roomId).emit("meet:update-users", Object.values(meetUsers[roomId]));
     });
 
     socket.on("meet:leave", ({ roomId, userId }) => {
+      console.log(`[MEET_OBSERVER][${new Date().toISOString()}] meet:leave - Socket: ${socket.id}, User: ${userId}, Room: ${roomId}`);
       if (!roomId || !meetUsers[roomId]) return;
-      meetUsers[roomId] = meetUsers[roomId].filter((u) => u.socketId !== socket.id);
-      if (meetUsers[roomId].length === 0) {
+      delete meetUsers[roomId][socket.id];
+      if (Object.keys(meetUsers[roomId]).length === 0) {
         delete meetUsers[roomId];
         io.to(roomId).emit("meet:update-users", []);
       } else {
-        io.to(roomId).emit("meet:update-users", meetUsers[roomId]);
+        io.to(roomId).emit("meet:update-users", Object.values(meetUsers[roomId]));
       }
     });
 
     socket.on("meet:signal", ({ targetSocketId, signalData, signalType, fromUserId }) => {
+      console.log(`[MEET_OBSERVER][${new Date().toISOString()}] meet:signal - From Socket: ${socket.id}, Target Socket: ${targetSocketId}, Type: ${signalType}`);
       if (targetSocketId) {
         io.to(targetSocketId).emit("meet:signal", {
           fromSocketId: socket.id,
@@ -374,14 +372,13 @@ const socketHandler = (io) => {
     });
 
     socket.on("meet:state-change", ({ roomId, userId, isMicOn, isVideoOn, isHandRaised }) => {
-      if (!roomId || !meetUsers[roomId]) return;
-      const userObj = meetUsers[roomId].find((u) => u.socketId === socket.id || String(u.userId) === String(userId));
-      if (userObj) {
-        userObj.isMicOn = isMicOn;
-        userObj.isVideoOn = isVideoOn;
-        userObj.isHandRaised = isHandRaised;
-        io.to(roomId).emit("meet:update-users", meetUsers[roomId]);
-      }
+      console.log(`[MEET_OBSERVER][${new Date().toISOString()}] meet:state-change - Socket: ${socket.id}, User: ${userId}, Room: ${roomId}, Mic: ${isMicOn}, Cam: ${isVideoOn}, Hand: ${isHandRaised}`);
+      if (!roomId || !meetUsers[roomId] || !meetUsers[roomId][socket.id]) return;
+      const userObj = meetUsers[roomId][socket.id];
+      userObj.isMicOn = isMicOn;
+      userObj.isVideoOn = isVideoOn;
+      userObj.isHandRaised = isHandRaised;
+      io.to(roomId).emit("meet:update-users", Object.values(meetUsers[roomId]));
     });
 
     socket.on("join-room", async ({
@@ -1924,17 +1921,15 @@ const socketHandler = (io) => {
 
       // Clean up Google Meet active participants on disconnect
       Object.keys(meetUsers).forEach((rId) => {
-        if (meetUsers[rId] && Array.isArray(meetUsers[rId])) {
-          const initialLen = meetUsers[rId].length;
-          meetUsers[rId] = meetUsers[rId].filter(
-            (u) => u.socketId !== socket.id && String(u.userId) !== String(socket.userId)
-          );
-          if (meetUsers[rId].length !== initialLen) {
-            if (meetUsers[rId].length === 0) {
+        if (meetUsers[rId] && typeof meetUsers[rId] === "object" && !Array.isArray(meetUsers[rId])) {
+          const hadSocket = socket.id in meetUsers[rId];
+          if (hadSocket) {
+            delete meetUsers[rId][socket.id];
+            if (Object.keys(meetUsers[rId]).length === 0) {
               delete meetUsers[rId];
               io.to(rId).emit("meet:update-users", []);
             } else {
-              io.to(rId).emit("meet:update-users", meetUsers[rId]);
+              io.to(rId).emit("meet:update-users", Object.values(meetUsers[rId]));
             }
           }
         }
