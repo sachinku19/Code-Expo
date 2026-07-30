@@ -977,8 +977,12 @@ const reportUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "You cannot report yourself." });
     }
 
-    if (!reason || !details || !evidenceType) {
-      return res.status(400).json({ success: false, message: "Reason, details and evidence type are required." });
+    const normalizedType = (evidenceType || "PROFILE").toUpperCase();
+    const validTypes = ["ROOM", "MESSAGE", "POST", "COMMENT", "PROFILE", "OTHER"];
+    const finalEvidenceType = validTypes.includes(normalizedType) ? normalizedType : "PROFILE";
+
+    if (!reason || !details || !details.trim()) {
+      return res.status(400).json({ success: false, message: "Reason category and details are required." });
     }
 
     // Rate Limiting / Fraud Prevention: Limit reports from a single user to 5 per hour
@@ -999,14 +1003,14 @@ const reportUser = async (req, res) => {
     const existingReport = await Report.findOne({
       reporter: reporterId,
       reportedUser: reportedUserId,
-      evidenceType,
+      evidenceType: finalEvidenceType,
       evidenceId: evidenceId || ""
     });
 
     if (existingReport) {
       return res.status(400).json({
         success: false,
-        message: "You have already submitted a report for this specific item/user."
+        message: "You have already submitted a report for this user."
       });
     }
 
@@ -1014,8 +1018,8 @@ const reportUser = async (req, res) => {
       reporter: reporterId,
       reportedUser: reportedUserId,
       reason,
-      details,
-      evidenceType,
+      details: details.trim(),
+      evidenceType: finalEvidenceType,
       evidenceId: evidenceId || "",
       status: "pending"
     });

@@ -8,7 +8,7 @@ export default function ReportUserModal({
   isOpen,
   onClose,
   reportedUser,
-  evidenceType,
+  evidenceType = "PROFILE",
   evidenceId = "",
   addToast
 }) {
