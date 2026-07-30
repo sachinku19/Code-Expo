@@ -928,6 +928,41 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
     }
   };
 
+  // Touch Event Handlers for Mobile & Tablet Touchscreens
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      const touch = e.touches[0];
+      const syntheticEvent = {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        button: 0,
+        preventDefault: () => {
+          if (e.cancelable) e.preventDefault();
+        }
+      };
+      handleMouseDown(syntheticEvent);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      if (e.cancelable) e.preventDefault();
+      const touch = e.touches[0];
+      const syntheticEvent = {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        preventDefault: () => {
+          if (e.cancelable) e.preventDefault();
+        }
+      };
+      handleMouseMove(syntheticEvent);
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    handleMouseUp(e);
+  };
+
   const syncBoardState = (newElements, targetIndex = currentSlideIndex) => {
     const updatedSlides = [...slides];
     updatedSlides[targetIndex] = { ...updatedSlides[targetIndex], elements: newElements };
@@ -1554,6 +1589,11 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        style={{ touchAction: "none" }}
       />
 
       {/* 2. Collaborative pointers */}

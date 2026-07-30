@@ -144,6 +144,20 @@ function Editor() {
 
   const { roomId } = useParams();
 
+  // Mobile Screen & Tab State
+  const [isMobileScreen, setIsMobileScreen] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+  );
+  const [mobileTab, setMobileTab] = useState("editor");
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth <= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsDropdownOpen, setNotificationsDropdownOpen] = useState(false);
 
@@ -380,6 +394,11 @@ function Editor() {
 
   const handleFileSelect = async (fileId, fileInfo = null) => {
     try {
+      if (isMobileScreen) {
+        setMobileTab("editor");
+        setLeftSidebarCollapsed(true);
+      }
+
       // 1. Save current code in tabs before switching away
       if (activeFileIdRef.current) {
         setTabs((prev) =>
@@ -1466,6 +1485,8 @@ function Editor() {
   const [roomParticipantSearchOpen, setRoomParticipantSearchOpen] = useState(false);
   const [roomParticipantSearchQuery, setRoomParticipantSearchQuery] = useState("");
   const [roomParticipantsExpanded, setRoomParticipantsExpanded] = useState(false);
+  const [mobileOnlineDropdownOpen, setMobileOnlineDropdownOpen] = useState(false);
+  const [mobileConnectedSearchQuery, setMobileConnectedSearchQuery] = useState("");
   const [deleteConfirmMsgId, setDeleteConfirmMsgId] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
   const [whiteboardActivities, setWhiteboardActivities] = useState([]);
@@ -1726,9 +1747,6 @@ function Editor() {
       alert(error.response?.data?.message || error.message);
     }
   };
-
-  // Mobile tab select state
-  const [mobileTab, setMobileTab] = useState("editor"); // 'editor' | 'whiteboard' | 'chat' | 'console' | 'participants'
 
   const { resolvedTheme: editorTheme, setTheme: setGlobalTheme } = useTheme();
   const [editorFontSize, setEditorFontSize] = useState(
@@ -4859,12 +4877,12 @@ function Editor() {
                         }
                         options={{
                           readOnly: isEditorReadOnly,
-                          fontSize: editorFontSize,
+                          fontSize: isMobileScreen ? Math.min(editorFontSize, 13) : editorFontSize,
                           fontFamily: editorFontFamily,
                           mouseWheelZoom: true,
-                          minimap: { enabled: editorShowMinimap },
+                          minimap: { enabled: !isMobileScreen && editorShowMinimap },
                           tabSize: editorTabSize,
-                          wordWrap: editorWordWrap,
+                          wordWrap: isMobileScreen ? "on" : editorWordWrap,
                           lineNumbers: editorLineNumbers,
                           quickSuggestions: editorSuggestions === "disabled" ? false : { other: true, comments: true, strings: true },
                           suggestOnTriggerCharacters: editorSuggestions !== "disabled",
@@ -5169,15 +5187,188 @@ function Editor() {
             <aside className="ce-right-sidebar">
               <div className="right-sidebar-content">
 
+                {/* Mobile Only Chat Top Header Bar: Connected status & User avatar dropdown */}
+                <div className="ce-mobile-chat-header">
+                  <div
+                    className="ce-mobile-chat-status"
+                    onClick={() => setMobileOnlineDropdownOpen(!mobileOnlineDropdownOpen)}
+                    style={{ cursor: "pointer" }}
+                    title={mobileOnlineDropdownOpen ? "Hide online connected users" : "View online connected users"}
+                  >
+                    <span className="ce-status-dot online" />
+                    <span className="ce-status-text">Connected</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="ce-mobile-user-pill-btn"
+                    onClick={() => setMobileOnlineDropdownOpen(!mobileOnlineDropdownOpen)}
+                    title={mobileOnlineDropdownOpen ? "Hide online connected users" : "View online connected users"}
+                  >
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt={user?.username} className="ce-user-pill-avatar" />
+                    ) : (
+                      <div className="ce-user-pill-initial" style={{ backgroundColor: getCursorColor(user?.username) }}>
+                        {user?.username?.charAt(0)?.toUpperCase() || "U"}
+                      </div>
+                    )}
+                    <ChevronDown
+                      size={14}
+                      style={{
+                        transform: mobileOnlineDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: "transform 0.2s ease"
+                      }}
+                    />
+                  </button>
+                </div>
+
+                {/* Mobile Connected Users Dropdown (Phone Mode Only) */}
+                {mobileOnlineDropdownOpen && (
+                  <div className="participants-dropdown-container ce-mobile-connected-dropdown" style={{ margin: "0 10px 10px 10px", borderRadius: "10px", border: "1px solid var(--ce-border)" }}>
+                    <div className="section-header-row" style={{ padding: "6px 10px", borderBottom: "1px solid var(--ce-border)" }}>
+                      <div className="participants-title-group">
+                        <span className="presence-badge online" style={{ width: "8px", height: "8px", position: "static", transform: "none", display: "inline-block" }} />
+                        <h3 className="participants-heading" style={{ fontSize: "0.72rem" }}>ONLINE CONNECTED USERS</h3>
+                        <span className="participants-count-pill">
+                          {(room?.participants || []).filter((p) => p?.user && users.some((u) => String(u.userId) === String(p.user._id || p.user))).length}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="search-box-clear"
+                        onClick={() => setMobileOnlineDropdownOpen(false)}
+                        title="Close"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+
+                    {/* Integrated Search Input Bar */}
+                    <div className="room-participant-search-box" style={{ margin: "8px" }}>
+                      <Search size={13} className="search-box-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search online users..."
+                        value={mobileConnectedSearchQuery}
+                        onChange={(e) => setMobileConnectedSearchQuery(e.target.value)}
+                        className="search-box-input"
+                        autoFocus
+                      />
+                      {mobileConnectedSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setMobileConnectedSearchQuery("")}
+                          className="search-box-clear"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Detailed Online Connected Users List */}
+                    <div className="users-list-pane" style={{ maxHeight: "200px", overflowY: "auto", padding: "0 8px 8px 8px" }}>
+                      {(() => {
+                        const allRoomParts = room?.participants || [];
+                        const onlineFiltered = allRoomParts.filter((p) => {
+                          if (!p || !p.user) return false;
+                          const targetUserId = p.user._id || p.user;
+                          const isOnline = users.some((u) => String(u.userId) === String(targetUserId));
+                          const uname = (p.user.username || "").toLowerCase();
+                          return isOnline && uname.includes(mobileConnectedSearchQuery.toLowerCase());
+                        });
+
+                        if (onlineFiltered.length === 0) {
+                          return (
+                            <div style={{ padding: "12px 8px", textAlign: "center", fontSize: "0.75rem", color: "var(--ce-text-muted)" }}>
+                              {mobileConnectedSearchQuery ? `No online users matching "${mobileConnectedSearchQuery}"` : "No connected users online"}
+                            </div>
+                          );
+                        }
+
+                        return onlineFiltered.map((p) => {
+                          if (!p || !p.user) return null;
+                          const targetUserId = p.user._id || p.user;
+                          const isSelf = String(targetUserId) === String(user?.id || user?._id);
+                          const isTargetPrivileged = p.role === "OWNER" || p.role === "MODERATOR";
+                          const canIControlTarget = (currentUserRole === "OWNER" || currentUserRole === "MODERATOR") && !isTargetPrivileged && !isSelf;
+
+                          return (
+                            <div
+                              key={p._id || targetUserId}
+                              className={`user-pane-item ${canIControlTarget ? "manageable" : ""}`}
+                              onContextMenu={(e) => handleContextMenu(e, p)}
+                              onClick={(e) => handleUserRowClick(e, p)}
+                              style={{ cursor: canIControlTarget ? "pointer" : "default" }}
+                            >
+                              <div className="user-avatar-wrapper">
+                                {p.user.avatar ? (
+                                  <img src={p.user.avatar} alt={p.user.username} className="user-pane-avatar" style={{ objectFit: "cover" }} />
+                                ) : (
+                                  <div className="user-pane-avatar" style={{ backgroundColor: getCursorColor(p.user.username) }}>
+                                    {p.user.username?.charAt(0)?.toUpperCase() || "U"}
+                                  </div>
+                                )}
+                                <span className="presence-badge online" title="Online" />
+                              </div>
+
+                              <div className="user-pane-info">
+                                <div className="user-pane-row">
+                                  <span className="username-text" title={p.user.username}>{p.user.username}</span>
+                                  {isSelf && <span className="label-you">you</span>}
+                                </div>
+                                <div className="user-pane-row">
+                                  {p.role === "OWNER" && <span className="role-badge owner-badge">👑 Owner</span>}
+                                  {p.role === "MODERATOR" && <span className="role-badge moderator-badge">🛡️ Mod</span>}
+                                  {p.role === "MEMBER" && <span className="role-badge member-badge">👤 Member</span>}
+                                  {p.role === "VIEWER" && <span className="role-badge viewer-badge">👀 Viewer</span>}
+                                </div>
+                              </div>
+
+                              <div className="user-pane-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                {(p.isSpeaking || (!p.isMuted && p.isAudioActive)) && (
+                                  <div className="ce-audio-wave-bars" title="Speaking">
+                                    <span className="wave-bar" />
+                                    <span className="wave-bar" />
+                                    <span className="wave-bar" />
+                                  </div>
+                                )}
+                                {p.isMuted && <MicOff size={12} className="muted-icon" title="Muted" />}
+                                {canIControlTarget && (
+                                  <button
+                                    type="button"
+                                    className="user-row-more-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleContextMenu(e, p);
+                                    }}
+                                    title="User options"
+                                  >
+                                    <MoreVertical size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
+
                 {/* Section 1: Room Participants */}
                 <section className="ce-right-section participants-section-card">
-                  <div className="section-header-row">
+                  <div
+                    className="section-header-row"
+                    onClick={() => setRoomParticipantsExpanded(!roomParticipantsExpanded)}
+                    style={{ cursor: "pointer" }}
+                    title={roomParticipantsExpanded ? "Click to collapse online participants" : "Click to view online participants"}
+                  >
                     <div className="participants-title-group">
                       <h3 className="participants-heading">PARTICIPANTS</h3>
                       <span className="participants-count-pill">{(room?.participants || []).length}</span>
                     </div>
 
-                    <div className="participants-header-actions">
+                    <div className="participants-header-actions" onClick={(e) => e.stopPropagation()}>
                       {/* Overlapping 3-User Avatar Bubble Stack Toggle */}
                       <div
                         className={`room-avatar-stack-pill ${roomParticipantsExpanded ? "active" : ""}`}
@@ -5436,8 +5627,8 @@ function Editor() {
                         onClick={() => setChatTab("private")}
                       >
                         <span>Direct Message</span>
-                    </button>
-                  </div>
+                      </button>
+                    </div>
                   </div>
 
                   {chatTab === "private" && (
@@ -5768,18 +5959,20 @@ function Editor() {
             className="floating-ai-assistant-drawer"
             style={{
               position: "fixed",
-              bottom: "55px",
-              right: "20px",
-              width: "390px",
-              height: "560px",
-              maxHeight: "calc(100vh - 90px)",
+              bottom: isMobileScreen ? "56px" : "55px",
+              right: isMobileScreen ? "0px" : "20px",
+              top: isMobileScreen ? "52px" : "auto",
+              left: isMobileScreen ? "0px" : "auto",
+              width: isMobileScreen ? "100vw" : "390px",
+              height: isMobileScreen ? "auto" : "560px",
+              maxHeight: isMobileScreen ? "calc(100vh - 108px)" : "calc(100vh - 90px)",
               zIndex: 99999,
-              borderRadius: "16px",
+              borderRadius: isMobileScreen ? "0px" : "16px",
               boxShadow: "0 20px 50px rgba(0,0,0,0.85), 0 0 30px rgba(99,102,241,0.4)",
-              border: "1px solid rgba(99,102,241,0.5)",
+              border: isMobileScreen ? "none" : "1px solid rgba(99,102,241,0.5)",
               overflow: "hidden",
               background: "#0d0d14",
-              transform: `translate(${aiPanelPos.x}px, ${aiPanelPos.y}px)`,
+              transform: isMobileScreen ? "none" : `translate(${aiPanelPos.x}px, ${aiPanelPos.y}px)`,
               transition: isAiDragging ? "none" : "transform 0.1s ease-out"
             }}
           >
@@ -5801,30 +5994,6 @@ function Editor() {
             />
           </div>
         )}
-
-        {/* 8. MOBILE VIEW NAVIGATION TABS */}
-        <footer className="ce-mobile-tabs-nav">
-          <button className={`mobile-tab-btn ${mobileTab === "editor" ? "active" : ""}`} onClick={() => setMobileTab("editor")}>
-            <Code2 size={16} />
-            <span>Editor</span>
-          </button>
-          <button className={`mobile-tab-btn ${mobileTab === "whiteboard" ? "active" : ""}`} onClick={() => setMobileTab("whiteboard")}>
-            <Palette size={16} />
-            <span>Board</span>
-          </button>
-          <button className={`mobile-tab-btn ${mobileTab === "chat" ? "active" : ""}`} onClick={() => setMobileTab("chat")}>
-            <MessageSquare size={16} />
-            <span>Chat</span>
-          </button>
-          <button className={`mobile-tab-btn ${mobileTab === "console" ? "active" : ""}`} onClick={() => setMobileTab("console")}>
-            <Terminal size={16} />
-            <span>Console</span>
-          </button>
-          <button className={`mobile-tab-btn ${mobileTab === "participants" ? "active" : ""}`} onClick={() => setMobileTab("participants")}>
-            <Users size={16} />
-            <span>Users</span>
-          </button>
-        </footer>
 
         {/* Render notifications toast */}
         {notification && (
@@ -6636,6 +6805,108 @@ function Editor() {
           initialVideoOn={meetVideoOn}
           socket={socket}
         />
+
+        {/* MOBILE BOTTOM NAVIGATION BAR */}
+        {isMobileScreen && (
+          <nav className="ce-mobile-nav">
+            <button
+              type="button"
+              className={`mobile-nav-btn ${mobileTab === "editor" ? "active" : ""}`}
+              onClick={() => {
+                setMobileTab("editor");
+                changeLayoutMode("editor");
+                setLeftSidebarCollapsed(true);
+                setIsConsoleOpen(false);
+              }}
+            >
+              <Code2 size={18} />
+              <span>Code</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-nav-btn ${mobileTab === "files" ? "active" : ""}`}
+              onClick={() => {
+                setMobileTab("files");
+                setLeftActiveTab("files");
+                setLeftSidebarCollapsed(false);
+                setIsConsoleOpen(false);
+              }}
+            >
+              <FolderOpen size={18} />
+              <span>Files</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-nav-btn ${mobileTab === "console" ? "active" : ""}`}
+              onClick={() => {
+                setMobileTab("console");
+                setIsConsoleOpen(true);
+                setConsoleTab("output");
+                setLeftSidebarCollapsed(true);
+              }}
+            >
+              <Terminal size={18} />
+              <span>Console</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-nav-btn ${mobileTab === "chat" ? "active" : ""}`}
+              onClick={() => {
+                setMobileTab("chat");
+                setRightSidebarCollapsed(false);
+                setLeftSidebarCollapsed(true);
+                setIsConsoleOpen(false);
+                setRoomParticipantsExpanded(true);
+              }}
+            >
+              <MessageSquare size={18} />
+              <span>Chat</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-nav-btn ${mobileTab === "whiteboard" ? "active" : ""}`}
+              onClick={() => {
+                setMobileTab("whiteboard");
+                changeLayoutMode("whiteboard");
+                setLeftSidebarCollapsed(true);
+                setIsConsoleOpen(false);
+              }}
+            >
+              <Palette size={18} />
+              <span>Board</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-nav-btn ${mobileTab === "meeting" ? "active" : ""}`}
+              onClick={() => {
+                setMobileTab("meeting");
+                handleOpenMeetLobby();
+              }}
+            >
+              <Video size={18} />
+              <span>Meeting</span>
+            </button>
+          </nav>
+        )}
+
+        {/* MOBILE FLOATING RUN ACTION BUTTON */}
+        {isMobileScreen && mobileTab === "editor" && (
+          <button
+            type="button"
+            className="ce-mobile-fab-run"
+            onClick={() => {
+              handleRunCode();
+              setMobileTab("console");
+              setIsConsoleOpen(true);
+              setConsoleTab("output");
+            }}
+            disabled={isTerminalExecuting}
+            title="Run Code"
+          >
+            {isTerminalExecuting ? <Loader2 size={18} className="ce-spin" /> : <Play size={18} />}
+            <span>Run</span>
+          </button>
+        )}
       </div>
     </MainLayout>
   );

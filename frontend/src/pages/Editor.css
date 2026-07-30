@@ -208,6 +208,11 @@
   gap: 8px;
 }
 
+/* Mobile Only Chat Top Header Bar - Hide by default on desktop view */
+.ce-mobile-chat-header {
+  display: none !important;
+}
+
 .notes-mode-header {
   display: flex;
   justify-content: space-between;
@@ -1191,6 +1196,7 @@ body.light .search-box-input:focus {
     transform: scaleY(0.25);
     opacity: 0.4;
   }
+
   100% {
     transform: scaleY(1);
     opacity: 1;
@@ -2149,6 +2155,37 @@ body.light .delete-card-btn.cancel {
     color: var(--ce-accent);
   }
 
+  /* 0. FILES & SETTINGS TABS (Left Sidebar Drawer) */
+  .ce-editor-page.mobile-tab-files .ce-left-sidebar,
+  .ce-editor-page.mobile-tab-settings .ce-left-sidebar {
+    display: flex !important;
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 99990 !important;
+    background: var(--ce-bg-drawer, #07070a) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7) !important;
+  }
+
+  .ce-editor-page.mobile-tab-files .ce-left-sidebar .sidebar-drawer,
+  .ce-editor-page.mobile-tab-settings .ce-left-sidebar .sidebar-drawer {
+    display: flex !important;
+    flex: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
   /* 1. EDITOR TAB */
   .ce-editor-page.mobile-tab-editor .ce-main-workspace {
     display: flex !important;
@@ -2184,9 +2221,77 @@ body.light .delete-card-btn.cancel {
   /* 3. CHAT TAB */
   .ce-editor-page.mobile-tab-chat .ce-right-sidebar-wrapper {
     display: flex !important;
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     width: 100% !important;
+    max-width: 100vw !important;
     height: 100% !important;
-    z-index: 20 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 99990 !important;
+    background: var(--ce-bg-drawer, #07070a) !important;
+  }
+
+  .ce-editor-page.mobile-tab-chat .ce-mobile-chat-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 14px !important;
+    background: var(--ce-bg-drawer, #07070a) !important;
+    border-bottom: 1px solid var(--ce-border) !important;
+  }
+
+  .ce-mobile-chat-status {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .ce-status-dot.online {
+    width: 10px !important;
+    height: 10px !important;
+    border-radius: 50% !important;
+    background: #10b981 !important;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.6) !important;
+  }
+
+  .ce-status-text {
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    color: var(--ce-text, #e2e8f0) !important;
+  }
+
+  .ce-mobile-user-pill-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 3px 10px 3px 4px !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.12)) !important;
+    color: var(--ce-text-muted, #94a3b8) !important;
+    cursor: pointer !important;
+  }
+
+  .ce-user-pill-avatar,
+  .ce-user-pill-initial {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+  }
+
+  .ce-user-pill-initial {
+    background: #38bdf8 !important;
+    color: #ffffff !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .ce-editor-page.mobile-tab-chat .ce-right-sidebar-wrapper.collapsed {
@@ -2206,7 +2311,8 @@ body.light .delete-card-btn.cancel {
   }
 
   .ce-editor-page.mobile-tab-chat .ce-right-sidebar .ce-right-section {
-    display: none !important;
+    display: block !important;
+    border-bottom: 1px solid var(--ce-border) !important;
   }
 
   .ce-editor-page.mobile-tab-chat .ce-right-sidebar .chat-section-wrapper {
@@ -2318,8 +2424,8 @@ body.light .delete-card-btn.cancel {
   }
 
   .ce-editor-page {
-    height: calc(100vh - 56px - 56px) !important;
-    max-height: calc(100vh - 56px - 56px) !important;
+    height: calc(100vh - 52px) !important;
+    max-height: calc(100vh - 52px) !important;
   }
 }
 
@@ -6259,23 +6365,29 @@ body.light .monaco-editor .current-line {
 /* Responsive bottom console layout (VS Code inspired) */
 @media (max-width: 992px) {
   .console-tab-btn span {
-    display: none !important; /* Hide labels, show only icons like VS Code */
+    display: none !important;
+    /* Hide labels, show only icons like VS Code */
   }
+
   .console-tab-btn {
     padding: 0 10px;
   }
 }
 
 @media (max-width: 768px) {
+
   .ce-btn-ai-copilot span,
   .ce-btn-save span,
   .ce-btn-run span,
   .running-stop-btn span {
-    display: none !important; /* Hide button text labels on small screens */
+    display: none !important;
+    /* Hide button text labels on small screens */
   }
+
   .console-actions {
     gap: 5px;
   }
+
   .ce-btn-ai-copilot,
   .ce-btn-save,
   .ce-btn-run,
@@ -6294,13 +6406,16 @@ body.light .monaco-editor .current-line {
     padding: 0 4px;
     gap: 4px;
   }
+
   .console-tabs {
     gap: 2px;
   }
+
   .console-tab-btn {
     padding: 0 6px;
     border-right: none;
   }
+
   .console-actions {
     gap: 3px;
   }
@@ -6343,6 +6458,7 @@ body.light .monaco-editor .current-line {
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -6388,10 +6504,256 @@ body.light .monaco-editor .current-line {
 }
 
 @keyframes ce-spinner-fade {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE & PHONE CODING OVERHAUL
+   ========================================================================== */
+
+/* Fixed Bottom Mobile Navigation Bar */
+.ce-mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--ce-bg-drawer, #0b0b0f);
+  border-top: 1px solid var(--ce-border, rgba(255, 255, 255, 0.1));
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  padding: 0 4px;
+}
+
+.light .ce-mobile-nav {
+  background: #ffffff;
+  border-top-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--ce-text-muted, #8e9aa9);
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-weight: 600;
+  gap: 2px;
+  flex: 1;
+  transition: all 0.15s ease;
+}
+
+.mobile-nav-btn.active {
+  color: var(--ce-primary, #aa3bff);
+  background: rgba(170, 59, 255, 0.12);
+  font-weight: 700;
+}
+
+.light .mobile-nav-btn.active {
+  color: var(--ce-primary, #8b5cf6);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+/* Floating Action Button (FAB) for Run Code on Mobile */
+.ce-mobile-fab-run {
+  position: fixed;
+  bottom: 68px;
+  right: 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  z-index: 9998;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ce-mobile-fab-run:active {
+  transform: scale(0.95);
+}
+
+.ce-mobile-fab-run:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.ce-spin {
+  animation: ce-spinner-spin 0.8s linear infinite;
+}
+
+/* Mobile Media Queries (<768px) */
+@media (max-width: 768px) {
+  .ce-editor-page {
+    height: calc(100vh - 52px) !important;
+    max-height: calc(100vh - 52px) !important;
+    padding-bottom: 56px !important;
+    box-sizing: border-box !important;
+  }
+
+  .ce-editor-body {
+    flex-direction: column !important;
+  }
+
+  .ce-left-sidebar {
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 99990 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .ce-left-sidebar.collapsed {
+    transform: translateX(-100%) !important;
+    width: 0 !important;
+    display: none !important;
+  }
+
+  /* Hide drawer collapse arrow buttons on mobile phone mode */
+  .drawer-close-btn,
+  .sidebar-expand-toggle-btn {
+    display: none !important;
+  }
+
+  .workspace-editor-header {
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 4px 8px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    overflow: hidden !important;
+  }
+
+  .workspace-editor-tabs {
+    flex: 1 !important;
+    max-width: calc(100vw - 90px) !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 0 !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .workspace-editor-tabs::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .workspace-editor-tabs .editor-tab {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 0.78rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .editor-controls-toolbar {
+    width: auto !important;
+    justify-content: flex-end !important;
+    gap: 6px !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Hide redundant desktop layout switcher pill and fullscreen toggle button on mobile */
+  .editor-controls-toolbar .layout-switcher-group,
+  .btn-fullscreen-toggle {
+    display: none !important;
+  }
+
+  .ce-breadcrumbs-bar {
+    padding: 4px 8px !important;
+    font-size: 0.72rem !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+
+  .ce-breadcrumbs-bar .ce-breadcrumbs-room {
+    display: none !important;
+  }
+
+  /* Hide zoom pill on mobile to keep breadcrumbs bar clean */
+  .ce-breadcrumbs-bar div[style*="borderRadius: 12px"] {
+    display: none !important;
+  }
+
+  /* Monaco Editor Mobile Adjustments */
+  .monaco-pane {
+    height: 100% !important;
+    min-height: 250px !important;
+  }
+
+  /* Terminal Console Pane Mobile Adjustments */
+  .terminal-console-pane {
+    position: fixed !important;
+    bottom: 56px !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 50vh !important;
+    max-height: 70vh !important;
+    z-index: 9980 !important;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5) !important;
+    border-top: 2px solid var(--ce-primary) !important;
+  }
+}
+
+/* Extra Small Phones (<480px) */
+@media (max-width: 480px) {
+  .editor-controls-toolbar .ce-select-box {
+    font-size: 0.72rem !important;
+    padding: 2px 4px !important;
+  }
+
+  .layout-switcher-btn span {
+    display: none !important;
+  }
+
+  .layout-switcher-btn {
+    padding: 4px 8px !important;
+  }
+
+  .ce-mobile-fab-run {
+    padding: 8px 14px;
+    font-size: 0.78rem;
   }
 }

@@ -868,6 +868,7 @@ export default function MainLayout({
   }, [location]);
 
   const handleMenuClick = (item) => {
+    setIsDrawerOpen(false);
     setLocalActiveItem(item.id);
     if (item.id === "messages") {
       fetchUnreadMessageCount();
@@ -1798,7 +1799,8 @@ export default function MainLayout({
         <div className="ce-drawer-overlay" onClick={() => setIsDrawerOpen(false)} />
       )}
 
-      {/* TABLET/MOBILE SIDE DRAWER */}
+      {/* TABLET/MOBILE SIDE DRAWER OVERLAY & SIDEBAR */}
+      <div className={`ce-drawer-overlay ${isDrawerOpen ? "open" : ""}`} onClick={() => setIsDrawerOpen(false)} />
       <aside className={`ce-drawer-sidebar ${isDrawerOpen ? "open" : ""}`}>
         <div className="drawer-header-menu">
           <Logo size={28} showText={true} className="ce-brand" />

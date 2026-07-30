@@ -2892,6 +2892,27 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
   }
 }
 
+/* Mobile Slide-Out Drawer Sidebar Overlay Backdrop */
+.ce-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 99998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.ce-drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Mobile Slide-Out Drawer Sidebar Panel */
 .ce-drawer-sidebar {
   position: fixed;
@@ -3076,4 +3097,62 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
   padding: 8px 14px 18px 14px;
   border-top: 1px solid var(--ce-border);
   flex-shrink: 0;
+}
+
+/* Mobile Responsive Overrides for Topbar & Layout */
+@media (max-width: 768px) {
+  .ce-topnav {
+    padding: 0 10px;
+    height: 52px;
+  }
+
+  .topnav-brand-container {
+    margin-right: 8px !important;
+  }
+
+  .ce-room-info {
+    max-width: 150px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ce-room-title {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.82rem;
+  }
+
+  .ce-nav-badge {
+    padding: 2px 6px;
+    font-size: 0.72rem;
+  }
+
+  .topnav-center {
+    display: none !important;
+  }
+
+  .ce-nav-avatar-group {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ce-topnav {
+    padding: 0 6px;
+  }
+
+  .ce-room-info {
+    max-width: 110px;
+  }
+
+  .ce-room-title {
+    max-width: 70px;
+  }
+
+  .ce-nav-divider {
+    margin: 0 4px;
+  }
 }
