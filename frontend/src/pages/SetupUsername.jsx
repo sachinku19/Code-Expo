@@ -4,18 +4,16 @@ import { checkUsernameAvailability, setupUsername } from "../services/userServic
 import { getUserProfile } from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
 import {
-  Terminal,
-  ShieldCheck,
-  Shield,
-  Lock,
   User,
-  AtSign,
   Check,
-  X,
   ArrowRight,
   Info,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Shield,
+  Users,
+  Zap,
+  Loader2
 } from "lucide-react";
 import "./SetupUsername.css";
 
@@ -31,7 +29,7 @@ const SetupUsername = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  
+
   const debounceTimerRef = useRef(null);
 
   useEffect(() => {
@@ -130,14 +128,14 @@ const SetupUsername = () => {
     }
 
     setStatus("checking");
-    setStatusMessage("Checking availability...");
+    setStatusMessage("Checking username availability...");
 
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const res = await checkUsernameAvailability(clean);
         if (res.available) {
           setStatus("Available");
-          setStatusMessage("Username handle is available!");
+          setStatusMessage("Great! This username is available.");
           setSuggestions([]);
         } else {
           setStatus(res.status || "Taken");
@@ -184,7 +182,7 @@ const SetupUsername = () => {
     }
   };
 
-  // Rule checks for real-time requirement indicator
+  // Rule checks
   const cleanInput = usernameInput.toLowerCase().trim();
   const ruleLength = cleanInput.length >= 3 && cleanInput.length <= 20;
   const ruleLowercase = /^[a-z0-9_]+$/.test(cleanInput) && cleanInput === cleanInput.toLowerCase();
@@ -192,145 +190,145 @@ const SetupUsername = () => {
   const ruleValidFormat = ruleLength && ruleLowercase && !cleanInput.startsWith("_") && !cleanInput.endsWith("_") && !/__/.test(cleanInput);
 
   return (
-    <div className={`setup-page-bg ${resolvedTheme}`}>
-      <div className="setup-main-card">
+    <div className={`ob-page-container ${resolvedTheme}`}>
+      <div className="ob-split-card">
 
-        {/* Left Panel: Real Developer Code Editor / Identity Preview */}
-        <div className="setup-left-panel">
-          <div className="code-editor-preview">
-            <div className="editor-window-bar">
-              <div className="window-dots">
-                <span className="dot red" />
-                <span className="dot yellow" />
-                <span className="dot green" />
+        {/* LEFT HERO SECTION */}
+        <div className="ob-hero-side">
+          <div className="ob-hero-header">
+            <img src="/logo.png" alt="CodeExpo Logo" className="ob-brand-logo-img" />
+            <span className="ob-brand-title">CodeExpo</span>
+          </div>
+
+          <div className="ob-hero-content">
+            <h1 className="ob-hero-heading">
+              Collaborate.<br />
+              Code.<br />
+              <span className="ob-purple-text">Create.</span>
+            </h1>
+            <p className="ob-hero-subtitle">
+              Real-time collaborative coding<br />
+              platform for developers,<br />
+              by developers.
+            </p>
+          </div>
+
+          {/* Floating Code Editor Window */}
+          <div className="ob-code-window-wrapper">
+            <div className="ob-code-window">
+              <div className="ob-code-header">
+                <div className="ob-window-dots">
+                  <span className="dot red" />
+                  <span className="dot yellow" />
+                  <span className="dot green" />
+                </div>
+                <span className="ob-file-name">&gt; main.js</span>
               </div>
-              <span className="window-title">identity.config.js</span>
+
+              <div className="ob-code-body">
+                <div className="line"><span className="num">1</span><span className="cmt">// Welcome to CodeExpo</span></div>
+                <div className="line"><span className="num">2</span><span className="kw">import</span> &#123; Room &#125; <span className="kw">from</span> <span className="str">"codeexpo-sdk"</span>;</div>
+                <div className="line"><span className="num">3</span></div>
+                <div className="line"><span className="num">4</span><span className="kw">const</span> room = <span className="kw">new</span> Room(&#123;</div>
+                <div className="line indent"><span className="num">5</span><span className="prop">name</span>: <span className="str">"Brainstorm"</span>,</div>
+                <div className="line indent"><span className="num">6</span><span className="prop">language</span>: <span className="str">"JavaScript"</span></div>
+                <div className="line"><span className="num">7</span>&#125;);</div>
+                <div className="line"><span className="num">8</span></div>
+                <div className="line"><span className="num">9</span>room.on(<span className="str">"code-change"</span>, (delta) =&gt; &#123;</div>
+                <div className="line indent"><span className="num">10</span>applyChanges(delta);</div>
+                <div className="line"><span className="num">11</span>&#125;);</div>
+              </div>
             </div>
 
-            <div className="editor-code-body">
-              <div className="code-line">
-                <span className="line-num">1</span>
-                <span className="code-comment">// CodeExpo Developer Identity</span>
+            {/* Floating Overlaid Badges */}
+            <div className="ob-floating-badge dev-badge">
+              <div className="badge-icon-wrap violet">
+                <Users size={15} />
               </div>
-              <div className="code-line">
-                <span className="line-num">2</span>
-                <span className="code-kw">import</span> &#123; createIdentity &#125; <span className="code-kw">from</span> <span className="code-str">"@codeexpo/core"</span>;
+              <div className="badge-text-group">
+                <span className="badge-val">12+</span>
+                <span className="badge-lbl">Developers online</span>
               </div>
-              <div className="code-line">
-                <span className="line-num">3</span>
+              <span className="online-green-dot" />
+            </div>
+
+            <div className="ob-floating-badge perf-badge">
+              <div className="badge-icon-wrap purple">
+                <Zap size={15} />
               </div>
-              <div className="code-line">
-                <span className="line-num">4</span>
-                <span className="code-kw">export default</span> createIdentity(&#123;
-              </div>
-              <div className="code-line indent">
-                <span className="line-num">5</span>
-                <span className="code-prop">displayName</span>: <span className="code-str">"{displayName || "Raviraj Kumar"}"</span>,
-              </div>
-              <div className="code-line indent highlight">
-                <span className="line-num">6</span>
-                <span className="code-prop">handle</span>: <span className="code-str">"@{usernameInput || "raviraj_kumar"}"</span>,
-              </div>
-              <div className="code-line indent">
-                <span className="line-num">7</span>
-                <span className="code-prop">status</span>: <span className="code-str">"Available"</span>,
-              </div>
-              <div className="code-line indent">
-                <span className="line-num">8</span>
-                <span className="code-prop">verified</span>: <span className="code-bool">true</span>
-              </div>
-              <div className="code-line">
-                <span className="line-num">9</span>
-                &#125;);
+              <div className="badge-text-group">
+                <span className="badge-val">Low latency</span>
+                <span className="badge-lbl">High performance</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Panel: Form Content */}
-        <div className="setup-right-panel">
+        {/* RIGHT FORM SECTION */}
+        <div className="ob-form-side">
 
-          {/* Top Brand Bar */}
-          <div className="top-brand-bar">
-            <div className="brand-logo-title">
-              <div className="brand-icon-chip">
-                <Terminal size={18} />
-              </div>
-              <div className="brand-meta">
-                <span className="brand-name">CodeExpo</span>
-                <span className="brand-tagline">Collaborate. Code. Create.</span>
-              </div>
+          {/* Top Badge Tag */}
+          <div className="ob-badge-tag">
+            <div className="ob-badge-icon-box">
+              <User size={14} />
             </div>
-          </div>
-
-          {/* Account Onboarding Pill Tag */}
-          <div className="onboarding-badge-tag">
-            <ShieldCheck size={13} className="shield-check-icon" />
             <span>ACCOUNT ONBOARDING</span>
           </div>
 
-          {/* Main Title */}
-          <div className="title-section">
-            <h1 className="title-heading">
-              Welcome to <span className="highlight-text">CodeExpo</span> <span className="waving-emoji">👋</span>
+          {/* Title */}
+          <div className="ob-title-group">
+            <h1 className="ob-main-title">
+              Welcome to <span className="ob-title-highlight">CodeExpo</span> <span className="ob-wave-emoji">👋</span>
             </h1>
-            <p className="title-subtext">
+            <p className="ob-sub-title">
               Choose your permanent username to complete your account setup.
             </p>
           </div>
 
-          {/* Identity Context Info Box */}
-          <div className="identity-info-box">
-            <div className="shield-icon-container">
-              <Info size={18} />
+          {/* Identity Info Box */}
+          <div className="ob-info-box">
+            <div className="ob-info-icon-circle">
+              <Info size={16} />
             </div>
-            <div className="info-content">
-              <h4 className="info-heading">Your username is your identity across CodeExpo.</h4>
-              <p className="info-description">
-                It's used in profile URLs ( <code className="code-tag">/u/handle</code> ), mentions ( <code className="code-tag">@handle</code> ), search, social graph, and AI collaboration.
+            <div className="ob-info-content">
+              <h4 className="ob-info-header">Your username is your identity across CodeExpo.</h4>
+              <p className="ob-info-body">
+                It's used in profile URLs ( <code className="ob-tag">/u/your-handle</code> ), mentions ( <code className="ob-tag">@yourhandle</code> ), search, social graph, and AI collaboration.
               </p>
             </div>
           </div>
 
-          {/* Main Form */}
-          <form className="setup-form-element" onSubmit={handleSubmit}>
+          {/* Form */}
+          <form className="ob-form-element" onSubmit={handleSubmit}>
 
             {/* Display Name Field */}
-            <div className="input-group">
-              <div className="label-row">
-                <label className="input-label">DISPLAY NAME</label>
-                <div className="readonly-badge">
-                  <Lock size={10} /> READ ONLY
-                </div>
-              </div>
-
-              <div className="input-box readonly">
-                <User size={16} className="input-box-icon" />
+            <div className="ob-field-group">
+              <label className="ob-label">DISPLAY NAME</label>
+              <div className="ob-input-box readonly">
+                <User size={16} className="ob-input-icon" />
                 <input
                   type="text"
-                  className="form-input readonly-input"
+                  className="ob-input readonly-input"
                   value={displayName}
                   readOnly
                   disabled
                 />
               </div>
-              <p className="input-helper-text">You can change your display name anytime in profile settings.</p>
+              <p className="ob-helper-text">This is how others will see you on your profile.</p>
             </div>
 
             {/* Username Handle Field */}
-            <div className="input-group">
-              <div className="label-row">
-                <label className="input-label">
-                  USERNAME HANDLE <span className="required-asterisk">*</span>
-                </label>
-              </div>
+            <div className="ob-field-group">
+              <label className="ob-label">
+                USERNAME HANDLE <span className="ob-asterisk">*</span>
+              </label>
 
-              <div className={`input-box handle-box ${status.toLowerCase()}`}>
-                <div className="at-symbol">@</div>
+              <div className={`ob-input-box handle-box ${status.toLowerCase()}`}>
+                <div className="ob-at-box">@</div>
                 <input
                   type="text"
-                  className="form-input handle-input"
-                  placeholder="raviraj_kumar"
+                  className="ob-input handle-input"
+                  placeholder="sachin_kumar_local"
                   value={usernameInput}
                   onChange={handleInputChange}
                   maxLength={20}
@@ -340,61 +338,65 @@ const SetupUsername = () => {
                   required
                 />
 
-                <div className="status-icon-area">
-                  {status === "checking" && <div className="mini-spinner" />}
+                <div className="ob-status-area">
+                  {status === "checking" && <Loader2 size={18} className="ob-spin" />}
                   {status === "Available" && (
-                    <div className="status-circle success">
-                      <Check size={12} />
+                    <div className="ob-status-circle success">
+                      <CheckCircle2 size={18} />
                     </div>
                   )}
                   {(status === "Taken" || status === "Invalid") && (
-                    <div className="status-circle error">
-                      <X size={12} />
+                    <div className="ob-status-circle error">
+                      <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Status Banner */}
+              {/* Status Message */}
               {statusMessage && (
-                <div className={`status-banner ${status.toLowerCase()}`}>
+                <div className={`ob-status-msg ${status.toLowerCase()}`}>
                   {status === "Available" ? (
-                    <CheckCircle2 size={14} className="banner-icon" />
+                    <CheckCircle2 size={14} />
                   ) : status === "checking" ? (
-                    <div className="micro-spinner" />
+                    <Loader2 size={14} className="ob-spin" />
                   ) : (
-                    <AlertCircle size={14} className="banner-icon" />
+                    <AlertCircle size={14} />
                   )}
                   <span>{statusMessage}</span>
                 </div>
               )}
 
-              {/* 4 Requirement Chips in Row */}
-              <div className="requirements-row">
-                <div className={`req-chip ${ruleLength ? "active" : ""}`}>
-                  {ruleLength ? <Check size={11} /> : null} 3–20 characters
+              {/* 4 Requirement Chips */}
+              <div className="ob-chips-grid">
+                <div className={`ob-chip ${ruleLength ? "active" : ""}`}>
+                  {ruleLength ? <Check size={12} strokeWidth={2.5} /> : null}
+                  <span>3–20 characters</span>
                 </div>
-                <div className={`req-chip ${ruleLowercase ? "active" : ""}`}>
-                  {ruleLowercase ? <Check size={11} /> : null} lowercase
+                <div className={`ob-chip ${ruleLowercase ? "active" : ""}`}>
+                  {ruleLowercase ? <Check size={12} strokeWidth={2.5} /> : null}
+                  <span>lowercase letters</span>
                 </div>
-                <div className={`req-chip ${ruleAllowedChars ? "active" : ""}`}>
-                  {ruleAllowedChars ? <Check size={11} /> : null} 0-9, _ allowed
+                <div className={`ob-chip ${ruleAllowedChars ? "active" : ""}`}>
+                  {ruleAllowedChars ? <Check size={12} strokeWidth={2.5} /> : null}
+                  <span>0–9 and _ allowed</span>
                 </div>
-                <div className={`req-chip ${ruleValidFormat ? "active" : ""}`}>
-                  {ruleValidFormat ? <Check size={11} /> : null} valid format
+                <div className={`ob-chip ${ruleValidFormat ? "active" : ""}`}>
+                  {ruleValidFormat ? <Check size={12} strokeWidth={2.5} /> : null}
+                  <span>valid format</span>
                 </div>
               </div>
 
               {/* Suggestions */}
               {suggestions && suggestions.length > 0 && (
-                <div className="suggestions-area">
-                  <span className="suggestions-label">Available Suggestions:</span>
-                  <div className="suggestions-chips-row">
+                <div className="ob-suggestions-wrapper">
+                  <span className="ob-suggestions-label">Available Suggestions:</span>
+                  <div className="ob-suggestions-row">
                     {suggestions.map((sug) => (
                       <button
                         key={sug}
                         type="button"
-                        className="suggestion-pill-btn"
+                        className="ob-suggestion-pill"
                         onClick={() => handleSelectSuggestion(sug)}
                       >
                         @{sug}
@@ -406,37 +408,38 @@ const SetupUsername = () => {
             </div>
 
             {errorMessage && (
-              <div className="error-alert-bar">
+              <div className="ob-error-banner">
                 <AlertCircle size={15} />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            {/* Primary Action Button */}
+            {/* Submit Button */}
             <button
               type="submit"
-              className="submit-action-btn"
+              className="ob-submit-btn"
               disabled={status !== "Available" || isSubmitting || !usernameInput}
             >
               {isSubmitting ? (
-                <span className="btn-flex-content">
-                  <div className="mini-spinner white" /> Setting up account...
+                <span className="ob-btn-content">
+                  <Loader2 size={18} className="ob-spin" /> Setting up account...
                 </span>
               ) : (
-                <span className="btn-flex-content">
-                  Claim Handle & Continue <ArrowRight size={16} className="arrow-next" />
+                <span className="ob-btn-content">
+                  Claim Handle & Continue <ArrowRight size={18} />
                 </span>
               )}
             </button>
 
             {/* Footer Notice */}
-            <div className="footer-notice">
-              <Shield size={12} className="footer-shield" />
+            <div className="ob-footer-notice">
+              <Shield size={13} />
               <span>You can update your username once every 30 days.</span>
             </div>
           </form>
 
         </div>
+
       </div>
     </div>
   );

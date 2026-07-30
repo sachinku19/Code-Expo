@@ -625,9 +625,9 @@ function Auth({ mode }) {
                       <button type="submit" className="btn-capsule-filled" disabled={activeLoading}>
                         {activeLoading ? "Sign In..." : "Sign In"}
                       </button>
-                      <button 
+                      <button
                         type="button"
-                        onClick={() => handleSwitchMode("register")} 
+                        onClick={() => handleSwitchMode("register")}
                         className="btn-capsule-outlined"
                       >
                         Sign Up
@@ -775,9 +775,9 @@ function Auth({ mode }) {
                       <button type="submit" className="btn-capsule-filled" disabled={activeLoading}>
                         {activeLoading ? "Signing Up..." : "Sign Up"}
                       </button>
-                      <button 
+                      <button
                         type="button"
-                        onClick={() => handleSwitchMode("login")} 
+                        onClick={() => handleSwitchMode("login")}
                         className="btn-capsule-outlined"
                       >
                         Sign In

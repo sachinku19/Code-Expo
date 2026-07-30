@@ -25,8 +25,10 @@
 }
 
 .dark {
-  --auth-bg: #090a0f; /* Immersive dark background */
-  --auth-card-bg: #131622; /* Card surfaces background in dark mode */
+  --auth-bg: #090a0f;
+  /* Immersive dark background */
+  --auth-card-bg: #131622;
+  /* Card surfaces background in dark mode */
   --auth-text-title: #f8fafc;
   --auth-text-label: #cbd5e1;
   --auth-input-border: #2e354f;
@@ -74,14 +76,16 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  pointer-events: none; /* Clicks bypass this layer directly to card */
+  pointer-events: none;
+  /* Clicks bypass this layer directly to card */
   z-index: 5;
 }
 
 .auth-parallax-wrapper {
   position: absolute;
   width: max-content;
-  transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth parallax shifting */
+  transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* Smooth parallax shifting */
 }
 
 /* Individual Position Offsets */
@@ -113,21 +117,22 @@
   border: 1px solid var(--auth-bubble-border);
   border-radius: 18px;
   padding: 14px 18px;
-  box-shadow: 
-    0 15px 35px rgba(10, 86, 212, 0.04), 
+  box-shadow:
+    0 15px 35px rgba(10, 86, 212, 0.04),
     0 5px 12px rgba(0, 0, 0, 0.01);
-  pointer-events: auto; /* Hover scale reaction */
-  transition: 
+  pointer-events: auto;
+  /* Hover scale reaction */
+  transition:
     background-color 0.3s ease,
     border 0.3s ease,
-    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 0.3s ease;
 }
 
 .auth-bg-bubble:hover {
   transform: scale(1.03) translateY(-2px);
-  box-shadow: 
-    0 20px 40px rgba(10, 86, 212, 0.06), 
+  box-shadow:
+    0 20px 40px rgba(10, 86, 212, 0.06),
     0 8px 20px rgba(0, 0, 0, 0.02);
 }
 
@@ -189,9 +194,17 @@
   margin-left: -6px;
 }
 
-.b-avatar.color-1 { background-color: #f1521b; }
-.b-avatar.color-2 { background-color: #0a56d4; }
-.b-avatar.color-3 { background-color: #8b5cf6; }
+.b-avatar.color-1 {
+  background-color: #f1521b;
+}
+
+.b-avatar.color-2 {
+  background-color: #0a56d4;
+}
+
+.b-avatar.color-3 {
+  background-color: #8b5cf6;
+}
 
 .b-avatar-count {
   font-size: 0.65rem;
@@ -298,34 +311,67 @@
 
 /* Float Animations Keyframes */
 @keyframes float-bubble-1 {
-  0% { transform: translateY(0) rotate(0deg); }
-  100% { transform: translateY(-15px) rotate(0.8deg); }
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  100% {
+    transform: translateY(-15px) rotate(0.8deg);
+  }
 }
 
 @keyframes float-bubble-2 {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  100% { transform: translate(6px, 12px) rotate(-1deg); }
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  100% {
+    transform: translate(6px, 12px) rotate(-1deg);
+  }
 }
 
 @keyframes float-bubble-3 {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-13px); }
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(-13px);
+  }
 }
 
 @keyframes float-bubble-4 {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  100% { transform: translate(-8px, -14px) rotate(1deg); }
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  100% {
+    transform: translate(-8px, -14px) rotate(1deg);
+  }
 }
 
 @keyframes pulse-green-dot {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-  70% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
 }
 
 @keyframes spin-sparkle-stars {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ==========================================================================
@@ -345,11 +391,12 @@
   display: flex;
   flex-direction: row;
   width: 100%;
-  height: 620px; /* Standard fixed card height from design reference */
+  height: 620px;
+  /* Standard fixed card height from design reference */
   background: var(--auth-card-bg);
   border-radius: 36px;
-  box-shadow: 
-    0 30px 60px rgba(0, 0, 0, 0.03), 
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.03),
     0 10px 20px rgba(0, 0, 0, 0.02);
   overflow: hidden;
   position: relative;
@@ -520,31 +567,48 @@
 /* Underline style inputs */
 .form-input-underline {
   width: 100%;
-  padding: 8px 32px 8px 0; /* Space on right for tick status & toggles */
+  padding: 10px 36px 10px 6px;
   background: transparent;
   border: none;
   border-bottom: 2px solid var(--auth-input-border);
   color: var(--auth-input-text);
   font-size: 0.95rem;
+  font-weight: 500;
   font-family: inherit;
-  transition: border-bottom-color 0.2s ease, border-bottom 0.3s ease, color 0.3s ease;
+  line-height: 1.4;
+  border-radius: 4px 4px 0 0;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.3s ease;
 }
 
 .form-input-underline::placeholder {
-  color: #8a99ad; /* Tighter placeholder color in dark mode */
+  color: #94a3b8;
+  font-weight: 400;
+  opacity: 0.85;
 }
 
 .form-input-underline:focus {
   outline: none;
-  border-bottom-color: #0a56d4; /* Focus blue color matching background */
+  border-bottom-color: #2563eb;
+  background: rgba(37, 99, 235, 0.03);
 }
 
-/* Green validation checkmark on right */
+/* Fix browser autofill solid background override */
+.form-input-underline:-webkit-autofill,
+.form-input-underline:-webkit-autofill:hover,
+.form-input-underline:-webkit-autofill:focus,
+.form-input-underline:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--auth-card-bg, #ffffff) inset !important;
+  -webkit-text-fill-color: var(--auth-input-text, #1a1a1a) !important;
+  caret-color: var(--auth-input-text, #1a1a1a);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Validation checkmark on right */
 .input-valid-tick {
   position: absolute;
-  right: 0;
-  color: #0a56d4; /* Styled to match input active/branding style */
-  font-weight: bold;
+  right: 6px;
+  color: #2563eb;
+  font-weight: 700;
   font-size: 1.1rem;
   pointer-events: none;
   animation: tick-fade-in 0.2s ease forwards;
@@ -552,7 +616,7 @@
 
 /* Position adjustment for fields that have right-side eye icon */
 .input-valid-tick.with-icon {
-  right: 28px;
+  right: 32px;
 }
 
 @keyframes tick-fade-in {
@@ -560,6 +624,7 @@
     opacity: 0;
     transform: scale(0.8);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -635,12 +700,12 @@
   margin-top: 2px;
 }
 
-.remember-me-checkbox input:checked + .checkbox-custom {
+.remember-me-checkbox input:checked+.checkbox-custom {
   background: #0a56d4;
   border-color: #0a56d4;
 }
 
-.remember-me-checkbox input:checked + .checkbox-custom::after {
+.remember-me-checkbox input:checked+.checkbox-custom::after {
   content: "";
   position: absolute;
   left: 4px;
@@ -710,7 +775,8 @@
 
 /* Outlined Capsule Button */
 .btn-capsule-outlined {
-  padding: 9px 36px; /* Offset border thickness */
+  padding: 9px 36px;
+  /* Offset border thickness */
   background: transparent;
   border: 2px solid var(--auth-btn-outlined-border);
   border-radius: 24px;
@@ -921,10 +987,11 @@
     text-align: center;
   }
 
-  .auth-info-welcome, 
-  .auth-info-desc, 
+  .auth-info-welcome,
+  .auth-info-desc,
   .auth-info-footer {
-    display: none; /* Hide desktop specific texts to keep mobile compact */
+    display: none;
+    /* Hide desktop specific texts to keep mobile compact */
   }
 
   .auth-info-logo-circle {
@@ -944,7 +1011,8 @@
   }
 
   .cloud-wave-separator {
-    display: none; /* Hide vertical wave on mobile */
+    display: none;
+    /* Hide vertical wave on mobile */
   }
 
   .auth-form-column {

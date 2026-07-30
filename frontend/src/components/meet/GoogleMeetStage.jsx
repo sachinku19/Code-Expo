@@ -264,16 +264,28 @@ const GoogleMeetStage = ({
   const screenVideoRef = useRef(null);
   const peersRef = useRef({});
 
-  useEffect(() => {
-    if (localVideoRef.current) {
-      if (localVideoRef.current.srcObject !== localStream) {
-        localVideoRef.current.srcObject = localStream;
+  const setLocalVideoRef = useCallback((node) => {
+    localVideoRef.current = node;
+    if (node && localStream) {
+      if (node.srcObject !== localStream) {
+        node.srcObject = localStream;
       }
-      if (localStream && isVideoOn) {
-        localVideoRef.current.play().catch(() => {});
+      if (isVideoOn) {
+        node.play().catch(() => {});
       }
     }
   }, [localStream, isVideoOn]);
+
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      if (localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
+      }
+      if (isVideoOn) {
+        localVideoRef.current.play().catch(() => {});
+      }
+    }
+  }, [localStream, isVideoOn, isMinimized]);
 
   const myId = currentUser?.id || currentUser?._id;
 
@@ -729,7 +741,7 @@ const GoogleMeetStage = ({
 
         {member.isLocal && (
           <video
-            ref={localVideoRef}
+            ref={setLocalVideoRef}
             autoPlay
             playsInline
             muted

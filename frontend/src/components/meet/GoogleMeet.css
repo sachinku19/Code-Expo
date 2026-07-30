@@ -2171,42 +2171,47 @@ body.light .ce-meet-filmstrip-tile {
   width: 38px !important;
   height: 38px !important;
   border-radius: 50% !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #f3f4f6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  color: #ffffff !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;
   position: relative !important;
   transition: all 0.2s ease !important;
-  box-shadow: none !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
 }
 
 .ce-meet-float-btn:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
   transform: translateY(-2px) !important;
   color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
 }
 
 .ce-meet-float-btn.off {
-  background: rgba(239, 68, 68, 0.2) !important;
-  border-color: rgba(239, 68, 68, 0.4) !important;
-  color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.35) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  color: #ffffff !important;
 }
 
 .ce-meet-float-btn.off:hover {
-  background: rgba(239, 68, 68, 0.3) !important;
+  background: rgba(239, 68, 68, 0.5) !important;
 }
 
 .ce-meet-float-btn.active-feature {
-  background: rgba(168, 85, 247, 0.2) !important;
-  border-color: rgba(168, 85, 247, 0.4) !important;
-  color: #c084fc !important;
+  background: #7c3aed !important;
+  border-color: #a78bfa !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4) !important;
 }
 
 .ce-meet-float-btn.active-feature:hover {
-  background: rgba(168, 85, 247, 0.3) !important;
+  background: #6d28d9 !important;
 }
 
 .ce-meet-float-btn.end {
@@ -2217,7 +2222,7 @@ body.light .ce-meet-filmstrip-tile {
 
 .ce-meet-float-btn.end:hover {
   background: #dc2626 !important;
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.5) !important;
 }
 
 /* Dedicated Video Canvas Container for Video Feeds + Floating HUD */
@@ -2247,32 +2252,39 @@ body.light .ce-meet-filmstrip-tile {
   height: 38px !important;
   border-radius: 20px !important;
   padding: 0 14px !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #f3f4f6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
-  box-shadow: none !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
 }
 
 .ce-meet-float-btn-pill:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
   transform: translateY(-2px) !important;
   color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
 }
 
 .ce-meet-float-btn-pill.active-feature {
-  background: rgba(168, 85, 247, 0.2) !important;
-  border-color: rgba(168, 85, 247, 0.4) !important;
-  color: #c084fc !important;
+  background: #7c3aed !important;
+  border-color: #a78bfa !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4) !important;
 }
 
 .ce-meet-float-btn-pill.active-feature:hover {
-  background: rgba(168, 85, 247, 0.3) !important;
+  background: #6d28d9 !important;
 }
 
 /* =========================================================
