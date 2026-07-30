@@ -393,7 +393,7 @@ const GoogleMeetStage = ({
         if (pc) {
           try {
             pc.close();
-          } catch (e) {}
+          } catch (e) { }
           mediaManagerRef.current.unregisterPeer(sockId);
           delete peersRef.current[sockId];
         }
@@ -418,6 +418,9 @@ const GoogleMeetStage = ({
       // Register pc with media manager so track replacements are auto-synced
       mediaManagerRef.current.registerPeer(targetSocketId, pc);
 
+      const hasAudioTrack = localStream.getAudioTracks().length > 0;
+      const hasVideoTrack = localStream.getVideoTracks().length > 0;
+
       localStream.getTracks().forEach((track) => {
         try {
           pc.addTrack(track, localStream);
@@ -426,15 +429,35 @@ const GoogleMeetStage = ({
         }
       });
 
+      if (!hasVideoTrack) {
+        try {
+          pc.addTransceiver("video", { direction: "sendrecv" });
+        } catch (e) {}
+      }
+      if (!hasAudioTrack) {
+        try {
+          pc.addTransceiver("audio", { direction: "sendrecv" });
+        } catch (e) {}
+      }
+
       pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          const stream = event.streams[0];
+        let stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+
+        const updateRemoteStream = () => {
           setRemoteStreams((prev) => ({
             ...prev,
             [targetSocketId]: stream,
             [targetUserId]: stream
           }));
+        };
+
+        if (event.track) {
+          event.track.onunmute = updateRemoteStream;
+          event.track.onmute = updateRemoteStream;
+          event.track.onended = updateRemoteStream;
         }
+
+        updateRemoteStream();
       };
 
       pc.onicecandidate = (e) => {

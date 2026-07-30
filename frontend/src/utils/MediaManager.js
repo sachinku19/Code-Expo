@@ -150,13 +150,13 @@ export class MediaManager {
               if (videoTrack) {
                 try {
                   videoTrack.stop();
-                } catch (e) {}
+                } catch (e) { }
                 this.localStream.removeTrack(videoTrack);
               }
-              
+
               freshTrack.enabled = true;
               this.localStream.addTrack(freshTrack);
-              
+
               // Sync updated track with active PeerConnections
               await this.syncPeerTrack("video", freshTrack);
               this.notifyStreamChange();
@@ -245,7 +245,7 @@ export class MediaManager {
         try {
           track.enabled = false;
           track.stop();
-        } catch (e) {}
+        } catch (e) { }
       });
       this.localStream = null;
     }
@@ -255,7 +255,7 @@ export class MediaManager {
         try {
           track.enabled = false;
           track.stop();
-        } catch (e) {}
+        } catch (e) { }
       });
       this.screenStream = null;
     }
@@ -263,7 +263,7 @@ export class MediaManager {
     this.peers.forEach((pc) => {
       try {
         pc.close();
-      } catch (e) {}
+      } catch (e) { }
     });
     this.peers.clear();
   }

@@ -334,9 +334,7 @@ const socketHandler = (io) => {
       if (!roomId || !userId) return;
       socket.join(roomId);
       if (!meetUsers[roomId]) meetUsers[roomId] = [];
-      const userIndex = meetUsers[roomId].findIndex(
-        (u) => u.socketId === socket.id || String(u.userId) === String(userId)
-      );
+      const userIndex = meetUsers[roomId].findIndex((u) => u.socketId === socket.id);
       const userEntry = {
         userId,
         username,
@@ -354,10 +352,8 @@ const socketHandler = (io) => {
     });
 
     socket.on("meet:leave", ({ roomId, userId }) => {
-      if (!roomId || !userId || !meetUsers[roomId]) return;
-      meetUsers[roomId] = meetUsers[roomId].filter(
-        (u) => u.socketId !== socket.id && String(u.userId) !== String(userId)
-      );
+      if (!roomId || !meetUsers[roomId]) return;
+      meetUsers[roomId] = meetUsers[roomId].filter((u) => u.socketId !== socket.id);
       if (meetUsers[roomId].length === 0) {
         delete meetUsers[roomId];
         io.to(roomId).emit("meet:update-users", []);
@@ -378,8 +374,8 @@ const socketHandler = (io) => {
     });
 
     socket.on("meet:state-change", ({ roomId, userId, isMicOn, isVideoOn, isHandRaised }) => {
-      if (!roomId || !userId || !meetUsers[roomId]) return;
-      const userObj = meetUsers[roomId].find((u) => String(u.userId) === String(userId));
+      if (!roomId || !meetUsers[roomId]) return;
+      const userObj = meetUsers[roomId].find((u) => u.socketId === socket.id || String(u.userId) === String(userId));
       if (userObj) {
         userObj.isMicOn = isMicOn;
         userObj.isVideoOn = isVideoOn;
