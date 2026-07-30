@@ -571,6 +571,11 @@ export function CallProvider({ children }) {
         socket.emit("dm:call:decline", { callerId });
         return;
       }
+      // Auto-decline/ignore if currently inside a room workspace
+      if (window.location.pathname.startsWith("/editor/")) {
+        socket.emit("dm:call:decline", { callerId });
+        return;
+      }
       setIsCallMinimized(false);
       callSynth.playIncomingRing();
       setActiveCall({

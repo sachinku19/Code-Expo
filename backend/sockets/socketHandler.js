@@ -330,9 +330,27 @@ const socketHandler = (io) => {
     // ===================================
     // GOOGLE MEET ROOM SOCKET EVENTS
     // ===================================
-    socket.on("meet:join", ({ roomId, userId, username, avatar, isMicOn, isVideoOn }) => {
+    socket.on("meet:join", async ({ roomId, userId, username, avatar, isMicOn, isVideoOn }) => {
       console.log(`[MEET_OBSERVER][${new Date().toISOString()}] meet:join - Socket: ${socket.id}, User: ${userId} (${username}), Room: ${roomId}, Mic: ${isMicOn}, Cam: ${isVideoOn}`);
       if (!roomId || !userId) return;
+
+      try {
+        const room = await Room.findOne({ roomId });
+        if (room && room.isPrivate) {
+          const isMeetingInProgress = meetUsers[roomId] && Object.keys(meetUsers[roomId]).length > 0;
+          if (!isMeetingInProgress) {
+            const role = getUserRole(roomId, socket.id);
+            if (role !== "OWNER" && role !== "MODERATOR") {
+              console.log(`[MEET_REJECT] User ${username} (${role}) cannot start meeting in private room ${roomId}`);
+              socket.emit("meet:error", { message: "Only Owner and Moderator can start the meeting in a private room." });
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error validating meeting join:", err);
+      }
+
       socket.join(roomId);
       if (!meetUsers[roomId]) meetUsers[roomId] = {};
       const userEntry = {
@@ -1616,13 +1634,6 @@ const socketHandler = (io) => {
       io.emit("user-avatar-updated", { userId, avatar });
     });
 
-    // Layout sync
-    socket.on("layout-change", ({ roomId, layoutMode }) => {
-      const role = getUserRole(roomId, socket.id);
-      if (role === "OWNER" || role === "MODERATOR") {
-        socket.to(roomId).emit("layout-change", { layoutMode });
-      }
-    });
 
 
     // ======================

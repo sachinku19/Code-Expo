@@ -1,83 +1,85 @@
 import React, { useEffect, useState } from "react";
+import { useTheme } from "../context/ThemeContext";
 import "./GateOverlay.css";
 
 export default function GateOverlay({ exiting = false, statusText = "Entering Workspace..." }) {
   const [progress, setProgress] = useState(0);
+  const { resolvedTheme } = useTheme();
 
+  // Smooth progress counter synced with route transition timings
   useEffect(() => {
-    if (exiting) {
-      // Simulate quick loading progress during the unlocking phase (first 300ms)
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 25);
-      return () => clearInterval(interval);
-    } else {
-      setProgress(40); // default starting progress when closing
-    }
+    setProgress(0);
+    const duration = exiting ? 800 : 400;
+    const steps = 20;
+    const stepTime = duration / steps;
+    let currentStep = 0;
+
+    const interval = setInterval(() => {
+      currentStep++;
+      const currentProg = Math.min((currentStep / steps) * 100, 100);
+      setProgress(Math.round(currentProg));
+      if (currentStep >= steps) {
+        clearInterval(interval);
+      }
+    }, stepTime);
+
+    return () => clearInterval(interval);
   }, [exiting]);
 
+  // Dynamic professional statuses during load
+  const getDynamicStatusText = () => {
+    if (exiting) {
+      if (progress < 40) return "Syncing Workspace Grid...";
+      if (progress < 80) return "Loading IDE Components...";
+      return "Workspace Connected";
+    }
+    return statusText;
+  };
+
   return (
-    <div className={`ce-gate-overlay ${exiting ? "exiting" : ""}`}>
-      {/* Central horizontal seam laser scanner */}
-      <div className={`gate-laser-beam ${exiting ? "exiting" : ""}`} />
+    <div className={`ce-gate-overlay ${exiting ? "exiting" : ""} ${resolvedTheme}`}>
+      
+      {/* Subtle dotted background grid */}
+      <div className="gate-grid-bg" />
 
-      {/* LEFT SLIDING DOOR */}
-      <div className={`gate-door gate-door-left ${exiting ? "exiting" : ""}`}>
-        {/* Left Half of the Cyber Lock */}
-        <div className={`gate-lock-half left-lock ${exiting ? "exiting" : ""}`}>
-          <div className="lock-ring ring-outer" />
-          <div className="lock-ring ring-middle" />
-          <div className="lock-ring ring-inner" />
-          <div className="lock-glow-orb" />
-        </div>
-        
-        {/* Glowing Tech Circuits */}
-        <div className="circuit-container">
-          <div className="circuit-line line-1" />
-          <div className="circuit-line line-2" />
-          <div className="circuit-line line-3" />
-        </div>
+      {/* Modern glass panels */}
+      <div className="gate-doors-container">
+        <div className={`gate-door gate-door-left ${exiting ? "exiting" : ""}`} />
+        <div className={`gate-door gate-door-right ${exiting ? "exiting" : ""}`} />
       </div>
 
-      {/* RIGHT SLIDING DOOR */}
-      <div className={`gate-door gate-door-right ${exiting ? "exiting" : ""}`}>
-        {/* Right Half of the Cyber Lock */}
-        <div className={`gate-lock-half right-lock ${exiting ? "exiting" : ""}`}>
-          <div className="lock-ring ring-outer" />
-          <div className="lock-ring ring-middle" />
-          <div className="lock-ring ring-inner" />
-          <div className="lock-glow-orb" />
-        </div>
-
-        {/* Glowing Tech Circuits */}
-        <div className="circuit-container">
-          <div className="circuit-line line-1-r" />
-          <div className="circuit-line line-2-r" />
-          <div className="circuit-line line-3-r" />
-        </div>
-      </div>
-
-      {/* CENTRAL STATUS TERMINAL */}
+      {/* Minimalist central HUD console */}
       <div className={`gate-core-portal ${exiting ? "exiting" : ""}`}>
-        <div className="gate-portal-glow" />
-        <div className="gate-scanner-ray" />
-        <div className="gate-portal-display">
-          <h2 className="gate-portal-text">{statusText}</h2>
-          <div className="gate-status-bar">
+        <div className="gate-logo-container">
+          <img src="/logo.png" alt="CodeExpo Logo" className="gate-logo-img" />
+          <div className="logo-pulse-ring" />
+        </div>
+
+        <div className="gate-display-panel">
+          <h2 className="gate-status-title">{getDynamicStatusText()}</h2>
+          
+          {/* Snappy thin progress line */}
+          <div className="gate-loader-bar">
             <div 
-              className="gate-status-progress" 
+              className="gate-loader-fill" 
               style={{ width: `${progress}%` }} 
             />
           </div>
-          <div className="gate-system-status">
-            <span>SECURE LINK: ACTIVE</span>
-            <span>GRID: ONLINE</span>
+
+          {/* Minimalist status indicators */}
+          <div className="gate-details-row">
+            <div className="detail-item">
+              <span className="label">BRIDGE</span>
+              <span className="value active">SECURE</span>
+            </div>
+            <div className="detail-item">
+              <span className="label">DECRYPT</span>
+              <span className="value percent">{progress}%</span>
+            </div>
+            <div className="detail-item">
+              <span className="label">GRID</span>
+              <span className="value active">ONLINE</span>
+            </div>
           </div>
         </div>
       </div>

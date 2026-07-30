@@ -43,7 +43,7 @@ export function GateTransitionProvider({ children }) {
     setStatusText(customStatusText);
     setGateState("closing");
 
-    // 1. Wait for doors to slide shut (350ms)
+    // 1. Wait for doors to slide shut (400ms)
     setTimeout(() => {
       // 2. Perform navigation, passing state so target page knows it is a transition
       navigate(targetPath, { state: { fromTransition: true } });
@@ -52,11 +52,11 @@ export function GateTransitionProvider({ children }) {
       setGateState("opening");
       setStatusText("Decryption Complete");
 
-      // 4. Wait for unlocking sequence + doors sliding open (650ms)
+      // 4. Wait for unlocking sequence + doors sliding open (800ms)
       setTimeout(() => {
         setGateState("idle");
-      }, 650);
-    }, 350);
+      }, 800);
+    }, 400);
   };
 
   return (

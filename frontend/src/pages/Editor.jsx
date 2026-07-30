@@ -878,15 +878,12 @@ function Editor() {
   const [splitPercent, setSplitPercent] = useState(60); // Default to 60/40 split
   const [layoutMode, setLayoutMode] = useState("editor"); // Default hidden
 
-  const changeLayoutMode = (mode, emit = true) => {
+  const changeLayoutMode = (mode) => {
     setLayoutMode(mode);
     if (mode === "editor") {
       setShowWhiteboard(false);
     } else {
       setShowWhiteboard(true);
-    }
-    if (emit) {
-      socket.emit("layout-change", { roomId, layoutMode: mode });
     }
   };
 
@@ -2494,10 +2491,10 @@ function Editor() {
       setDuplicateSessionModalOpen(true);
     };
 
-    const handleLayoutChange = (data) => {
-      if (data.layoutMode) {
-        changeLayoutMode(data.layoutMode, false);
-      }
+    const handleMeetError = ({ message }) => {
+      addToast(message, "error");
+      setInMeet(false);
+      setShowMeetLobby(false);
     };
 
     const handleMessageDeleted = ({ messageId }) => {
@@ -2691,8 +2688,8 @@ function Editor() {
     socket.on("kicked", handleKicked);
     socket.off("kicked-reentry-blocked");
     socket.on("kicked-reentry-blocked", handleKickedReentryBlocked);
-    socket.off("layout-change");
-    socket.on("layout-change", handleLayoutChange);
+    socket.off("meet:error");
+    socket.on("meet:error", handleMeetError);
     socket.off("message-deleted");
     socket.on("message-deleted", handleMessageDeleted);
     socket.off("terminal-output");
@@ -2758,7 +2755,7 @@ function Editor() {
       socket.off("room-deleted", handleRoomDeleted);
       socket.off("already-online", handleAlreadyOnline);
       socket.off("kicked", handleKicked);
-      socket.off("layout-change", handleLayoutChange);
+      socket.off("meet:error", handleMeetError);
       socket.off("message-deleted", handleMessageDeleted);
       socket.off("terminal-output", handleTerminalOutput);
       socket.off("terminal-exit", handleTerminalExit);
@@ -3913,7 +3910,12 @@ function Editor() {
     (p) => p.user && String(p.user._id || p.user) === String(user.id || user._id)
   );
   const currentUserRole = currentUserParticipant ? currentUserParticipant.role : (isCurrentUserOwner ? "OWNER" : "MEMBER");
-  const showCallButtons = !room?.isPrivate || isCurrentUserOwner;
+  const isMeetingInProgress = activeMeetUsers && activeMeetUsers.length > 0;
+  const showCallButtons =
+    !room?.isPrivate ||
+    currentUserRole === "OWNER" ||
+    currentUserRole === "MODERATOR" ||
+    isMeetingInProgress;
 
   const activeFile = tabs.find((t) => t._id === activeFileId);
   const activeFileCreatedBy = activeFile?.createdBy?._id || activeFile?.createdBy;
@@ -6884,17 +6886,19 @@ function Editor() {
               <Palette size={18} />
               <span>Board</span>
             </button>
-            <button
-              type="button"
-              className={`mobile-nav-btn ${mobileTab === "meeting" ? "active" : ""}`}
-              onClick={() => {
-                setMobileTab("meeting");
-                handleOpenMeetLobby();
-              }}
-            >
-              <Video size={18} />
-              <span>Meeting</span>
-            </button>
+            {showCallButtons && (
+              <button
+                type="button"
+                className={`mobile-nav-btn ${mobileTab === "meeting" ? "active" : ""}`}
+                onClick={() => {
+                  setMobileTab("meeting");
+                  handleOpenMeetLobby();
+                }}
+              >
+                <Video size={18} />
+                <span>Meeting</span>
+              </button>
+            )}
           </nav>
         )}
 

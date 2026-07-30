@@ -1,14 +1,35 @@
 /* ==========================================================================
-   Cybernetic Gate Transition Overlay Styles
+   Professional SaaS Transition Overlay Styles (Theme Adaptive)
    ========================================================================== */
 
-:root {
-  --gate-bg-dark: #07040d;
-  --gate-bg-light: #0d091a;
-  --gate-purple: #aa3bff;
-  --gate-cyan: #00f0ff;
-  --gate-green: #00ff88;
-  --gate-border: rgba(170, 59, 255, 0.15);
+/* Dark Mode Variables (Default) */
+.ce-gate-overlay.dark {
+  --gate-bg: #09070f;
+  --gate-panel-bg: rgba(18, 18, 29, 0.7);
+  --gate-door-bg: rgba(13, 11, 22, 0.65);
+  --gate-border: rgba(255, 255, 255, 0.07);
+  --gate-text: #f8fafc;
+  --gate-text-muted: rgba(248, 250, 252, 0.45);
+  --gate-accent: #8b5cf6; /* Neon Purple */
+  --gate-accent-glow: rgba(139, 92, 246, 0.25);
+  --gate-success: #34d399; /* Green */
+  --gate-grid-color: rgba(139, 92, 246, 0.05);
+  --gate-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(139, 92, 246, 0.1);
+}
+
+/* Light Mode Variables */
+.ce-gate-overlay.light {
+  --gate-bg: #f8fafc;
+  --gate-panel-bg: rgba(255, 255, 255, 0.85);
+  --gate-door-bg: rgba(255, 255, 255, 0.75);
+  --gate-border: rgba(15, 23, 42, 0.07);
+  --gate-text: #0f172a;
+  --gate-text-muted: rgba(15, 23, 42, 0.5);
+  --gate-accent: #6366f1; /* Indigo */
+  --gate-accent-glow: rgba(99, 102, 241, 0.15);
+  --gate-success: #10b981; /* Green */
+  --gate-grid-color: rgba(99, 102, 241, 0.04);
+  --gate-shadow: 0 20px 40px rgba(15, 23, 42, 0.08), 0 0 20px rgba(99, 102, 241, 0.05);
 }
 
 .ce-gate-overlay {
@@ -23,508 +44,235 @@
   justify-content: center;
   overflow: hidden;
   pointer-events: all;
-  background: transparent;
+  background: var(--gate-bg);
+  transition: background-color 0.4s ease;
 }
 
-/* Horizontal seam laser scanner beam */
-.gate-laser-beam {
+/* Subtle dot grid pattern */
+.gate-grid-bg {
   position: absolute;
-  left: 50%;
   top: 0;
-  width: 4px;
+  left: 0;
+  width: 100%;
   height: 100%;
-  background: linear-gradient(to bottom, transparent, var(--gate-cyan), var(--gate-purple), var(--gate-cyan), transparent);
-  box-shadow: 0 0 15px var(--gate-cyan), 0 0 30px var(--gate-purple);
-  transform: translateX(-50%) scaleX(0);
-  z-index: 100;
-  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: radial-gradient(circle, var(--gate-grid-color) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
 }
 
-/* When gates close on dashboard */
-.ce-gate-overlay:not(.exiting) .gate-laser-beam {
-  animation: laser-strike 0.15s 0.35s forwards ease-out, laser-scan 1s 0.5s infinite alternate ease-in-out;
-}
-
-/* When gates open on editor */
-.ce-gate-overlay.exiting .gate-laser-beam {
-  opacity: 1;
-  transform: translateX(-50%) scaleX(1);
-  animation: laser-fade-out 0.3s 0.3s forwards ease-in;
-}
-
-/* ==========================================================================
-   Sliding Doors
-   ========================================================================== */
-.gate-door {
+/* 3D Doors wrapper */
+.gate-doors-container {
   position: absolute;
   top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  display: flex;
+}
+
+.gate-door {
+  position: relative;
   width: 50%;
   height: 100%;
-  background: linear-gradient(135deg, var(--gate-bg-dark) 0%, var(--gate-bg-light) 100%);
-  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.95);
-  border: 1px solid var(--gate-border);
+  background: var(--gate-door-bg);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
   z-index: 10;
-  overflow: hidden; /* Clips the circular lock halves */
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
+}
+
+/* Slide configurations */
+.gate-door-left {
+  border-right: 1px solid var(--gate-border);
+  transform: translateX(-100%);
+  animation: slide-door-left-in 0.4s forwards cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gate-door-right {
+  border-left: 1px solid var(--gate-border);
+  transform: translateX(100%);
+  animation: slide-door-right-in 0.4s forwards cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Exiting state - elegant slide-away with fade out */
+.gate-door-left.exiting {
+  animation: slide-door-left-out 0.6s forwards cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+.gate-door-right.exiting {
+  animation: slide-door-right-out 0.6s forwards cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+/* Central loading panel console */
+.gate-core-portal {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  pointer-events: none;
+  transform: scale(0.95);
+  opacity: 0;
+  animation: portal-in 0.4s 0.25s forwards cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ce-gate-overlay.exiting .gate-core-portal {
+  animation: portal-out 0.3s forwards ease-in;
+}
+
+/* Minimalist Logo styling */
+.gate-logo-container {
+  position: relative;
+  width: 72px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.gate-door-left {
-  left: 0;
-  border-right: 3px solid var(--gate-purple);
-  box-shadow: inset -15px 0 40px rgba(170, 59, 255, 0.1), inset 0 0 80px rgba(0, 0, 0, 0.95);
-  transform: translateX(-100%);
-  animation: slide-door-left-in 0.35s forwards cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.gate-door-right {
-  right: 0;
-  border-left: 3px solid var(--gate-purple);
-  box-shadow: inset 15px 0 40px rgba(170, 59, 255, 0.1), inset 0 0 80px rgba(0, 0, 0, 0.95);
-  transform: translateX(100%);
-  animation: slide-door-right-in 0.35s forwards cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Exiting state - delay slide-out for unlocking sequence */
-.gate-door-left.exiting {
-  transform: translateX(0);
-  animation: slide-door-left-out 0.35s 0.3s both cubic-bezier(0.7, 0, 0.3, 1);
-}
-
-.gate-door-right.exiting {
-  transform: translateX(0);
-  animation: slide-door-right-out 0.35s 0.3s both cubic-bezier(0.7, 0, 0.3, 1);
-}
-
-/* ==========================================================================
-   Cybernetic Split Lock
-   ========================================================================== */
-.gate-lock-half {
-  position: absolute;
-  top: 50%;
-  width: 240px;
-  height: 240px;
-  margin-top: -120px;
-  z-index: 20;
-  transition: all 0.3s ease;
-}
-
-.left-lock {
-  right: -120px; /* Centered exactly on the right seam edge of left door */
-}
-
-.right-lock {
-  left: -120px; /* Centered exactly on the left seam edge of right door */
-}
-
-/* Concentric Rings */
-.lock-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  box-sizing: border-box;
-}
-
-.ring-outer {
-  width: 220px;
-  height: 220px;
-  border: 3px dashed var(--gate-purple);
-  box-shadow: 0 0 15px rgba(170, 59, 255, 0.3);
-  animation: spin-clockwise 10s linear infinite;
-}
-
-.ring-middle {
-  width: 160px;
-  height: 160px;
-  border: 2px solid var(--gate-cyan);
-  border-style: double;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
-  animation: spin-counter-clockwise 6s linear infinite;
-}
-
-.ring-inner {
-  width: 100px;
-  height: 100px;
-  border: 2px dotted rgba(255, 255, 255, 0.4);
-  animation: spin-clockwise 3s linear infinite;
-}
-
-.lock-glow-orb {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 50px;
-  height: 50px;
-  background: radial-gradient(circle, var(--gate-purple) 0%, transparent 70%);
-  border-radius: 50%;
-  box-shadow: 0 0 20px var(--gate-purple);
-  animation: pulse-glow-purple 1.5s alternate infinite ease-in-out;
-}
-
-/* Lock changes in exiting/unlocking mode (Matrix Green Success Theme) */
-.gate-lock-half.exiting .ring-outer {
-  border-color: var(--gate-green);
-  box-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
-  animation: spin-clockwise 2s linear infinite; /* Spin faster */
-}
-
-.gate-lock-half.exiting .ring-middle {
-  border-color: var(--gate-cyan);
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
-  animation: spin-counter-clockwise 1s linear infinite; /* Spin super fast */
-}
-
-.gate-lock-half.exiting .lock-glow-orb {
-  background: radial-gradient(circle, var(--gate-green) 0%, transparent 70%);
-  box-shadow: 0 0 35px var(--gate-green);
-  animation: pulse-glow-green 0.3s alternate infinite ease-in-out;
-}
-
-/* ==========================================================================
-   Glowing Tech Circuits
-   ========================================================================== */
-.circuit-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+.gate-logo-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
   z-index: 5;
 }
 
-/* Circuits Left Door */
-.circuit-line {
+.logo-pulse-ring {
   position: absolute;
-  background: linear-gradient(90deg, transparent, rgba(170, 59, 255, 0.25), transparent);
-  height: 2px;
-  box-shadow: 0 0 8px rgba(170, 59, 255, 0.1);
-}
-
-.line-1 {
-  top: 25%;
-  left: 0;
-  width: 75%;
-}
-.line-1::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 30px;
-  height: 30px;
-  border-top: 2px solid rgba(170, 59, 255, 0.25);
-  border-right: 2px solid rgba(170, 59, 255, 0.25);
-  transform: rotate(45deg);
-  transform-origin: top right;
-}
-
-.line-2 {
-  top: 50%;
-  left: 0;
-  width: 80%;
-  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.25), transparent);
-}
-
-.line-3 {
-  bottom: 25%;
-  left: 0;
-  width: 75%;
-}
-.line-3::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 30px;
-  height: 30px;
-  border-bottom: 2px solid rgba(170, 59, 255, 0.25);
-  border-right: 2px solid rgba(170, 59, 255, 0.25);
-  transform: rotate(-45deg);
-  transform-origin: bottom right;
-}
-
-/* Circuits Right Door */
-.circuit-line-r {
-  position: absolute;
-  background: linear-gradient(-90deg, transparent, rgba(170, 59, 255, 0.25), transparent);
-  height: 2px;
-  box-shadow: 0 0 8px rgba(170, 59, 255, 0.1);
-}
-
-.line-1-r {
-  top: 25%;
-  right: 0;
-  width: 75%;
-}
-.line-1-r::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 30px;
-  height: 30px;
-  border-top: 2px solid rgba(170, 59, 255, 0.25);
-  border-left: 2px solid rgba(170, 59, 255, 0.25);
-  transform: rotate(-45deg);
-  transform-origin: top left;
-}
-
-.line-2-r {
-  top: 50%;
-  right: 0;
-  width: 80%;
-  background: linear-gradient(-90deg, transparent, rgba(0, 240, 255, 0.25), transparent);
-}
-
-.line-3-r {
-  bottom: 25%;
-  right: 0;
-  width: 75%;
-}
-.line-3-r::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 30px;
-  height: 30px;
-  border-bottom: 2px solid rgba(170, 59, 255, 0.25);
-  border-left: 2px solid rgba(170, 59, 255, 0.25);
-  transform: rotate(45deg);
-  transform-origin: bottom left;
-}
-
-/* Animated Flowing Charge (Circuit Pulses) */
-.circuit-line::before, .circuit-line-r::before {
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #fff;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  box-shadow: 0 0 10px #00f0ff, 0 0 20px #aa3bff;
-  top: -3px;
+  border: 1px solid var(--gate-accent);
+  opacity: 0.15;
+  box-shadow: 0 0 15px var(--gate-accent-glow);
+  animation: pulse-ring 2s infinite cubic-bezier(0.215, 0.610, 0.355, 1);
 }
 
-.ce-gate-overlay:not(.exiting) .circuit-line::before {
-  left: 0;
-  animation: circuit-flow-left 0.35s forwards linear;
-}
-
-.ce-gate-overlay:not(.exiting) .circuit-line-r::before {
-  right: 0;
-  animation: circuit-flow-right 0.35s forwards linear;
-}
-
-/* ==========================================================================
-   Central Status Portal Console
-   ========================================================================== */
-.gate-core-portal {
-  position: absolute;
-  z-index: 100;
-  text-align: center;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.ce-gate-overlay:not(.exiting) .gate-core-portal {
-  animation: portal-console-in 0.2s 0.3s forwards cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.ce-gate-overlay.exiting .gate-core-portal {
-  opacity: 1;
-  animation: portal-console-out 0.2s 0.25s forwards ease-in;
-}
-
-.gate-portal-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(170, 59, 255, 0.15) 0%, transparent 70%);
-  filter: blur(25px);
-  z-index: -1;
-  animation: console-glow-pulse 2s infinite alternate ease-in-out;
-}
-
-/* Neon Glass Display Board */
-.gate-portal-display {
-  background: rgba(10, 6, 22, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 240, 255, 0.2);
+/* Neon Panel Card */
+.gate-display-panel {
+  background: var(--gate-panel-bg);
+  border: 1px solid var(--gate-border);
   border-radius: 12px;
-  padding: 24px 40px;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(170, 59, 255, 0.15);
-  min-width: 320px;
+  padding: 22px 30px;
+  box-shadow: var(--gate-shadow);
+  min-width: 340px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: all 0.4s ease;
 }
 
-.gate-portal-text {
+.gate-status-title {
   font-family: 'Outfit', 'Inter', sans-serif;
-  font-size: 1.4rem;
-  font-weight: 800;
-  letter-spacing: 4px;
-  color: #fff;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(170, 59, 255, 0.6);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--gate-text);
   margin: 0 0 16px 0;
   text-transform: uppercase;
-  animation: text-pulse-glow 1.5s infinite alternate ease-in-out;
+  min-height: 24px;
+  text-align: center;
 }
 
-/* Text scanline */
-.gate-scanner-ray {
-  position: absolute;
-  left: 0;
-  top: 0;
+/* Loader Bar Styling (Super thin, modern line) */
+.gate-loader-bar {
   width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gate-cyan), transparent);
-  box-shadow: 0 0 10px var(--gate-cyan);
-  pointer-events: none;
-  z-index: 10;
-  opacity: 0.7;
-  animation: scan-vertical 2s infinite linear;
-}
-
-/* Progress bar loader */
-.gate-status-bar {
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
+  height: 3px;
+  background: rgba(120, 120, 120, 0.08);
+  border-radius: 2px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
-  margin-bottom: 12px;
+  position: relative;
+  margin-bottom: 16px;
 }
 
-.gate-status-progress {
+.gate-loader-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--gate-purple), var(--gate-cyan));
-  box-shadow: 0 0 8px var(--gate-cyan);
-  transition: width 0.1s linear;
+  background: linear-gradient(90deg, var(--gate-accent) 0%, #38bdf8 100%);
+  box-shadow: 0 0 8px var(--gate-accent);
+  transition: width 0.08s linear;
 }
 
-.gate-system-status {
+/* Details row styling */
+.gate-details-row {
   display: flex;
   justify-content: space-between;
   width: 100%;
+  border-top: 1px solid var(--gate-border);
+  padding-top: 12px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.detail-item .label {
   font-family: monospace;
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.35);
-  letter-spacing: 1px;
+  font-size: 0.58rem;
+  color: var(--gate-text-muted);
+  letter-spacing: 1.5px;
+  margin-bottom: 2px;
+}
+
+.detail-item .value {
+  font-family: monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--gate-text);
+}
+
+.detail-item .value.active {
+  color: var(--gate-accent);
+}
+
+.detail-item .value.percent {
+  color: var(--gate-success);
 }
 
 /* ==========================================================================
    Animations & Keyframes
    ========================================================================== */
 
-/* Left door animations */
+/* Left Panel Slide */
 @keyframes slide-door-left-in {
   from { transform: translateX(-100%); }
   to { transform: translateX(0); }
 }
 
 @keyframes slide-door-left-out {
-  from { transform: translateX(0); }
-  to { transform: translateX(-100%); }
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-100%); opacity: 0; }
 }
 
-/* Right door animations */
+/* Right Panel Slide */
 @keyframes slide-door-right-in {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
 }
 
 @keyframes slide-door-right-out {
-  from { transform: translateX(0); }
-  to { transform: translateX(100%); }
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
 }
 
-/* Seam Laser Animations */
-@keyframes laser-strike {
-  from { transform: translateX(-50%) scaleX(0); opacity: 0; }
-  to { transform: translateX(-50%) scaleX(1); opacity: 1; }
-}
-
-@keyframes laser-scan {
-  0% { filter: brightness(1); }
-  100% { filter: brightness(1.8); }
-}
-
-@keyframes laser-fade-out {
-  from { transform: translateX(-50%) scaleX(1); opacity: 1; }
-  to { transform: translateX(-50%) scaleX(0); opacity: 0; }
-}
-
-/* Console Animations */
-@keyframes portal-console-in {
-  from { opacity: 0; transform: scale(0.9); }
+/* Portal Entry and Exit */
+@keyframes portal-in {
+  from { opacity: 0; transform: scale(0.93); }
   to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes portal-console-out {
+@keyframes portal-out {
   from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.92); }
+  to { opacity: 0; transform: scale(0.95); }
 }
 
-/* Outer Ring Spin */
-@keyframes spin-clockwise {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-@keyframes spin-counter-clockwise {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(-360deg); }
-}
-
-/* Core Lock Glow */
-@keyframes pulse-glow-purple {
-  0% { box-shadow: 0 0 15px var(--gate-purple); filter: brightness(0.9); }
-  100% { box-shadow: 0 0 35px var(--gate-purple), 0 0 50px var(--gate-cyan); filter: brightness(1.3); }
-}
-
-@keyframes pulse-glow-green {
-  0% { box-shadow: 0 0 15px var(--gate-green); filter: brightness(0.9); }
-  100% { box-shadow: 0 0 45px var(--gate-green), 0 0 60px var(--gate-cyan); filter: brightness(1.4); }
-}
-
-/* Text glow */
-@keyframes text-pulse-glow {
-  0% { text-shadow: 0 0 8px rgba(0, 240, 255, 0.5), 0 0 15px rgba(170, 59, 255, 0.5); }
-  100% { text-shadow: 0 0 15px rgba(0, 240, 255, 0.9), 0 0 30px rgba(170, 59, 255, 0.9); }
-}
-
-@keyframes console-glow-pulse {
-  0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.95); }
-  100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.05); }
-}
-
-/* Circuit Charge Flows */
-@keyframes circuit-flow-left {
-  0% { left: 0; opacity: 1; }
-  80% { left: 80%; opacity: 1; }
-  100% { left: 100%; opacity: 0; }
-}
-
-@keyframes circuit-flow-right {
-  0% { right: 0; opacity: 1; }
-  80% { right: 80%; opacity: 1; }
-  100% { right: 100%; opacity: 0; }
-}
-
-/* Vertical Scanline */
-@keyframes scan-vertical {
-  0% { top: 0%; }
-  100% { top: 100%; }
+/* Circular Pulse */
+@keyframes pulse-ring {
+  0% { transform: scale(0.7); opacity: 0.8; }
+  80% { opacity: 0.1; }
+  100% { transform: scale(1.1); opacity: 0; }
 }
