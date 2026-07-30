@@ -18,9 +18,35 @@ function copyDir(srcDir, destDir) {
   }
 }
 
+function cleanUnused(srcDir, destDir) {
+  if (!fs.existsSync(destDir)) return;
+  for (const file of fs.readdirSync(destDir)) {
+    const srcFile = path.resolve(srcDir, file);
+    const destFile = path.resolve(destDir, file);
+    if (!fs.existsSync(srcFile)) {
+      try {
+        const stat = fs.statSync(destFile);
+        if (stat.isDirectory()) {
+          fs.rmSync(destFile, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(destFile);
+        }
+      } catch (err) {
+        // Ignore file lock errors for single files
+      }
+    } else {
+      const destStat = fs.statSync(destFile);
+      if (destStat.isDirectory()) {
+        cleanUnused(srcFile, destFile);
+      }
+    }
+  }
+}
+
 try {
   if (fs.existsSync(src)) {
     console.log("🚀 Copying Monaco Editor assets locally to public/monaco-editor/min/vs...");
+    cleanUnused(src, dest);
     copyDir(src, dest);
     console.log("✅ Monaco Editor assets copied successfully!");
   } else {
@@ -29,3 +55,4 @@ try {
 } catch (err) {
   console.error("❌ Error copying Monaco assets:", err);
 }
+
