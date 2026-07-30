@@ -132,7 +132,7 @@ class CallSoundSynthesizer {
     this.activeNodes.forEach(node => {
       try {
         node.disconnect();
-      } catch (e) {}
+      } catch (e) { }
     });
     this.activeNodes = [];
   }
@@ -398,7 +398,7 @@ export function CallProvider({ children }) {
     if (!partnerUser || !user) return;
 
     setIsCallMinimized(false);
-    
+
     const callerInfo = {
       _id: currentUserId,
       username: user.username,
@@ -518,7 +518,7 @@ export function CallProvider({ children }) {
         username: user?.username
       }
     });
-    
+
     stopLocalStream();
     cleanUpAllCallConnections();
     setActiveCall(null);
@@ -584,17 +584,17 @@ export function CallProvider({ children }) {
 
     const handleCallAccepted = ({ accepterInfo, groupId, accepterSocketId }) => {
       console.log("WebRTC: handleCallAccepted from", accepterInfo?.username, "socket:", accepterSocketId);
-      
+
       callSynth.stopAll();
       callStartTimeRef.current = Date.now();
 
       setActiveCall((prev) => {
         if (!prev) return null;
-        
+
         const currentConnected = prev.connectedMembers || [];
         const alreadyAdded = accepterInfo ? currentConnected.some(m => String(m._id) === String(accepterInfo._id)) : false;
         const updatedMembers = (accepterInfo && !alreadyAdded) ? [...currentConnected, { ...accepterInfo, socketId: accepterSocketId }] : currentConnected;
-        
+
         // If we are the host of the group call, emit the sync event to the group
         const isHost = prev.caller?._id === currentUserId;
         if (isHost && prev.partner.isGroup && groupId) {
@@ -671,7 +671,7 @@ export function CallProvider({ children }) {
 
     const handleCallLeft = ({ userId }) => {
       console.log("WebRTC: handleCallLeft from userId:", userId);
-      
+
       setRemoteStreams((prev) => {
         const socketId = Object.keys(prev).find(key => String(prev[key].userId) === String(userId));
         if (socketId) {
@@ -682,10 +682,10 @@ export function CallProvider({ children }) {
 
       setActiveCall((prev) => {
         if (!prev) return null;
-        
+
         const currentConnected = prev.connectedMembers || [];
         const updatedMembers = currentConnected.filter(m => String(m._id) !== String(userId));
-        
+
         // If we are the host, emit the sync event to the group
         const isHost = prev.caller?._id === currentUserId;
         const groupId = prev.partner.isGroup ? (prev.partner._id || prev.partner.id) : null;
@@ -706,7 +706,7 @@ export function CallProvider({ children }) {
     const handleCallSynced = ({ connectedMembers }) => {
       setActiveCall((prev) => {
         if (!prev) return null;
-        
+
         // Map connected members and establish peer connection to any new ones that accepted
         const currentCall = activeCallRef.current;
         if (currentCall && currentCall.status === "connected" && connectedMembers) {
@@ -729,7 +729,7 @@ export function CallProvider({ children }) {
       const currentCall = activeCallRef.current;
       if (!currentCall) return;
       console.log("WebRTC: Received offer from:", senderSocketId);
-      
+
       let peerUsername = "Participant";
       let peerUserId = "";
       if (currentCall.partner.isGroup) {
@@ -825,7 +825,7 @@ export function CallProvider({ children }) {
       socket.off("dm:call:end", handleCallEnded);
       socket.off("dm:call:leave", handleCallLeft);
       socket.off("dm:call:sync", handleCallSynced);
-      
+
       socket.off("webrtc-offer", handleWebRtcOffer);
       socket.off("webrtc-answer", handleWebRtcAnswer);
       socket.off("webrtc-ice-candidate", handleWebRtcIceCandidate);

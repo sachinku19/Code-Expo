@@ -24,6 +24,7 @@ import {
   Search
 } from "lucide-react";
 import "./GoogleMeet.css";
+import { MediaManager } from "../../utils/MediaManager";
 
 const getAvatarUrl = (avatar) => {
   if (!avatar) return null;
@@ -40,7 +41,7 @@ function PersistentRemoteAudio({ userId, stream, onSpeakingChange }) {
       if (audioRef.current.srcObject !== stream) {
         audioRef.current.srcObject = stream;
       }
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
     }
   }, [stream]);
 
@@ -88,7 +89,7 @@ function PersistentRemoteAudio({ userId, stream, onSpeakingChange }) {
     return () => {
       if (animFrame) cancelAnimationFrame(animFrame);
       if (audioContext && audioContext.state !== "closed") {
-        audioContext.close().catch(() => {});
+        audioContext.close().catch(() => { });
       }
     };
   }, [stream, userId, onSpeakingChange]);
@@ -108,7 +109,7 @@ function RemoteVideoTile({ member, isSpeaking, initial }) {
         node.srcObject = member.stream;
       }
       if (member.isVideoOn) {
-        node.play().catch(() => {});
+        node.play().catch(() => { });
       }
     }
   }, [member.stream, member.isVideoOn]);
@@ -119,7 +120,7 @@ function RemoteVideoTile({ member, isSpeaking, initial }) {
         videoRef.current.srcObject = member.stream;
       }
       if (member.isVideoOn) {
-        videoRef.current.play().catch(() => {});
+        videoRef.current.play().catch(() => { });
       }
     }
   }, [member.stream, member.isVideoOn]);
@@ -192,6 +193,7 @@ const GoogleMeetStage = ({
   const [pillPos, setPillPos] = useState({ x: null, y: null });
   const isDraggingPillRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const mediaManagerRef = useRef(new MediaManager());
 
   const handleRemoteSpeakingChange = useCallback((userId, isSpeaking) => {
     setRemoteSpeakingMap((prev) => {
@@ -271,7 +273,7 @@ const GoogleMeetStage = ({
         node.srcObject = localStream;
       }
       if (isVideoOn) {
-        node.play().catch(() => {});
+        node.play().catch(() => { });
       }
     }
   }, [localStream, isVideoOn]);
@@ -282,7 +284,7 @@ const GoogleMeetStage = ({
         localVideoRef.current.srcObject = localStream;
       }
       if (isVideoOn) {
-        localVideoRef.current.play().catch(() => {});
+        localVideoRef.current.play().catch(() => { });
       }
     }
   }, [localStream, isVideoOn, isMinimized]);
@@ -304,163 +306,68 @@ const GoogleMeetStage = ({
 
   const toggleScreenShare = async () => {
     if (isScreenSharing) {
-      if (screenStream) {
-        screenStream.getTracks().forEach((t) => t.stop());
+      try {
+        await mediaManagerRef.current.stopScreenShare();
+        setIsScreenSharing(false);
         setScreenStream(null);
-      }
-      setIsScreenSharing(false);
-      const cameraTrack = localStream?.getVideoTracks()[0];
-      if (cameraTrack) {
-        Object.values(peersRef.current).forEach((pc) => {
-          const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
-          if (sender) sender.replaceTrack(cameraTrack);
-        });
+      } catch (err) {
+        console.warn("MediaManager: Failed stopping screen share:", err);
       }
     } else {
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: { cursor: "always" },
-          audio: false
-        });
+        const stream = await mediaManagerRef.current.startScreenShare();
         setScreenStream(stream);
         setIsScreenSharing(true);
 
         const screenTrack = stream.getVideoTracks()[0];
-        Object.values(peersRef.current).forEach((pc) => {
-          const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
-          if (sender) sender.replaceTrack(screenTrack);
-        });
-
-        screenTrack.onended = () => {
-          stream.getTracks().forEach((t) => t.stop());
-          setScreenStream(null);
-          setIsScreenSharing(false);
-          const camTrack = localStream?.getVideoTracks()[0];
-          if (camTrack) {
-            Object.values(peersRef.current).forEach((pc) => {
-              const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
-              if (sender) sender.replaceTrack(camTrack);
-            });
-          }
-        };
+        if (screenTrack) {
+          screenTrack.onended = async () => {
+            await mediaManagerRef.current.stopScreenShare();
+            setIsScreenSharing(false);
+            setScreenStream(null);
+          };
+        }
       } catch (err) {
-        console.warn("Screen sharing cancelled or failed:", err);
+        console.warn("MediaManager: Failed starting screen share:", err);
       }
     }
   };
 
   useEffect(() => {
     if (!isOpen) {
-      if (localStream) {
-        localStream.getTracks().forEach((t) => t.stop());
-        setLocalStream(null);
-      }
-      Object.values(peersRef.current).forEach((pc) => pc.close());
-      peersRef.current = {};
+      mediaManagerRef.current.destroy();
+      setLocalStream(null);
       setRemoteStreams({});
       return;
     }
 
-    let stream = null;
-    async function initLocalStream() {
+    mediaManagerRef.current.setStreamChangeCallback((newStream) => {
+      setLocalStream(newStream);
+    });
+
+    async function initMedia() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: initialVideoOn,
-          audio: true
-        });
-      } catch (err) {
-        console.warn("Could not get video+audio stream, trying audio-only fallback:", err);
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: true
-          });
-        } catch (err2) {
-          console.warn("Could not get audio stream, creating synthetic stream:", err2);
-          try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const dst = ctx.createMediaStreamDestination();
-            osc.connect(dst);
-            osc.start();
-            stream = dst.stream;
-          } catch (err3) {
-            console.warn("Synthetic stream creation failed:", err3);
-          }
-        }
-      }
-
-      if (stream) {
-        const vTrack = stream.getVideoTracks()[0];
-        if (vTrack) vTrack.enabled = initialVideoOn;
-        const aTrack = stream.getAudioTracks()[0];
-        if (aTrack) aTrack.enabled = initialMicOn;
-
+        const stream = await mediaManagerRef.current.initializeStream(initialMicOn, initialVideoOn);
         setLocalStream(stream);
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
+      } catch (err) {
+        console.error("MediaManager: Stream initialization failed:", err);
       }
     }
-
-    initLocalStream();
+    initMedia();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
-      }
+      mediaManagerRef.current.destroy();
     };
   }, [isOpen]);
 
   useEffect(() => {
-    async function updateVideoState() {
-      if (!localStream) return;
+    if (!localStream) return;
 
-      const videoTrack = localStream.getVideoTracks()[0];
-
-      if (!isVideoOn) {
-        // Stop hardware camera sensor so physical laptop camera LED turns OFF
-        if (videoTrack) {
-          videoTrack.stop();
-          localStream.removeTrack(videoTrack);
-          setLocalStream(new MediaStream(localStream.getTracks()));
-        }
-      } else {
-        // Re-enable camera: if track is ended/missing, get fresh camera track from hardware
-        if (!videoTrack || videoTrack.readyState === "ended") {
-          try {
-            const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            const newTrack = camStream.getVideoTracks()[0];
-            if (newTrack) {
-              localStream.addTrack(newTrack);
-              setLocalStream(new MediaStream(localStream.getTracks()));
-              // Update track on active WebRTC peer connections
-              Object.values(peersRef.current).forEach((pc) => {
-                const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
-                if (sender) {
-                  sender.replaceTrack(newTrack);
-                } else {
-                  pc.addTrack(newTrack, localStream);
-                }
-              });
-            }
-          } catch (err) {
-            console.warn("Re-enabling hardware camera failed:", err);
-          }
-        } else {
-          videoTrack.enabled = true;
-        }
-      }
-
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) audioTrack.enabled = isMicOn;
-
-      if (localVideoRef.current && localVideoRef.current.srcObject !== localStream) {
-        localVideoRef.current.srcObject = localStream;
-      }
+    async function syncMediaState() {
+      await mediaManagerRef.current.setMicState(isMicOn);
+      await mediaManagerRef.current.setVideoState(isVideoOn);
     }
-
-    updateVideoState();
+    syncMediaState();
 
     if (socket) {
       socket.emit("meet:state-change", {
@@ -477,6 +384,27 @@ const GoogleMeetStage = ({
   useEffect(() => {
     if (!isOpen || !socket || !localStream) return;
 
+    // Clean up peer connections for users who left the meeting
+    const activeSocketIds = new Set(participants.map(p => p.socketId).filter(Boolean));
+    Object.keys(peersRef.current).forEach((sockId) => {
+      if (!activeSocketIds.has(sockId)) {
+        console.log("MediaManager: Cleaning up peer connection for left user:", sockId);
+        const pc = peersRef.current[sockId];
+        if (pc) {
+          try {
+            pc.close();
+          } catch (e) {}
+          mediaManagerRef.current.unregisterPeer(sockId);
+          delete peersRef.current[sockId];
+        }
+        setRemoteStreams((prev) => {
+          const next = { ...prev };
+          delete next[sockId];
+          return next;
+        });
+      }
+    });
+
     const createPeerConnection = (targetSocketId, targetUserId) => {
       let pc = peersRef.current[targetSocketId];
       if (pc) return pc;
@@ -487,7 +415,16 @@ const GoogleMeetStage = ({
       pc.pendingCandidates = [];
       peersRef.current[targetSocketId] = pc;
 
-      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+      // Register pc with media manager so track replacements are auto-synced
+      mediaManagerRef.current.registerPeer(targetSocketId, pc);
+
+      localStream.getTracks().forEach((track) => {
+        try {
+          pc.addTrack(track, localStream);
+        } catch (e) {
+          console.warn("Failed to add track to PC on creation:", e);
+        }
+      });
 
       pc.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
@@ -522,7 +459,7 @@ const GoogleMeetStage = ({
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           if (pc.pendingCandidates && pc.pendingCandidates.length > 0) {
             for (const cand of pc.pendingCandidates) {
-              await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+              await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => { });
             }
             pc.pendingCandidates = [];
           }
@@ -539,7 +476,7 @@ const GoogleMeetStage = ({
             await pc.setRemoteDescription(new RTCSessionDescription(signalData));
             if (pc.pendingCandidates && pc.pendingCandidates.length > 0) {
               for (const cand of pc.pendingCandidates) {
-                await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+                await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => { });
               }
               pc.pendingCandidates = [];
             }
@@ -641,7 +578,7 @@ const GoogleMeetStage = ({
     return () => {
       if (animFrame) cancelAnimationFrame(animFrame);
       if (audioContext && audioContext.state !== "closed") {
-        audioContext.close().catch(() => {});
+        audioContext.close().catch(() => { });
       }
     };
   }, [isOpen, isMicOn, localStream, myId]);
@@ -683,10 +620,10 @@ const GoogleMeetStage = ({
   const remoteAudioElements = allMembers
     .filter((m) => !m.isLocal && m.stream)
     .map((m) => (
-      <PersistentRemoteAudio 
-        key={m.userId || m.socketId} 
+      <PersistentRemoteAudio
+        key={m.userId || m.socketId}
         userId={m.userId}
-        stream={m.stream} 
+        stream={m.stream}
         onSpeakingChange={handleRemoteSpeakingChange}
       />
     ));
@@ -711,10 +648,10 @@ const GoogleMeetStage = ({
     const hasVideoActive = member.isLocal
       ? Boolean(isVideoOn && localStream && localVideoTracks.length > 0 && localVideoTracks.some((t) => t.enabled && t.readyState === "live"))
       : (() => {
-          const videoTracks = member.stream ? member.stream.getVideoTracks() : [];
-          const hasActiveVideoTrack = videoTracks.length > 0 && videoTracks.some((t) => t.enabled && t.readyState === "live");
-          return Boolean(member.stream && hasActiveVideoTrack && member.isVideoOn);
-        })();
+        const videoTracks = member.stream ? member.stream.getVideoTracks() : [];
+        const hasActiveVideoTrack = videoTracks.length > 0 && videoTracks.some((t) => t.enabled && t.readyState === "live");
+        return Boolean(member.stream && hasActiveVideoTrack && member.isVideoOn);
+      })();
 
     return (
       <div
@@ -772,7 +709,7 @@ const GoogleMeetStage = ({
                     <span /><span /><span /><span /><span />
                   </div>
                 )}
-                
+
                 <div className={`ce-meet-speaker-avatar-ring ${isSpeaking ? "pulsing" : ""}`}>
                   {avatarUrl ? (
                     <img src={avatarUrl} alt={member.username} className="ce-meet-speaker-avatar-img" />
@@ -787,7 +724,7 @@ const GoogleMeetStage = ({
                   </div>
                 )}
               </div>
-              
+
               <div className="ce-meet-featured-speaker-details">
                 <div className="ce-meet-featured-speaker-name-row">
                   <span>{(member.username || "").replace(/\s*\(You\)\s*/gi, "")}{member.isLocal ? " (You)" : ""}</span>
@@ -846,7 +783,7 @@ const GoogleMeetStage = ({
         onTouchStart={handlePillTouchStart}
       >
         {remoteAudioElements}
-        
+
         {/* Active Speaker Tracking Badge when Minimized */}
         {activeSpeakingMember ? (
           <div className="ce-meet-minimized-speaker-badge" onClick={() => setIsMinimized(false)} title={`${activeSpeakingMember.username} is speaking`}>
@@ -904,9 +841,7 @@ const GoogleMeetStage = ({
             type="button"
             className="ce-meet-minimized-btn end"
             onClick={() => {
-              if (localStream) {
-                localStream.getTracks().forEach((t) => t.stop());
-              }
+              mediaManagerRef.current.destroy();
               onLeaveMeeting();
             }}
             title="Leave Meeting"
@@ -1057,9 +992,7 @@ const GoogleMeetStage = ({
               type="button"
               className="ce-meet-float-btn end"
               onClick={() => {
-                if (localStream) {
-                  localStream.getTracks().forEach((t) => t.stop());
-                }
+                mediaManagerRef.current.destroy();
                 onLeaveMeeting();
               }}
               title="Leave Meeting"

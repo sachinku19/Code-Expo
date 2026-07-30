@@ -5,6 +5,10 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import axios from "axios"
 import toast from "react-hot-toast"
+import { loader } from "@monaco-editor/react";
+
+// Configure Monaco Editor to load assets locally from public directory (eliminates external CDN delay)
+loader.config({ paths: { vs: "/monaco-editor/min/vs" } });
 
 // Configure Global Axios Interceptors for custom client instances (DNS/Timeout/Server Down Errors)
 let lastNetworkErrorTime = 0;

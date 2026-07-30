@@ -4843,6 +4843,20 @@ function Editor() {
                         value={activeFileId ? undefined : code}
                         onChange={activeFileId ? undefined : handleEditorChange}
                         onMount={handleEditorMount}
+                        loading={
+                          <div className="ce-monaco-skeleton-loader">
+                            <div className="ce-monaco-skeleton-line" style={{ width: "35%" }} />
+                            <div className="ce-monaco-skeleton-line" style={{ width: "55%" }} />
+                            <div className="ce-monaco-skeleton-line" style={{ width: "75%" }} />
+                            <div className="ce-monaco-skeleton-line" style={{ width: "45%" }} />
+                            <div className="ce-monaco-skeleton-line" style={{ width: "65%" }} />
+                            <div className="ce-monaco-skeleton-line" style={{ width: "40%" }} />
+                            <div className="ce-monaco-skeleton-spinner">
+                              <div className="ce-monaco-spinner-dot" />
+                              <span>Booting Monaco IDE...</span>
+                            </div>
+                          </div>
+                        }
                         options={{
                           readOnly: isEditorReadOnly,
                           fontSize: editorFontSize,
