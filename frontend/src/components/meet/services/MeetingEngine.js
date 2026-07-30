@@ -14,7 +14,7 @@ export class MeetingEngine {
     this.myId = currentUser?.id || currentUser?._id;
     this.callbacks = callbacks; // onParticipantsChange, onLocalStreamChange, onLocalSpeaking
 
-    this.mediaManager = new MediaManager();
+    this.mediaManager = MediaManager.getInstance();
     this.signalingService = new SignalingService(socket, roomId, this.myId, currentUser);
     this.peerManager = null;
 
@@ -130,6 +130,17 @@ export class MeetingEngine {
   async toggleMic() {
     const micState = await this.mediaManager.toggleMic();
     this.isMicOn = micState;
+
+    // Directly manipulate the active RTCRtpSenders on all peer connections to ensure silence
+    if (this.peerManager) {
+      this.peerManager.peers.forEach(({ pc }) => {
+        pc.getSenders().forEach((sender) => {
+          if (sender.track && sender.track.kind === "audio") {
+            sender.track.enabled = micState;
+          }
+        });
+      });
+    }
 
     const audioTrack = this.localStream ? this.localStream.getAudioTracks()[0] : null;
     if (this.peerManager) {

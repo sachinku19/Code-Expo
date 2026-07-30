@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Video, VideoOff, X, Video as VideoIcon, ShieldCheck, Volume2 } from "lucide-react";
 import "./GoogleMeet.css";
+import { MediaManager } from "./services/MediaManager";
 
 const getAvatarUrl = (avatar) => {
   if (!avatar) return null;
@@ -25,24 +26,18 @@ const GoogleMeetLobbyModal = ({
   const videoRef = useRef(null);
 
   useEffect(() => {
-    if (!isOpen) {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((t) => t.stop());
-        setMediaStream(null);
-      }
-      return;
-    }
+    if (!isOpen) return;
 
-    let stream = null;
+    let active = true;
     async function initPreview() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: initialVideoOn,
-          audio: true
-        });
-        setMediaStream(stream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        const mediaManager = MediaManager.getInstance();
+        const stream = await mediaManager.acquireLocalStream(isVideoOn, isMicOn);
+        if (active) {
+          setMediaStream(stream);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
         }
       } catch (err) {
         console.warn("Could not access media devices for preview:", err);
@@ -52,42 +47,24 @@ const GoogleMeetLobbyModal = ({
     initPreview();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
-      }
+      active = false;
     };
   }, [isOpen]);
 
   useEffect(() => {
     async function updateLobbyMedia() {
       if (!mediaStream) return;
+      const mediaManager = MediaManager.getInstance();
 
-      const videoTrack = mediaStream.getVideoTracks()[0];
-
-      if (!isVideoOn) {
-        if (videoTrack) {
-          videoTrack.stop();
-          mediaStream.removeTrack(videoTrack);
-        }
-      } else {
-        if (!videoTrack || videoTrack.readyState === "ended") {
-          try {
-            const freshCam = await navigator.mediaDevices.getUserMedia({ video: true });
-            const freshTrack = freshCam.getVideoTracks()[0];
-            if (freshTrack) mediaStream.addTrack(freshTrack);
-          } catch (e) {
-            console.warn("Lobby camera restart error:", e);
-          }
-        } else {
-          videoTrack.enabled = true;
-        }
+      if (isVideoOn !== mediaManager.isVideoOn) {
+        await mediaManager.toggleCamera();
+      }
+      if (isMicOn !== mediaManager.isMicOn) {
+        await mediaManager.toggleMic();
       }
 
-      const audioTrack = mediaStream.getAudioTracks()[0];
-      if (audioTrack) audioTrack.enabled = isMicOn;
-
-      if (videoRef.current && videoRef.current.srcObject !== mediaStream) {
-        videoRef.current.srcObject = mediaStream;
+      if (videoRef.current && videoRef.current.srcObject !== mediaManager.localStream) {
+        videoRef.current.srcObject = mediaManager.localStream;
       }
     }
 
@@ -119,6 +96,7 @@ const GoogleMeetLobbyModal = ({
       const dataArray = new Uint8Array(bufferLength);
 
       const updateVolume = () => {
+        if (!analyser) return;
         analyser.getByteFrequencyData(dataArray);
         let sum = 0;
         for (let i = 0; i < bufferLength; i++) {
@@ -144,10 +122,13 @@ const GoogleMeetLobbyModal = ({
 
   if (!isOpen) return null;
 
+  const handleClose = () => {
+    const mediaManager = MediaManager.getInstance();
+    mediaManager.destroy(); // Release hardware LED cleanly if closed/canceled
+    onClose();
+  };
+
   const handleJoin = (forceMuted = false) => {
-    if (mediaStream) {
-      mediaStream.getTracks().forEach((t) => t.stop());
-    }
     onJoinMeeting({
       isMicOn: forceMuted ? false : isMicOn,
       isVideoOn: forceMuted ? false : isVideoOn
@@ -159,7 +140,7 @@ const GoogleMeetLobbyModal = ({
   const avatarUrl = getAvatarUrl(currentUser?.avatar);
 
   return (
-    <div className="ce-meet-lobby-overlay" onClick={onClose}>
+    <div className="ce-meet-lobby-overlay" onClick={handleClose}>
       <div className="ce-meet-lobby-card" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="ce-meet-lobby-header">
@@ -179,7 +160,7 @@ const GoogleMeetLobbyModal = ({
           <button
             type="button"
             className="ce-meet-close-button"
-            onClick={onClose}
+            onClick={handleClose}
             title="Close"
           >
             <X size={18} />

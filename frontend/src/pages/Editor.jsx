@@ -230,16 +230,20 @@ function Editor() {
     setMeetMicOn(isMicOn);
     setMeetVideoOn(isVideoOn);
     setShowMeetLobby(false);
-    setInMeet(true);
-    socket.emit("meet:join", {
-      roomId,
-      userId: user.id || user._id,
-      username: user.username,
-      avatar: user.avatar,
-      isMicOn,
-      isVideoOn
-    });
-    triggerNotification("Joined Google Meet Workspace Session");
+    
+    // Brief delay to let the browser cleanly release camera hardware from lobby preview
+    setTimeout(() => {
+      setInMeet(true);
+      socket.emit("meet:join", {
+        roomId,
+        userId: user.id || user._id,
+        username: user.username,
+        avatar: user.avatar,
+        isMicOn,
+        isVideoOn
+      });
+      triggerNotification("Joined Google Meet Workspace Session");
+    }, 350);
   };
 
   const handleLeaveMeeting = () => {
@@ -555,18 +559,20 @@ function Editor() {
   };
 
   const triggerNotification = (message) => {
-    setNotification(message);
+    if (!message) return;
+    const msgStr = String(message);
+    setNotification(msgStr);
     const newNotif = {
       id: Date.now() + Math.random(),
-      message,
+      message: msgStr,
       time: new Date()
     };
     setRoomNotifications((prev) => [newNotif, ...prev].slice(0, 20));
 
     // Auto-clear active toast notification after a timeout
-    const timeout = message.includes("auto-saved") ? 2500 : 3500;
+    const timeout = msgStr.includes("auto-saved") ? 2500 : 3500;
     setTimeout(() => {
-      setNotification((prev) => prev === message ? "" : prev);
+      setNotification((prev) => prev === msgStr ? "" : prev);
     }, timeout);
   };
 
@@ -2367,15 +2373,18 @@ function Editor() {
     };
 
     const handleUserLeft = (data) => {
-      triggerNotification(data.message);
+      if (!data) return;
+      triggerNotification(data.message || `${data.username || "A user"} left the room`);
       fetchRoom();
 
       // Cleanup cursor of left user
-      setRemoteCursors((prev) => {
-        const next = { ...prev };
-        delete next[data.username];
-        return next;
-      });
+      if (data.username) {
+        setRemoteCursors((prev) => {
+          const next = { ...prev };
+          delete next[data.username];
+          return next;
+        });
+      }
     };
 
     const handleCodeCursorMove = (data) => {

@@ -2,6 +2,15 @@
  * MediaManager - Manages capturing, toggling, VAD monitoring, and screen sharing
  */
 export class MediaManager {
+  static instance = null;
+
+  static getInstance() {
+    if (!MediaManager.instance) {
+      MediaManager.instance = new MediaManager();
+    }
+    return MediaManager.instance;
+  }
+
   constructor() {
     this.localStream = null;
     this.screenStream = null;
@@ -13,6 +22,7 @@ export class MediaManager {
     this.isVideoOn = true;
     this.isScreenSharing = false;
     this.vadInterval = null;
+    this.dummyTrack = null;
   }
 
   setCallbacks({ onStreamChange, onVolumeChange }) {
@@ -21,6 +31,19 @@ export class MediaManager {
   }
 
   async acquireLocalStream(video = true, audio = true) {
+    if (this.localStream && this.localStream.getTracks().length > 0) {
+      console.log(`[MEET_OBSERVER][${new Date().toISOString()}] Reusing existing local MediaStream singleton.`);
+      // Restore cached state
+      this.isMicOn = audio;
+      this.isVideoOn = video;
+      const vt = this.localStream.getVideoTracks()[0];
+      if (vt) vt.enabled = video;
+      const at = this.localStream.getAudioTracks()[0];
+      if (at) at.enabled = audio;
+      if (this.onStreamChange) this.onStreamChange(this.localStream);
+      return this.localStream;
+    }
+
     this.isMicOn = audio;
     this.isVideoOn = video;
     try {
@@ -107,6 +130,13 @@ export class MediaManager {
           video: { width: { ideal: 640 }, height: { ideal: 360 } }
         });
         const freshTrack = freshStream.getVideoTracks()[0];
+        
+        // Clean up dummy track
+        if (this.dummyTrack) {
+          this.dummyTrack.stop();
+          this.dummyTrack = null;
+        }
+
         if (videoTrack) {
           videoTrack.stop();
           this.localStream.removeTrack(videoTrack);
@@ -122,6 +152,20 @@ export class MediaManager {
         videoTrack.stop();
         this.localStream.removeTrack(videoTrack);
       }
+
+      // Generate a premium black canvas dummy track to keep WebRTC transceivers active
+      if (!this.dummyTrack) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 640;
+        canvas.height = 360;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#11131c";
+        ctx.fillRect(0, 0, 640, 360);
+        const dummyStream = canvas.captureStream(1);
+        this.dummyTrack = dummyStream.getVideoTracks()[0];
+      }
+      
+      this.localStream.addTrack(this.dummyTrack);
     }
 
     if (this.onStreamChange) this.onStreamChange(this.localStream);
