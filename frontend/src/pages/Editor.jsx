@@ -192,7 +192,19 @@ function Editor() {
   };
 
   const location = useLocation();
-  const fromTransition = location.state?.fromTransition;
+  const isPageRefresh = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const navs = window.performance?.getEntriesByType?.("navigation");
+      if (navs && navs.length > 0) {
+        return navs[0].type === "reload";
+      }
+      return window.performance?.navigation?.type === 1;
+    } catch (e) {
+      return false;
+    }
+  }, []);
+  const fromTransition = location.state?.fromTransition && !isPageRefresh;
   const [showGateOpenAnimation, setShowGateOpenAnimation] = useState(!fromTransition);
 
   useEffect(() => {
@@ -687,6 +699,8 @@ function Editor() {
   // Monaco Editor Ref & Collab Cursors
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
+  const [editorInstance, setEditorInstance] = useState(null);
+  const [monacoInstance, setMonacoInstance] = useState(null);
   const decorationsRef = useRef([]);
   const hasJoinedRef = useRef(false);
   const [remoteCursors, setRemoteCursors] = useState({});
@@ -2836,8 +2850,8 @@ function Editor() {
 
   // Yjs Collaboration Engine Integration Hook
   useEffect(() => {
-    const editor = editorRef.current;
-    const monaco = monacoRef.current;
+    const editor = editorInstance;
+    const monaco = monacoInstance;
     if (!editor || !monaco || !activeFileId) {
       return;
     }
@@ -3020,12 +3034,12 @@ function Editor() {
         styleTag.remove();
       }
     };
-  }, [activeFileId, editorRef.current, monacoRef.current]);
+  }, [activeFileId, editorInstance, monacoInstance]);
 
   // Handle Monaco Cursors delta decorations renderer
   useEffect(() => {
-    const editor = editorRef.current;
-    const monaco = monacoRef.current;
+    const editor = editorInstance;
+    const monaco = monacoInstance;
     if (!editor || !monaco) return;
 
     // Clear old cursor decorations
@@ -3081,7 +3095,7 @@ function Editor() {
     });
 
     decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations);
-  }, [remoteCursors]);
+  }, [remoteCursors, editorInstance, monacoInstance]);
 
   // Math helper for cursor colors (Curated professional developer palette)
   const getCursorColor = (name) => {
@@ -3224,6 +3238,8 @@ function Editor() {
   const handleEditorMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    setEditorInstance(editor);
+    setMonacoInstance(monaco);
 
     // Define custom premium themes matching page backgrounds exactly
     monaco.editor.defineTheme("custom-dark", {
@@ -3496,14 +3512,14 @@ function Editor() {
   };
 
   useEffect(() => {
-    if (monacoRef.current) {
-      monacoRef.current.editor.setTheme(editorTheme === "light" ? "custom-light" : "custom-dark");
+    if (monacoInstance) {
+      monacoInstance.editor.setTheme(editorTheme === "light" ? "custom-light" : "custom-dark");
     }
-  }, [editorTheme]);
+  }, [editorTheme, monacoInstance]);
 
   useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.updateOptions({
+    if (editorInstance) {
+      editorInstance.updateOptions({
         fontSize: editorFontSize,
         fontFamily: editorFontFamily,
         minimap: { enabled: editorShowMinimap },
@@ -3530,7 +3546,8 @@ function Editor() {
     editorSuggestions,
     editorCursorBlinking,
     editorCursorStyle,
-    editorBracketColorization
+    editorBracketColorization,
+    editorInstance
   ]);
 
   // Compile runner handler
@@ -3865,6 +3882,15 @@ function Editor() {
   };
 
   if (!room) {
+    if (!fromTransition) {
+      return (
+        <div className="editor-simple-loading-screen">
+          <div className="simple-loading-spinner"></div>
+          <span className="simple-loading-text">Loading Workspace...</span>
+        </div>
+      );
+    }
+
     return (
       <div className="editor-loading-screen">
         <div className="tech-grid-overlay"></div>

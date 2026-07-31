@@ -32,7 +32,7 @@ import {
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
   Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2,
-  Volume2, VolumeX
+  Volume2, VolumeX, Radio
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -1232,6 +1232,7 @@ function Dashboard() {
 
   const [historyRooms, setHistoryRooms] = useState(() => loadFromCache("ce_cache_historyRooms", []));
   const [visibleJoinedRooms, setVisibleJoinedRooms] = useState(4);
+  const [visibleActiveRooms, setVisibleActiveRooms] = useState(4);
   const [visibleFeedCount, setVisibleFeedCount] = useState(4);
   const [recentRooms, setRecentRooms] = useState(() => loadFromCache("ce_cache_recentRooms", []));
   const [liveRooms, setLiveRooms] = useState(() => loadFromCache("ce_cache_liveRooms", []));
@@ -2016,6 +2017,13 @@ function Dashboard() {
 
   const [showQuickCreateModal, setShowQuickCreateModal] = useState(false);
   const [showQuickJoinModal, setShowQuickJoinModal] = useState(false);
+  const [recentJoinedCodes, setRecentJoinedCodes] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("ce_recent_joined_codes") || "[]");
+    } catch {
+      return [];
+    }
+  });
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [activeDropdownCardId, setActiveDropdownCardId] = useState(null);
 
@@ -2299,15 +2307,10 @@ function Dashboard() {
       if (trendRes.success) {
         setTrendingRooms(prev => {
           const newRooms = trendRes.rooms || [];
-          let updated = newRooms;
-          if (prev && prev.length > 0) {
-            const updatedRooms = prev.map(p => {
-              const match = newRooms.find(n => n.roomId === p.roomId || n._id === p._id);
-              return match ? { ...p, ...match } : p;
-            });
-            const newAdditions = newRooms.filter(n => !prev.some(p => p.roomId === n.roomId || p._id === n._id));
-            updated = [...updatedRooms, ...newAdditions].slice(0, 5);
-          }
+          const updated = newRooms.map(n => {
+            const existing = prev.find(p => p.roomId === n.roomId || p._id === n._id);
+            return existing ? { ...existing, ...n } : n;
+          });
           localStorage.setItem("ce_cache_trendingRooms", JSON.stringify(updated));
           return updated;
         });
@@ -3753,6 +3756,20 @@ function Dashboard() {
     handleJoinRoomDirect(roomId);
   };
 
+  const saveJoinedCodeToHistory = (code) => {
+    if (!code) return;
+    try {
+      let list = JSON.parse(localStorage.getItem("ce_recent_joined_codes") || "[]");
+      list = list.filter(c => c !== code);
+      list.unshift(code);
+      list = list.slice(0, 10);
+      localStorage.setItem("ce_recent_joined_codes", JSON.stringify(list));
+      setRecentJoinedCodes(list);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const proceedJoinRoom = async (targetRoomId) => {
     try {
       const data = await joinRoom(targetRoomId);
@@ -3766,6 +3783,7 @@ function Dashboard() {
         addToast("Join request sent to room owner for approval", "success");
         return;
       }
+      saveJoinedCodeToHistory(targetRoomId);
       triggerGateAndNavigate(targetRoomId);
     } catch (error) {
       addToast(error.response?.data?.message || error.message, "error");
@@ -4543,107 +4561,170 @@ function Dashboard() {
                     {/* LEFT COLUMN */}
                     <div className="ce-column-left">
 
-                      {/* ACTIVE ROOMS */}
+                      {/* QUICK ACTIONS */}
                       <section className="ce-dashboard-section">
-                        <div className="section-header">
-                          <span className="live-indicator-dot"></span>
-                          <h3 className="section-title">Active Rooms</h3>
+                        <div className="quick-actions-cards-container">
+
+                          {/* Create Room Card */}
+                          <div
+                            className="quick-action-card create-room-card"
+                            onClick={() => setShowQuickCreateModal(true)}
+                          >
+                            <svg className="card-pattern" viewBox="0 0 100 100" preserveAspectRatio="none">
+                              <path d="M0 20 H100 M0 40 H100 M0 60 H100 M0 80 H100 M20 0 V100 M40 0 V100 M60 0 V100 M80 0 V100" fill="none" stroke="rgba(168, 85, 247, 0.05)" strokeWidth="0.5" />
+                              <line x1="15" y1="20" x2="45" y2="35" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
+                              <line x1="45" y1="35" x2="30" y2="75" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
+                              <line x1="45" y1="35" x2="80" y2="25" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
+                              <line x1="80" y1="25" x2="70" y2="65" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
+                              <line x1="70" y1="65" x2="30" y2="75" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
+                              <line x1="70" y1="65" x2="90" y2="85" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
+                              <circle cx="15" cy="20" r="1.5" fill="rgba(168, 85, 247, 0.5)" />
+                              <circle cx="45" cy="35" r="2.5" fill="rgba(168, 85, 247, 0.7)" />
+                              <circle cx="45" cy="35" r="5" fill="none" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="0.5" />
+                              <circle cx="30" cy="75" r="2" fill="rgba(168, 85, 247, 0.6)" />
+                              <circle cx="80" cy="25" r="2" fill="rgba(168, 85, 247, 0.6)" />
+                              <circle cx="80" cy="25" r="4" fill="none" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="0.5" />
+                              <circle cx="70" cy="65" r="3" fill="rgba(168, 85, 247, 0.7)" />
+                              <circle cx="70" cy="65" r="6" fill="none" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="0.5" />
+                              <circle cx="90" cy="85" r="1.5" fill="rgba(168, 85, 247, 0.5)" />
+                            </svg>
+                            <div className="quick-action-icon-wrapper purple-bg">
+                              <Plus size={20} className="quick-action-icon" />
+                            </div>
+                            <div className="quick-action-details">
+                              <h4 className="quick-action-title">Create Room</h4>
+                              <p className="quick-action-description">Start a new coding session</p>
+                              <p className="quick-action-sub-description">Choose language, privacy and more</p>
+                            </div>
+                            <ChevronRight size={16} className="quick-action-arrow" />
+                          </div>
+
+                          {/* Join Room Card */}
+                          <div
+                            className="quick-action-card join-room-card"
+                            onClick={() => setShowQuickJoinModal(true)}
+                          >
+                            <svg className="card-pattern" viewBox="0 0 100 100" preserveAspectRatio="none">
+                              <path d="M0 20 H100 M0 40 H100 M0 60 H100 M0 80 H100 M20 0 V100 M40 0 V100 M60 0 V100 M80 0 V100" fill="none" stroke="rgba(59, 130, 246, 0.05)" strokeWidth="0.5" />
+                              <line x1="15" y1="20" x2="45" y2="35" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
+                              <line x1="45" y1="35" x2="30" y2="75" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
+                              <line x1="45" y1="35" x2="80" y2="25" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
+                              <line x1="80" y1="25" x2="70" y2="65" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
+                              <line x1="70" y1="65" x2="30" y2="75" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
+                              <line x1="70" y1="65" x2="90" y2="85" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
+                              <circle cx="15" cy="20" r="1.5" fill="rgba(59, 130, 246, 0.5)" />
+                              <circle cx="45" cy="35" r="2.5" fill="rgba(59, 130, 246, 0.7)" />
+                              <circle cx="45" cy="35" r="5" fill="none" stroke="rgba(59, 130, 246, 0.25)" strokeWidth="0.5" />
+                              <circle cx="30" cy="75" r="2" fill="rgba(59, 130, 246, 0.6)" />
+                              <circle cx="80" cy="25" r="2" fill="rgba(59, 130, 246, 0.6)" />
+                              <circle cx="80" cy="25" r="4" fill="none" stroke="rgba(59, 130, 246, 0.25)" strokeWidth="0.5" />
+                              <circle cx="70" cy="65" r="3" fill="rgba(59, 130, 246, 0.7)" />
+                              <circle cx="70" cy="65" r="6" fill="none" stroke="rgba(59, 130, 246, 0.25)" strokeWidth="0.5" />
+                              <circle cx="90" cy="85" r="1.5" fill="rgba(59, 130, 246, 0.5)" />
+                            </svg>
+                            <div className="quick-action-icon-wrapper blue-bg">
+                              <LogIn size={20} className="quick-action-icon" />
+                            </div>
+                            <div className="quick-action-details">
+                              <h4 className="quick-action-title">Join Room</h4>
+                              <p className="quick-action-description">Join with room ID or invite link</p>
+                              <p className="quick-action-sub-description">Quickly enter an active room</p>
+                            </div>
+                            <ChevronRight size={16} className="quick-action-arrow" />
+                          </div>
+
                         </div>
-
-                        {isLoadingDashboard && liveRooms.length === 0 ? (
-                          <div style={{ padding: "10px" }}>
-                            <RoomGridSkeleton count={2} />
-                          </div>
-                        ) : liveRooms.length === 0 ? (
-                          <div className="empty-state-card">
-                            <Terminal size={18} className="empty-state-icon" />
-                            <p>No active rooms currently online.</p>
-                          </div>
-                        ) : (
-                          (() => {
-                            const myActive = liveRooms.filter(room => {
-                              const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                              const isParticipant = room.participants?.some(p => String(p.user?._id || p.user || p._id || p) === String(user?.id || user?._id));
-                              return isOwner || isParticipant;
-                            });
-
-                            const otherActive = liveRooms.filter(room => {
-                              const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id || room.createdBy?._id === user?._id || room.createdBy === user?._id;
-                              const isParticipant = room.participants?.some(p => String(p.user?._id || p.user || p._id || p) === String(user?.id || user?._id));
-                              return !(isOwner || isParticipant);
-                            });
-
-                            return (
-                              <div className="active-rooms-wrapper">
-                                {/* Segmented Pill Switcher with Round Sliding Background */}
-                                <div className="ce-pill-switcher-container">
-                                  <div className="ce-pill-switcher">
-                                    <div
-                                      className="ce-pill-bg-slide"
-                                      style={{
-                                        transform: activeRoomsTab === "my-active" ? "translateX(0)" : "translateX(100%)"
-                                      }}
-                                    />
-                                    <button
-                                      type="button"
-                                      className={`ce-pill-btn ${activeRoomsTab === "my-active" ? "active" : ""}`}
-                                      onClick={() => setActiveRoomsTab("my-active")}
-                                    >
-                                      My Active ({myActive.length})
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={`ce-pill-btn ${activeRoomsTab === "other-active" ? "active" : ""}`}
-                                      onClick={() => setActiveRoomsTab("other-active")}
-                                    >
-                                      Other Active ({otherActive.length})
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Tab Contents */}
-                                {activeRoomsTab === "my-active" && (
-                                  <div className="active-rooms-tab-pane">
-                                    {myActive.length === 0 ? (
-                                      <div className="empty-state-card compact">
-                                        <p>No active workspaces of yours.</p>
-                                      </div>
-                                    ) : (
-                                      <div className="rooms-grid-explore">
-                                        {myActive.map(room => renderRoomCard(room))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-
-                                {activeRoomsTab === "other-active" && (
-                                  <div className="active-rooms-tab-pane">
-                                    {otherActive.length === 0 ? (
-                                      <div className="empty-state-card compact">
-                                        <p>No other active workspaces online.</p>
-                                      </div>
-                                    ) : (
-                                      <div className="rooms-grid-explore">
-                                        {otherActive.map(room => renderRoomCard(room))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()
-                        )}
                       </section>
 
                       {/* SPLIT FEED AND RECENT JOINED ROOMS GRID */}
                       <div className="ce-dashboard-split-grid">
 
-                        {/* LEFT SECTION: DEVELOPER ACTIVITY FEED */}
+                        {/* COLUMN 1: ACTIVE ROOMS */}
+                        <section className="ce-dashboard-section active-rooms-section" style={{ marginBottom: 0 }}>
+                          <div className="section-header">
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <Radio size={16} className="brand-logo ce-pulse-active" style={{ color: "var(--ce-primary)" }} />
+                              <h3 className="section-title">Active Rooms</h3>
+                            </div>
+                          </div>
+
+                          {isLoadingDashboard && liveRooms.length === 0 ? (
+                            <ActivityFeedSkeleton count={3} />
+                          ) : (() => {
+                            const activeLive = liveRooms || [];
+
+                            if (activeLive.length === 0) {
+                              return (
+                                <div className="empty-state-card" style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                                  <Radio size={18} className="empty-state-icon" style={{ color: "var(--ce-text-muted)" }} />
+                                  <p>No active rooms right now. Host a room to start a live session!</p>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="recent-joined-list">
+                                {activeLive.map(room => {
+                                  const activeCount = room.activeUsersCount || 0;
+                                  const langClass = (room.language || "javascript").toLowerCase();
+                                  return (
+                                    <div
+                                      key={room._id}
+                                      className="recent-joined-card"
+                                      onClick={() => handleJoinRoomDirect(room.roomId)}
+                                      onMouseEnter={prefetchEditor}
+                                    >
+                                      <div className="joined-card-top-content">
+                                        <div className="joined-card-logo-area">
+                                          {renderLanguageLogo(room.language, room.title)}
+                                        </div>
+                                        <div className="joined-card-info-area">
+                                          <h4 className="joined-room-title" title={room.title}>{room.title}</h4>
+                                          <span className="joined-room-owner">
+                                            Host: <strong>@{room.createdBy?.username || "Developer"}</strong>
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="joined-card-footer-layout">
+                                        <span className="joined-status online">
+                                          <span className="status-dot-mini active" />
+                                          {activeCount} Active
+                                        </span>
+                                        <div style={{ display: "flex", gap: "6px" }}>
+                                          <button
+                                            className="joined-detail-btn"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedRoomDetails(room);
+                                            }}
+                                          >
+                                            Details
+                                          </button>
+                                          <button
+                                            className="joined-enter-btn"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleJoinRoomDirect(room.roomId);
+                                            }}
+                                          >
+                                            Join
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </section>
+
+                        {/* COLUMN 2: DEVELOPER ACTIVITY */}
                         <section className="ce-dashboard-section social-feed-section" style={{ marginBottom: 0 }}>
-                          <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div className="section-header">
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <Activity size={16} className="brand-logo" />
-                              <h3 className="section-title">Developer Activity Feed</h3>
+                              <h3 className="section-title">Developer Activity</h3>
                             </div>
                           </div>
 
@@ -4655,7 +4736,7 @@ function Dashboard() {
                             </div>
                           ) : (
                             <div className="social-activities-list">
-                              {feedActivities.slice(0, visibleFeedCount).map(act => {
+                              {feedActivities.map(act => {
                                 const sanitizedAction = (() => {
                                   if (!act.action) return "";
                                   let clean = String(act.action).split("\n")[0].trim();
@@ -4704,21 +4785,11 @@ function Dashboard() {
                                   </div>
                                 );
                               })}
-
-                              {(visibleFeedCount < feedActivities.length || feedPage < feedTotalPages) && (
-                                <button
-                                  onClick={handleLoadMoreFeedClick}
-                                  className="feed-load-more-btn"
-                                  disabled={feedLoading}
-                                >
-                                  {feedLoading ? "Loading..." : "Load More Activity"}
-                                </button>
-                              )}
                             </div>
                           )}
                         </section>
 
-                        {/* RIGHT SECTION: RECENT JOINED ROOMS */}
+                        {/* COLUMN 3: RECENT JOINED ROOMS */}
                         <section className="ce-dashboard-section recent-joined-section" style={{ marginBottom: 0 }}>
                           <div className="section-header">
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -4743,7 +4814,7 @@ function Dashboard() {
 
                             return (
                               <div className="recent-joined-list">
-                                {joinedRooms.slice(0, visibleJoinedRooms).map(room => {
+                                {joinedRooms.map(room => {
                                   const activeCount = room.activeUsersCount || 0;
                                   const isOnline = activeCount > 0;
                                   const langClass = (room.language || "javascript").toLowerCase();
@@ -4770,35 +4841,38 @@ function Dashboard() {
                                           <span className={`status-dot-mini ${isOnline ? "active" : "offline"}`} />
                                           {isOnline ? `${activeCount} Active` : "Offline"}
                                         </span>
-                                        <button
-                                          className="joined-enter-btn"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleJoinRoomDirect(room.roomId);
-                                          }}
-                                        >
-                                          Enter
-                                        </button>
+                                        <div style={{ display: "flex", gap: "6px" }}>
+                                          <button
+                                            className="joined-detail-btn"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedRoomDetails(room);
+                                            }}
+                                          >
+                                            Details
+                                          </button>
+                                          <button
+                                            className="joined-enter-btn"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleJoinRoomDirect(room.roomId);
+                                            }}
+                                          >
+                                            Enter
+                                          </button>
+                                        </div>
                                       </div>
                                     </div>
                                   );
                                 })}
-                                {joinedRooms.length > visibleJoinedRooms && (
-                                  <button
-                                    onClick={() => setVisibleJoinedRooms(prev => prev + 4)}
-                                    className="feed-load-more-btn"
-                                    style={{ marginTop: "14px" }}
-                                  >
-                                    Load More Rooms
-                                  </button>
-                                )}
                               </div>
                             );
                           })()}
                         </section>
 
                       </div>
-                    </div>
+
+                      </div>
 
                     {/* RIGHT COLUMN */}
                     <div className="ce-column-right">
@@ -6743,6 +6817,25 @@ function Dashboard() {
                             required
                           />
                         </div>
+
+                        {recentJoinedCodes && recentJoinedCodes.length > 0 && (
+                          <div className="recent-rooms-history-container">
+                            <span className="recent-history-label">Recent Room IDs</span>
+                            <div className="recent-history-chips">
+                              {recentJoinedCodes.map((code) => (
+                                <button
+                                  key={code}
+                                  type="button"
+                                  className="recent-history-chip"
+                                  onClick={() => setRoomId(code)}
+                                  title={`Use recent ID: ${code}`}
+                                >
+                                  {code}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         <button type="submit" className="form-submit-btn secondary" style={{ marginTop: "6px" }}>
                           Join Workspace Session
@@ -9816,6 +9909,25 @@ function Dashboard() {
                     className="modal-input-new"
                   />
                 </div>
+
+                {recentJoinedCodes && recentJoinedCodes.length > 0 && (
+                  <div className="recent-rooms-history-container modal-version">
+                    <span className="recent-history-label">Recent Room IDs</span>
+                    <div className="recent-history-chips">
+                      {recentJoinedCodes.map((code) => (
+                        <button
+                          key={code}
+                          type="button"
+                          className="recent-history-chip"
+                          onClick={() => setRoomId(code)}
+                          title={`Use recent ID: ${code}`}
+                        >
+                          {code}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <button type="submit" onMouseEnter={prefetchEditor} className="modal-join-btn-new ce-btn-success ce-mt-16">
                   Join Workspace

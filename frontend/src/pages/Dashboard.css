@@ -25,8 +25,8 @@
   --ce-card-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   --ce-card-shadow-hover: 0 20px 50px rgba(170, 59, 255, 0.15);
   --ce-fog: rgba(7, 7, 10, 0.85);
-  --border-radius: 16px;
-  --border-radius-sm: 8px;
+  --border-radius: 8px;
+  --border-radius-sm: 6px;
   --transition-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   --transition-smooth: 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -57,7 +57,7 @@
   --ce-surface-card: #f1f5f9;
   --ce-hover: rgba(139, 92, 246, 0.05);
   --ce-border: rgba(15, 23, 42, 0.09);
-  --ce-border-hover: rgba(139, 92, 246, 0.3);
+  --ce-border-hover: rgba(139, 92, 246, 0.65);
   --ce-border-focus: #8b5cf6;
   --ce-text: #475569;
   --ce-text-muted: #64748b;
@@ -131,13 +131,13 @@
 .dashboard-grid-layout {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .ce-dashboard-columns {
   display: grid;
   grid-template-columns: 1.5fr 0.5fr;
-  gap: 24px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -148,26 +148,26 @@
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--ce-border);
   border-radius: var(--border-radius);
-  padding: 24px;
+  padding: 16px;
   box-shadow: var(--ce-card-shadow);
   transition: border-color var(--transition-smooth), box-shadow var(--transition-smooth), transform var(--transition-smooth);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   position: relative;
 }
 
 .ce-dashboard-section:hover {
   border-color: var(--ce-border-hover);
   box-shadow: var(--ce-card-shadow-hover);
-  transform: translateY(-2px);
+  transform: none !important;
 }
 
 .section-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
   border-bottom: 1px solid var(--ce-border);
-  padding-bottom: 12px;
+  padding-bottom: 8px;
 }
 
 .section-title {
@@ -227,7 +227,7 @@
   border-color: var(--ce-primary);
   box-shadow: var(--ce-card-shadow-hover);
   background-color: var(--ce-hover);
-  transform: translateY(-3px);
+  transform: none !important;
 }
 
 .stat-card-icon-wrapper {
@@ -661,7 +661,7 @@
   border-color: var(--ce-primary);
   box-shadow: var(--ce-card-shadow-hover);
   background-color: var(--ce-hover);
-  transform: translateY(-3px);
+  transform: none !important;
 }
 
 .quick-action-icon-wrapper {
@@ -1467,7 +1467,7 @@
 }
 
 .notification-item:hover {
-  transform: scale(1.008) translateY(-1px);
+  transform: none !important;
   border-color: var(--ce-primary);
   background-color: var(--ce-hover);
   box-shadow: var(--ce-shadow);
@@ -2125,7 +2125,7 @@
 }
 
 .achievement-badge-card:hover {
-  transform: translateY(-2px);
+  transform: none !important;
   border-color: var(--ce-primary);
   box-shadow: var(--ce-shadow);
 }
@@ -2687,7 +2687,7 @@
 
 .appearance-theme-card:hover {
   border-color: var(--ce-text-muted);
-  transform: translateY(-2px);
+  transform: none !important;
   box-shadow: var(--ce-shadow);
 }
 
@@ -4213,6 +4213,7 @@
   from {
     transform: scale(0.92) translateY(8px);
   }
+
   to {
     transform: scale(1) translateY(0);
   }
@@ -4905,6 +4906,20 @@
   background-position: right 12px center;
   background-size: 16px;
   padding-right: 36px !important;
+}
+
+.modal-input-new.select option {
+  background-color: #12131a;
+  /* Matches dark theme modal background */
+  color: #f8fafc;
+  /* Matches dark theme text */
+}
+
+.light .modal-input-new.select option {
+  background-color: #ffffff;
+  /* Matches light theme background */
+  color: #0f172a;
+  /* Matches light theme text */
 }
 
 .modal-input-new.select::-ms-expand {
@@ -8846,17 +8861,24 @@ tier-badge.master {
 
 /* Gate styles moved to GateOverlay.css */
 
-/* Dashboard Split Grid for Social Feed & Recent Joined Rooms */
+/* Dashboard Split Grid for Social Feed, Recent Joined Rooms & Active Rooms */
 .ce-dashboard-split-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 1366px) {
+  .ce-dashboard-split-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
 }
 
 @media (max-width: 1024px) {
   .ce-dashboard-split-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 8px;
   }
 }
 
@@ -11238,7 +11260,7 @@ tier-badge.master {
   background: rgba(20, 16, 32, 0.5) !important;
   backdrop-filter: blur(16px) saturate(120%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 16px !important;
   padding: 24px !important;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37),
@@ -11246,33 +11268,23 @@ tier-badge.master {
   position: relative;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  flex: none !important;
+  height: auto !important;
 }
 
 /* Subtle glow hover effect */
 .action-form-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -50%;
-  width: 200%;
-  height: 100%;
-  background: linear-gradient(90deg,
-      transparent,
-      rgba(168, 85, 247, 0.05),
-      transparent);
-  transform: skewX(-25deg);
-  transition: 0.75s;
-  pointer-events: none;
+  display: none !important;
 }
 
 .action-form-card:hover::before {
-  left: 100%;
+  display: none !important;
 }
 
 .action-form-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(168, 85, 247, 0.35) !important;
-  box-shadow: 0 12px 40px 0 rgba(168, 85, 247, 0.15),
+  transform: none !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
 }
 
@@ -11365,14 +11377,14 @@ tier-badge.master {
 /* Light mode overrides for actions sidebar and form cards */
 .light .action-form-card {
   background: rgba(255, 255, 255, 0.6) !important;
-  border: 1px solid rgba(124, 58, 237, 0.35) !important;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08),
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.04),
     inset 0 0 0 1px rgba(255, 255, 255, 0.5) !important;
 }
 
 .light .action-form-card:hover {
-  border-color: rgba(124, 58, 237, 0.65) !important;
-  box-shadow: 0 12px 40px 0 rgba(124, 58, 237, 0.12),
+  border-color: var(--ce-primary) !important;
+  box-shadow: 0 12px 40px 0 rgba(139, 92, 246, 0.12),
     inset 0 0 0 1px rgba(255, 255, 255, 0.8) !important;
 }
 
@@ -12326,8 +12338,15 @@ tier-badge.master {
 }
 
 @keyframes mobilePopupIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .mobile-popup-card {
@@ -12427,4 +12446,701 @@ tier-badge.master {
   border-color: #dc2626;
   color: #ffffff;
   box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+}
+
+/* Quick Actions Dashboard Component */
+.quick-actions-cards-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.quick-action-card {
+  display: flex;
+  align-items: center;
+  padding: 16px 22px;
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Card background bubbles */
+.card-bubble {
+  display: none !important;
+}
+
+/* Purple Create Room bubbles */
+.create-room-card .bubble-1 {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, #a855f7 0%, transparent 70%);
+  top: -20px;
+  right: -10px;
+}
+
+.create-room-card .bubble-2 {
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle, #ec4899 0%, transparent 70%);
+  bottom: -15px;
+  left: 20%;
+}
+
+/* Blue Join Room bubbles */
+.join-room-card .bubble-1 {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
+  top: -20px;
+  right: -10px;
+}
+
+.join-room-card .bubble-2 {
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
+  bottom: -15px;
+  left: 20%;
+}
+
+.quick-action-card:hover .bubble-1 {
+  transform: translate(-5px, 5px) scale(1.1);
+  opacity: 0.18;
+}
+
+.quick-action-card:hover .bubble-2 {
+  transform: translate(5px, -5px) scale(1.1);
+  opacity: 0.18;
+}
+
+/* Purple Create Room Card Styling */
+.create-room-card {
+  background: rgba(168, 85, 247, 0.12) !important;
+  border: 1px solid rgba(168, 85, 247, 0.45) !important;
+}
+
+.create-room-card:hover {
+  background: rgba(168, 85, 247, 0.18) !important;
+  border-color: rgba(168, 85, 247, 0.8) !important;
+  box-shadow: 0 8px 30px rgba(168, 85, 247, 0.25) !important;
+}
+
+/* Blue Join Room Card Styling */
+.join-room-card {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border: 1px solid rgba(59, 130, 246, 0.45) !important;
+}
+
+.join-room-card:hover {
+  background: rgba(59, 130, 246, 0.18) !important;
+  border-color: rgba(59, 130, 246, 0.8) !important;
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25) !important;
+}
+
+.quick-action-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 2;
+}
+
+.quick-action-icon-wrapper.purple-bg {
+  border-radius: 50%;
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.quick-action-card.create-room-card:hover .quick-action-icon-wrapper.purple-bg {
+  background: rgba(168, 85, 247, 0.3);
+  border-color: rgba(168, 85, 247, 0.6);
+  transform: scale(1.08);
+}
+
+.quick-action-icon-wrapper.blue-bg {
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+.quick-action-card.join-room-card:hover .quick-action-icon-wrapper.blue-bg {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.6);
+  transform: scale(1.08);
+}
+
+.quick-action-icon {
+  transition: all 0.3s ease;
+}
+
+.quick-action-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: relative;
+  z-index: 2;
+}
+
+.quick-action-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: 0.02em;
+}
+
+.quick-action-description {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.quick-action-arrow {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+  margin-left: 10px;
+  position: relative;
+  z-index: 2;
+}
+
+.quick-action-card:hover .quick-action-arrow {
+  transform: translateX(4px);
+}
+
+/* Responsive Styling */
+@media (max-width: 768px) {
+  .quick-actions-cards-container {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .section-subtitle-inline {
+    display: block;
+    margin-left: 0;
+    margin-top: 4px;
+    width: 100%;
+  }
+
+  .quick-action-card {
+    padding: 18px 22px;
+  }
+}
+
+/* Light Mode Overrides for Quick Actions */
+.light .quick-actions-header-icon {
+  color: #7e22ce;
+  filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.15));
+}
+
+.light .quick-action-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.light .create-room-card {
+  background: rgba(168, 85, 247, 0.05) !important;
+  border: 1px solid rgba(168, 85, 247, 0.65) !important;
+}
+
+.light .create-room-card:hover {
+  background: rgba(168, 85, 247, 0.1) !important;
+  border-color: rgba(168, 85, 247, 0.95) !important;
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.18) !important;
+}
+
+.light .join-room-card {
+  background: rgba(59, 130, 246, 0.05) !important;
+  border: 1px solid rgba(59, 130, 246, 0.65) !important;
+}
+
+.light .join-room-card:hover {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.95) !important;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.18) !important;
+}
+
+.light .quick-action-icon-wrapper.purple-bg {
+  background: rgba(168, 85, 247, 0.12) !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  color: #7e22ce !important;
+}
+
+.light .quick-action-card.create-room-card:hover .quick-action-icon-wrapper.purple-bg {
+  background: rgba(168, 85, 247, 0.22) !important;
+  border-color: rgba(168, 85, 247, 0.5) !important;
+}
+
+.light .quick-action-icon-wrapper.blue-bg {
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #1d4ed8 !important;
+}
+
+.light .quick-action-card.join-room-card:hover .quick-action-icon-wrapper.blue-bg {
+  background: rgba(59, 130, 246, 0.22) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+}
+
+.light .quick-action-title {
+  color: #0f172a;
+}
+
+.light .quick-action-description {
+  color: #475569;
+}
+
+.light .create-room-card .quick-action-arrow {
+  color: #7e22ce;
+}
+
+.light .create-room-card:hover .quick-action-arrow {
+  color: #6b21a8;
+}
+
+.light .join-room-card .quick-action-arrow {
+  color: #1d4ed8;
+}
+
+.light .join-room-card:hover .quick-action-arrow {
+  color: #1e40af;
+}
+
+.light .section-subtitle-inline {
+  color: #475569;
+}
+
+.light .card-bubble {
+  opacity: 0.06;
+}
+
+.light .quick-action-card:hover .bubble-1,
+.light .quick-action-card:hover .bubble-2 {
+  opacity: 0.1;
+}
+
+/* Global select dropdown options styling */
+select option {
+  background-color: #12131a;
+  /* Dark theme option background */
+  color: #f8fafc;
+  /* Dark theme option text */
+}
+
+.light select option {
+  background-color: #ffffff;
+  /* Light theme option background */
+  color: #0f172a;
+  /* Light theme option text */
+}
+
+/* Recently Joined Room History Container & Chips styling */
+.recent-rooms-history-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+
+.recent-rooms-history-container.modal-version {
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.recent-history-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #a855f7;
+  /* Matching lavender theme */
+}
+
+.recent-history-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recent-history-chip {
+  padding: 4px 8px;
+  background: rgba(168, 85, 247, 0.06);
+  border: 1px solid rgba(168, 85, 247, 0.18);
+  border-radius: 6px;
+  color: #c084fc;
+  font-size: 0.72rem;
+  font-family: monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.recent-history-chip:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #ffffff;
+}
+
+/* Light Theme overrides for chips */
+.light .recent-history-label {
+  color: #7e22ce;
+}
+
+.light .recent-history-chip {
+  background: rgba(168, 85, 247, 0.04);
+  border: 1px solid rgba(168, 85, 247, 0.12);
+  color: #7e22ce;
+}
+
+.light .recent-history-chip:hover {
+  background: rgba(168, 85, 247, 0.1);
+  border-color: rgba(168, 85, 247, 0.35);
+  color: #6b21a8;
+}
+
+/* Stat card icon wrappers hover indicator overrides */
+.compact-stat-card:hover .blue-theme-wrapper {
+  background-color: var(--ce-primary) !important;
+  border-color: var(--ce-primary) !important;
+  color: #ffffff !important;
+}
+
+.compact-stat-card:hover .blue-theme-wrapper svg {
+  color: #ffffff !important;
+}
+
+.compact-stat-card:hover .green-theme-wrapper {
+  background-color: var(--ce-success) !important;
+  border-color: var(--ce-success) !important;
+  color: #ffffff !important;
+}
+
+.compact-stat-card:hover .green-theme-wrapper svg {
+  color: #ffffff !important;
+}
+
+.compact-stat-card:hover .purple-theme-wrapper {
+  background-color: var(--ce-primary) !important;
+  border-color: var(--ce-primary) !important;
+  color: #ffffff !important;
+}
+
+.compact-stat-card:hover .purple-theme-wrapper svg {
+  color: #ffffff !important;
+}
+
+.compact-stat-card:hover .rank-icon-wrapper {
+  background-color: var(--ce-primary) !important;
+  border-color: var(--ce-primary) !important;
+  color: #ffffff !important;
+}
+
+.compact-stat-card:hover .rank-icon-wrapper svg {
+  color: #ffffff !important;
+}
+
+/* Quick action arrows dark mode styling */
+.create-room-card .quick-action-arrow {
+  color: #c084fc;
+}
+
+.create-room-card:hover .quick-action-arrow {
+  color: #e9d5ff;
+}
+
+.join-room-card .quick-action-arrow {
+  color: #60a5fa;
+}
+
+.join-room-card:hover .quick-action-arrow {
+  color: #dbeafe;
+}
+
+/* Quick action sub descriptions styling */
+.quick-action-sub-description {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: #64748b;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.light .quick-action-sub-description {
+  color: #94a3b8;
+}
+
+/* Custom premium grid & constellation background wrapper */
+.card-pattern {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  mask-image: linear-gradient(to right, transparent 35%, white 75%);
+  -webkit-mask-image: linear-gradient(to right, transparent 35%, white 75%);
+}
+
+.card-pattern line,
+.card-pattern path,
+.card-pattern circle {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Create Room Card SVG Elements */
+.create-room-card:hover .card-pattern line {
+  stroke: rgba(168, 85, 247, 0.35) !important;
+  stroke-width: 1.25px !important;
+}
+
+.create-room-card:hover .card-pattern circle[fill] {
+  fill: rgba(168, 85, 247, 0.95) !important;
+  fill-opacity: 1 !important;
+}
+
+.create-room-card:hover .card-pattern circle[stroke] {
+  stroke: rgba(168, 85, 247, 0.5) !important;
+  stroke-width: 0.75px !important;
+}
+
+/* Join Room Card SVG Elements */
+.join-room-card:hover .card-pattern line {
+  stroke: rgba(59, 130, 246, 0.35) !important;
+  stroke-width: 1.25px !important;
+}
+
+.join-room-card:hover .card-pattern circle[fill] {
+  fill: rgba(59, 130, 246, 0.95) !important;
+  fill-opacity: 1 !important;
+}
+
+.join-room-card:hover .card-pattern circle[stroke] {
+  stroke: rgba(59, 130, 246, 0.5) !important;
+  stroke-width: 0.75px !important;
+}
+
+/* Premium borderless rows for dashboard lists (Feed, History, Active Rooms) */
+.social-activity-card,
+.recent-joined-card {
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.085) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 14px 6px !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+  transition: background-color 0.2s ease, border-radius 0.2s ease !important;
+}
+
+/* Rounded hover feedback (floating row background highlight) */
+.social-activity-card:hover,
+.recent-joined-card:hover {
+  background-color: var(--ce-hover) !important;
+  border-radius: 8px !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Remove separator border on last list item */
+.social-activity-card:last-of-type,
+.recent-joined-card:last-of-type {
+  border-bottom: none !important;
+}
+
+/* Adjust lists spacing to feel unified */
+.social-activities-list,
+.recent-joined-list {
+  gap: 0 !important;
+  padding: 0 4px !important;
+}
+
+/* Fix alignment between section header icon and text */
+.brand-logo {
+  display: inline-flex !important;
+  align-self: center !important;
+  position: relative !important;
+  top: -7px !important;
+}
+
+.section-title {
+  line-height: 1 !important;
+}
+
+/* Fix box heights to be equal on desktop screens */
+@media (min-width: 1025px) {
+  .ce-dashboard-split-grid>.ce-dashboard-section {
+    height: 460px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* View All link in header */
+.header-view-all-link {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ce-primary) !important;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.header-view-all-link:hover {
+  color: var(--ce-primary-hover, #a855f7) !important;
+  transform: translateX(2px);
+}
+
+.header-view-all-link svg {
+  margin-top: 1px !important;
+  top: 0px !important;
+}
+
+/* Browse All Rooms Button at card bottom */
+.browse-all-rooms-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid var(--ce-border) !important;
+  border-radius: var(--border-radius-sm) !important;
+  color: var(--ce-text) !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.browse-all-rooms-btn:hover {
+  background: rgba(168, 85, 247, 0.08) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #c084fc !important;
+}
+
+.browse-all-rooms-btn svg {
+  margin-top: 0 !important;
+  top: 0px !important;
+}
+
+.light .browse-all-rooms-btn {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(15, 23, 42, 0.09) !important;
+}
+
+.light .browse-all-rooms-btn:hover {
+  background: rgba(168, 85, 247, 0.06) !important;
+  color: #7e22ce !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+}
+
+/* Enable vertical scrolling inside dashboard lists */
+.recent-joined-list,
+.social-activities-list {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding-right: 4px !important;
+  scroll-behavior: smooth !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  will-change: scroll-position, transform !important;
+  transform: translateZ(0) !important;
+  backface-visibility: hidden !important;
+}
+
+/* Custom premium scrollbar details for webkit browsers */
+.recent-joined-list::-webkit-scrollbar,
+.social-activities-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.recent-joined-list::-webkit-scrollbar-track,
+.social-activities-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recent-joined-list::-webkit-scrollbar-thumb,
+.social-activities-list::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+.recent-joined-list::-webkit-scrollbar-thumb:hover,
+.social-activities-list::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.light .recent-joined-list,
+.light .social-activities-list {
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent !important;
+}
+
+.light .recent-joined-list::-webkit-scrollbar-thumb,
+.light .social-activities-list::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Reduce empty margin gaps inside the dashboard cards */
+.ce-dashboard-section {
+  padding: 12px 14px !important;
+}
+
+.section-header {
+  margin-bottom: 8px !important;
+  padding-bottom: 6px !important;
+}
+
+/* Joined details button layout styling */
+.joined-detail-btn {
+  padding: 4px 10px !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08)) !important;
+  border-radius: var(--border-radius-sm, 6px) !important;
+  color: var(--ce-text, #9ca3af) !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.joined-detail-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.light .joined-detail-btn {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(15, 23, 42, 0.09) !important;
+  color: #1e293b !important;
+}
+
+.light .joined-detail-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(15, 23, 42, 0.18) !important;
+  color: #0f172a !important;
 }
