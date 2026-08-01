@@ -5518,7 +5518,7 @@ function Dashboard() {
                         ) : (
                           <>
                             <div className="suggestions-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                              {suggestions.slice(0, showAllSuggestions ? 10 : 5).map(s => (
+                              {suggestions.slice(0, 5).map(s => (
                                 <div key={s._id} className="suggestion-item">
                                   <div onClick={() => handleViewUserProfile(s._id)} style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, cursor: "pointer", minWidth: 0 }}>
                                     <div className="suggestion-avatar" style={{ width: "28px", height: "28px", flexShrink: 0, position: "relative" }}>
@@ -5632,19 +5632,6 @@ function Dashboard() {
                                 </div>
                               ))}
                             </div>
-                            {suggestions.length > 5 && (
-                              <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
-                                <button
-                                  type="button"
-                                  className="ce-view-all-btn"
-                                  onClick={() => setShowAllSuggestions(prev => !prev)}
-                                  style={{ fontSize: "0.8rem", gap: "4px" }}
-                                >
-                                  {showAllSuggestions ? "Show Less" : "Show More"}
-                                  {showAllSuggestions ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                </button>
-                              </div>
-                            )}
                           </>
                         )}
                       </section>
