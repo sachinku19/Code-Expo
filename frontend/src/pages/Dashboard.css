@@ -11801,7 +11801,7 @@ tier-badge.master {
   flex-shrink: 0 !important;
 }
 
-.dev-online-status-badge {
+.online-developer-row-card .dev-online-status-badge {
   position: absolute !important;
   bottom: -1px !important;
   right: -1px !important;
@@ -11813,7 +11813,7 @@ tier-badge.master {
   box-shadow: 0 0 6px rgba(16, 185, 129, 0.5) !important;
 }
 
-.dark .dev-online-status-badge {
+.dark .online-developer-row-card .dev-online-status-badge {
   border-color: #0b0f19 !important;
 }
 
@@ -13341,4 +13341,28 @@ select option {
   border-color: rgba(139, 92, 246, 0.3) !important;
   color: var(--ce-primary, #8b5cf6) !important;
   box-shadow: 0 0 12px rgba(139, 92, 246, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Dashboard Row 2 Task Cards Styling and Spanning */
+.ce-dashboard-split-grid > .ce-dashboard-section.pending-tasks-section,
+.ce-dashboard-split-grid > .ce-dashboard-section.today-tasks-section {
+  height: 280px !important;
+  transition: border-color var(--transition-fast, 0.15s ease), box-shadow var(--transition-fast, 0.15s ease) !important;
+}
+
+/* Ensure no scale zoom or transform lift is applied on hover */
+.ce-dashboard-split-grid > .ce-dashboard-section.pending-tasks-section:hover,
+.ce-dashboard-split-grid > .ce-dashboard-section.today-tasks-section:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.ce-dashboard-split-grid > .ce-dashboard-section.today-tasks-section {
+  grid-column: span 2;
+}
+
+@media (max-width: 1366px) {
+  .ce-dashboard-split-grid > .ce-dashboard-section.today-tasks-section {
+    grid-column: span 1;
+  }
 }

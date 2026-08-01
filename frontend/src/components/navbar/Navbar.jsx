@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Menu, Moon, Sparkles, Sun, X, LogOut, LayoutDashboard, User, Settings, ChevronDown, ShieldAlert } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { ROUTES } from "../../constants/routes";
 import { logoutUser } from "../../services/authService";
 import { useSmartNavbar } from "../../hooks/useSmartNavbar";
 import Logo from "../shared/Logo";
@@ -176,19 +177,19 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
                       <span className="user-email">{user.email}</span>
                     </div>
                     <div className="dropdown-divider" />
-                    <button onClick={() => navigate("/dashboard")} className="dropdown-link">
+                    <button onClick={() => navigate(ROUTES.DASHBOARD)} className="dropdown-link">
                       <LayoutDashboard size={15} />
                       <span>Dashboard</span>
                     </button>
-                    <button onClick={() => navigate(user?.username ? `/u/${user.username}` : "/dashboard?tab=profile")} className="dropdown-link">
+                    <button onClick={() => navigate(user?.username ? `/u/${user.username}` : `${ROUTES.DASHBOARD}/profile`)} className="dropdown-link">
                       <User size={15} />
                       <span>My Profile</span>
                     </button>
-                    <button onClick={() => navigate("/dashboard?tab=settings")} className="dropdown-link">
+                    <button onClick={() => navigate(`${ROUTES.DASHBOARD}/settings`)} className="dropdown-link">
                       <Settings size={15} />
                       <span>Settings</span>
                     </button>
-                    <button onClick={() => navigate("/dashboard?tab=feed-action")} className="dropdown-link">
+                    <button onClick={() => navigate(`${ROUTES.DASHBOARD}/trust-safety`)} className="dropdown-link">
                       <ShieldAlert size={15} />
                       <span>Feed Action</span>
                     </button>

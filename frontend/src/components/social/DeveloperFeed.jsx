@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play, Search, MoreVertical, Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost, searchUsers } from "../../services/socialService";
@@ -13,8 +14,9 @@ const FeedPortal = ({ children }) => {
 };
 
 // Resilient SafeAvatar component that handles broken image URLs gracefully and prevents distortion
-const SafeAvatar = ({ src, name = "User", size = 36, className = "", style = {} }) => {
+const SafeAvatar = ({ src, name = "User", size = 36, className = "", style = {}, userId }) => {
   const [hasError, setHasError] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setHasError(false);
@@ -33,7 +35,31 @@ const SafeAvatar = ({ src, name = "User", size = 36, className = "", style = {} 
     flexShrink: 0,
     overflow: "hidden",
     boxSizing: "border-box",
+    cursor: "pointer",
     ...style
+  };
+
+  const handleAvatarClick = (e) => {
+    if (!userId) return;
+    e.stopPropagation();
+    if (window.handleGlobalProfileNav) {
+      window.handleGlobalProfileNav(userId, name);
+    } else {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const currentUserId = storedUser.id || storedUser._id;
+        if (String(userId) === String(currentUserId)) {
+          navigate("/dashboard/profile");
+          return;
+        }
+      } catch (err) {}
+      
+      if (name && name !== "User") {
+        navigate(`/u/${name}`);
+      } else {
+        navigate(`/dashboard/profile/${userId}`);
+      }
+    }
   };
 
   if (src && !hasError) {
@@ -43,6 +69,8 @@ const SafeAvatar = ({ src, name = "User", size = 36, className = "", style = {} 
         alt=""
         onError={() => setHasError(true)}
         className={className}
+        onClick={handleAvatarClick}
+        title={`View @${name}'s profile`}
         style={{
           ...dimensionStyle,
           objectFit: "cover",
@@ -55,6 +83,8 @@ const SafeAvatar = ({ src, name = "User", size = 36, className = "", style = {} 
   return (
     <div
       className={className ? `${className}-fallback` : "safe-avatar-fallback"}
+      onClick={handleAvatarClick}
+      title={`View @${name}'s profile`}
       style={{
         ...dimensionStyle,
         display: "flex",
@@ -2197,7 +2227,19 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       onClick={() => onViewProfile && onViewProfile(post.author._id)}
                       style={{ cursor: onViewProfile ? "pointer" : "default" }}
                     >
-                      <div className="post-avatar-ring" style={{ width: "40px", height: "40px" }}>
+                      <div 
+                        className="post-avatar-ring" 
+                        style={{ width: "40px", height: "40px", cursor: "pointer" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.handleGlobalProfileNav) {
+                            window.handleGlobalProfileNav(post.author._id || post.author.id, post.author.username);
+                          } else if (onViewProfile) {
+                            onViewProfile(post.author._id || post.author.id);
+                          }
+                        }}
+                        title={`View @${post.author.username}'s profile`}
+                      >
                         {post.author.avatar ? (
                           <img src={post.author.avatar} alt={post.author.username} style={{ border: "1px solid #000" }} />
                         ) : (
@@ -2747,6 +2789,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                       name={activeCommentsPanelPost.author.username} 
                       size={34} 
                       className="panel-snapshot-avatar" 
+                      userId={activeCommentsPanelPost.author._id || activeCommentsPanelPost.author.id}
                     />
                     <div className="panel-snapshot-meta">
                       <span className="panel-snapshot-author">@{activeCommentsPanelPost.author.username}</span>
@@ -2894,6 +2937,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                                   name={c.username} 
                                   size={isReplyCard ? 30 : 36} 
                                   className="panel-comment-avatar" 
+                                  userId={c.user?._id || c.user?.id || c.user}
                                 />
                               </div>
                               <div className="panel-comment-info">

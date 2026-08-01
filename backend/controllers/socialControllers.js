@@ -358,6 +358,8 @@ const getSocialFeed = async (req, res) => {
 const getDeveloperSuggestions = async (req, res) => {
   try {
     const userId = req.user._id;
+    const limit = parseInt(req.query.limit) || 10;
+
 
     const currentUser = await User.findById(userId).select("following programmingLanguages").lean();
     const followingIds = (currentUser.following || []).map(id => String(id));
@@ -411,7 +413,7 @@ const getDeveloperSuggestions = async (req, res) => {
 
     const io = req.app.get("io");
 
-    const suggestions = scoredSuggestions.slice(0, 5).map(item => {
+    const suggestions = scoredSuggestions.slice(0, limit).map(item => {
       const uObj = item.user;
       const userRoom = io?.sockets?.adapter?.rooms?.get(String(uObj._id));
       uObj.isOnline = !!(userRoom && userRoom.size > 0);

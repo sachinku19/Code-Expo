@@ -273,7 +273,7 @@ function Home() {
     }
     const targetUser = dev.user || dev.username || dev.name || "developer";
     const userAvatar = dev.avatar || "";
-    const targetPath = `/dashboard?tab=profile&user=${encodeURIComponent(targetUser)}&avatar=${encodeURIComponent(userAvatar)}`;
+    const targetPath = `/u/${encodeURIComponent(targetUser)}`;
     const currentPath = location.pathname + location.search;
 
     if (currentPath === targetPath) {
@@ -288,7 +288,7 @@ function Home() {
       localStorage.setItem("redirectAfterLogin", targetPath);
       navigate("/login", {
         state: {
-          from: { pathname: "/dashboard", search: `?tab=profile&user=${encodeURIComponent(targetUser)}&avatar=${encodeURIComponent(userAvatar)}` },
+          from: { pathname: targetPath },
           message: `Please log in to view ${dev.name || targetUser}'s profile.`
         }
       });
@@ -2072,12 +2072,12 @@ yDoc.getText('monaco')
                       e.stopPropagation(); 
                       const token = localStorage.getItem("token");
                       if (user || token) {
-                        navigate("/dashboard?tab=planner");
+                        navigate("/dashboard/planner");
                       } else {
-                        localStorage.setItem("redirectAfterLogin", "/dashboard?tab=planner");
+                        localStorage.setItem("redirectAfterLogin", "/dashboard/planner");
                         navigate("/login", {
                           state: {
-                            from: { pathname: "/dashboard", search: "?tab=planner" },
+                            from: { pathname: "/dashboard/planner" },
                             message: "Please log in to access the Sprint Planner."
                           }
                         });

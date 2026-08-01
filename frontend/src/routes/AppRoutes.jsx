@@ -5,10 +5,14 @@ import { ModalProvider } from "../context/ModalContext";
 import { ThemeProvider } from "../context/ThemeContext";
 import { Toaster } from "react-hot-toast";
 import NetworkStatusTracker from "../components/NetworkStatusTracker";
+import RootLayout from "../layouts/RootLayout";
+import AuthLayout from "../layouts/AuthLayout";
+import { ROUTES } from "../constants/routes";
 
 // Page components (statically imported for instant transitions)
 import Home from "../pages/Home";
 import Auth from "../pages/Auth";
+import NotFound from "../pages/NotFound";
 
 // Lazy loaded page components
 const Dashboard = lazy(() => import("../pages/Dashboard"));
@@ -96,7 +100,7 @@ const RouteLoader = () => (
 
 const UserProfileRedirect = () => {
   const { userId } = useParams();
-  return <Navigate to={`/dashboard?tab=profile&userId=${userId}`} replace />;
+  return <Navigate to={`/dashboard/profile/${userId}`} replace />;
 };
 
 const OwnProfileRedirect = () => {
@@ -109,7 +113,7 @@ const OwnProfileRedirect = () => {
       }
     }
   } catch (e) { }
-  return <Navigate to="/dashboard?tab=profile" replace />;
+  return <Navigate to="/dashboard/profile" replace />;
 };
 
 const PostRouteHandler = () => {
@@ -134,18 +138,60 @@ const AppRoutes = () => {
             <GateTransitionProvider>
               <Suspense fallback={<RouteLoader />}>
                 <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/login" element={<Auth mode="login" />} />
-                  <Route path="/register" element={<Auth mode="register" />} />
-                  <Route path="/setup-username" element={<ProtectedRoute><SetupUsername /></ProtectedRoute>} />
-                  <Route path="/u/:username" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/profile" element={<OwnProfileRedirect />} />
-                  <Route path="/user/:userId" element={<UserProfileRedirect />} />
-                  <Route path="/post/:postId" element={<PostRouteHandler />} />
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/editor/:roomId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
-                  <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                  <Route path="/reset-password/:token" element={<ResetPassword />} />
+                  <Route element={<RootLayout />}>
+                    {/* Public Routes */}
+                    <Route path={ROUTES.HOME} element={<Home />} />
+                    <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
+
+                    {/* Auth Routes */}
+                    <Route element={<AuthLayout />}>
+                      <Route path={ROUTES.LOGIN} element={<Auth mode="login" />} />
+                      <Route path={ROUTES.REGISTER} element={<Auth mode="register" />} />
+                    </Route>
+
+                    {/* Setup Profile Route */}
+                    <Route path={ROUTES.SETUP_USERNAME} element={<ProtectedRoute><SetupUsername /></ProtectedRoute>} />
+
+                    {/* User profile and redirect links */}
+                    <Route path={ROUTES.PROFILE} element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/profile" element={<OwnProfileRedirect />} />
+                    <Route path={ROUTES.USER_PROFILE} element={<UserProfileRedirect />} />
+                    <Route path={ROUTES.POST} element={<PostRouteHandler />} />
+
+                    {/* Protected Dashboard Nested Layout Routes */}
+                    <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
+                      <Route index element={<React.Fragment />} />
+                      <Route path="cp" element={<React.Fragment />} />
+                      <Route path="rooms" element={<React.Fragment />} />
+                      <Route path="live-rooms" element={<React.Fragment />} />
+                      <Route path="bookmarks" element={<React.Fragment />} />
+                      <Route path="feed" element={<React.Fragment />} />
+                      <Route path="following" element={<React.Fragment />} />
+                      <Route path="leaderboard" element={<React.Fragment />} />
+                      <Route path="achievements" element={<React.Fragment />} />
+                      <Route path="history" element={<React.Fragment />} />
+                      <Route path="whiteboards" element={<React.Fragment />} />
+                      <Route path="messages" element={<React.Fragment />} />
+                      <Route path="notifications" element={<React.Fragment />} />
+                      <Route path="profile" element={<React.Fragment />} />
+                      <Route path="profile/:userId" element={<React.Fragment />} />
+                      <Route path="settings" element={<React.Fragment />} />
+                      <Route path="helpdesk" element={<React.Fragment />} />
+                      <Route path="planner" element={<React.Fragment />} />
+                      <Route path="subscription" element={<React.Fragment />} />
+                      <Route path="trust-safety" element={<React.Fragment />} />
+                      {/* Catch-all for unrecognized dashboard subroutes */}
+                      <Route path="*" element={<Navigate to="/404" replace />} />
+                    </Route>
+
+                    {/* Other Protected Pages */}
+                    <Route path={ROUTES.EDITOR} element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+                    <Route path={ROUTES.ADMIN} element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+
+                    {/* Fallback 404 handler */}
+                    <Route path="/404" element={<NotFound />} />
+                    <Route path="*" element={<Navigate to="/404" replace />} />
+                  </Route>
                 </Routes>
               </Suspense>
               <CallOverlay />

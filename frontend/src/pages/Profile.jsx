@@ -475,9 +475,10 @@ const Profile = () => {
       "#ec4899", "#14b8a6", "#6366f1", "#06b6d4", "#84cc16"
     ];
     if (!name) return colors[0];
+    const cleanName = String(name).toLowerCase();
     let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < cleanName.length; i++) {
+      hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   };

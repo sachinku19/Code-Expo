@@ -58,7 +58,7 @@ export default function NetworkSidebar({
                 <button 
                   onClick={() => {
                     setPreselectedChatPartner(dev);
-                    navigate("/dashboard?tab=messages");
+                    navigate("/dashboard/messages");
                   }} 
                   className="presence-action-btn"
                   title="Direct Message"

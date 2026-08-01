@@ -105,9 +105,10 @@ const PublicProfile = () => {
 
   const getAvatarColor = (name) => {
     if (!name) return "#8b5cf6";
+    const cleanName = String(name).toLowerCase();
     const colors = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#3b82f6"];
     let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < cleanName.length; i++) hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
     return colors[Math.abs(hash) % colors.length];
   };
 
@@ -213,7 +214,7 @@ const PublicProfile = () => {
               {isOwnProfile ? (
                 <button
                   className="pub-edit-profile-btn"
-                  onClick={() => navigate("/dashboard?tab=settings")}
+                  onClick={() => navigate("/dashboard/settings")}
                 >
                   Edit Profile
                 </button>
@@ -237,7 +238,7 @@ const PublicProfile = () => {
                     className="pub-action-btn secondary"
                     onClick={(e) => {
                       if (!handleProtectedAction(e)) return;
-                      navigate(`/dashboard?tab=chat&user=${profileUser._id || profileUser.id}`);
+                      navigate(`/dashboard/messages?user=${profileUser._id || profileUser.id}`);
                     }}
                   >
                     <MessageSquare size={15} /> Message

@@ -432,7 +432,7 @@
   max-width: 44px;
   max-height: 44px;
   border-radius: 50%;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -482,8 +482,8 @@
 
 .online-dot-badge {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
+  bottom: -1px;
+  right: -1px;
   width: 11px;
   height: 11px;
   border-radius: 50%;

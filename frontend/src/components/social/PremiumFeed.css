@@ -5304,3 +5304,120 @@ html {
     min-width: 28px !important;
   }
 }
+
+/* Comments Panel Empty State */
+.comments-panel-empty-state {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 80px 20px !important;
+  flex: 1 !important;
+  height: 100% !important;
+  min-height: 280px !important;
+}
+
+.empty-state-icon-stack {
+  position: relative !important;
+  width: 60px !important;
+  height: 60px !important;
+  margin: 0 auto 20px auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.empty-state-bubble-main {
+  color: var(--ce-text-muted, #64748b) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: pulseMain 3s infinite ease-in-out !important;
+}
+
+.empty-state-bubble-sub {
+  position: absolute !important;
+  bottom: 0px !important;
+  right: 0px !important;
+  background: var(--ce-surface, #0f172a) !important;
+  border: 2px solid var(--ce-surface, #0f172a) !important;
+  border-radius: 50% !important;
+  color: var(--ce-accent, #8b5cf6) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  animation: floatSub 4s infinite ease-in-out !important;
+  padding: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+}
+
+.empty-state-sparkle {
+  position: absolute !important;
+  color: var(--ce-accent, #8b5cf6) !important;
+  opacity: 0.6 !important;
+}
+
+.empty-state-sparkle.sparkle-1 {
+  top: 0px !important;
+  left: 0px !important;
+  animation: spinSparkle 6s linear infinite !important;
+}
+
+.empty-state-sparkle.sparkle-2 {
+  bottom: 12px !important;
+  left: -4px !important;
+  animation: spinSparkle 8s linear infinite reverse !important;
+}
+
+.empty-state-title {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  color: var(--ce-text, #ffffff) !important;
+  margin: 0 0 8px 0 !important;
+}
+
+.empty-state-subtitle {
+  font-size: 0.88rem !important;
+  color: var(--ce-text-muted, #64748b) !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+}
+
+/* Animations */
+@keyframes pulseMain {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes floatSub {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.05);
+  }
+}
+
+@keyframes spinSparkle {
+  0% {
+    transform: rotate(0deg) scale(0.8);
+    opacity: 0.4;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: rotate(360deg) scale(0.8);
+    opacity: 0.4;
+  }
+}

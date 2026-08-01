@@ -686,16 +686,15 @@ export default function MainLayout({
         sections.push({ title: "Sandboxes", items: matchedSandboxes });
       }
 
-      // 3. Navigation Shortcuts
       const navs = [
         { label: "Go to Dashboard", path: "/dashboard", tab: "dashboard", icon: LayoutDashboard },
-        { label: "Go to Rooms", path: "/dashboard?tab=rooms", tab: "rooms", icon: DoorOpen },
-        { label: "Go to History", path: "/dashboard?tab=history", tab: "history", icon: History },
-        { label: "Go to Whiteboards", path: "/dashboard?tab=whiteboards", tab: "whiteboards", icon: Palette },
-        { label: "Go to Notifications", path: "/dashboard?tab=notifications", tab: "notifications", icon: Bell },
-        { label: "Go to Profile", path: user?.username ? `/u/${user.username}` : "/dashboard?tab=profile", tab: "profile", icon: User },
-        { label: "Go to Settings", path: "/dashboard?tab=settings", tab: "settings", icon: Settings },
-        { label: "Go to Help Desk", path: "/dashboard?tab=helpdesk", tab: "helpdesk", icon: HelpCircle }
+        { label: "Go to Rooms", path: "/dashboard/rooms", tab: "rooms", icon: DoorOpen },
+        { label: "Go to History", path: "/dashboard/history", tab: "history", icon: History },
+        { label: "Go to Whiteboards", path: "/dashboard/whiteboards", tab: "whiteboards", icon: Palette },
+        { label: "Go to Notifications", path: "/dashboard/notifications", tab: "notifications", icon: Bell },
+        { label: "Go to Profile", path: user?.username ? `/u/${user.username}` : "/dashboard/profile", tab: "profile", icon: User },
+        { label: "Go to Settings", path: "/dashboard/settings", tab: "settings", icon: Settings },
+        { label: "Go to Help Desk", path: "/dashboard/helpdesk", tab: "helpdesk", icon: HelpCircle }
       ];
       const matchedNavs = navs
         .filter(n => !q || n.label.toLowerCase().includes(q))
@@ -842,19 +841,18 @@ export default function MainLayout({
 
   const lastRoomId = localStorage.getItem("ceLastActiveRoomId") || "default";
 
-  // Redesigned navigation items
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard?tab=rooms&subtab=explore" },
-    { id: "liverooms", label: "Live Rooms", icon: Radio, path: "/dashboard?tab=liverooms" },
-    { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard?tab=feed" },
-    { id: "following", label: "Following", icon: UserCheck, path: "/dashboard?tab=following" },
-    { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard?tab=messages" },
-    { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard?tab=notifications" },
-    { id: "cp", label: "MyVerse", icon: SquareCode, path: "/dashboard?tab=cp" },
-    { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard?tab=leaderboard" },
-    { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard?tab=achievements" },
-    { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard?tab=helpdesk" },
+    { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard/rooms?subtab=explore" },
+    { id: "liverooms", label: "Live Rooms", icon: Radio, path: "/dashboard/live-rooms" },
+    { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard/feed" },
+    { id: "following", label: "Following", icon: UserCheck, path: "/dashboard/following" },
+    { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard/messages" },
+    { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard/notifications" },
+    { id: "cp", label: "MyVerse", icon: SquareCode, path: "/dashboard/cp" },
+    { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard/leaderboard" },
+    { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard/achievements" },
+    { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard/helpdesk" },
   ];
 
   if (user && user.role === "admin") {
@@ -879,18 +877,39 @@ export default function MainLayout({
   };
 
   const getActiveItem = () => {
+    const path = location.pathname;
     const searchParams = new URLSearchParams(location.search);
     const rawTab = activeTab || searchParams.get("tab") || "";
 
-    if (location.pathname.startsWith("/u/") || location.pathname.startsWith("/profile") || rawTab === "profile") {
+    if (path.startsWith("/u/") || path.startsWith("/profile") || rawTab === "profile") {
       return "profile";
     }
-    if (location.pathname.startsWith("/editor")) {
+    if (path.startsWith("/editor")) {
       return "workspace";
     }
-    if (location.pathname === "/admin") {
+    if (path === "/admin") {
       return "admin";
     }
+
+    // Check paths under /dashboard/
+    if (path.startsWith("/dashboard/")) {
+      const section = path.substring("/dashboard/".length);
+      if (section === "rooms") return "explore-rooms";
+      if (section === "live-rooms") return "liverooms";
+      if (section === "trust-safety" || section === "feed-action") return "trust-safety";
+      if (section === "settings") return "settings";
+      if (section === "history" || section === "whiteboards" || section === "bookmarks" || section === "trust-safety") return section;
+      if (section === "cp") return "cp";
+      if (section === "feed") return "feed";
+      if (section === "following") return "following";
+      if (section === "messages") return "messages";
+      if (section === "notifications") return "notifications";
+      if (section === "leaderboard") return "leaderboard";
+      if (section === "achievements") return "achievements";
+      if (section === "helpdesk") return "helpdesk";
+      if (section === "planner") return "planner";
+    }
+
     if (rawTab === "settings") {
       return "settings";
     }
@@ -911,7 +930,7 @@ export default function MainLayout({
     if (rawTab === "achievements") return "achievements";
     if (rawTab === "helpdesk") return "helpdesk";
 
-    if (location.pathname === "/dashboard" && (!rawTab || rawTab === "dashboard")) {
+    if (path === "/dashboard" && (!rawTab || rawTab === "dashboard")) {
       return "dashboard";
     }
 
@@ -1775,7 +1794,7 @@ export default function MainLayout({
           {/* Custom MyVerse Square Box at the very bottom */}
           <div className="sidebar-footer-myverse-box">
             <button
-              onClick={() => handleConfirmNavigate("/dashboard?tab=cp")}
+              onClick={() => handleConfirmNavigate("/dashboard/cp")}
               className={`myverse-sidebar-card-btn ${activeItem === "cp" ? "active" : ""}`}
               data-tooltip="MyVerse"
             >
@@ -1873,7 +1892,7 @@ export default function MainLayout({
           <button
             onClick={() => {
               setIsDrawerOpen(false);
-              handleConfirmNavigate("/dashboard?tab=cp");
+              handleConfirmNavigate("/dashboard/cp");
             }}
             className={`drawer-nav-btn ${activeItem === "cp" ? "active" : ""}`}
             style={{ width: "100%", justifyContent: "flex-start", gap: "12px" }}

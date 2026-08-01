@@ -48,8 +48,8 @@ export const getRoomSocialStats = async (roomId) => {
   return response.data;
 };
 
-export const getTrendingRooms = async () => {
-  const response = await API.get("/trending-rooms", getHeaders());
+export const getTrendingRooms = async (limit = 10) => {
+  const response = await API.get(`/trending-rooms?limit=${limit}`, getHeaders());
   return response.data;
 };
 
@@ -58,8 +58,8 @@ export const getSocialFeed = async (page = 1, limit = 10) => {
   return response.data;
 };
 
-export const getDeveloperSuggestions = async () => {
-  const response = await API.get("/suggestions", getHeaders());
+export const getDeveloperSuggestions = async (limit = 10) => {
+  const response = await API.get(`/suggestions?limit=${limit}`, getHeaders());
   return response.data;
 };
 

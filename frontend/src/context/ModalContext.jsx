@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Info, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
 import "./ModalContext.css";
@@ -20,10 +21,28 @@ export const ModalProvider = ({ children }) => {
     message: ""
   });
 
+  const [avatarPreview, setAvatarPreview] = useState({
+    isOpen: false,
+    url: "",
+    username: ""
+  });
+
+  const navigate = useNavigate();
+
   useEffect(() => {
     const nativeAlert = window.alert;
 
     // Bind functions to window object for global availability without hooks
+    window.showAvatarPreview = (url, username = "User") => {
+      setAvatarPreview({
+        isOpen: true,
+        url,
+        username
+      });
+    };
+
+
+
     window.showAlert = (message, title = "System Notification", type = "info") => {
       // Auto-detect errors to adjust title and type
       let resolvedType = type;
@@ -83,8 +102,24 @@ export const ModalProvider = ({ children }) => {
       delete window.showConfirm;
       delete window.showLoader;
       delete window.hideLoader;
+      delete window.showAvatarPreview;
     };
   }, []);
+
+
+
+  // Escape key close listener for Avatar Preview
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        handleCloseAvatarPreview();
+      }
+    };
+    if (avatarPreview.isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [avatarPreview.isOpen]);
 
   const handleClose = (value) => {
     if (modal.resolve) {
@@ -97,6 +132,14 @@ export const ModalProvider = ({ children }) => {
       type: "info",
       isConfirm: false,
       resolve: null
+    });
+  };
+
+  const handleCloseAvatarPreview = () => {
+    setAvatarPreview({
+      isOpen: false,
+      url: "",
+      username: ""
     });
   };
 
@@ -195,6 +238,31 @@ export const ModalProvider = ({ children }) => {
           </div>,
           document.body
         )}
+      {avatarPreview.isOpen &&
+        createPortal(
+          <div className="ce-avatar-preview-overlay" onClick={handleCloseAvatarPreview}>
+            <div className="ce-avatar-preview-container" onClick={(e) => e.stopPropagation()}>
+              <button className="ce-avatar-preview-close" onClick={handleCloseAvatarPreview} aria-label="Close Preview">
+                &times;
+              </button>
+              <div className="ce-avatar-preview-img-card">
+                {avatarPreview.url ? (
+                  <img src={avatarPreview.url} alt={avatarPreview.username} className="ce-avatar-preview-img" />
+                ) : (
+                  <div className="ce-avatar-preview-fallback">
+                    {avatarPreview.username.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="ce-avatar-preview-info">
+                <span className="ce-avatar-preview-username">@{avatarPreview.username}</span>
+                <span className="ce-avatar-preview-subtitle">Profile Photo</span>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
     </ModalContext.Provider>
   );
 };

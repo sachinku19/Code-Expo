@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams, Outlet } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   createRoom,
@@ -24,12 +24,13 @@ import { useAuth } from "../context/AuthContext";
 import { getUserProfile, changePassword, getPublicUserProfile } from "../services/authService";
 import ReportUserModal from "../components/social/ReportUserModal";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
+import { getPersonalDashboard } from "../services/plannerService";
 import {
   Plus, LogIn, History as HistoryIcon, User,
   Sun, Moon, Sparkles, Globe, Lock, Settings as SettingsIcon,
   Users, Clock, Terminal, Activity, FolderGit, Check, X, ShieldAlert, UserMinus,
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
-  Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, Code,
+  Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
   Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2,
   Volume2, VolumeX, Radio
@@ -152,9 +153,10 @@ const getAvatarColor = (name) => {
     "#ec4899", "#14b8a6", "#6366f1", "#06b6d4", "#84cc16"
   ];
   if (!name) return colors[0];
+  const cleanName = String(name).toLowerCase();
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < cleanName.length; i++) {
+    hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
   }
   return colors[Math.abs(hash) % colors.length];
 };
@@ -178,14 +180,30 @@ const getBannerGradient = (username) => {
   return colors[index];
 };
 
-const SafeUserAvatar = ({ avatar, username, size = 28, className = "" }) => {
+const SafeUserAvatar = ({ userId, avatar, username, size = 28, className = "" }) => {
   const [imgFailed, setImgFailed] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setImgFailed(false);
   }, [avatar]);
 
   const isValidAvatar = avatar && typeof avatar === "string" && avatar.trim().length > 0 && !imgFailed && avatar !== "undefined" && avatar !== "null";
+
+  const handleAvatarClick = (e) => {
+    e.stopPropagation();
+    if (userId) {
+      if (window.handleGlobalProfileNav) {
+        window.handleGlobalProfileNav(userId, username);
+      } else {
+        if (username) {
+          navigate(`/u/${username}`);
+        } else {
+          navigate(`/dashboard/profile/${userId}`);
+        }
+      }
+    }
+  };
 
   if (isValidAvatar) {
     return (
@@ -194,13 +212,16 @@ const SafeUserAvatar = ({ avatar, username, size = 28, className = "" }) => {
         alt=""
         onError={() => setImgFailed(true)}
         className={className}
+        onClick={handleAvatarClick}
+        title={`View @${username}'s profile`}
         style={{
           width: `${size}px`,
           height: `${size}px`,
           borderRadius: "4px",
           objectFit: "cover",
           display: "block",
-          flexShrink: 0
+          flexShrink: 0,
+          cursor: "pointer"
         }}
       />
     );
@@ -209,6 +230,8 @@ const SafeUserAvatar = ({ avatar, username, size = 28, className = "" }) => {
   return (
     <div
       className={className ? `${className}-initial` : "avatar-initial"}
+      onClick={handleAvatarClick}
+      title={`View @${username}'s profile`}
       style={{
         width: `${size}px`,
         height: `${size}px`,
@@ -220,7 +243,8 @@ const SafeUserAvatar = ({ avatar, username, size = 28, className = "" }) => {
         fontSize: size <= 28 ? "0.78rem" : "0.9rem",
         fontWeight: "600",
         color: "#fff",
-        flexShrink: 0
+        flexShrink: 0,
+        cursor: "pointer"
       }}
     >
       {(username || "D").charAt(0).toUpperCase()}
@@ -974,6 +998,61 @@ const getBadgeStyle = (title) => {
   };
 };
 
+const renderDashboardTaskItem = (task, isCompleted = false) => {
+  const isRoom = task.type === "room";
+  const badgeColor = isRoom ? "#10b981" : "var(--ce-primary)";
+  const bg = isRoom ? "rgba(16, 185, 129, 0.04)" : "rgba(168, 85, 247, 0.04)";
+  const dateStr = task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "No due date";
+  
+  return (
+    <div 
+      key={task._id} 
+      className="recent-joined-card"
+      style={{
+        background: bg,
+        padding: "12px 14px",
+        borderRadius: "8px",
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        textAlign: "left",
+        transition: "transform 0.2s, box-shadow 0.2s",
+        cursor: "default"
+      }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: "3px", textAlign: "left" }}>
+        <span 
+          style={{ 
+            fontSize: "0.85rem", 
+            fontWeight: "600", 
+            color: "var(--ce-text)",
+            textDecoration: isCompleted ? "line-through" : "none",
+            opacity: isCompleted ? 0.7 : 1
+          }}
+        >
+          {task.title}
+        </span>
+        <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
+          {isCompleted ? `Completed` : `Due: ${dateStr}`}
+        </span>
+      </div>
+      <span 
+        style={{ 
+          fontSize: "0.68rem", 
+          fontWeight: "700", 
+          padding: "2px 6px", 
+          borderRadius: "4px", 
+          background: isRoom ? "rgba(16, 185, 129, 0.12)" : "rgba(168, 85, 247, 0.12)", 
+          color: badgeColor 
+        }}
+      >
+        {isRoom ? "Room Task" : "Personal"}
+      </span>
+    </div>
+  );
+};
+
 const renderLanguageLogo = (lang, title) => {
   let l = String(lang || "").toLowerCase().trim();
   const t = String(title || "").toLowerCase();
@@ -1230,6 +1309,7 @@ function Dashboard() {
     totalPoints: 0
   }));
 
+  const [plannerTasks, setPlannerTasks] = useState(() => loadFromCache("ce_cache_plannerTasks", { todayTasks: [], upcomingTasks: [], overdueTasks: [], recentlyCompleted: [] }));
   const [historyRooms, setHistoryRooms] = useState(() => loadFromCache("ce_cache_historyRooms", []));
   const [visibleJoinedRooms, setVisibleJoinedRooms] = useState(4);
   const [visibleActiveRooms, setVisibleActiveRooms] = useState(4);
@@ -1277,6 +1357,8 @@ function Dashboard() {
   const [onlineFollows, setOnlineFollows] = useState(() => loadFromCache("ce_cache_onlineFollows", []));
   const [onlineFilterTab, setOnlineFilterTab] = useState("all");
   const [showAllOnline, setShowAllOnline] = useState(false);
+  const [showAllTrending, setShowAllTrending] = useState(false);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
 
   const [feedActivities, setFeedActivities] = useState(() => loadFromCache("ce_cache_feedActivities", []));
   const [feedPage, setFeedPage] = useState(1);
@@ -1965,15 +2047,43 @@ function Dashboard() {
   });
   const [roomId, setRoomId] = useState("");
   const activeSection = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    const urlTab = params.get("tab");
-    if (urlTab) return urlTab === "feed-action" ? "trust-safety" : urlTab;
+    const path = location.pathname;
+    if (path.startsWith("/u/")) {
+      return "profile";
+    }
+    const searchParams = new URLSearchParams(location.search);
+    let urlTab = searchParams.get("tab");
+    if (urlTab) {
+      if (urlTab === "feed-action") urlTab = "trust-safety";
+      if (urlTab === "live-rooms") urlTab = "liverooms";
+      if (urlTab === "myrooms") urlTab = "myrooms";
+      return urlTab;
+    }
+    if (path.startsWith("/dashboard/")) {
+      const section = path.substring("/dashboard/".length);
+      if (!section) return "dashboard";
+      if (section === "live-rooms") return "liverooms";
+      if (section === "my-rooms") return "myrooms";
+      if (section === "trust-safety" || section === "feed-action") return "trust-safety";
+      if (section.startsWith("profile")) return "profile";
+      return section;
+    }
     return "dashboard";
-  }, [location.search]);
+  }, [location.pathname, location.search]);
 
   const setActiveSection = useCallback((newSection) => {
+    let segment = newSection;
+    if (newSection === "liverooms") segment = "live-rooms";
+    if (newSection === "myrooms") segment = "my-rooms";
+    if (newSection === "trust-safety") segment = "trust-safety";
+
+    let path = "/dashboard";
+    if (newSection !== "dashboard") {
+      path = `/dashboard/${segment}`;
+    }
+
     const params = new URLSearchParams(location.search);
-    params.set("tab", newSection);
+    params.delete("tab");
     if (newSection !== "profile") {
       params.delete("user");
       params.delete("username");
@@ -1981,15 +2091,9 @@ function Dashboard() {
       params.delete("avatar");
     }
 
-    const newSearch = params.toString();
-    const currentSearch = location.search.startsWith("?") ? location.search.slice(1) : location.search;
-
-    if (newSearch === currentSearch) {
-      return;
-    }
-
-    navigate(`${location.pathname}?${newSearch}`, { replace: false });
-  }, [location.search, location.pathname, navigate]);
+    const searchStr = params.toString();
+    navigate(searchStr ? `${path}?${searchStr}` : path, { replace: false });
+  }, [location.search, navigate]);
   const [selectedRoomDetails, setSelectedRoomDetails] = useState(null);
   const [selectedRoomLikes, setSelectedRoomLikes] = useState([]);
   const [isLoadingRoomLikes, setIsLoadingRoomLikes] = useState(false);
@@ -2062,13 +2166,34 @@ function Dashboard() {
   const [expandedAchievementId, setExpandedAchievementId] = useState(null);
 
   const targetUserIdFromUrl = useMemo(() => {
+    const path = location.pathname;
+
+    // 1. Try matching /u/:username
+    const uMatch = path.match(/^\/u\/([a-zA-Z0-9_-]+)/);
+    if (uMatch && uMatch[1]) {
+      const target = uMatch[1];
+      if (target && target.toLowerCase() !== user?.username?.toLowerCase() && target !== user?._id && target !== user?.id) {
+        return target;
+      }
+    }
+
+    // 2. Try matching /dashboard/profile/:userId
+    if (path.startsWith("/dashboard/profile/")) {
+      const target = path.substring("/dashboard/profile/".length);
+      if (target && target.toLowerCase() !== user?.username?.toLowerCase() && target !== user?._id && target !== user?.id) {
+        return target;
+      }
+    }
+
+    // 3. Fallback to search query parameters
     const params = new URLSearchParams(location.search);
     const target = params.get("user") || params.get("username") || params.get("userId");
-    if (target && target !== user?.username && target !== user?._id && target !== user?.id) {
+    if (target && target.toLowerCase() !== user?.username?.toLowerCase() && target !== user?._id && target !== user?.id) {
       return target;
     }
+
     return null;
-  }, [location.search, user]);
+  }, [location.pathname, location.search, user]);
 
   const isViewingPublicProfile = activeSection === "profile" && !!targetUserIdFromUrl;
 
@@ -2127,12 +2252,13 @@ function Dashboard() {
     }, 1000);
   };
 
+
+
   // Sync section with query tab or /u/:username handle URL
   useEffect(() => {
     const handleMatch = location.pathname.match(/^\/u\/([a-zA-Z0-9_]+)/);
     if (handleMatch && handleMatch[1]) {
       const routeHandle = handleMatch[1].toLowerCase();
-      setActiveSection("profile");
       const isOwnProfile = user && user.username && user.username.toLowerCase() === routeHandle;
       if (isOwnProfile) {
         setViewingUserProfile(null);
@@ -2144,52 +2270,77 @@ function Dashboard() {
       return;
     }
 
-    const searchParams = new URLSearchParams(location.search);
-    let tab = searchParams.get("tab");
-    const userId = searchParams.get("userId") || searchParams.get("user");
-    if (tab) {
-      if (tab === "feed-action") {
-        tab = "trust-safety";
+    if (location.pathname.startsWith("/dashboard/profile")) {
+      let userId = null;
+      if (location.pathname.startsWith("/dashboard/profile/")) {
+        userId = location.pathname.substring("/dashboard/profile/".length);
       }
-      if (tab === "myrooms") {
-        tab = "rooms";
-        setRoomsTab("myrooms");
-        localStorage.setItem("ce_roomsTab", "myrooms");
-      }
-      setActiveSection(tab);
-      if (tab === "profile") {
-        if (userId) {
-          const isOwnProfile = user && (String(userId) === String(user.id) || String(userId) === String(user._id) || (user.username && user.username.toLowerCase() === String(userId).toLowerCase()));
-          if (isOwnProfile) {
-            setViewingUserProfile(null);
-            setViewingUserStats(null);
-            fetchProfilePosts(user.id || user._id);
-            if (user.username) {
-              navigate(`/u/${user.username}`, { replace: true });
-            }
-          } else if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId) && viewingUserProfile.username?.toLowerCase() !== String(userId).toLowerCase())) {
-            handleViewUserProfile(userId);
-          }
-        } else {
+
+      if (userId) {
+        const isOwnProfile = user && (String(userId) === String(user.id) || String(userId) === String(user._id) || (user.username && user.username.toLowerCase() === String(userId).toLowerCase()));
+        if (isOwnProfile) {
           setViewingUserProfile(null);
           setViewingUserStats(null);
-          if (user) {
-            fetchProfilePosts(user.id || user._id);
-            if (user.username) {
-              navigate(`/u/${user.username}`, { replace: true });
-            }
+          fetchProfilePosts(user.id || user._id);
+          if (user.username) {
+            navigate(`/u/${user.username}`, { replace: true });
           }
+        } else if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId) && viewingUserProfile.username?.toLowerCase() !== String(userId).toLowerCase())) {
+          handleViewUserProfile(userId);
         }
       } else {
         setViewingUserProfile(null);
         setViewingUserStats(null);
+        if (user) {
+          fetchProfilePosts(user.id || user._id);
+          if (user.username) {
+            navigate(`/u/${user.username}`, { replace: true });
+          }
+        }
       }
-    } else {
-      setActiveSection("dashboard");
-      setViewingUserProfile(null);
-      setViewingUserStats(null);
+      return;
     }
+
+    // Redirect legacy ?tab= query params to clean URL pathnames
+    const searchParams = new URLSearchParams(location.search);
+    let tab = searchParams.get("tab");
+    if (tab) {
+      let sectionSegment = tab;
+      if (tab === "feed-action") sectionSegment = "trust-safety";
+      if (tab === "liverooms") sectionSegment = "live-rooms";
+      if (tab === "myrooms") sectionSegment = "my-rooms";
+
+      const targetPath = sectionSegment === "dashboard" ? "/dashboard" : `/dashboard/${sectionSegment}`;
+      searchParams.delete("tab");
+      const remainingSearch = searchParams.toString();
+      const finalUrl = remainingSearch ? `${targetPath}?${remainingSearch}` : targetPath;
+
+      navigate(finalUrl, { replace: true });
+      return;
+    }
+
+    // Default: not profile, clear profile states
+    setViewingUserProfile(null);
+    setViewingUserStats(null);
   }, [location.pathname, location.search, user?.id, user?._id, user?.username]);
+
+  // Load preselected chat partner from URL query param if present on /dashboard/messages
+  useEffect(() => {
+    if (activeSection === "messages") {
+      const searchParams = new URLSearchParams(location.search);
+      const chatUserVal = searchParams.get("user") || searchParams.get("userId");
+      if (chatUserVal && (!preselectedChatPartner || String(preselectedChatPartner._id || preselectedChatPartner.id) !== String(chatUserVal))) {
+        // Fetch public profile to populate the preselected user details
+        getUserPublicProfile(chatUserVal)
+          .then(res => {
+            if (res.success && res.user) {
+              setPreselectedChatPartner(res.user);
+            }
+          })
+          .catch(err => console.error("Error preselecting chat partner from URL:", err));
+      }
+    }
+  }, [activeSection, location.search, preselectedChatPartner]);
 
   // Admin redirect logic
   useEffect(() => {
@@ -2201,7 +2352,7 @@ function Dashboard() {
   const fetchDashboardData = async () => {
     setIsFetchingData(true);
     try {
-      const [historyData, recentData, liveData, requestsData, activityData, statsData, publicData, sentRequestsData] = await Promise.all([
+      const [historyData, recentData, liveData, requestsData, activityData, statsData, publicData, sentRequestsData, plannerDashboardData] = await Promise.all([
         getUserRoomsHistory(),
         getRecentRooms(),
         getLiveRooms(),
@@ -2209,7 +2360,8 @@ function Dashboard() {
         getActivityFeed(),
         getActivityStats(),
         getAllPublicRooms(),
-        getMySentRequests().catch(() => ({ success: false, requests: [] }))
+        getMySentRequests().catch(() => ({ success: false, requests: [] })),
+        getPersonalDashboard().catch(() => ({ success: false, stats: null }))
       ]);
 
       const history = historyData.rooms || [];
@@ -2220,11 +2372,14 @@ function Dashboard() {
       const dbStats = statsData.stats || { codingHours: 0, executions: 0, heatmap: [] };
       const publicR = publicData.rooms || [];
       const sentRequests = sentRequestsData?.requests || [];
+      const plannerStats = plannerDashboardData?.stats || { todayTasks: [], upcomingTasks: [], overdueTasks: [], recentlyCompleted: [] };
 
       setHistoryRooms(history);
       localStorage.setItem("ce_cache_historyRooms", JSON.stringify(history));
       setRecentRooms(recent);
       localStorage.setItem("ce_cache_recentRooms", JSON.stringify(recent));
+      setPlannerTasks(plannerStats);
+      localStorage.setItem("ce_cache_plannerTasks", JSON.stringify(plannerStats));
       setLiveRooms(live);
       localStorage.setItem("ce_cache_liveRooms", JSON.stringify(live));
 
@@ -2928,15 +3083,18 @@ function Dashboard() {
 
   const handleViewUserProfile = async (targetUserId) => {
     // If viewing own profile, redirect to own profile tab directly
-    if (user && (String(targetUserId) === String(user.id) || String(targetUserId) === String(user._id))) {
+    if (user && (String(targetUserId) === String(user.id) || String(targetUserId) === String(user._id) || String(targetUserId).toLowerCase() === user.username?.toLowerCase())) {
       setViewingUserProfile(null);
       setViewingUserRooms([]);
       setViewingUserLikedRooms([]);
       setViewingUserStats(null);
-      setActiveSection("profile");
       setProfileTab("rooms");
       fetchProfilePosts(user.id || user._id);
-      navigate("/dashboard?tab=profile");
+      if (user?.username) {
+        navigate(`/u/${user.username}`);
+      } else {
+        navigate("/dashboard/profile");
+      }
       return;
     }
 
@@ -2947,13 +3105,15 @@ function Dashboard() {
     setViewingUserStats(null);
 
     // Always transition to profile section tab
-    setActiveSection("profile");
     setProfileTab("rooms");
 
     // Update URL to point to this target user's public profile
-    const searchParams = new URLSearchParams(location.search);
-    if (searchParams.get("tab") !== "profile" || searchParams.get("userId") !== String(targetUserId)) {
-      navigate(`/dashboard?tab=profile&userId=${targetUserId}`);
+    let expectedPath = `/dashboard/profile/${targetUserId}`;
+    if (location.pathname.startsWith("/u/")) {
+      expectedPath = location.pathname;
+    }
+    if (location.pathname !== expectedPath) {
+      navigate(expectedPath);
     }
 
     try {
@@ -2966,6 +3126,14 @@ function Dashboard() {
         setViewingUserLikedRooms(res.likedRooms || []);
         setViewingUserStats(res.stats || null);
         fetchProfilePosts(targetUserId);
+
+        // Auto-sync/redirect to vanity u/:username URL
+        if (res.user.username) {
+          const expectedVanityPath = `/u/${res.user.username}`;
+          if (location.pathname !== expectedVanityPath) {
+            navigate(expectedVanityPath, { replace: true });
+          }
+        }
       }
     } catch (err) {
       addToast(err.response?.data?.message || err.message, "error");
@@ -2975,6 +3143,48 @@ function Dashboard() {
       setIsLoadingDashboard(false);
     }
   };
+
+  // Global Profile Navigation Handler with self-click scroll & refresh support
+  useEffect(() => {
+    window.handleGlobalProfileNav = (targetUserId, targetUsername) => {
+      // 1. If own profile
+      const isOwnProfile = user && (String(targetUserId) === String(user.id) || String(targetUserId) === String(user._id) || (targetUsername && targetUsername.toLowerCase() === user.username?.toLowerCase()));
+      if (isOwnProfile) {
+        const isCurrentOwnPath = location.pathname === "/dashboard/profile" || (user?.username && location.pathname.toLowerCase() === `/u/${user.username.toLowerCase()}`);
+        if (isCurrentOwnPath) {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          const scrollEl = document.querySelector(".ce-dashboard-main-content") || document.querySelector(".ce-dashboard-container");
+          if (scrollEl) scrollEl.scrollTo({ top: 0, behavior: "smooth" });
+          fetchProfilePosts(user.id || user._id);
+          fetchDashboardData();
+          return;
+        }
+        navigate("/dashboard/profile");
+        return;
+      }
+
+      // 2. If already viewing this public profile
+      const isAlreadyViewing = viewingUserProfile && (String(targetUserId) === String(viewingUserProfile._id) || String(targetUserId) === String(viewingUserProfile.id) || (targetUsername && targetUsername.toLowerCase() === viewingUserProfile.username?.toLowerCase()));
+      if (isAlreadyViewing) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        const scrollEl = document.querySelector(".ce-dashboard-main-content") || document.querySelector(".ce-dashboard-container");
+        if (scrollEl) scrollEl.scrollTo({ top: 0, behavior: "smooth" });
+        handleViewUserProfile(targetUserId);
+        return;
+      }
+
+      // 3. Otherwise navigate to profile
+      if (targetUsername) {
+        navigate(`/u/${targetUsername}`);
+      } else {
+        navigate(`/dashboard/profile/${targetUserId}`);
+      }
+    };
+
+    return () => {
+      delete window.handleGlobalProfileNav;
+    };
+  }, [user, location.pathname, viewingUserProfile, navigate, fetchProfilePosts, fetchDashboardData, handleViewUserProfile]);
 
   const handleYearChange = async (year) => {
     setSelectedYear(year);
@@ -4124,9 +4334,18 @@ function Dashboard() {
                     className="bubble-avatar-item"
                     style={{
                       backgroundColor: m.avatar ? "transparent" : getAvatarColor(m.username),
-                      zIndex: 3 - idx
+                      zIndex: 3 - idx,
+                      cursor: "pointer"
                     }}
                     title={`${m.username} (${m.isOnline ? 'Online' : 'Offline'})`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.handleGlobalProfileNav) {
+                        window.handleGlobalProfileNav(m._id || m.id, m.username);
+                      } else {
+                        handleViewUserProfile(m._id || m.id);
+                      }
+                    }}
                   >
                     {m.avatar ? (
                       <img src={m.avatar} alt={m.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
@@ -4168,7 +4387,19 @@ function Dashboard() {
                 <span className="drawer-section-title green-theme">Online</span>
                 <div className="drawer-members-list">
                   {membersWithStatus.filter(m => m.isOnline).map((m, idx) => (
-                    <div key={idx} className="drawer-member-pill online">
+                    <div
+                      key={idx}
+                      className="drawer-member-pill online"
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.handleGlobalProfileNav) {
+                          window.handleGlobalProfileNav(m._id || m.id, m.username);
+                        } else {
+                          handleViewUserProfile(m._id || m.id);
+                        }
+                      }}
+                    >
                       <span className="pill-dot online" />
                       <span className="pill-name">{m.username}</span>
                       {m.role && (
@@ -4188,7 +4419,19 @@ function Dashboard() {
                 <span className="drawer-section-title grey-theme">Offline</span>
                 <div className="drawer-members-list">
                   {membersWithStatus.filter(m => !m.isOnline && !m.isOwner).map((m, idx) => (
-                    <div key={idx} className="drawer-member-pill offline">
+                    <div
+                      key={idx}
+                      className="drawer-member-pill offline"
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.handleGlobalProfileNav) {
+                          window.handleGlobalProfileNav(m._id || m.id, m.username);
+                        } else {
+                          handleViewUserProfile(m._id || m.id);
+                        }
+                      }}
+                    >
                       <span className="pill-dot offline" />
                       <span className="pill-name">{m.username}</span>
                       {m.role && (
@@ -4208,7 +4451,19 @@ function Dashboard() {
                 <span className="drawer-section-title gold-theme">Owner</span>
                 <div className="drawer-members-list">
                   {membersWithStatus.filter(m => m.isOwner).map((m, idx) => (
-                    <div key={idx} className="drawer-member-pill owner">
+                    <div
+                      key={idx}
+                      className="drawer-member-pill owner"
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.handleGlobalProfileNav) {
+                          window.handleGlobalProfileNav(m._id || m.id, m.username);
+                        } else {
+                          handleViewUserProfile(m._id || m.id);
+                        }
+                      }}
+                    >
                       <span className="pill-crown">👑</span>
                       <span className="pill-name">{m.username}</span>
                       <span className="drawer-member-role-tag owner">OWNER</span>
@@ -4225,7 +4480,21 @@ function Dashboard() {
           <div className="room-card-footer-layout">
             <div className="room-card-footer-top-line">
               {/* Owner profile */}
-              <div className="room-card-owner-profile">
+              <div
+                className="room-card-owner-profile"
+                style={{ cursor: "pointer" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (room.createdBy) {
+                    const oId = room.createdBy._id || room.createdBy;
+                    if (window.handleGlobalProfileNav) {
+                      window.handleGlobalProfileNav(oId, room.createdBy.username);
+                    } else {
+                      handleViewUserProfile(oId);
+                    }
+                  }
+                }}
+              >
                 <div className="owner-avatar-wrapper-new">
                   <div className="owner-avatar-circle" style={{ backgroundColor: room.createdBy?.avatar ? "transparent" : getAvatarColor(room.createdBy?.username || "Owner") }}>
                     {room.createdBy?.avatar ? (
@@ -4820,15 +5089,28 @@ function Dashboard() {
                                   <div key={act._id} className="social-activity-card">
                                     <div className="social-activity-header">
                                       <div className="social-activity-actor-info">
-                                        <div className="actor-avatar" style={{ background: act.user?.avatar ? "transparent" : getAvatarColor(act.user?.username || "D") }}>
-                                          {act.user?.avatar ? (
-                                            <img src={act.user.avatar} alt={act.user?.username} />
-                                          ) : (
-                                            <span>{(act.user?.username || "D").charAt(0).toUpperCase()}</span>
-                                          )}
-                                        </div>
+                                        <SafeUserAvatar
+                                          userId={act.user?._id || act.user?.id}
+                                          avatar={act.user?.avatar}
+                                          username={act.user?.username}
+                                          size={38}
+                                          className="actor-avatar"
+                                        />
                                         <div className="actor-meta">
-                                          <span className="actor-username">
+                                          <span
+                                            className="actor-username"
+                                            style={{ cursor: "pointer" }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (act.user) {
+                                                if (window.handleGlobalProfileNav) {
+                                                  window.handleGlobalProfileNav(act.user._id || act.user.id, act.user.username);
+                                                } else {
+                                                  handleViewUserProfile(act.user._id || act.user.id);
+                                                }
+                                              }
+                                            }}
+                                          >
                                             <strong>{act.user?.username || "Someone"}</strong>
                                           </span>
                                           <span className="activity-action-text">
@@ -4837,7 +5119,20 @@ function Dashboard() {
                                                 {act.roomTitle}
                                               </strong>
                                             ) : act.targetUser ? (
-                                              <strong className="activity-target-user">{act.targetUser.username}</strong>
+                                              <strong
+                                                className="activity-target-user"
+                                                style={{ cursor: "pointer" }}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (window.handleGlobalProfileNav) {
+                                                    window.handleGlobalProfileNav(act.targetUser._id || act.targetUser.id, act.targetUser.username);
+                                                  } else {
+                                                    handleViewUserProfile(act.targetUser._id || act.targetUser.id);
+                                                  }
+                                                }}
+                                              >
+                                                {act.targetUser.username}
+                                              </strong>
                                             ) : ""}
                                           </span>
                                         </div>
@@ -4981,9 +5276,104 @@ function Dashboard() {
                           </button>
                         </section>
 
-                      </div>
+                        {/* COLUMN 1, ROW 2: PENDING TASKS */}
+                        <section className="ce-dashboard-section pending-tasks-section" style={{ marginBottom: 0 }}>
+                          <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <FolderGit size={16} style={{ color: "#ef4444", display: "inline-flex", alignItems: "center" }} />
+                              <h3 className="section-title" style={{ margin: 0, padding: 0, display: "inline-flex", alignItems: "center", lineHeight: "1" }}>Pending & Overdue</h3>
+                            </div>
+                            <span className="box-count-badge count-pending" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", fontSize: "0.72rem", fontWeight: "700", padding: "2px 8px", borderRadius: "999px", lineHeight: "1" }}>
+                              {plannerTasks.overdueTasks?.length || 0}
+                            </span>
+                          </div>
+
+                          <div 
+                            className="recent-joined-list" 
+                            style={{ 
+                              height: "180px",
+                              overflowY: "auto",
+                              paddingRight: "4px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "10px"
+                            }}
+                          >
+                            {(!plannerTasks.overdueTasks || plannerTasks.overdueTasks.length === 0) ? (
+                              <div className="empty-state-card" style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                                <p style={{ fontSize: "0.76rem", color: "var(--ce-text-muted)" }}>No pending or overdue tasks! 🎉</p>
+                              </div>
+                            ) : (
+                              plannerTasks.overdueTasks.map(task => renderDashboardTaskItem(task, false))
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="ce-column-scroll-down-btn"
+                            onClick={() => {
+                              const listEl = document.querySelector('.pending-tasks-section .recent-joined-list');
+                              if (listEl) {
+                                listEl.scrollBy({ top: 180, behavior: 'smooth' });
+                              }
+                            }}
+                            title="Scroll Down"
+                          >
+                            <ChevronDown size={12} />
+                          </button>
+                        </section>
+
+                        {/* COLUMN 2, ROW 2: TODAY & FUTURE TASKS */}
+                        <section className="ce-dashboard-section today-tasks-section" style={{ marginBottom: 0 }}>
+                          <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <Calendar size={16} style={{ color: "var(--ce-primary)", display: "inline-flex", alignItems: "center" }} />
+                              <h3 className="section-title" style={{ margin: 0, padding: 0, display: "inline-flex", alignItems: "center", lineHeight: "1" }}>Assigned Today & Future</h3>
+                            </div>
+                            <span className="box-count-badge count-assigned" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(168, 85, 247, 0.15)", color: "var(--ce-primary)", fontSize: "0.72rem", fontWeight: "700", padding: "2px 8px", borderRadius: "999px", lineHeight: "1" }}>
+                              {(plannerTasks.todayTasks?.length || 0) + (plannerTasks.upcomingTasks?.length || 0)}
+                            </span>
+                          </div>
+
+                          <div 
+                            className="recent-joined-list" 
+                            style={{ 
+                              height: "180px",
+                              overflowY: "auto",
+                              paddingRight: "4px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "10px"
+                            }}
+                          >
+                            {((!plannerTasks.todayTasks || plannerTasks.todayTasks.length === 0) &&
+                              (!plannerTasks.upcomingTasks || plannerTasks.upcomingTasks.length === 0)) ? (
+                              <div className="empty-state-card" style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                                <p style={{ fontSize: "0.76rem", color: "var(--ce-text-muted)" }}>No tasks assigned for today or future.</p>
+                              </div>
+                            ) : (
+                              [...(plannerTasks.todayTasks || []), ...(plannerTasks.upcomingTasks || [])].map(task => renderDashboardTaskItem(task, false))
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="ce-column-scroll-down-btn"
+                            onClick={() => {
+                              const listEl = document.querySelector('.today-tasks-section .recent-joined-list');
+                              if (listEl) {
+                                listEl.scrollBy({ top: 180, behavior: 'smooth' });
+                              }
+                            }}
+                            title="Scroll Down"
+                          >
+                            <ChevronDown size={12} />
+                          </button>
+                        </section>
+
+
 
                       </div>
+
+                    </div>
 
                     {/* RIGHT COLUMN */}
                     <div className="ce-column-right">
@@ -5065,7 +5455,7 @@ function Dashboard() {
                             {displayedOnlineList.slice(0, showAllOnline ? undefined : 3).map(dev => (
                               <div key={dev._id || dev.id} className="online-developer-row-card" onClick={() => handleViewUserProfile(dev._id || dev.id)}>
                                 <div className="dev-avatar-container">
-                                  <SafeUserAvatar avatar={dev.avatar} username={dev.username} size={36} className="dev-avatar-img" />
+                                  <SafeUserAvatar userId={dev._id || dev.id} avatar={dev.avatar} username={dev.username} size={36} className="dev-avatar-img" />
                                   <span className="dev-online-status-badge" />
                                 </div>
 
@@ -5091,7 +5481,7 @@ function Dashboard() {
                             <div className="online-avatar-bubbles">
                               {displayedOnlineList.slice(3, 8).map((u, i) => (
                                 <div key={i} className="online-bubble-avatar">
-                                  <SafeUserAvatar avatar={u.avatar} username={u.username} size={22} />
+                                  <SafeUserAvatar userId={u._id || u.id} avatar={u.avatar} username={u.username} size={22} />
                                 </div>
                               ))}
                               <div className="online-bubble-count">
@@ -5126,121 +5516,136 @@ function Dashboard() {
                             <p>No suggestions available.</p>
                           </div>
                         ) : (
-                          <div className="suggestions-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            {suggestions.map(s => (
-                              <div key={s._id} className="suggestion-item">
-                                <div onClick={() => handleViewUserProfile(s._id)} style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, cursor: "pointer", minWidth: 0 }}>
-                                  <div className="suggestion-avatar" style={{ width: "28px", height: "28px", flexShrink: 0, position: "relative" }}>
-                                    {s.avatar ? (
-                                      <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "4px", objectFit: "cover" }} />
-                                    ) : (
-                                      <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                        {s.username.charAt(0).toUpperCase()}
-                                      </div>
-                                    )}
-                                    {s.isOnline && (
-                                      <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "4px", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
-                                    )}
-                                  </div>
-                                  <div className="suggestion-details" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                                    <span className="suggestion-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.username}</span>
-                                    {(() => {
-                                      const targetFollowers = s.followers || [];
-                                      const targetFollowing = s.following || [];
-                                      const realMutuals = followingList.filter(f => {
-                                        const fId = String(f._id || f);
-                                        return targetFollowers.some(id => String(id) === fId) || targetFollowing.some(id => String(id) === fId);
-                                      });
-                                      if (realMutuals.length > 0) {
-                                        const displayList = realMutuals.slice(0, 2);
-                                        const remainingCount = realMutuals.length - displayList.length;
-                                        return (
-                                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
-                                            <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-                                              {displayList.map((mUser, mIdx) => {
-                                                const username = mUser.username || "Developer";
-                                                return (
+                          <>
+                            <div className="suggestions-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                              {suggestions.slice(0, showAllSuggestions ? 10 : 5).map(s => (
+                                <div key={s._id} className="suggestion-item">
+                                  <div onClick={() => handleViewUserProfile(s._id)} style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, cursor: "pointer", minWidth: 0 }}>
+                                    <div className="suggestion-avatar" style={{ width: "28px", height: "28px", flexShrink: 0, position: "relative" }}>
+                                      {s.avatar ? (
+                                        <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "4px", objectFit: "cover" }} />
+                                      ) : (
+                                        <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
+                                          {s.username.charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
+                                      {s.isOnline && (
+                                        <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "4px", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
+                                      )}
+                                    </div>
+                                    <div className="suggestion-details" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                                      <span className="suggestion-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.username}</span>
+                                      {(() => {
+                                        const targetFollowers = s.followers || [];
+                                        const targetFollowing = s.following || [];
+                                        const realMutuals = followingList.filter(f => {
+                                          const fId = String(f._id || f);
+                                          return targetFollowers.some(id => String(id) === fId) || targetFollowing.some(id => String(id) === fId);
+                                        });
+                                        if (realMutuals.length > 0) {
+                                          const displayList = realMutuals.slice(0, 2);
+                                          const remainingCount = realMutuals.length - displayList.length;
+                                          return (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                                              <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                                                {displayList.map((mUser, mIdx) => {
+                                                  const username = mUser.username || "Developer";
+                                                  return (
+                                                    <div
+                                                      key={mUser._id || mIdx}
+                                                      style={{
+                                                        width: "14px",
+                                                        height: "14px",
+                                                        borderRadius: "50%",
+                                                        overflow: "hidden",
+                                                        border: "1px solid var(--ce-surface-card)",
+                                                        background: mUser.avatar ? "transparent" : getAvatarColor(username),
+                                                        marginLeft: mIdx === 0 ? 0 : "-4px",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                        fontSize: "0.45rem",
+                                                        fontWeight: "700",
+                                                        color: "#fff",
+                                                        zIndex: 3 - mIdx
+                                                      }}
+                                                      title={`@${username}`}
+                                                    >
+                                                      {mUser.avatar ? (
+                                                        <img src={mUser.avatar} alt={username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                      ) : (
+                                                        username.charAt(0).toUpperCase()
+                                                      )}
+                                                    </div>
+                                                  );
+                                                })}
+                                                {remainingCount > 0 && (
                                                   <div
-                                                    key={mUser._id || mIdx}
                                                     style={{
                                                       width: "14px",
                                                       height: "14px",
                                                       borderRadius: "50%",
-                                                      overflow: "hidden",
+                                                      background: "var(--ce-hover)",
                                                       border: "1px solid var(--ce-surface-card)",
-                                                      background: mUser.avatar ? "transparent" : getAvatarColor(username),
-                                                      marginLeft: mIdx === 0 ? 0 : "-4px",
                                                       display: "flex",
                                                       alignItems: "center",
                                                       justifyContent: "center",
                                                       fontSize: "0.45rem",
-                                                      fontWeight: "700",
-                                                      color: "#fff",
-                                                      zIndex: 3 - mIdx
+                                                      fontWeight: "750",
+                                                      color: "var(--ce-primary)",
+                                                      marginLeft: "-4px",
+                                                      zIndex: 0
                                                     }}
-                                                    title={`@${username}`}
                                                   >
-                                                    {mUser.avatar ? (
-                                                      <img src={mUser.avatar} alt={username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                                    ) : (
-                                                      username.charAt(0).toUpperCase()
-                                                    )}
+                                                    +{remainingCount}
                                                   </div>
-                                                );
-                                              })}
-                                              {remainingCount > 0 && (
-                                                <div
-                                                  style={{
-                                                    width: "14px",
-                                                    height: "14px",
-                                                    borderRadius: "50%",
-                                                    background: "var(--ce-hover)",
-                                                    border: "1px solid var(--ce-surface-card)",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                    fontSize: "0.45rem",
-                                                    fontWeight: "750",
-                                                    color: "var(--ce-primary)",
-                                                    marginLeft: "-4px",
-                                                    zIndex: 0
-                                                  }}
-                                                >
-                                                  +{remainingCount}
-                                                </div>
-                                              )}
+                                                )}
+                                              </div>
+                                              <span className="suggestion-reason" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                {realMutuals.length} mutual{realMutuals.length > 1 ? "s" : ""}
+                                              </span>
                                             </div>
-                                            <span className="suggestion-reason" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                              {realMutuals.length} mutual{realMutuals.length > 1 ? "s" : ""}
-                                            </span>
-                                          </div>
+                                          );
+                                        }
+                                        return (
+                                          <span className="suggestion-reason" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                            {s.programmingLanguages && s.programmingLanguages.length > 0 ? `Tags: ${s.programmingLanguages.slice(0, 2).join(", ")}` : "Recommended"}
+                                          </span>
                                         );
-                                      }
-                                      return (
-                                        <span className="suggestion-reason" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                          {s.programmingLanguages && s.programmingLanguages.length > 0 ? `Tags: ${s.programmingLanguages.slice(0, 2).join(", ")}` : "Recommended"}
-                                        </span>
-                                      );
-                                    })()}
+                                      })()}
+                                    </div>
                                   </div>
+                                  <button
+                                    className={`suggestion-follow-btn ${followingList.some(f => String(f._id || f) === String(s._id)) ? "following" : ""}`}
+                                    onClick={() => handleFollowToggle(s._id)}
+                                  >
+                                    {followingList.some(f => String(f._id || f) === String(s._id)) ? (
+                                      <>
+                                        <Check size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Following
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Follow
+                                      </>
+                                    )}
+                                  </button>
                                 </div>
+                              ))}
+                            </div>
+                            {suggestions.length > 5 && (
+                              <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
                                 <button
-                                  className={`suggestion-follow-btn ${followingList.some(f => String(f._id || f) === String(s._id)) ? "following" : ""}`}
-                                  onClick={() => handleFollowToggle(s._id)}
+                                  type="button"
+                                  className="ce-view-all-btn"
+                                  onClick={() => setShowAllSuggestions(prev => !prev)}
+                                  style={{ fontSize: "0.8rem", gap: "4px" }}
                                 >
-                                  {followingList.some(f => String(f._id || f) === String(s._id)) ? (
-                                    <>
-                                      <Check size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Following
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Plus size={10} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Follow
-                                    </>
-                                  )}
+                                  {showAllSuggestions ? "Show Less" : "Show More"}
+                                  {showAllSuggestions ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                                 </button>
                               </div>
-                            ))}
-                          </div>
+                            )}
+                          </>
                         )}
                       </section>
 
@@ -5256,83 +5661,98 @@ function Dashboard() {
                             <p>No trending rooms.</p>
                           </div>
                         ) : (
-                          <div className="trending-rooms-list">
-                            {trendingRooms.map((room, index) => {
-                              const rank = index + 1;
-                              const creatorName = room.createdBy?.username || "Developer";
-                              const creatorAvatar = room.createdBy?.avatar;
-                              const lang = (room.language || "javascript").toLowerCase();
+                          <>
+                            <div className="trending-rooms-list">
+                              {trendingRooms.slice(0, showAllTrending ? 10 : 5).map((room, index) => {
+                                const rank = index + 1;
+                                const creatorName = room.createdBy?.username || "Developer";
+                                const creatorAvatar = room.createdBy?.avatar;
+                                const lang = (room.language || "javascript").toLowerCase();
 
-                              let rankIcon = <Flame size={12} />;
-                              if (rank === 1) rankIcon = <Trophy size={12} className="text-gold" />;
-                              else if (rank === 2) rankIcon = <Flame size={12} className="text-orange" />;
+                                let rankIcon = <Flame size={12} />;
+                                if (rank === 1) rankIcon = <Trophy size={12} className="text-gold" />;
+                                else if (rank === 2) rankIcon = <Flame size={12} className="text-orange" />;
 
-                              return (
-                                <div
-                                  key={room._id}
-                                  className={`trending-room-card rank-${rank}`}
-                                  onClick={() => handleJoinRoomDirect(room.roomId)}
-                                >
-                                  <div className="trending-card-top">
-                                    <div className="trending-creator-info">
-                                      <div
-                                        className="trending-creator-avatar"
-                                        style={{
-                                          backgroundColor: creatorAvatar ? "transparent" : getAvatarColor(creatorName)
-                                        }}
-                                      >
-                                        {creatorAvatar ? (
-                                          <img src={creatorAvatar} alt={creatorName} />
-                                        ) : (
-                                          creatorName.charAt(0).toUpperCase()
+                                return (
+                                  <div
+                                    key={room._id}
+                                    className={`trending-room-card rank-${rank}`}
+                                    onClick={() => handleJoinRoomDirect(room.roomId)}
+                                  >
+                                    <div className="trending-card-top">
+                                      <div className="trending-creator-info">
+                                        <div
+                                          className="trending-creator-avatar"
+                                          style={{
+                                            backgroundColor: creatorAvatar ? "transparent" : getAvatarColor(creatorName)
+                                          }}
+                                        >
+                                          {creatorAvatar ? (
+                                            <img src={creatorAvatar} alt={creatorName} />
+                                          ) : (
+                                            creatorName.charAt(0).toUpperCase()
+                                          )}
+                                        </div>
+                                        <span className="trending-creator-name">@{creatorName}</span>
+                                      </div>
+                                      <span className={`trending-rank-badge rank-${rank}`}>
+                                        {rankIcon}
+                                        <span>#{rank}</span>
+                                      </span>
+                                    </div>
+
+                                    <h4 className="trending-card-title">
+                                      {room.title}
+                                    </h4>
+
+                                    <div className="trending-card-bottom">
+                                      <div className="trending-meta-left">
+                                        <span className={`trending-lang-tag lang-${lang}`}>
+                                          <Code size={11} />
+                                          <span>{room.language || "JavaScript"}</span>
+                                        </span>
+                                        {room.lastActivity && (
+                                          <span className="trending-time-ago" title="Last Active">
+                                            <Clock size={11} />
+                                            <span>{formatLastActive(room.lastActivity)}</span>
+                                          </span>
                                         )}
                                       </div>
-                                      <span className="trending-creator-name">@{creatorName}</span>
+
+                                      <button
+                                        type="button"
+                                        className={`room-trending-like-btn ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleLikeRoom(room.roomId);
+                                        }}
+                                        title={isRoomLiked(room.roomId) ? "Unlike Room" : "Like Room"}
+                                      >
+                                        <Heart
+                                          size={12}
+                                          fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
+                                        />
+                                        <span className="like-count-text">{room.likesCount || 0}</span>
+                                      </button>
                                     </div>
-                                    <span className={`trending-rank-badge rank-${rank}`}>
-                                      {rankIcon}
-                                      <span>#{rank}</span>
-                                    </span>
                                   </div>
-
-                                  <h4 className="trending-card-title">
-                                    {room.title}
-                                  </h4>
-
-                                  <div className="trending-card-bottom">
-                                    <div className="trending-meta-left">
-                                      <span className={`trending-lang-tag lang-${lang}`}>
-                                        <Code size={11} />
-                                        <span>{room.language || "JavaScript"}</span>
-                                      </span>
-                                      {room.lastActivity && (
-                                        <span className="trending-time-ago" title="Last Active">
-                                          <Clock size={11} />
-                                          <span>{formatLastActive(room.lastActivity)}</span>
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      className={`room-trending-like-btn ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleLikeRoom(room.roomId);
-                                      }}
-                                      title={isRoomLiked(room.roomId) ? "Unlike Room" : "Like Room"}
-                                    >
-                                      <Heart
-                                        size={12}
-                                        fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                      />
-                                      <span className="like-count-text">{room.likesCount || 0}</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                );
+                              })}
+                            </div>
+                            {trendingRooms.length > 5 && (
+                              <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
+                                <button
+                                  type="button"
+                                  className="ce-view-all-btn"
+                                  onClick={() => setShowAllTrending(prev => !prev)}
+                                  style={{ fontSize: "0.8rem", gap: "4px" }}
+                                >
+                                  {showAllTrending ? "Show Less" : "Show More"}
+                                  {showAllTrending ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                </button>
+                              </div>
+                            )}
+                          </>
                         )}
                       </section>
 
@@ -5761,7 +6181,7 @@ function Dashboard() {
                     <button
                       className="room-enter-btn-action"
                       style={{ margin: "0 auto" }}
-                      onClick={() => navigate("/dashboard?tab=rooms&subtab=explore")}
+                      onClick={() => navigate("/dashboard/rooms?subtab=explore")}
                     >
                       <Globe size={14} /> Explore Rooms
                     </button>
@@ -6084,9 +6504,35 @@ function Dashboard() {
                                         <div className="dev-card-banner" style={{ background: dev.coverBanner ? `url(${dev.coverBanner}) center/cover no-repeat` : getBannerGradient(dev.username) }} />
                                         <div className="dev-card-avatar-wrapper">
                                           {dev.avatar ? (
-                                            <img src={dev.avatar} alt={dev.username} className="dev-card-avatar" />
+                                            <img
+                                              src={dev.avatar}
+                                              alt={dev.username}
+                                              className="dev-card-avatar"
+                                              style={{ cursor: "pointer" }}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.handleGlobalProfileNav) {
+                                                  window.handleGlobalProfileNav(dev._id || dev.id, dev.username);
+                                                } else {
+                                                  handleViewUserProfile(dev._id || dev.id);
+                                                }
+                                              }}
+                                              title={`View @${dev.username}'s profile`}
+                                            />
                                           ) : (
-                                            <div className="dev-card-avatar-fallback" style={{ backgroundColor: getAvatarColor(dev.username) }}>
+                                            <div
+                                              className="dev-card-avatar-fallback"
+                                              style={{ backgroundColor: getAvatarColor(dev.username), cursor: "pointer" }}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.handleGlobalProfileNav) {
+                                                  window.handleGlobalProfileNav(dev._id || dev.id, dev.username);
+                                                } else {
+                                                  handleViewUserProfile(dev._id || dev.id);
+                                                }
+                                              }}
+                                              title={`View @${dev.username}'s profile`}
+                                            >
                                               {dev.username.charAt(0).toUpperCase()}
                                             </div>
                                           )}
@@ -6130,7 +6576,7 @@ function Dashboard() {
                                           <button
                                             onClick={() => {
                                               setPreselectedChatPartner(dev);
-                                              navigate("/dashboard?tab=messages");
+                                              navigate("/dashboard/messages");
                                             }}
                                             className="dev-btn-message"
                                           >
@@ -8300,7 +8746,15 @@ function Dashboard() {
                         {/* Avatar overlapped over the banner */}
                         <div style={{ marginTop: "-40px", zIndex: 2, position: "relative" }}>
                           {viewingUserProfile ? (
-                            <div style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: viewingUserProfile.avatar ? "transparent" : getAvatarColor(viewingUserProfile.username), fontSize: "1.8rem", color: "#fff", fontWeight: "600", border: "4px solid var(--ce-surface-card)" }}>
+                            <div
+                              onClick={() => {
+                                if (window.showAvatarPreview) {
+                                  window.showAvatarPreview(viewingUserProfile.avatar || "", viewingUserProfile.username);
+                                }
+                              }}
+                              title={`View @${viewingUserProfile.username}'s profile`}
+                              style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: viewingUserProfile.avatar ? "transparent" : getAvatarColor(viewingUserProfile.username), fontSize: "1.8rem", color: "#fff", fontWeight: "600", border: "4px solid var(--ce-surface-card)", cursor: "pointer" }}
+                            >
                               {viewingUserProfile.avatar ? (
                                 <img src={viewingUserProfile.avatar} alt={viewingUserProfile.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                               ) : (
@@ -8597,7 +9051,7 @@ function Dashboard() {
                                           avatar: viewingUserProfile.avatar,
                                           bio: viewingUserProfile.bio || "Developer"
                                         });
-                                        navigate("/dashboard?tab=messages");
+                                        navigate("/dashboard/messages");
                                       }}
                                       style={{ flex: 1 }}
                                     >
@@ -8607,7 +9061,7 @@ function Dashboard() {
                                 )}
                                 <button
                                   className="profile-back-btn"
-                                  onClick={() => navigate("/dashboard?tab=profile")}
+                                  onClick={() => navigate(user?.username ? `/u/${user.username}` : "/dashboard/profile")}
                                   style={{ width: "100%", padding: "8px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)", borderRadius: "6px", color: "var(--ce-text)", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                                 >
                                   <ArrowLeft size={13} /> Back to My Profile
@@ -10350,7 +10804,7 @@ function Dashboard() {
                                 {item.username.charAt(0).toUpperCase()}
                               </div>
                             )}
-                             <div className="social-member-meta">
+                            <div className="social-member-meta">
                               <span className="social-member-name">{item.username}</span>
                               {(() => {
                                 const targetFollowers = item.followers || [];
@@ -10526,7 +10980,7 @@ function Dashboard() {
                                       avatar: item.avatar,
                                       bio: item.bio || "Developer"
                                     });
-                                    navigate("/dashboard?tab=messages");
+                                    navigate("/dashboard/messages");
                                   }}
                                   className="ce-modal-follow-btn"
                                   style={{ background: "var(--ce-primary)", color: "#fff", border: "none" }}
@@ -10642,7 +11096,7 @@ function Dashboard() {
                                     avatar: item.avatar,
                                     bio: item.bio || "Developer"
                                   });
-                                  navigate("/dashboard?tab=messages");
+                                  navigate("/dashboard/messages");
                                 }}
                                 className="ce-modal-follow-btn"
                                 style={{ background: "var(--ce-primary)", color: "#fff", border: "none" }}
@@ -10754,7 +11208,7 @@ function Dashboard() {
                             avatar: liker.avatar,
                             bio: liker.bio || "Developer"
                           });
-                          navigate("/dashboard?tab=messages");
+                          navigate("/dashboard/messages");
                         }}
                         style={{ padding: "4px 8px", background: "var(--ce-primary)", color: "#fff", border: "none", borderRadius: "4px", fontSize: "0.72rem", cursor: "pointer", fontWeight: "600" }}
                       >
@@ -11257,6 +11711,7 @@ function Dashboard() {
         />
 
       </div>
+      <Outlet />
     </MainLayout>
   );
 }

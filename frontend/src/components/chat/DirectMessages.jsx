@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import socket from "../../socket/socket";
 import { getFollowers, getFollowing, searchUsers } from "../../services/socialService";
@@ -100,8 +101,9 @@ const renderCallHistory = (msg, currentUserId) => {
   );
 };
 
-function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, size = 44 }) {
+function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, size = 44, userId }) {
   const [imgError, setImgError] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setImgError(false);
@@ -109,6 +111,29 @@ function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, siz
 
   const displayName = name || "User";
   const firstChar = displayName.trim().charAt(0).toUpperCase();
+
+  const handleAvatarClick = (e) => {
+    if (isGroup || !userId) return;
+    e.stopPropagation();
+    if (window.handleGlobalProfileNav) {
+      window.handleGlobalProfileNav(userId, displayName);
+    } else {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const currentUserId = storedUser.id || storedUser._id;
+        if (String(userId) === String(currentUserId)) {
+          navigate("/dashboard/profile");
+          return;
+        }
+      } catch (err) {}
+      
+      if (displayName && displayName !== "User") {
+        navigate(`/u/${displayName}`);
+      } else {
+        navigate(`/dashboard/profile/${userId}`);
+      }
+    }
+  };
 
   if (isGroup && !src) {
     return (
@@ -122,6 +147,8 @@ function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, siz
     return (
       <div
         className="user-avatar-placeholder"
+        onClick={handleAvatarClick}
+        title={isGroup ? "" : `View @${displayName}'s profile`}
         style={{
           width: size,
           height: size,
@@ -135,7 +162,8 @@ function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, siz
           justifyContent: "center",
           fontSize: size > 36 ? "1.1rem" : "0.85rem",
           overflow: "hidden",
-          flexShrink: 0
+          flexShrink: 0,
+          cursor: isGroup ? "default" : "pointer"
         }}
       >
         {firstChar}
@@ -149,6 +177,8 @@ function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, siz
       alt={displayName}
       className={className}
       onError={() => setImgError(true)}
+      onClick={handleAvatarClick}
+      title={isGroup ? "" : `View @${displayName}'s profile`}
       style={{
         width: size,
         height: size,
@@ -158,7 +188,8 @@ function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, siz
         maxHeight: size,
         borderRadius: "50%",
         objectFit: "cover",
-        flexShrink: 0
+        flexShrink: 0,
+        cursor: isGroup ? "default" : "pointer"
       }}
     />
   );
@@ -272,6 +303,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     return [];
   });
   const [activeChat, setActiveChat] = useState(null); // Partner user or group object
+
   const [messages, setMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(() => {
@@ -1587,6 +1619,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                       className="user-avatar"
                       isGroup={conv.isGroup}
                       size={44}
+                      userId={chatPartner._id || chatPartner.id}
                     />
                     {!conv.isGroup && chatPartner.isOnline && <span className="online-dot-badge" />}
                   </div>
@@ -1680,6 +1713,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     className="user-avatar-header"
                     isGroup={activeChat.isGroup}
                     size={40}
+                    userId={activeChat._id || activeChat.id}
                   />
                   {activeChat.isOnline && !activeChat.isGroup && <span className="online-dot-badge header" />}
                 </div>
@@ -2857,6 +2891,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           </div>
         )}
       </AnimatePresence>
+
+
     </div>
   );
 }

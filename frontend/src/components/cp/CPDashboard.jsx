@@ -561,11 +561,36 @@ export default function CPDashboard({ user }) {
 
   // Platform list config
   const PLATFORMS_CONFIG = {
-    leetcode: { name: "LeetCode", color: "#F89F1B", logo: "https://upload.wikimedia.org/wikipedia/commons/1/19/LeetCode_logo_black.png" },
-    codeforces: { name: "Codeforces", color: "#3182CE", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Codeforces_logo.svg/1200px-Codeforces_logo.svg.png" },
-    codechef: { name: "CodeChef", color: "#5B4636", logo: "https://cdn.jsdelivr.net/npm/simple-icons@11.12.0/icons/codechef.svg" },
-    atcoder: { name: "AtCoder", color: "#111111", logo: "https://img.atcoder.jp/assets/logo.png" },
-    hackerrank: { name: "HackerRank", color: "#2EC866", logo: "https://upload.wikimedia.org/wikipedia/commons/4/40/HackerRank_Icon-Green.svg" }
+    leetcode: { 
+      name: "LeetCode", 
+      color: "#F89F1B", 
+      logo: "https://upload.wikimedia.org/wikipedia/commons/1/19/LeetCode_logo_black.png",
+      profileUrl: (username) => `https://leetcode.com/u/${username}`
+    },
+    codeforces: { 
+      name: "Codeforces", 
+      color: "#3182CE", 
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Codeforces_logo.svg/1200px-Codeforces_logo.svg.png",
+      profileUrl: (username) => `https://codeforces.com/profile/${username}`
+    },
+    codechef: { 
+      name: "CodeChef", 
+      color: "#5B4636", 
+      logo: "https://cdn.jsdelivr.net/npm/simple-icons@11.12.0/icons/codechef.svg",
+      profileUrl: (username) => `https://www.codechef.com/users/${username}`
+    },
+    atcoder: { 
+      name: "AtCoder", 
+      color: "#111111", 
+      logo: "https://img.atcoder.jp/assets/logo.png",
+      profileUrl: (username) => `https://atcoder.jp/users/${username}`
+    },
+    hackerrank: { 
+      name: "HackerRank", 
+      color: "#2EC866", 
+      logo: "https://upload.wikimedia.org/wikipedia/commons/4/40/HackerRank_Icon-Green.svg",
+      profileUrl: (username) => `https://www.hackerrank.com/profile/${username}`
+    }
   };
 
   // Fetch initial data
@@ -1148,7 +1173,17 @@ export default function CPDashboard({ user }) {
                 return (
                   <div key={key} className={`platform-card glass-panel hover-elevation ${isConnected ? "connected" : "unconnected"}`}>
                     <div className="card-header-row">
-                      <PlatformLogo platformKey={key} size={32} className="platform-logo" />
+                      <div 
+                        style={{ cursor: isConnected ? "pointer" : "default", display: "inline-flex" }}
+                        onClick={() => {
+                          if (isConnected && cfg.profileUrl) {
+                            window.open(cfg.profileUrl(plat.username), "_blank", "noopener,noreferrer");
+                          }
+                        }}
+                        title={isConnected ? `Visit ${cfg.name} Profile` : ""}
+                      >
+                        <PlatformLogo platformKey={key} size={32} className="platform-logo" />
+                      </div>
                       <div className="status-indicator">
                         <span className={`status-dot ${disconnectingPlatform === key
                           ? "failed"
@@ -1168,7 +1203,25 @@ export default function CPDashboard({ user }) {
                           <h4 className="platform-name">{cfg.name}</h4>
                           <span className="verification-badge">Verified</span>
                         </div>
-                        <p className="handle">@{plat.username}</p>
+                        <p 
+                          className="handle" 
+                          style={{ 
+                            cursor: "pointer", 
+                            display: "inline-flex", 
+                            alignItems: "center", 
+                            gap: "4px", 
+                            color: "var(--ce-accent)"
+                          }}
+                          onClick={() => {
+                            if (cfg.profileUrl) {
+                              window.open(cfg.profileUrl(plat.username), "_blank", "noopener,noreferrer");
+                            }
+                          }}
+                          title={`Visit ${cfg.name} Profile`}
+                        >
+                          @{plat.username}
+                          <ExternalLink size={12} style={{ opacity: 0.7 }} />
+                        </p>
 
                         <div className="platform-stats-grid">
                           <div className="stat-item">
