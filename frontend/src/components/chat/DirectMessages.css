@@ -2968,21 +2968,6 @@
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.06) !important;
 }
 
-.light .conversation-item:hover {
-  background-color: #f0f2f5 !important;
-}
-
-.light .conversation-item.selected {
-  background: #efeae2 !important; /* WhatsApp Light Selected item */
-  box-shadow: inset 4px 0 0 #00a884 !important;
-  border: none !important;
-}
-
-.light .conversation-item.selected .username,
-.light .conversation-item.selected .last-message,
-.light .conversation-item.selected .msg-time {
-  color: #111b21 !important;
-}
 
 .light .conversations-subtab-bg-slide {
   background: #f0f2f5 !important;
