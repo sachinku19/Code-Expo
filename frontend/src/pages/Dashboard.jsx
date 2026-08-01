@@ -197,7 +197,7 @@ const SafeUserAvatar = ({ avatar, username, size = 28, className = "" }) => {
         style={{
           width: `${size}px`,
           height: `${size}px`,
-          borderRadius: "50%",
+          borderRadius: "4px",
           objectFit: "cover",
           display: "block",
           flexShrink: 0
@@ -212,7 +212,7 @@ const SafeUserAvatar = ({ avatar, username, size = 28, className = "" }) => {
       style={{
         width: `${size}px`,
         height: `${size}px`,
-        borderRadius: "50%",
+        borderRadius: "4px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -1314,6 +1314,7 @@ function Dashboard() {
   const [visibleFollowingCount, setVisibleFollowingCount] = useState(6);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
   const [bioInput, setBioInput] = useState("");
   const [langsInput, setLangsInput] = useState("");
   const [locationInput, setLocationInput] = useState("");
@@ -3046,28 +3047,56 @@ function Dashboard() {
   }, [showFollowersModal, showFollowingModal, viewingUserProfile, user?.id, user?._id]);
 
   const handleMarkAllNotificationsRead = async () => {
+    const prevCount = unreadNotificationsCount;
+    const prevList = notificationsList;
+
+    // Optimistic Update
+    setUnreadNotificationsCount(0);
+    setNotificationsList(prev => prev.map(n => ({ ...n, isRead: true })));
+    window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
+
     try {
       const res = await markNotificationsRead();
-      if (res.success) {
-        setUnreadNotificationsCount(0);
-        setNotificationsList(prev => prev.map(n => ({ ...n, isRead: true })));
+      if (!res.success) {
+        // Rollback on failure
+        setUnreadNotificationsCount(prevCount);
+        setNotificationsList(prevList);
         window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
+        addToast?.("Failed to mark notifications as read on server.", "error");
       }
     } catch (err) {
       console.error("Failed to mark notifications read:", err);
+      // Rollback on connection error
+      setUnreadNotificationsCount(prevCount);
+      setNotificationsList(prevList);
+      window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
+      addToast?.("Connection error. Could not sync read status.", "error");
     }
   };
 
   const handleMarkOneNotificationRead = async (notifId) => {
+    const prevCount = unreadNotificationsCount;
+    const prevList = notificationsList;
+
+    // Optimistic Update
+    setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
+    setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true } : n));
+    window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
+
     try {
       const res = await markNotificationsRead(notifId);
-      if (res.success) {
-        setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
-        setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true } : n));
+      if (!res.success) {
+        // Rollback
+        setUnreadNotificationsCount(prevCount);
+        setNotificationsList(prevList);
         window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
       }
     } catch (err) {
       console.error("Failed to mark notification read:", err);
+      // Rollback
+      setUnreadNotificationsCount(prevCount);
+      setNotificationsList(prevList);
+      window.dispatchEvent(new CustomEvent("ce-unread-notifications-update"));
     }
   };
 
@@ -4666,12 +4695,14 @@ function Dashboard() {
                               <div className="recent-joined-list">
                                 {activeLive.map(room => {
                                   const activeCount = room.activeUsersCount || 0;
-                                  const langClass = (room.language || "javascript").toLowerCase();
+                                  const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id;
+                                  const maxParticipants = Math.max(room.participants?.length || 6, activeCount <= 1 ? 6 : activeCount + (activeCount % 3 === 0 ? 3 : 2));
+                                  const isFull = activeCount >= maxParticipants;
+
                                   return (
                                     <div
                                       key={room._id}
                                       className="recent-joined-card"
-                                      onClick={() => handleJoinRoomDirect(room.roomId)}
                                       onMouseEnter={prefetchEditor}
                                     >
                                       <div className="joined-card-top-content">
@@ -4681,34 +4712,54 @@ function Dashboard() {
                                         <div className="joined-card-info-area">
                                           <h4 className="joined-room-title" title={room.title}>{room.title}</h4>
                                           <span className="joined-room-owner">
-                                            Host: <strong>@{room.createdBy?.username || "Developer"}</strong>
+                                            @{room.createdBy?.username || "developer"}
+                                          </span>
+                                        </div>
+                                        <div className="joined-card-top-right-meta">
+                                          <span className={`room-visibility-badge-flat ${room.isPrivate ? "private" : "public"}`}>
+                                            {room.isPrivate ? "Private" : "Public"}
+                                          </span>
+                                          <span className="joined-status-online-text">
+                                            {activeCount} / {maxParticipants} Active
                                           </span>
                                         </div>
                                       </div>
+
+                                      <hr className="joined-card-divider" />
+
                                       <div className="joined-card-footer-layout">
-                                        <span className="joined-status online">
-                                          <span className="status-dot-mini active" />
-                                          {activeCount} Active
-                                        </span>
-                                        <div style={{ display: "flex", gap: "6px" }}>
-                                          <button
-                                            className="joined-detail-btn"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setSelectedRoomDetails(room);
-                                            }}
-                                          >
-                                            Details
-                                          </button>
-                                          <button
-                                            className="joined-enter-btn"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleJoinRoomDirect(room.roomId);
-                                            }}
-                                          >
-                                            Join
-                                          </button>
+                                        <button
+                                          className="joined-detail-btn-new"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedRoomDetails(room);
+                                          }}
+                                        >
+                                          Details
+                                        </button>
+                                        <div className="joined-card-actions" onClick={(e) => e.stopPropagation()}>
+                                          {isOwner ? (
+                                            <button
+                                              className="joined-action-btn-flat resume"
+                                              onClick={() => handleJoinRoomDirect(room.roomId)}
+                                            >
+                                              Resume
+                                            </button>
+                                          ) : isFull ? (
+                                            <button
+                                              className="joined-action-btn-flat watch"
+                                              onClick={() => handleJoinRoomDirect(room.roomId)}
+                                            >
+                                              Watch
+                                            </button>
+                                          ) : (
+                                            <button
+                                              className="joined-action-btn-flat join"
+                                              onClick={() => handleJoinRoomDirect(room.roomId)}
+                                            >
+                                              Join
+                                            </button>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -4717,6 +4768,19 @@ function Dashboard() {
                               </div>
                             );
                           })()}
+                          <button
+                            type="button"
+                            className="ce-column-scroll-down-btn"
+                            onClick={() => {
+                              const listEl = document.querySelector('.active-rooms-section .recent-joined-list');
+                              if (listEl) {
+                                listEl.scrollBy({ top: 180, behavior: 'smooth' });
+                              }
+                            }}
+                            title="Scroll Down"
+                          >
+                            <ChevronDown size={12} />
+                          </button>
                         </section>
 
                         {/* COLUMN 2: DEVELOPER ACTIVITY */}
@@ -4787,6 +4851,19 @@ function Dashboard() {
                               })}
                             </div>
                           )}
+                          <button
+                            type="button"
+                            className="ce-column-scroll-down-btn"
+                            onClick={() => {
+                              const listEl = document.querySelector('.social-feed-section .social-activities-list');
+                              if (listEl) {
+                                listEl.scrollBy({ top: 180, behavior: 'smooth' });
+                              }
+                            }}
+                            title="Scroll Down"
+                          >
+                            <ChevronDown size={12} />
+                          </button>
                         </section>
 
                         {/* COLUMN 3: RECENT JOINED ROOMS */}
@@ -4816,13 +4893,14 @@ function Dashboard() {
                               <div className="recent-joined-list">
                                 {joinedRooms.map(room => {
                                   const activeCount = room.activeUsersCount || 0;
-                                  const isOnline = activeCount > 0;
-                                  const langClass = (room.language || "javascript").toLowerCase();
+                                  const isOwner = room.createdBy?._id === user?.id || room.createdBy === user?.id;
+                                  const maxParticipants = Math.max(room.participants?.length || 6, activeCount <= 1 ? 6 : activeCount + (activeCount % 3 === 0 ? 3 : 2));
+                                  const isFull = activeCount >= maxParticipants;
+
                                   return (
                                     <div
                                       key={room._id}
                                       className="recent-joined-card"
-                                      onClick={() => handleJoinRoomDirect(room.roomId)}
                                       onMouseEnter={prefetchEditor}
                                     >
                                       <div className="joined-card-top-content">
@@ -4832,34 +4910,54 @@ function Dashboard() {
                                         <div className="joined-card-info-area">
                                           <h4 className="joined-room-title" title={room.title}>{room.title}</h4>
                                           <span className="joined-room-owner">
-                                            Owner: <strong>@{room.createdBy?.username || "Developer"}</strong>
+                                            @{room.createdBy?.username || "developer"}
+                                          </span>
+                                        </div>
+                                        <div className="joined-card-top-right-meta">
+                                          <span className={`room-visibility-badge-flat ${room.isPrivate ? "private" : "public"}`}>
+                                            {room.isPrivate ? "Private" : "Public"}
+                                          </span>
+                                          <span className="joined-status-online-text">
+                                            {activeCount} / {maxParticipants} Active
                                           </span>
                                         </div>
                                       </div>
+
+                                      <hr className="joined-card-divider" />
+
                                       <div className="joined-card-footer-layout">
-                                        <span className={`joined-status ${isOnline ? "online" : "offline"}`}>
-                                          <span className={`status-dot-mini ${isOnline ? "active" : "offline"}`} />
-                                          {isOnline ? `${activeCount} Active` : "Offline"}
-                                        </span>
-                                        <div style={{ display: "flex", gap: "6px" }}>
-                                          <button
-                                            className="joined-detail-btn"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setSelectedRoomDetails(room);
-                                            }}
-                                          >
-                                            Details
-                                          </button>
-                                          <button
-                                            className="joined-enter-btn"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleJoinRoomDirect(room.roomId);
-                                            }}
-                                          >
-                                            Enter
-                                          </button>
+                                        <button
+                                          className="joined-detail-btn-new"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedRoomDetails(room);
+                                          }}
+                                        >
+                                          Details
+                                        </button>
+                                        <div className="joined-card-actions" onClick={(e) => e.stopPropagation()}>
+                                          {isOwner ? (
+                                            <button
+                                              className="joined-action-btn-flat resume"
+                                              onClick={() => handleJoinRoomDirect(room.roomId)}
+                                            >
+                                              Resume
+                                            </button>
+                                          ) : isFull ? (
+                                            <button
+                                              className="joined-action-btn-flat watch"
+                                              onClick={() => handleJoinRoomDirect(room.roomId)}
+                                            >
+                                              Watch
+                                            </button>
+                                          ) : (
+                                            <button
+                                              className="joined-action-btn-flat join"
+                                              onClick={() => handleJoinRoomDirect(room.roomId)}
+                                            >
+                                              Join
+                                            </button>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -4868,6 +4966,19 @@ function Dashboard() {
                               </div>
                             );
                           })()}
+                          <button
+                            type="button"
+                            className="ce-column-scroll-down-btn"
+                            onClick={() => {
+                              const listEl = document.querySelector('.recent-joined-section .recent-joined-list');
+                              if (listEl) {
+                                listEl.scrollBy({ top: 180, behavior: 'smooth' });
+                              }
+                            }}
+                            title="Scroll Down"
+                          >
+                            <ChevronDown size={12} />
+                          </button>
                         </section>
 
                       </div>
@@ -4996,9 +5107,18 @@ function Dashboard() {
 
                       {/* PEOPLE YOU MAY KNOW */}
                       <section className="ce-dashboard-section">
-                        <h3 className="section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                          <Sparkles size={14} style={{ color: "var(--ce-accent)" }} /> People You May Know
-                        </h3>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                          <h3 className="section-title" style={{ margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+                            <Sparkles size={14} style={{ color: "var(--ce-accent)" }} /> People You May Know
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => setShowSuggestionsModal(true)}
+                            className="ce-view-all-btn"
+                          >
+                            View all →
+                          </button>
+                        </div>
                         {isLoadingDashboard && suggestions.length === 0 ? (
                           <UserListSkeleton count={3} showButton={true} />
                         ) : suggestions.length === 0 ? (
@@ -5012,21 +5132,96 @@ function Dashboard() {
                                 <div onClick={() => handleViewUserProfile(s._id)} style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, cursor: "pointer", minWidth: 0 }}>
                                   <div className="suggestion-avatar" style={{ width: "28px", height: "28px", flexShrink: 0, position: "relative" }}>
                                     {s.avatar ? (
-                                      <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                      <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "4px", objectFit: "cover" }} />
                                     ) : (
-                                      <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
+                                      <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
                                         {s.username.charAt(0).toUpperCase()}
                                       </div>
                                     )}
                                     {s.isOnline && (
-                                      <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
+                                      <span className="online-badge-dot" style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "8px", height: "8px", borderRadius: "4px", backgroundColor: "#10b981", border: "1.5px solid var(--ce-bg)" }} />
                                     )}
                                   </div>
                                   <div className="suggestion-details" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                                     <span className="suggestion-name" style={{ fontSize: "0.8rem", color: "var(--ce-text)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.username}</span>
-                                    <span className="suggestion-reason" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                      {s.mutualCount > 0 ? `${s.mutualCount} mutual connection${s.mutualCount > 1 ? "s" : ""}` : s.programmingLanguages?.length > 0 ? `Tags: ${s.programmingLanguages.slice(0, 2).join(", ")}` : "Recommended"}
-                                    </span>
+                                    {(() => {
+                                      const targetFollowers = s.followers || [];
+                                      const targetFollowing = s.following || [];
+                                      const realMutuals = followingList.filter(f => {
+                                        const fId = String(f._id || f);
+                                        return targetFollowers.some(id => String(id) === fId) || targetFollowing.some(id => String(id) === fId);
+                                      });
+                                      if (realMutuals.length > 0) {
+                                        const displayList = realMutuals.slice(0, 2);
+                                        const remainingCount = realMutuals.length - displayList.length;
+                                        return (
+                                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                                            <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                                              {displayList.map((mUser, mIdx) => {
+                                                const username = mUser.username || "Developer";
+                                                return (
+                                                  <div
+                                                    key={mUser._id || mIdx}
+                                                    style={{
+                                                      width: "14px",
+                                                      height: "14px",
+                                                      borderRadius: "50%",
+                                                      overflow: "hidden",
+                                                      border: "1px solid var(--ce-surface-card)",
+                                                      background: mUser.avatar ? "transparent" : getAvatarColor(username),
+                                                      marginLeft: mIdx === 0 ? 0 : "-4px",
+                                                      display: "flex",
+                                                      alignItems: "center",
+                                                      justifyContent: "center",
+                                                      fontSize: "0.45rem",
+                                                      fontWeight: "700",
+                                                      color: "#fff",
+                                                      zIndex: 3 - mIdx
+                                                    }}
+                                                    title={`@${username}`}
+                                                  >
+                                                    {mUser.avatar ? (
+                                                      <img src={mUser.avatar} alt={username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                    ) : (
+                                                      username.charAt(0).toUpperCase()
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                              {remainingCount > 0 && (
+                                                <div
+                                                  style={{
+                                                    width: "14px",
+                                                    height: "14px",
+                                                    borderRadius: "50%",
+                                                    background: "var(--ce-hover)",
+                                                    border: "1px solid var(--ce-surface-card)",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    fontSize: "0.45rem",
+                                                    fontWeight: "750",
+                                                    color: "var(--ce-primary)",
+                                                    marginLeft: "-4px",
+                                                    zIndex: 0
+                                                  }}
+                                                >
+                                                  +{remainingCount}
+                                                </div>
+                                              )}
+                                            </div>
+                                            <span className="suggestion-reason" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                              {realMutuals.length} mutual{realMutuals.length > 1 ? "s" : ""}
+                                            </span>
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <span className="suggestion-reason" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                          {s.programmingLanguages && s.programmingLanguages.length > 0 ? `Tags: ${s.programmingLanguages.slice(0, 2).join(", ")}` : "Recommended"}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
                                 <button
@@ -7747,27 +7942,29 @@ function Dashboard() {
                             actionText = "followed you";
                             typeClass = "notif-type-follow";
                           } else if (notif.type === "LIKE") {
-                            notifIcon = <Heart size={14} style={{ color: "#ef4444" }} />;
                             if (notif.targetPost) {
+                              notifIcon = <Heart size={14} style={{ color: "var(--ce-primary)" }} />;
                               actionText = `liked your post "${getPostSnippet(notif.targetPost)}"`;
+                              typeClass = "notif-type-like";
                             } else {
+                              notifIcon = <Heart size={14} style={{ color: "#10b981" }} />;
                               actionText = `liked your room "${roomTitle}"`;
+                              typeClass = "notif-type-room-like";
                             }
-                            typeClass = "notif-type-like";
                           } else if (notif.type === "COMMENT") {
                             notifIcon = <MessageSquare size={14} style={{ color: "var(--ce-accent)" }} />;
                             actionText = `commented on your post "${getPostSnippet(notif.targetPost)}"`;
                             typeClass = "notif-type-comment";
                           } else if (notif.type === "BOOKMARK") {
-                            notifIcon = <Bookmark size={14} style={{ color: "var(--ce-accent)" }} />;
+                            notifIcon = <Bookmark size={14} style={{ color: "#10b981" }} />;
                             actionText = `bookmarked your room "${roomTitle}"`;
                             typeClass = "notif-type-bookmark";
                           } else if (notif.type === "JOIN") {
-                            notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-warning)" }} />;
+                            notifIcon = <ShieldAlert size={14} style={{ color: "#10b981" }} />;
                             actionText = `wants to join "${roomTitle}"`;
                             typeClass = "notif-type-join";
                           } else if (notif.type === "INVITE") {
-                            notifIcon = <Mail size={14} style={{ color: "var(--ce-primary)" }} />;
+                            notifIcon = <Mail size={14} style={{ color: "#10b981" }} />;
                             actionText = `invited you to join workspace "${roomTitle}"`;
                             typeClass = "notif-type-invite";
                           } else if (notif.type === "MODERATION_ACTION") {
@@ -8291,6 +8488,85 @@ function Dashboard() {
                                 ))}
                               </div>
                             )}
+                            {viewingUserProfile && String(viewingUserProfile._id) !== String(user?.id || user?._id) && (() => {
+                              const targetFollowers = viewingUserProfile.followers || [];
+                              const targetFollowing = viewingUserProfile.following || [];
+                              const realMutuals = followingList.filter(f => {
+                                const fId = String(f._id || f);
+                                return targetFollowers.some(id => String(id) === fId) || targetFollowing.some(id => String(id) === fId);
+                              });
+                              if (realMutuals.length === 0) return null;
+                              const displayList = realMutuals.slice(0, 3);
+                              const remainingCount = realMutuals.length - displayList.length;
+                              return (
+                                <div className="profile-mutual-connections-container" style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%", marginTop: "16px", padding: "10px", background: "rgba(139, 92, 246, 0.03)", border: "1px solid var(--ce-border)", borderRadius: "4px" }}>
+                                  <span style={{ fontSize: "0.68rem", fontWeight: "750", color: "var(--ce-primary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Mutual Connections</span>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", position: "relative", flexShrink: 0 }}>
+                                      {displayList.map((mUser, mIdx) => {
+                                        const username = mUser.username || "Developer";
+                                        return (
+                                          <div
+                                            key={mUser._id || mIdx}
+                                            style={{
+                                              width: "22px",
+                                              height: "22px",
+                                              borderRadius: "50%",
+                                              overflow: "hidden",
+                                              border: "1.5px solid var(--ce-surface-card)",
+                                              background: mUser.avatar ? "transparent" : getAvatarColor(username),
+                                              marginLeft: mIdx === 0 ? 0 : "-8px",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              fontSize: "0.62rem",
+                                              fontWeight: "700",
+                                              color: "#fff",
+                                              zIndex: 4 - mIdx
+                                            }}
+                                            title={`@${username}`}
+                                          >
+                                            {mUser.avatar ? (
+                                              <img src={mUser.avatar} alt={username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                            ) : (
+                                              username.charAt(0).toUpperCase()
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                      {remainingCount > 0 && (
+                                        <div
+                                          style={{
+                                            width: "22px",
+                                            height: "22px",
+                                            borderRadius: "50%",
+                                            background: "var(--ce-hover)",
+                                            border: "1.5px solid var(--ce-surface-card)",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "0.62rem",
+                                            fontWeight: "750",
+                                            color: "var(--ce-primary)",
+                                            marginLeft: "-8px",
+                                            zIndex: 0
+                                          }}
+                                        >
+                                          +{remainingCount}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", lineHeight: "1.3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={realMutuals.map(m => `@${m.username}`).join(", ")}>
+                                      Followed by{" "}
+                                      <strong>
+                                        {displayList.map(m => `@${m.username}`).join(", ")}
+                                      </strong>
+                                      {remainingCount > 0 ? ` and ${remainingCount} others` : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             {viewingUserProfile ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
                                 {String(viewingUserProfile._id) !== String(user?.id || user?._id) && (
@@ -9708,7 +9984,7 @@ function Dashboard() {
                                     background: "rgba(10, 10, 18, 0.96)",
                                     backdropFilter: "blur(16px)",
                                     border: "1px solid var(--ce-border)",
-                                    borderRadius: "6px",
+                                    borderRadius: "4px",
                                     boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
                                     zIndex: 1000,
                                     minWidth: "135px",
@@ -10033,6 +10309,143 @@ function Dashboard() {
                   <p className="modal-loader-subtext">Establishing secure collaborative synchronization channels</p>
                 </div>
               )}
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Suggested developers modal */}
+        {showSuggestionsModal && createPortal(
+          <div className="ce-modal-overlay" onClick={() => setShowSuggestionsModal(false)}>
+            <div className="ce-modal-card social-graph-modal-card" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-close-btn" onClick={() => setShowSuggestionsModal(false)}>
+                <X size={18} />
+              </button>
+              <div className="modal-header-new">
+                <span className="modal-label-tag">Network suggestions</span>
+                <h3 className="modal-title-new">Suggested Developers ({suggestions.length})</h3>
+              </div>
+              <div className="social-modal-members-section">
+                <div className="social-members-list-scrollable">
+                  {suggestions.length === 0 ? (
+                    <p className="modal-empty-msg">No suggestions available.</p>
+                  ) : (
+                    suggestions.map(item => {
+                      const isSelf = String(item._id) === String(user?.id || user?._id);
+                      const isFollowingUser = followingList.some(f => String(f._id || f) === String(item._id));
+                      return (
+                        <div key={item._id} className="social-member-card">
+                          <div
+                            onClick={() => {
+                              setShowSuggestionsModal(false);
+                              handleViewUserProfile(item._id);
+                            }}
+                            className="social-member-info"
+                            style={{ cursor: "pointer" }}
+                          >
+                            {item.avatar ? (
+                              <img src={item.avatar} alt={item.username} className="social-member-avatar-img" style={{ borderRadius: "4px" }} />
+                            ) : (
+                              <div className="social-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username), borderRadius: "4px" }}>
+                                {item.username.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                             <div className="social-member-meta">
+                              <span className="social-member-name">{item.username}</span>
+                              {(() => {
+                                const targetFollowers = item.followers || [];
+                                const targetFollowing = item.following || [];
+                                const realMutuals = followingList.filter(f => {
+                                  const fId = String(f._id || f);
+                                  return targetFollowers.some(id => String(id) === fId) || targetFollowing.some(id => String(id) === fId);
+                                });
+                                if (realMutuals.length > 0) {
+                                  const displayList = realMutuals.slice(0, 3);
+                                  const remainingCount = realMutuals.length - displayList.length;
+                                  return (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                                      <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                                        {displayList.map((mUser, mIdx) => {
+                                          const username = mUser.username || "Developer";
+                                          return (
+                                            <div
+                                              key={mUser._id || mIdx}
+                                              style={{
+                                                width: "16px",
+                                                height: "16px",
+                                                borderRadius: "50%",
+                                                overflow: "hidden",
+                                                border: "1px solid var(--ce-surface-card)",
+                                                background: mUser.avatar ? "transparent" : getAvatarColor(username),
+                                                marginLeft: mIdx === 0 ? 0 : "-5px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "0.5rem",
+                                                fontWeight: "700",
+                                                color: "#fff",
+                                                zIndex: 3 - mIdx
+                                              }}
+                                              title={`@${username}`}
+                                            >
+                                              {mUser.avatar ? (
+                                                <img src={mUser.avatar} alt={username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                              ) : (
+                                                username.charAt(0).toUpperCase()
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                        {remainingCount > 0 && (
+                                          <div
+                                            style={{
+                                              width: "16px",
+                                              height: "16px",
+                                              borderRadius: "50%",
+                                              background: "var(--ce-hover)",
+                                              border: "1px solid var(--ce-surface-card)",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              fontSize: "0.5rem",
+                                              fontWeight: "750",
+                                              color: "var(--ce-primary)",
+                                              marginLeft: "-5px",
+                                              zIndex: 0
+                                            }}
+                                          >
+                                            +{remainingCount}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <span style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
+                                        {realMutuals.length} mutual connection{realMutuals.length > 1 ? "s" : ""}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <span className="social-member-bio">{item.bio || "No bio"}</span>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                          <div className="social-member-actions">
+                            {!isSelf && (
+                              <button
+                                onClick={() => handleFollowToggle(item._id)}
+                                className={`social-member-follow-btn ${isFollowingUser ? "following" : ""}`}
+                              >
+                                {isFollowingUser ? "Following" : "Follow"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             </div>
           </div>,
           document.body

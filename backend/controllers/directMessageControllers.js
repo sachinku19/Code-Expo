@@ -554,6 +554,68 @@ exports.deleteDirectMessage = async (req, res) => {
   }
 };
 
+// 5.5. Clear entire chat history for a user or group (from my side only)
+exports.clearChatHistory = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { chatId } = req.params;
+    const cleanChatId = String(chatId).trim();
+    const isObjId = mongoose.Types.ObjectId.isValid(cleanChatId);
+
+    const group = isObjId ? await GroupChat.findById(cleanChatId) : null;
+
+    if (group) {
+      // Add myId to deletedFor array for all messages in the group
+      await DirectMessage.updateMany(
+        { groupChat: group._id },
+        { $addToSet: { deletedFor: myId } }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Group chat history cleared from your side"
+      });
+    }
+
+    const targetUser = await User.findOne(
+      isObjId 
+        ? { $or: [{ _id: cleanChatId }, { username: cleanChatId.toLowerCase() }] } 
+        : { username: cleanChatId.toLowerCase() }
+    ).select("_id").lean();
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User or Group not found"
+      });
+    }
+
+    const targetUserId = targetUser._id;
+
+    // Add myId to deletedFor array for all messages between myId and targetUserId
+    await DirectMessage.updateMany(
+      {
+        $or: [
+          { sender: myId, recipient: targetUserId },
+          { sender: targetUserId, recipient: myId }
+        ],
+        groupChat: { $exists: false }
+      },
+      { $addToSet: { deletedFor: myId } }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Chat history cleared from your side"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // 6. Edit direct message text
 exports.editDirectMessage = async (req, res) => {
   try {

@@ -10,6 +10,7 @@ import {
   sendDirectMessage,
   sendDirectMessageAttachment,
   deleteDirectMessage,
+  clearChatHistory,
   blockUser,
   unblockUser,
   deleteGroupChat,
@@ -196,6 +197,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const [reportEvidenceId, setReportEvidenceId] = useState("");
   const [activeMessageMenuId, setActiveMessageMenuId] = useState(null);
   const [deleteModalMsg, setDeleteModalMsg] = useState(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const confirmDeleteMessage = async (msgObj, mode) => {
     if (!msgObj) return;
@@ -216,6 +218,34 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       await deleteDirectMessage(msgId, mode);
     } catch (err) {
       console.error("Error deleting message:", err);
+    }
+  };
+
+  // Show clear chat confirmation popup
+  const handleClearChat = () => {
+    setShowChatMenu(false);
+    setShowClearConfirm(true);
+  };
+
+  // Confirm and perform clear chat history from my side only
+  const confirmClearChat = async () => {
+    if (!activeChat) return;
+    const targetId = activeChat._id || activeChat.id;
+    setShowClearConfirm(false);
+    
+    // Clear messages locally immediately
+    setMessages([]);
+    if (activeChatRef.current) {
+      const key = activeChatRef.current._id || activeChatRef.current.id;
+      chatHistoryCacheRef.current[key] = [];
+    }
+    
+    try {
+      await clearChatHistory(targetId);
+      if (addToast) addToast("Chat history cleared from your side", "success");
+    } catch (err) {
+      console.error("Error clearing chat history:", err);
+      if (addToast) addToast("Failed to clear chat history", "error");
     }
   };
 
@@ -333,6 +363,20 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     };
   }, [showChatMenu]);
 
+  // Close message options menu on outside click
+  useEffect(() => {
+    if (!activeMessageMenuId) return;
+    const handleOutsideMessageClick = (e) => {
+      if (!e.target.closest(".message-bubble-actions")) {
+        setActiveMessageMenuId(null);
+      }
+    };
+    document.addEventListener("click", handleOutsideMessageClick);
+    return () => {
+      document.removeEventListener("click", handleOutsideMessageClick);
+    };
+  }, [activeMessageMenuId]);
+
   // Compute block status reactively
   const isChatBlocked = useMemo(() => {
     if (!activeChat || activeChat.isGroup) return false;
@@ -367,9 +411,9 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     preselectedUserRef.current = preselectedUser;
   }, [preselectedUser]);
 
-  // Load candidates for adding members
+  // Load candidates on mount and modal trigger
   useEffect(() => {
-    if (showAddMemberModal && currentUserId) {
+    if (currentUserId) {
       const loadCandidates = async () => {
         try {
           const [followersRes, followingRes] = await Promise.all([
@@ -383,12 +427,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
           setCandidates(Object.values(merged));
         } catch (err) {
-          console.error("Error loading add-member candidates:", err);
+          console.error("Error loading chat candidates:", err);
         }
       };
       loadCandidates();
     }
-  }, [showAddMemberModal, currentUserId]);
+  }, [currentUserId]);
 
   // Global calling context
   const {
@@ -605,7 +649,13 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     const handlePartnerTyping = ({ senderId, senderInfo }) => {
       const activeChatVal = activeChatRef.current;
       const currentUserIdVal = currentUserIdRef.current;
-      if (!activeChatVal || String(senderId) === String(currentUserIdVal)) return;
+      
+      // Filter out typing updates sent by the current user (using both ID and username fallback)
+      const isSelfId = currentUserIdVal && String(senderId) === String(currentUserIdVal);
+      const isSelfUsername = senderInfo?.username && user?.username && 
+        String(senderInfo.username).toLowerCase().trim() === String(user.username).toLowerCase().trim();
+        
+      if (!activeChatVal || isSelfId || isSelfUsername) return;
 
       const isFromActiveChat = activeChatVal.isGroup
         ? activeChatVal.members?.some((m) => String(m._id) === String(senderId))
@@ -1573,7 +1623,31 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       </div>
 
       {/* RIGHT SIDEBAR: Message history & Chat board */}
-      <div className="dm-chat-panel">
+      <div className="dm-chat-panel" style={{ position: "relative" }}>
+        {showClearConfirm && (
+          <div className="chat-inline-confirm-overlay">
+            <div className="chat-inline-confirm-card">
+              <h4>Clear Chat History?</h4>
+              <p>Are you sure you want to clear your chat history? This will delete all messages in this chat from your side only and cannot be undone.</p>
+              <div className="chat-inline-confirm-actions">
+                <button 
+                  type="button" 
+                  className="chat-inline-confirm-btn cancel" 
+                  onClick={() => setShowClearConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="chat-inline-confirm-btn confirm" 
+                  onClick={confirmClearChat}
+                >
+                  Clear Chat
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {activeChat ? (
           <>
             {/* Chat header */}
@@ -1690,6 +1764,14 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                           <Info size={14} />
                           <span>Group Info</span>
                         </button>
+                        <button
+                          type="button"
+                          className="dropdown-action-item danger"
+                          onClick={handleClearChat}
+                        >
+                          <Trash2 size={14} />
+                          <span>Clear Chat</span>
+                        </button>
                         {activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId)) && (
                           <button
                             type="button"
@@ -1713,6 +1795,14 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                         >
                           <User size={14} />
                           <span>View Profile</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="dropdown-action-item danger"
+                          onClick={handleClearChat}
+                        >
+                          <Trash2 size={14} />
+                          <span>Clear Chat</span>
                         </button>
                         <button
                           type="button"
@@ -1752,11 +1842,55 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                 </div>
               ) : (
                 <>
-                  {(() => {
-                    let lastDateStr = null;
-                    return messages.map((msg) => {
-                      const isMe = String(msg.sender?._id || msg.sender) === String(currentUserId);
-                      const msgDateStr = new Date(msg.createdAt).toDateString();
+                  {messages.length === 0 ? (
+                    <div className="chat-board-empty-state">
+                      <div className="empty-chat-avatar-wrapper">
+                        <SafeAvatar
+                          src={activeChat.avatar}
+                          name={activeChat.name || activeChat.username}
+                          className="empty-chat-partner-avatar"
+                          size={64}
+                        />
+                      </div>
+                      <h3>Say hello to {activeChat.name || activeChat.username}!</h3>
+                      <p>This is the start of your message history. Type a message below or send an invite to start pair-programming together.</p>
+                      
+                      <div className="quick-hello-buttons">
+                        <button 
+                          className="hello-action-chip" 
+                          onClick={() => {
+                            setNewMessageText("👋 Hey there! How's it going?");
+                            if (inputRef.current) inputRef.current.focus();
+                          }}
+                        >
+                          👋 Say Hey!
+                        </button>
+                        <button 
+                          className="hello-action-chip" 
+                          onClick={() => {
+                            setNewMessageText("💻 Let's collaborate on some code!");
+                            if (inputRef.current) inputRef.current.focus();
+                          }}
+                        >
+                          💻 Let's Code!
+                        </button>
+                        <button 
+                          className="hello-action-chip" 
+                          onClick={() => {
+                            setNewMessageText("🚀 Hey, saw your profile on CodeExpo. Nice to connect!");
+                            if (inputRef.current) inputRef.current.focus();
+                          }}
+                        >
+                          🚀 Nice to Connect!
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    (() => {
+                      let lastDateStr = null;
+                      return messages.map((msg) => {
+                        const isMe = String(msg.sender?._id || msg.sender) === String(currentUserId);
+                        const msgDateStr = new Date(msg.createdAt).toDateString();
                       const showDateHeader = msgDateStr !== lastDateStr;
                       lastDateStr = msgDateStr;
 
@@ -1791,109 +1925,6 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                   >
                                     <Trash2 size={12} />
                                   </button>
-                                </div>
-                              )}
-                              {!isMe && (
-                                <div
-                                  className="message-bubble-actions"
-                                  style={{
-                                    position: "relative",
-                                    display: "flex",
-                                    gap: "4px",
-                                    opacity: activeMessageMenuId === msg._id ? 1 : undefined,
-                                    pointerEvents: activeMessageMenuId === msg._id ? "auto" : undefined,
-                                    transform: activeMessageMenuId === msg._id ? "scale(1)" : undefined
-                                  }}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveMessageMenuId(activeMessageMenuId === msg._id ? null : msg._id);
-                                    }}
-                                    className="bubble-action-btn delete-btn"
-                                    style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-                                    title="Options"
-                                  >
-                                    <MoreVertical size={12} />
-                                  </button>
-                                  {activeMessageMenuId === msg._id && (
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        right: "100%",
-                                        top: 0,
-                                        background: "rgba(10, 10, 18, 0.96)",
-                                        backdropFilter: "blur(16px)",
-                                        border: "1px solid var(--ce-border)",
-                                        borderRadius: "6px",
-                                        boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
-                                        zIndex: 1000,
-                                        minWidth: "125px",
-                                        width: "max-content",
-                                        whiteSpace: "nowrap",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        padding: "4px"
-                                      }}
-                                    >
-                                      <button
-                                        onClick={() => {
-                                          setActiveMessageMenuId(null);
-                                          setDeleteModalMsg(msg);
-                                        }}
-                                        style={{
-                                          background: "transparent",
-                                          border: "none",
-                                          color: "#ef4444",
-                                          fontSize: "0.74rem",
-                                          fontWeight: "600",
-                                          padding: "8px 12px",
-                                          textAlign: "left",
-                                          cursor: "pointer",
-                                          width: "100%",
-                                          borderRadius: "4px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          transition: "background 0.2s ease"
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                                      >
-                                        <Trash2 size={13} /> Delete for Me
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setActiveMessageMenuId(null);
-                                          setReportedTargetUser(msg.sender || activeChat);
-                                          setReportEvidenceType("MESSAGE");
-                                          setReportEvidenceId(msg._id);
-                                          setReportModalOpen(true);
-                                        }}
-                                        style={{
-                                          background: "transparent",
-                                          border: "none",
-                                          color: "rgba(255, 255, 255, 0.7)",
-                                          fontSize: "0.74rem",
-                                          fontWeight: "600",
-                                          padding: "8px 12px",
-                                          textAlign: "left",
-                                          cursor: "pointer",
-                                          width: "100%",
-                                          borderRadius: "4px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          transition: "background 0.2s ease"
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)"}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                                      >
-                                        ⚠️ Report Msg
-                                      </button>
-                                    </div>
-                                  )}
                                 </div>
                               )}
 
@@ -1978,12 +2009,64 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                   </>
                                 )}
                               </div>
+
+                              {!isMe && (
+                                <div
+                                  className="message-bubble-actions"
+                                  style={{
+                                    position: "relative",
+                                    display: "flex",
+                                    gap: "4px",
+                                    opacity: activeMessageMenuId === msg._id ? 1 : undefined,
+                                    pointerEvents: activeMessageMenuId === msg._id ? "auto" : undefined,
+                                    transform: activeMessageMenuId === msg._id ? "scale(1)" : undefined
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveMessageMenuId(activeMessageMenuId === msg._id ? null : msg._id);
+                                    }}
+                                    className="bubble-action-btn delete-btn"
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+                                    title="Options"
+                                  >
+                                    <MoreVertical size={12} />
+                                  </button>
+                                  {activeMessageMenuId === msg._id && (
+                                    <div className="bubble-options-dropdown">
+                                      <button
+                                        onClick={() => {
+                                          setActiveMessageMenuId(null);
+                                          setDeleteModalMsg(msg);
+                                        }}
+                                        className="bubble-dropdown-item danger"
+                                      >
+                                        <Trash2 size={13} /> Delete for Me
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setActiveMessageMenuId(null);
+                                          setReportedTargetUser(msg.sender || activeChat);
+                                          setReportEvidenceType("MESSAGE");
+                                          setReportEvidenceId(msg._id);
+                                          setReportModalOpen(true);
+                                        }}
+                                        className="bubble-dropdown-item warning"
+                                      >
+                                        ⚠️ Report Msg
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </React.Fragment>
                       );
                     });
-                  })()}
+                  })())}
                   {partnerTypers.map((typer) => (
                     <div key={typer.userId} className="message-bubble-wrapper received typing-wrapper-row">
                       <div className="bubble-avatar-container">
@@ -2314,10 +2397,36 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               <MessageSquare size={48} className="dm-icon" />
             </div>
             <h3>Your Messages</h3>
-            <p>Send private photos, text messages, or invite links directly to a developer.</p>
-            <div className="empty-actions" style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+            <p className="dm-empty-desc">Send private photos, code blocks, or invite links directly to a developer.</p>
+            <div className="empty-actions" style={{ display: "flex", gap: "12px", justifyContent: "center", marginBottom: "20px" }}>
               <button className="start-chat-main-btn" onClick={handleOpenNewChat}>Send DM</button>
               <button className="start-chat-main-btn group-start-btn" onClick={handleOpenCreateGroup} style={{ background: "rgba(139, 92, 246, 0.15)", border: "1px solid rgba(139, 92, 246, 0.4)" }}>Create Group</button>
+            </div>
+
+            {/* Suggested contacts panel */}
+            <div className="dm-empty-suggestions-section">
+              <h4 className="suggestions-title">Quick Connect Suggestions</h4>
+              {candidates.length > 0 ? (
+                <div className="suggestions-horizontal-scroll">
+                  {candidates.slice(0, 5).map((candidate) => (
+                    <div key={candidate._id} className="suggestion-card" onClick={() => handleStartChatWith(candidate)}>
+                      <SafeAvatar
+                        src={candidate.avatar}
+                        name={candidate.username}
+                        className="suggestion-avatar"
+                        size={44}
+                      />
+                      <span className="suggestion-username">@{candidate.username}</span>
+                      <span className="suggestion-bio">{candidate.bio || "Developer"}</span>
+                      <button className="suggestion-chat-btn">Chat</button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="suggestions-empty-box">
+                  <p>You haven't followed any developers yet. Follow other developers from the Dashboard or search connections to grow your network!</p>
+                </div>
+              )}
             </div>
           </div>
         )}

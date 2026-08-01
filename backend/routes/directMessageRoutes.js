@@ -8,6 +8,7 @@ const {
   sendDirectMessage,
   sendDirectMessageAttachment,
   deleteDirectMessage,
+  clearChatHistory,
   editDirectMessage,
   createGroupChat,
   blockUser,
@@ -75,6 +76,7 @@ router.post(
 );
 
 router.delete("/delete/:messageId", auth_protect, deleteDirectMessage);
+router.delete("/clear/:chatId", auth_protect, clearChatHistory);
 router.put("/edit/:messageId", auth_protect, editDirectMessage);
 
 router.delete("/group/:groupId", auth_protect, deleteGroupChat);

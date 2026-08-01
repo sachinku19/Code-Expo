@@ -166,6 +166,7 @@ function Editor() {
   const [reportedTargetUser, setReportedTargetUser] = useState(null);
   const [reportEvidenceType, setReportEvidenceType] = useState("");
   const [reportEvidenceId, setReportEvidenceId] = useState("");
+  const [isExiting, setIsExiting] = useState(false);
 
   // Dropdown menu states
   const [activeWorkspaceMemberMenuId, setActiveWorkspaceMemberMenuId] = useState(null);
@@ -266,6 +267,10 @@ function Editor() {
       userId: user.id || user._id
     });
     triggerNotification("Left Google Meet Workspace Session");
+    if (isMobileScreen) {
+      setMobileTab("editor");
+      changeLayoutMode("editor");
+    }
   };
 
   // Socket listener for Google Meet users update
@@ -3609,15 +3614,16 @@ function Editor() {
     const confirmExit = await window.showConfirm("Are you sure you want to exit this workspace? Any unsaved edits will be lost.", "Exit Workspace", "exit-workspace");
     if (!confirmExit) return;
 
-    window.showLoader("Leaving workspace...");
+    setIsExiting(true);
     try {
       socket.emit("leave-room", { roomId });
       localStorage.removeItem("ceLastActiveRoomId");
-      navigate("/dashboard");
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 550);
     } catch (error) {
       console.error(error.message);
-    } finally {
-      window.hideLoader();
+      setIsExiting(false);
     }
   };
 
@@ -3633,7 +3639,10 @@ function Editor() {
       await deleteRoom(securityDeleteRoomTarget.id);
       localStorage.removeItem("ceLastActiveRoomId");
       setSecurityDeleteRoomTarget(null);
-      navigate("/dashboard");
+      setIsExiting(true);
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 550);
     } catch (error) {
       alert(error.response?.data?.message || error.message);
     } finally {
@@ -6822,7 +6831,13 @@ function Editor() {
         {/* Google Meet Pre-Join Lobby Modal */}
         <GoogleMeetLobbyModal
           isOpen={showMeetLobby}
-          onClose={() => setShowMeetLobby(false)}
+          onClose={() => {
+            setShowMeetLobby(false);
+            if (isMobileScreen) {
+              setMobileTab("editor");
+              changeLayoutMode("editor");
+            }
+          }}
           onJoinMeeting={handleStartMeeting}
           roomTitle={room?.title}
           currentUser={user}
@@ -6945,6 +6960,15 @@ function Editor() {
             {isTerminalExecuting ? <Loader2 size={18} className="ce-spin" /> : <Play size={18} />}
             <span>Run</span>
           </button>
+        )}
+
+        {isExiting && (
+          <div className="ce-exit-transition-overlay">
+            <div className="ce-exit-transition-content">
+              <div className="loading-spinner-portal" />
+              <span>Returning to Dashboard...</span>
+            </div>
+          </div>
         )}
       </div>
     </MainLayout>

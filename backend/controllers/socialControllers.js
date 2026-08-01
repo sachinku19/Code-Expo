@@ -364,7 +364,7 @@ const getDeveloperSuggestions = async (req, res) => {
     const excludedIds = new Set([...followingIds, String(userId)]);
 
     const users = await User.find({ _id: { $nin: Array.from(excludedIds) } })
-      .select("username avatar bio programmingLanguages followersCount coverBanner title")
+      .select("username avatar bio programmingLanguages followersCount coverBanner title followers following")
       .limit(100)
       .lean();
 

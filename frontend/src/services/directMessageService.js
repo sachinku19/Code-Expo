@@ -47,6 +47,11 @@ export const deleteDirectMessage = async (messageId, mode = "me") => {
   return response.data;
 };
 
+export const clearChatHistory = async (chatId) => {
+  const response = await API.delete(`/clear/${chatId}`, getHeaders());
+  return response.data;
+};
+
 export const editDirectMessage = async (messageId, text) => {
   const response = await API.put(`/edit/${messageId}`, { text }, getHeaders());
   return response.data;
