@@ -4874,43 +4874,41 @@ function Dashboard() {
                     <div className="ce-column-left">
 
                       {/* QUICK ACTIONS */}
-                      <section className="ce-dashboard-section">
-                        <div className="quick-actions-cards-container">
+                      <div className="quick-actions-cards-container">
 
-                          {/* Create Room Card */}
-                          <div
-                            className="quick-action-card create-room-card"
-                            onClick={() => setShowQuickCreateModal(true)}
-                          >
-                            <div className="quick-action-icon-wrapper purple-bg">
-                              <Plus size={18} className="quick-action-icon" />
-                            </div>
-                            <div className="quick-action-details">
-                              <h4 className="quick-action-title">Create Room</h4>
-                              <p className="quick-action-description">Start a new coding session</p>
-                              <p className="quick-action-sub-description">Choose language, privacy and more</p>
-                            </div>
-                            <ChevronRight size={16} className="quick-action-arrow" />
+                        {/* Create Room Card */}
+                        <div
+                          className="quick-action-card create-room-card"
+                          onClick={() => setShowQuickCreateModal(true)}
+                        >
+                          <div className="quick-action-icon-wrapper purple-bg">
+                            <Plus size={18} className="quick-action-icon" />
                           </div>
-
-                          {/* Join Room Card */}
-                          <div
-                            className="quick-action-card join-room-card"
-                            onClick={() => setShowQuickJoinModal(true)}
-                          >
-                            <div className="quick-action-icon-wrapper blue-bg">
-                              <LogIn size={18} className="quick-action-icon" />
-                            </div>
-                            <div className="quick-action-details">
-                              <h4 className="quick-action-title">Join Room</h4>
-                              <p className="quick-action-description">Join with room ID or invite link</p>
-                              <p className="quick-action-sub-description">Quickly enter an active room</p>
-                            </div>
-                            <ChevronRight size={16} className="quick-action-arrow" />
+                          <div className="quick-action-details">
+                            <h4 className="quick-action-title">Create Room</h4>
+                            <p className="quick-action-description">Start a new coding session</p>
+                            <p className="quick-action-sub-description">Choose language, privacy and more</p>
                           </div>
-
+                          <ChevronRight size={16} className="quick-action-arrow" />
                         </div>
-                      </section>
+
+                        {/* Join Room Card */}
+                        <div
+                          className="quick-action-card join-room-card"
+                          onClick={() => setShowQuickJoinModal(true)}
+                        >
+                          <div className="quick-action-icon-wrapper blue-bg">
+                            <LogIn size={18} className="quick-action-icon" />
+                          </div>
+                          <div className="quick-action-details">
+                            <h4 className="quick-action-title">Join Room</h4>
+                            <p className="quick-action-description">Join with room ID or invite link</p>
+                            <p className="quick-action-sub-description">Quickly enter an active room</p>
+                          </div>
+                          <ChevronRight size={16} className="quick-action-arrow" />
+                        </div>
+
+                      </div>
 
                       {/* SPLIT FEED AND RECENT JOINED ROOMS GRID */}
                       <div className="ce-dashboard-split-grid">
@@ -5636,7 +5634,7 @@ function Dashboard() {
                         ) : (
                           <>
                             <div className="trending-rooms-list">
-                              {trendingRooms.slice(0, showAllTrending ? 10 : 5).map((room, index) => {
+                              {trendingRooms.slice(0, 5).map((room, index) => {
                                 const rank = index + 1;
                                 const creatorName = room.createdBy?.username || "Developer";
                                 const creatorAvatar = room.createdBy?.avatar;
@@ -5712,19 +5710,6 @@ function Dashboard() {
                                 );
                               })}
                             </div>
-                            {trendingRooms.length > 5 && (
-                              <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
-                                <button
-                                  type="button"
-                                  className="ce-view-all-btn"
-                                  onClick={() => setShowAllTrending(prev => !prev)}
-                                  style={{ fontSize: "0.8rem", gap: "4px" }}
-                                >
-                                  {showAllTrending ? "Show Less" : "Show More"}
-                                  {showAllTrending ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                </button>
-                              </div>
-                            )}
                           </>
                         )}
                       </section>

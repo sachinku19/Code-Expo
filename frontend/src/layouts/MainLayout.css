@@ -1138,7 +1138,7 @@ body {
 }
 
 .sidebar-nav-btn {
-  width: calc(100% - 4px);
+  width: 100% !important;
   background: transparent;
   border: none;
   height: 38px;
@@ -1149,8 +1149,8 @@ body {
   cursor: pointer;
   position: relative;
   transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  padding: 0 14px;
-  margin: 1px 2px;
+  padding: 0 12px !important;
+  margin: 4px 0 !important;
 }
 
 .sidebar-nav-btn::before {
@@ -1171,8 +1171,6 @@ body {
 
 .ce-sidebar.collapsed .sidebar-nav-btn {
   justify-content: center;
-  padding: 0;
-  margin: 4px auto;
 }
 
 .sidebar-nav-icon-wrapper {
@@ -2865,7 +2863,7 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
 }
 
 .ce-sidebar.collapsed .myverse-sidebar-card-btn {
-  padding: 10px 0;
+  padding: 8px 10px !important;
   justify-content: center;
 }
 
