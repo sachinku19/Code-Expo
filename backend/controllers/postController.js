@@ -92,7 +92,7 @@ const createPost = async (req, res) => {
       }
       const videoFile = req.files.video[0];
       MediaService.validateFile(videoFile, {
-        maxSize: 100 * 1024 * 1024,
+        maxSize: 10 * 1024 * 1024,
         allowedExtensions: /mp4|webm|mov|avi|mkv/,
         allowedMimeTypes: /video\/mp4|video\/webm|video\/quicktime|video\/x-msvideo|video\/x-matroska/
       });
@@ -252,7 +252,7 @@ const toggleLikePost = async (req, res) => {
       : { $addToSet: { likes: userId } };
 
     const [updatedPost] = await Promise.all([
-      Post.findByIdAndUpdate(postId, updateQuery, { new: true, select: "likes" }).lean(),
+      Post.findByIdAndUpdate(postId, updateQuery, { returnDocument: 'after', select: "likes" }).lean(),
       User.findByIdAndUpdate(post.author, { $inc: { reputationScore: isLiked ? -2 : 2 } })
     ]);
 
@@ -301,7 +301,7 @@ const addComment = async (req, res) => {
     };
 
     const [updatedPost] = await Promise.all([
-      Post.findByIdAndUpdate(postId, { $push: { comments: comment } }, { new: true, select: "comments author" }).lean(),
+      Post.findByIdAndUpdate(postId, { $push: { comments: comment } }, { returnDocument: 'after', select: "comments author" }).lean(),
       User.findByIdAndUpdate(userId, { $inc: { contributionScore: 1 } })
     ]);
 
@@ -385,7 +385,7 @@ const getPostById = async (req, res) => {
     const post = await Post.findByIdAndUpdate(
       postId,
       { $inc: { viewsCount: 1 } },
-      { new: true }
+      { returnDocument: 'after' }
     )
       .populate("author", "username email avatar title developerLevel status reputationScore executionsCount subscription")
       .populate({ path: "comments.user", select: "username email avatar subscription" })

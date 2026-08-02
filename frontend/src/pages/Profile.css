@@ -284,6 +284,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
 }
 
 .profile-sec-card {
@@ -319,17 +320,45 @@
 }
 
 /* Theme scoped colors for heatmap levels */
-.dark .heatmap-box.level-0 { background-color: var(--heatmap-bg-0); }
-.dark .heatmap-box.level-1 { background-color: var(--heatmap-bg-1); }
-.dark .heatmap-box.level-2 { background-color: var(--heatmap-bg-2); }
-.dark .heatmap-box.level-3 { background-color: var(--heatmap-bg-3); }
-.dark .heatmap-box.level-4 { background-color: var(--heatmap-bg-4); }
+.dark .heatmap-box.level-0 {
+  background-color: var(--heatmap-bg-0);
+}
 
-.light .heatmap-box.level-0 { background-color: var(--heatmap-bg-0); }
-.light .heatmap-box.level-1 { background-color: var(--heatmap-bg-1); }
-.light .heatmap-box.level-2 { background-color: var(--heatmap-bg-2); }
-.light .heatmap-box.level-3 { background-color: var(--heatmap-bg-3); }
-.light .heatmap-box.level-4 { background-color: var(--heatmap-bg-4); }
+.dark .heatmap-box.level-1 {
+  background-color: var(--heatmap-bg-1);
+}
+
+.dark .heatmap-box.level-2 {
+  background-color: var(--heatmap-bg-2);
+}
+
+.dark .heatmap-box.level-3 {
+  background-color: var(--heatmap-bg-3);
+}
+
+.dark .heatmap-box.level-4 {
+  background-color: var(--heatmap-bg-4);
+}
+
+.light .heatmap-box.level-0 {
+  background-color: var(--heatmap-bg-0);
+}
+
+.light .heatmap-box.level-1 {
+  background-color: var(--heatmap-bg-1);
+}
+
+.light .heatmap-box.level-2 {
+  background-color: var(--heatmap-bg-2);
+}
+
+.light .heatmap-box.level-3 {
+  background-color: var(--heatmap-bg-3);
+}
+
+.light .heatmap-box.level-4 {
+  background-color: var(--heatmap-bg-4);
+}
 
 .heatmap-legend {
   display: flex;
@@ -428,52 +457,71 @@
 
 .profile-rooms-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
   align-items: start;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1240px) and (min-width: 768px) {
   .profile-rooms-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 767px) {
   .profile-rooms-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 }
 
 .profile-room-card {
-  background: var(--ce-surface);
-  border: 1px solid var(--ce-border);
-  border-radius: 12px;
-  padding: 16px;
+  background: rgba(20, 20, 35, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 20px;
   cursor: pointer;
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 142px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-  transition: border-color var(--transition-smooth, 0.25s), box-shadow var(--transition-smooth, 0.25s), background-color var(--transition-smooth, 0.25s), transform var(--transition-smooth, 0.25s);
+  min-height: 154px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-sizing: border-box;
 }
 
 .profile-room-card:hover {
-  border-color: var(--ce-primary);
-  background-color: var(--ce-surface-card);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06), 0 0 0 1px var(--ce-primary-glow);
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(28, 28, 48, 0.7);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 0 24px rgba(99, 102, 241, 0.12);
+}
+
+/* CSS-only customized language glows using :has() selector */
+.profile-room-card:has(.javascript):hover {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 0 24px rgba(245, 158, 11, 0.12);
+}
+
+.profile-room-card:has(.python):hover {
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 0 24px rgba(59, 130, 246, 0.12);
+}
+
+.profile-room-card:has(.cpp):hover {
+  border-color: rgba(6, 182, 212, 0.45);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 0 24px rgba(6, 182, 212, 0.12);
 }
 
 .profile-room-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -486,35 +534,35 @@
 }
 
 .profile-card-header-delete-btn {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #ef4444;
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
+  gap: 6px;
   flex-shrink: 0;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .profile-card-header-delete-btn:hover {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  border-color: #ef4444;
-  color: #ffffff;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ff5f5f;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
 .profile-room-card h4 {
   margin: 0;
-  color: var(--ce-text-h, var(--ce-text));
-  font-size: 0.88rem;
-  font-weight: 750;
-  line-height: 1.35;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -523,29 +571,50 @@
 }
 
 .profile-room-card p {
-  margin: 8px 0 0 0;
+  margin: 10px 0 0 0;
   font-size: 0.72rem;
-  color: var(--ce-text-muted);
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .room-lang-badge {
-  font-size: 0.64rem;
-  font-weight: 800;
+  font-size: 0.65rem;
+  font-weight: 700;
   padding: 3px 8px;
-  background-color: var(--ce-surface-card);
-  border: 1px solid var(--ce-border);
   border-radius: 6px;
-  color: var(--ce-primary);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  color: #a78bfa;
   flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.room-lang-badge.javascript {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.room-lang-badge.python {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.room-lang-badge.cpp {
+  background: rgba(6, 182, 212, 0.08);
+  border-color: rgba(6, 182, 212, 0.2);
+  color: #22d3ee;
 }
 
 .profile-room-card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 14px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   gap: 8px;
   width: 100%;
 }
@@ -553,33 +622,58 @@
 .profile-room-card-footer-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
 .profile-room-card-footer-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.profile-room-bookmark-btn {
-  background: var(--ce-surface-card);
-  border: 1px solid var(--ce-border);
-  color: var(--ce-text-muted);
-  padding: 5px 8px;
-  border-radius: 6px;
+.profile-room-details-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
+  gap: 4px;
+}
+
+.profile-room-details-btn:hover {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.1);
+}
+
+.profile-room-bookmark-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  width: 28px;
+  height: 28px;
+  transition: all 0.2s ease;
 }
 
 .profile-room-bookmark-btn:hover {
-  background: var(--ce-hover);
-  color: var(--ce-text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
 .profile-room-delete-btn {
@@ -817,6 +911,7 @@
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -958,30 +1053,36 @@
   .profile-page-main-wrapper {
     padding: 12px;
   }
+
   .profile-container {
     padding: 0;
   }
+
   .github-profile-layout {
     gap: 16px;
   }
+
   .profile-sidebar-card {
     padding: 16px;
     border-radius: var(--border-radius-sm, 8px);
     width: 100%;
     max-width: 100%;
   }
+
   .profile-main-body {
     padding: 0;
     overflow-x: hidden;
     width: 100%;
     max-width: 100%;
   }
+
   .profile-sec-card {
     padding: 16px;
     border-radius: var(--border-radius-sm, 8px);
     width: 100%;
     max-width: 100%;
   }
+
   .profile-sidebar-card h2,
   .profile-email,
   .profile-bio-text {
@@ -989,6 +1090,7 @@
     overflow-wrap: break-word;
     max-width: 100%;
   }
+
   .profile-room-card-title {
     word-break: break-word;
     overflow-wrap: break-word;
@@ -1003,23 +1105,28 @@
     -ms-overflow-style: none;
     padding-bottom: 4px;
   }
+
   .ce-pill-switcher-container::-webkit-scrollbar {
     display: none;
   }
+
   .ce-pill-switcher {
     width: max-content;
     min-width: 100%;
     max-width: none !important;
   }
+
   .ce-pill-btn {
     padding: 8px 16px;
     font-size: 0.78rem;
   }
+
   .heatmap-calendar-scroll-wrapper {
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
   }
+
   .heatmap-grid-inner-wrapper,
   .heatmap-month-blocks-container {
     max-width: 100%;
@@ -1030,9 +1137,11 @@
   .profile-page-main-wrapper {
     padding: 8px;
   }
+
   .achievements-container {
     gap: 8px;
   }
+
   .achievement-badge-card {
     flex: 1 1 calc(50% - 8px);
     justify-content: center;
@@ -1050,15 +1159,15 @@
 }
 
 .avatar-stack-item {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid var(--ce-border, #30363d);
+  border: 1.5px solid #11111b;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--ce-surface-card, #161b22);
+  background-color: #1a1a2e;
   transition: transform var(--transition-fast, 0.15s);
 }
 
@@ -1069,18 +1178,18 @@
 }
 
 .avatar-stack-more {
-  font-size: 0.65rem;
-  color: var(--ce-text-muted, #8b949e);
-  margin-left: -2px;
-  font-weight: 600;
+  font-size: 0.68rem;
+  color: #a5b4fc;
+  margin-left: -6px;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--ce-surface-card, #161b22);
-  border: 1px solid var(--ce-border, #30363d);
+  background-color: #1a1a2e;
+  border: 1.5px solid #11111b;
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   z-index: 1;
   box-sizing: border-box;
 }
@@ -1091,7 +1200,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   color: #ffffff;
 }
@@ -1323,4 +1432,488 @@
   border-color: #dc2626;
   color: #ffffff;
   box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+}
+
+/* ==========================================================================
+   PREMIUM ROOM CARDS SYSTEM (MATCHING WEBSITE THEME)
+   ========================================================================== */
+
+.premium-room-card {
+  background: rgba(12, 13, 25, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 22px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-sizing: border-box;
+}
+
+.premium-room-card:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(20, 21, 38, 0.85);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(99, 102, 241, 0.18);
+}
+
+/* CSS-only customized language glows using :has() selector */
+.premium-room-card:has(.javascript):hover {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(245, 158, 11, 0.2);
+}
+
+.premium-room-card:has(.python):hover {
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(59, 130, 246, 0.2);
+}
+
+.premium-room-card:has(.cpp):hover {
+  border-color: rgba(6, 182, 212, 0.55);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(6, 182, 212, 0.2);
+}
+
+/* Header Premium */
+.profile-room-card-header-premium {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.profile-room-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.premium-lang-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 800;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.premium-lang-icon-box.javascript,
+.premium-lang-icon-box.js {
+  background: #f7df1e;
+  color: #000000;
+}
+
+.premium-lang-icon-box.python,
+.premium-lang-icon-box.py {
+  background: #306998;
+  color: #ffffff;
+}
+
+.premium-lang-icon-box.cpp,
+.premium-lang-icon-box.c\+\+ {
+  background: #00599c;
+  color: #ffffff;
+}
+
+.premium-lang-icon-box.dev {
+  background: #4a5568;
+  color: #ffffff;
+}
+
+.premium-room-title-wrapper {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.premium-room-title-wrapper .profile-room-card-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Header Right */
+.premium-room-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.premium-privacy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.premium-privacy-badge.public {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: rgba(165, 180, 252, 0.95);
+}
+
+.premium-privacy-badge.private {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: rgba(252, 165, 165, 0.95);
+}
+
+.premium-card-delete-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.premium-card-delete-icon-btn:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Card Body Premium */
+.profile-room-card-body-premium {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+}
+
+.profile-room-card-tag-row {
+  margin-bottom: 8px;
+}
+
+.profile-room-card-body-premium .profile-room-card-id {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+  font-family: monospace;
+}
+
+/* Dividers */
+.premium-card-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 14px 0;
+  border: none;
+}
+
+/* Creator Info Row */
+.premium-card-creator-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.premium-creator-avatar-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.premium-creator-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.premium-creator-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.premium-creator-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.premium-creator-name {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+}
+
+.premium-creator-name span {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.premium-creator-date {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0;
+}
+
+/* Footer Premium */
+.profile-room-card-footer-premium {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.premium-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.premium-footer-icon {
+  opacity: 0.7;
+}
+
+.premium-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.premium-action-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.premium-action-pill.like-pill {
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.04);
+  color: rgba(252, 165, 165, 0.85);
+}
+
+.premium-action-pill.like-pill:hover {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.09);
+  color: #ef4444;
+}
+
+.premium-action-pill.like-pill.liked {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.premium-action-pill.participants-pill {
+  border-color: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.04);
+  color: rgba(147, 197, 253, 0.85);
+  cursor: default;
+}
+
+.premium-action-pill.bookmark-pill {
+  padding: 6px 8px;
+}
+
+.premium-action-pill.bookmark-pill:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.08);
+  color: #818cf8;
+}
+
+.premium-action-pill.bookmark-pill.active {
+  border-color: #818cf8;
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.premium-action-btn.details-btn {
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.premium-action-btn.details-btn:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   PREMIUM ROOM CARDS SYSTEM (LIGHT THEME OVERRIDES)
+   ========================================================================== */
+
+.light .premium-room-card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: var(--ce-text, #334155);
+}
+
+.light .premium-room-card:hover {
+  background: #ffffff;
+  border-color: rgba(99, 102, 241, 0.38);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.07), 0 0 20px rgba(99, 102, 241, 0.06);
+}
+
+.light .premium-room-title-wrapper .profile-room-card-title {
+  color: var(--ce-text-h, #0f172a);
+}
+
+.light .profile-room-card-body-premium .profile-room-card-id {
+  color: var(--ce-text-muted, #64748b);
+}
+
+.light .premium-card-divider {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.light .premium-creator-avatar-wrapper {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.light .premium-creator-name {
+  color: var(--ce-text-muted, #64748b);
+}
+
+.light .premium-creator-name span {
+  color: var(--ce-text-h, #0f172a);
+}
+
+.light .premium-creator-date {
+  color: rgba(0, 0, 0, 0.38);
+}
+
+.light .premium-action-pill {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: var(--ce-text, #334155);
+}
+
+.light .premium-action-pill:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--ce-text-h, #0f172a);
+}
+
+.light .premium-action-pill.like-pill {
+  border-color: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.02);
+  color: #ef4444;
+}
+
+.light .premium-action-pill.like-pill:hover {
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.light .premium-action-pill.participants-pill {
+  border-color: rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.02);
+  color: #2563eb;
+}
+
+.light .premium-action-pill.bookmark-pill:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.04);
+  color: #4f46e5;
+}
+
+.light .premium-action-pill.bookmark-pill.active {
+  border-color: #4f46e5;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+}
+
+.light .premium-action-btn.details-btn {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--ce-text, #334155);
+}
+
+.light .premium-action-btn.details-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: var(--ce-text-h, #0f172a);
+}
+
+.light .premium-privacy-badge.public {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #4f46e5;
+}
+
+.light .premium-privacy-badge.private {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+}
+
+.light .premium-card-delete-icon-btn {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.light .premium-card-delete-icon-btn:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+/* Prevent layout shifts / shaking when switching profile tabs */
+.profile-tab-content {
+  min-height: 480px;
+  width: 100%;
+}
+
+html {
+  scrollbar-gutter: stable;
 }

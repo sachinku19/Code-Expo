@@ -671,7 +671,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
       </div>
 
       {/* Main Body Switcher */}
-      <div style={{ flexGrow: 1, minHeight: 0, position: "relative" }}>
+      <div className="planner-tab-content" style={{ flexGrow: 1, minHeight: "480px", position: "relative" }}>
 
         {isLoading && isInitialLoad ? (
           <div className="ce-roller-container">

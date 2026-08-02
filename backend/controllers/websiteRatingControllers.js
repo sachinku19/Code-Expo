@@ -18,7 +18,7 @@ const submitWebsiteRating = async (req, res) => {
     await WebsiteRating.findOneAndUpdate(
       { user: userId },
       { rating, comment: comment || "", timestamp: new Date() },
-      { new: true, upsert: true }
+      { returnDocument: 'after', upsert: true }
     );
 
     // Log the action

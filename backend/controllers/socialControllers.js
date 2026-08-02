@@ -40,12 +40,12 @@ const toggleFollowUser = async (req, res) => {
         User.findByIdAndUpdate(
           currentUserId,
           { $pull: { following: targetUserId }, $inc: { followingCount: -1 } },
-          { new: true }
+          { returnDocument: 'after' }
         ).populate("following", "displayName username avatar bio followersCount followingCount coverBanner"),
         User.findByIdAndUpdate(
           targetUserId,
           { $pull: { followers: currentUserId }, $inc: { followersCount: -1 } },
-          { new: true }
+          { returnDocument: 'after' }
         ).populate("followers", "displayName username avatar bio followersCount followingCount coverBanner"),
         Follow.deleteOne({ follower: currentUserId, following: targetUserId })
       ]);
@@ -72,12 +72,12 @@ const toggleFollowUser = async (req, res) => {
         User.findByIdAndUpdate(
           currentUserId,
           { $addToSet: { following: targetUserId }, $inc: { followingCount: 1 } },
-          { new: true }
+          { returnDocument: 'after' }
         ).populate("following", "displayName username avatar bio followersCount followingCount coverBanner"),
         User.findByIdAndUpdate(
           targetUserId,
           { $addToSet: { followers: currentUserId }, $inc: { followersCount: 1 } },
-          { new: true }
+          { returnDocument: 'after' }
         ).populate("followers", "displayName username avatar bio followersCount followingCount coverBanner"),
         Follow.create({ follower: currentUserId, following: targetUserId })
       ]);
@@ -124,12 +124,12 @@ const removeFollower = async (req, res) => {
       User.findByIdAndUpdate(
         targetUserId,
         { $pull: { following: currentUserId }, $inc: { followingCount: -1 } },
-        { new: true }
+        { returnDocument: 'after' }
       ).populate("following", "username email avatar bio followersCount followingCount coverBanner"),
       User.findByIdAndUpdate(
         currentUserId,
         { $pull: { followers: targetUserId }, $inc: { followersCount: -1 } },
-        { new: true }
+        { returnDocument: 'after' }
       ).populate("followers", "username email avatar bio followersCount followingCount coverBanner"),
       Follow.deleteOne({ follower: targetUserId, following: currentUserId })
     ]);
@@ -231,7 +231,7 @@ const toggleLikeRoom = async (req, res) => {
     const updatedRoom = await Room.findByIdAndUpdate(
       room._id, 
       updateQuery, 
-      { new: true }
+      { returnDocument: 'after' }
     ).populate("likes", "username avatar email bio");
 
     const likesCount = updatedRoom.likes ? updatedRoom.likes.length : 0;
@@ -845,7 +845,7 @@ const updateStatus = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
       { status },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     const io = req.app.get("io");

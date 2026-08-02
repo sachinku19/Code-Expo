@@ -34,6 +34,15 @@
   background: var(--tp-bg);
   padding: 12px 24px 24px 24px;
   overflow-y: auto;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.task-planner-wrapper::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+  display: none !important;
 }
 
 /* Header */
@@ -129,7 +138,7 @@
   background: var(--tp-card-bg);
   border: 1px solid var(--tp-border);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 20px;
   flex-wrap: wrap;
   gap: 12px;
@@ -338,7 +347,7 @@
 .task-card {
   background: var(--tp-card-bg);
   border: 1px solid var(--tp-border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 12px;
   cursor: grab;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -470,7 +479,7 @@
   background: var(--tp-card-bg);
   border: 1px solid var(--tp-border);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 12px;
   justify-content: space-between;
   gap: 16px;
   transition: all 0.15s ease;
@@ -891,7 +900,7 @@
 .db-card {
   background: var(--tp-card-bg);
   border: 1px solid var(--tp-border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 14px;
 }
 
@@ -1886,4 +1895,9 @@
 .light .kanban-column:has(.kanban-column-cards.drag-over) .column-badge {
   background: rgba(0, 168, 132, 0.15) !important;
   color: var(--ce-primary, #00a884) !important;
+}
+
+/* Prevent layout shifts / shaking when switching planner tabs */
+.planner-tab-content {
+  min-height: 480px;
 }

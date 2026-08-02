@@ -79,7 +79,7 @@ const saveOwnershipToDB = (roomId, fileId) => {
       await LineOwnership.findOneAndUpdate(
         { roomId, fileId: fileId || null },
         { lines: memLines },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
       console.log(`💾 Saved line ownership to DB for ${key}`);
     } catch (error) {

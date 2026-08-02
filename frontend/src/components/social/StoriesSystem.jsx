@@ -15,90 +15,93 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <div 
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(5, 5, 8, 0.85)",
-          backdropFilter: "blur(8px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 999999
-        }}
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+    <Portal>
+      <AnimatePresence>
+        <div 
+          className="ce-warning-modal-overlay"
           style={{
-            background: "rgba(30, 30, 45, 0.65)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid rgba(239, 68, 68, 0.25)",
-            borderRadius: "16px",
-            padding: "24px",
-            width: "400px",
-            maxWidth: "90vw",
-            boxShadow: "0 24px 48px rgba(0, 0, 0, 0.5), 0 0 32px rgba(239, 68, 68, 0.1)",
-            textAlign: "center",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.4)",
+            backdropFilter: "none",
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
-            gap: "16px"
+            justifyContent: "center",
+            zIndex: 999999
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={onClose}
         >
-          <div 
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "50%",
-              background: "rgba(239, 68, 68, 0.1)",
-              border: "1.5px solid rgba(239, 68, 68, 0.3)",
+              background: "rgba(18, 18, 30, 0.9)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "16px",
+              padding: "28px 24px",
+              width: "420px",
+              maxWidth: "90vw",
+              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.6), 0 0 32px rgba(99, 102, 241, 0.08)",
+              textAlign: "center",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              color: "#ef4444",
-              fontSize: "1.8rem"
+              gap: "20px"
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            ⚠️
-          </div>
-          <div>
-            <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.2rem", fontWeight: "700" }}>{title}</h3>
-            <p style={{ margin: 0, color: "#fff", fontSize: "0.88rem", lineHeight: "1.5", opacity: 0.85 }}>{message}</p>
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-              border: "none",
-              color: "#fff",
-              padding: "10px 24px",
-              borderRadius: "10px",
-              fontSize: "0.88rem",
-              fontWeight: "700",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)",
-              width: "100%",
-              marginTop: "8px"
-            }}
-            onMouseOver={(e) => e.currentTarget.style.filter = "brightness(1.1)"}
-            onMouseOut={(e) => e.currentTarget.style.filter = "brightness(1)"}
-          >
-            OK
-          </button>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+            <div 
+              style={{
+                width: "60px",
+                height: "60px",
+                borderRadius: "50%",
+                background: "rgba(245, 158, 11, 0.1)",
+                border: "1.5px solid rgba(245, 158, 11, 0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#f59e0b",
+                fontSize: "1.6rem"
+              }}
+            >
+              ⚠️
+            </div>
+            <div>
+              <h3 style={{ margin: "0 0 10px 0", color: "#fff", fontSize: "1.25rem", fontWeight: "700", letterSpacing: "-0.02em" }}>{title}</h3>
+              <p style={{ margin: 0, color: "var(--ce-premium-text, #a5b4fc)", fontSize: "0.9rem", lineHeight: "1.55", opacity: 0.85 }}>{message}</p>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                border: "none",
+                color: "#fff",
+                padding: "11px 24px",
+                borderRadius: "10px",
+                fontSize: "0.9rem",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: "0 4px 14px rgba(99, 102, 241, 0.25)",
+                width: "100%",
+                marginTop: "4px"
+              }}
+              onMouseOver={(e) => e.currentTarget.style.filter = "brightness(1.15)"}
+              onMouseOut={(e) => e.currentTarget.style.filter = "brightness(1)"}
+            >
+              Understand
+            </button>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    </Portal>
   );
 };
 

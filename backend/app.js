@@ -119,4 +119,26 @@ app.use((req, res, next) => {
   next();
 });
 
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Express error handler caught:", err);
+  
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  // Handle Multer limit file size errors specifically
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({
+      success: false,
+      message: "Upload rejected: File size exceeds the 10MB limit."
+    });
+  }
+
+  res.status(err.status || err.statusCode || 400).json({
+    success: false,
+    message: err.message || "An error occurred during request processing."
+  });
+});
+
 module.exports = app;

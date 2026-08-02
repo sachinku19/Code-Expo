@@ -3164,3 +3164,20 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
     margin: 0 4px;
   }
 }
+
+/* Aggressive Scrollbar Hiding Overrides */
+html,
+body,
+.ce-main-content {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.ce-main-content::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+  display: none !important;
+}

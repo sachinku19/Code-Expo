@@ -5421,3 +5421,7 @@ html {
     opacity: 0.4;
   }
 }
+
+.ce-warning-modal-overlay {
+  z-index: 99999999 !important;
+}

@@ -21,7 +21,7 @@ import { useTheme } from "../context/ThemeContext";
 import {
   X, Heart, Bookmark, Users, Sparkles, Terminal, Mail,
   Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin,
-  LayoutGrid, Activity, Trash2
+  LayoutGrid, Activity, Trash2, Code, User
 } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
 import "./Profile.css";
@@ -68,6 +68,23 @@ const findNearestCity = (lat, lon) => {
   return nearest;
 };
 
+const getPremiumLangIconConfig = (lang) => {
+  const l = String(lang).toLowerCase();
+  if (l === "javascript" || l === "js") {
+    return { text: "JS", bg: "#f7df1e", color: "#000000", border: "#f7df1e" };
+  }
+  if (l === "python" || l === "py") {
+    return { text: "PY", bg: "#387eb8", color: "#ffffff", border: "#387eb8" };
+  }
+  if (l === "cpp" || l === "c++") {
+    return { text: "C++", bg: "#00599c", color: "#ffffff", border: "#00599c" };
+  }
+  if (l === "java") {
+    return { text: "JAVA", bg: "#ea2d2e", color: "#ffffff", border: "#ea2d2e" };
+  }
+  return { text: l.toUpperCase() || "DEV", bg: "#4a5568", color: "#ffffff", border: "#4a5568" };
+};
+
 const Profile = () => {
   const navigate = useNavigate();
   const { user: authUser, setUser: setAuthUser } = useAuth();
@@ -98,12 +115,16 @@ const Profile = () => {
   const { resolvedTheme } = useTheme();
   const [profileTab, setProfileTab] = useState("rooms");
   const [copiedId, setCopiedId] = useState(null);
+  const [selectedRoomDetails, setSelectedRoomDetails] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [showJoinConfirmModal, setShowJoinConfirmModal] = useState(false);
   const [joinTargetRoom, setJoinTargetRoom] = useState(null);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [securityDeleteRoomTarget, setSecurityDeleteRoomTarget] = useState(null);
   const [isDeletingRoomTarget, setIsDeletingRoomTarget] = useState(false);
+  const [createdRoomsExpanded, setCreatedRoomsExpanded] = useState(false);
+  const [likedRoomsExpanded, setLikedRoomsExpanded] = useState(false);
+  const [savedRoomsExpanded, setSavedRoomsExpanded] = useState(false);
 
   const handleDeleteRoomClick = (targetRoomId, targetRoomTitle = "Workspace") => {
     setSecurityDeleteRoomTarget({ id: targetRoomId, title: targetRoomTitle });
@@ -641,7 +662,7 @@ const Profile = () => {
                       value={locationInput}
                       onChange={(e) => setLocationInput(e.target.value)}
                       placeholder="e.g. Bengaluru, Karnataka"
-                      style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--ce-border)", borderRadius: "6px", background: resolvedTheme === "light" ? "#fff" : "rgba(255,255,255,0.03)", color: "var(--ce-text)", fontSize: "0.82rem" }}
+                      style={{ flex: 1, minWidth: 0, padding: "8px 12px", border: "1px solid var(--ce-border)", borderRadius: "6px", background: resolvedTheme === "light" ? "#fff" : "rgba(255,255,255,0.03)", color: "var(--ce-text)", fontSize: "0.82rem" }}
                     />
                     <button 
                       type="button" 
@@ -657,7 +678,8 @@ const Profile = () => {
                         fontWeight: "600",
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px"
+                        gap: "4px",
+                        flexShrink: 0
                       }}
                     >
                       <MapPin size={12} /> Locate Me
@@ -860,295 +882,413 @@ const Profile = () => {
               </div>
 
               <div className="profile-tab-content">
-                {profileTab === "rooms" && (
-                  <div className="profile-rooms-grid">
-                    {myCreatedRooms.length === 0 ? (
-                      <p className="profile-rooms-empty-msg">No rooms created yet.</p>
-                    ) : (
-                      myCreatedRooms.map(room => (
-                        <div key={room.roomId || room._id} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId || room._id)}>
-                          <div className="profile-room-card-header">
-                            <div className="profile-room-card-title-group">
-                              <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
-                              <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
-                            </div>
-                            {isRoomOwner(room) && (
-                              <button
-                                type="button"
-                                className="profile-card-header-delete-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteRoomClick(room.roomId || room._id, room.title);
-                                }}
-                                title="Delete Workspace (High Security GitHub Deletion)"
-                              >
-                                <Trash2 size={13} />
-                                <span>Delete</span>
-                              </button>
-                            )}
-                          </div>
-                          <p className="profile-room-card-id">ID: {room.roomId || room._id}</p>
-                          <div className="profile-room-card-footer">
-                            <div className="profile-room-card-footer-left">
-                              <span className="profile-room-card-date">{new Date(room.createdAt).toLocaleDateString()}</span>
-                            </div>
-                            <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
-                              {room.likedBy && room.likedBy.length > 0 && (
-                                <div className="card-likes-avatars-stack">
-                                  {room.likedBy.slice(0, 3).map((u, i) => (
-                                    <div
-                                      key={i}
-                                      className="avatar-stack-item"
-                                      style={{
-                                        marginLeft: i > 0 ? "-6px" : "0",
-                                        zIndex: 10 - i
-                                      }}
-                                    >
-                                      {u.avatar ? (
-                                        <img src={u.avatar} alt={u.username} />
-                                      ) : (
-                                        <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                          {(u.username || "D").charAt(0).toUpperCase()}
-                                        </div>
-                                      )}
+                {profileTab === "rooms" && (() => {
+                  const filteredCreatedRooms = myCreatedRooms;
+                  const displayedCreatedRooms = createdRoomsExpanded ? filteredCreatedRooms : filteredCreatedRooms.slice(0, 9);
+                  return (
+                    <>
+                      <div className="profile-rooms-grid">
+                        {displayedCreatedRooms.length === 0 ? (
+                          <p className="profile-rooms-empty-msg">No rooms created yet.</p>
+                        ) : (
+                          displayedCreatedRooms.map(room => {
+                            const langConfig = getPremiumLangIconConfig(room.language);
+                            return (
+                              <div key={room.roomId || room._id} className="premium-room-card" onClick={() => handleJoinRoomDirect(room.roomId || room._id)}>
+                                {/* Header Premium */}
+                                <div className="profile-room-card-header-premium">
+                                  <div className="profile-room-card-header-left">
+                                    <div className="premium-lang-icon-box" style={{ backgroundColor: langConfig.bg, color: langConfig.color, borderColor: langConfig.border, borderWidth: "1px", borderStyle: "solid" }}>
+                                      {langConfig.text}
                                     </div>
-                                  ))}
-                                  {room.likedBy.length > 3 && (
-                                    <span className="avatar-stack-more">
-                                      +{room.likedBy.length - 3}
-                                    </span>
-                                  )}
-                                  <div className="likes-tooltip">
-                                    <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
-                                    <div className="likes-tooltip-list">
-                                      {room.likedBy.map((u, idx) => (
-                                        <div key={idx} className="likes-tooltip-user">
-                                          {u.avatar ? (
-                                            <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
-                                          ) : (
-                                            <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                              {(u.username || "D").charAt(0).toUpperCase()}
-                                            </div>
-                                          )}
-                                          <span className="likes-tooltip-username">{u.username}</span>
-                                        </div>
-                                      ))}
+                                    <div className="premium-room-title-wrapper">
+                                      <h4 className="profile-room-card-title">{room.title}</h4>
                                     </div>
                                   </div>
-                                </div>
-                              )}
-                              <button
-                                type="button"
-                                className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                onClick={() => handleLikeRoom(room.roomId)}
-                              >
-                                <Heart
-                                  size={12}
-                                  fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                />
-                                <span className="like-count-text">{room.likesCount || 0}</span>
-                              </button>
-                               <button className="profile-room-bookmark-btn" onClick={() => handleBookmarkRoom(room.roomId)} title="Bookmark Workspace"><Bookmark size={12} /></button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
 
-                {profileTab === "liked" && (
-                  <div className="profile-rooms-grid">
-                    {likedRooms.length === 0 ? (
-                      <p className="profile-rooms-empty-msg">No liked rooms.</p>
-                    ) : (
-                      likedRooms.map(room => (
-                        <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
-                          <div className="profile-room-card-header">
-                            <div className="profile-room-card-title-group">
-                              <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
-                              <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
-                            </div>
-                            {isRoomOwner(room) && (
-                              <button
-                                type="button"
-                                className="profile-card-header-delete-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteRoomClick(room.roomId || room._id, room.title);
-                                }}
-                                title="Delete Workspace (High Security GitHub Deletion)"
-                              >
-                                <Trash2 size={13} />
-                                <span>Delete</span>
-                              </button>
-                            )}
-                          </div>
-                          <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
-                          <div className="profile-room-card-footer">
-                            <div className="profile-room-card-footer-left">
-                              <span className="profile-room-card-status-text">Liked</span>
-                            </div>
-                            <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
-                              {room.likedBy && room.likedBy.length > 0 && (
-                                <div className="card-likes-avatars-stack">
-                                  {room.likedBy.slice(0, 3).map((u, i) => (
-                                    <div
-                                      key={i}
-                                      className="avatar-stack-item"
-                                      style={{
-                                        marginLeft: i > 0 ? "-6px" : "0",
-                                        zIndex: 10 - i
-                                      }}
-                                    >
-                                      {u.avatar ? (
-                                        <img src={u.avatar} alt={u.username} />
-                                      ) : (
-                                        <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                          {(u.username || "D").charAt(0).toUpperCase()}
-                                        </div>
-                                      )}
+                                  <div className="premium-room-card-header-right" onClick={e => e.stopPropagation()}>
+                                    <div className={`premium-privacy-badge ${room.isPrivate ? "private" : "public"}`}>
+                                      {room.isPrivate ? <Lock size={11} /> : <Globe size={11} />}
+                                      <span>{room.isPrivate ? "Private" : "Public"}</span>
                                     </div>
-                                  ))}
-                                  {room.likedBy.length > 3 && (
-                                    <span className="avatar-stack-more">
-                                      +{room.likedBy.length - 3}
-                                    </span>
-                                  )}
-                                  <div className="likes-tooltip">
-                                    <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
-                                    <div className="likes-tooltip-list">
-                                      {room.likedBy.map((u, idx) => (
-                                        <div key={idx} className="likes-tooltip-user">
-                                          {u.avatar ? (
-                                            <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
-                                          ) : (
-                                            <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                              {(u.username || "D").charAt(0).toUpperCase()}
-                                            </div>
-                                          )}
-                                          <span className="likes-tooltip-username">{u.username}</span>
-                                        </div>
-                                      ))}
-                                    </div>
+                                    {isRoomOwner(room) && (
+                                      <button
+                                        type="button"
+                                        className="premium-card-delete-icon-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                        }}
+                                        title="Delete Workspace"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
-                              )}
-                              <button
-                                type="button"
-                                className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                onClick={() => handleLikeRoom(room.roomId)}
-                              >
-                                <Heart
-                                  size={12}
-                                  fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                />
-                                <span className="like-count-text">{room.likesCount || 0}</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
 
-                {profileTab === "saved" && (
-                  <div className="profile-rooms-grid">
-                    {savedRooms.length === 0 ? (
-                      <p className="profile-rooms-empty-msg">No bookmarked rooms.</p>
-                    ) : (
-                      savedRooms.map(room => (
-                        <div key={room.roomId} className="profile-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
-                          <div className="profile-room-card-header">
-                            <div className="profile-room-card-title-group">
-                              <h4 className="profile-room-card-title"><Terminal size={14} style={{ marginRight: "6px", color: "var(--ce-accent)" }} />{room.title}</h4>
-                              <span className="room-lang-badge">{room.language?.toUpperCase()}</span>
-                            </div>
-                            {isRoomOwner(room) && (
-                              <button
-                                type="button"
-                                className="profile-card-header-delete-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteRoomClick(room.roomId || room._id, room.title);
-                                }}
-                                title="Delete Workspace (High Security GitHub Deletion)"
-                              >
-                                <Trash2 size={13} />
-                                <span>Delete</span>
-                              </button>
-                            )}
-                          </div>
-                          <p className="profile-room-card-author">By {room.createdBy?.username || "Developer"}</p>
-                          <div className="profile-room-card-footer">
-                            <div className="profile-room-card-footer-left">
-                              <span className="profile-room-card-status-text">Saved</span>
-                            </div>
-                            <div className="profile-room-card-footer-right" onClick={e => e.stopPropagation()}>
-                              {room.likedBy && room.likedBy.length > 0 && (
-                                <div className="card-likes-avatars-stack">
-                                  {room.likedBy.slice(0, 3).map((u, i) => (
-                                    <div
-                                      key={i}
-                                      className="avatar-stack-item"
-                                      style={{
-                                        marginLeft: i > 0 ? "-6px" : "0",
-                                        zIndex: 10 - i
-                                      }}
-                                    >
-                                      {u.avatar ? (
-                                        <img src={u.avatar} alt={u.username} />
-                                      ) : (
-                                        <div className="avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                          {(u.username || "D").charAt(0).toUpperCase()}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                  {room.likedBy.length > 3 && (
-                                    <span className="avatar-stack-more">
-                                      +{room.likedBy.length - 3}
-                                    </span>
-                                  )}
-                                  <div className="likes-tooltip">
-                                    <div className="likes-tooltip-title">Liked by ({room.likedBy.length})</div>
-                                    <div className="likes-tooltip-list">
-                                      {room.likedBy.map((u, idx) => (
-                                        <div key={idx} className="likes-tooltip-user">
-                                          {u.avatar ? (
-                                            <img src={u.avatar} alt={u.username} className="likes-tooltip-avatar" />
-                                          ) : (
-                                            <div className="likes-tooltip-avatar-fallback" style={{ backgroundColor: getAvatarColor(u.username || "D") }}>
-                                              {(u.username || "D").charAt(0).toUpperCase()}
-                                            </div>
-                                          )}
-                                          <span className="likes-tooltip-username">{u.username}</span>
-                                        </div>
-                                      ))}
-                                    </div>
+                                {/* Card Body Premium */}
+                                <div className="profile-room-card-body-premium">
+                                  <div className="profile-room-card-tag-row">
+                                    <span className={`room-lang-badge ${room.language?.toLowerCase()}`}>{room.language?.toUpperCase()}</span>
+                                  </div>
+                                  <p className="profile-room-card-id">ID: {room.roomId || room._id}</p>
+                                </div>
+
+                                <hr className="premium-card-divider" />
+
+                                {/* Creator Info */}
+                                <div className="premium-card-creator-row">
+                                  <div className="premium-creator-avatar-wrapper">
+                                    {room.createdBy?.avatar ? (
+                                      <img src={room.createdBy.avatar} alt={room.createdBy.username} className="premium-creator-avatar" />
+                                    ) : (
+                                      <div className="premium-creator-avatar-fallback" style={{ backgroundColor: getAvatarColor(room.createdBy?.username || "D") }}>
+                                        {(room.createdBy?.username || "D").charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="premium-creator-text">
+                                    <p className="premium-creator-name">Created by <span>{room.createdBy?.username || "Developer"}</span></p>
+                                    <p className="premium-creator-date">{new Date(room.createdAt).toLocaleDateString()}</p>
                                   </div>
                                 </div>
-                              )}
-                              <button
-                                type="button"
-                                className={`ce-like-btn-animated ${animatingLikes[room.roomId] ? "heart-pop-active" : ""} ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                onClick={() => handleLikeRoom(room.roomId)}
-                              >
-                                <Heart
-                                  size={12}
-                                  fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"}
-                                />
-                                <span className="like-count-text">{room.likesCount || 0}</span>
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleBookmarkRoom(room.roomId); }} className="profile-room-bookmark-btn active"><Bookmark size={12} fill="currentColor" /></button>
-                            </div>
-                          </div>
+
+                                <hr className="premium-card-divider" />
+
+                                {/* Footer Premium */}
+                                <div className="profile-room-card-footer-premium" onClick={e => e.stopPropagation()}>
+
+                                  <div className="premium-footer-actions">
+                                    {/* Likes count button/pill */}
+                                    <button
+                                      type="button"
+                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                      onClick={() => handleLikeRoom(room.roomId)}
+                                      title="Like Room"
+                                    >
+                                      <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                      <span>{room.likesCount || 0}</span>
+                                    </button>
+
+                                    {/* Participants count pill */}
+                                    <div className="premium-action-pill participants-pill" title="Active Participants">
+                                      <Users size={13} />
+                                      <span>{room.participants?.length || 1}</span>
+                                    </div>
+
+                                    {/* Details button */}
+                                    <button
+                                      type="button"
+                                      className="premium-action-btn details-btn"
+                                      onClick={() => setSelectedRoomDetails(room)}
+                                      title="View Details"
+                                    >
+                                      Details
+                                    </button>
+
+                                    {/* Bookmark button */}
+                                    <button
+                                      type="button"
+                                      className={`premium-action-pill bookmark-pill ${savedRooms && savedRooms.some(r => r.roomId === room.roomId) ? "active" : ""}`}
+                                      onClick={() => handleBookmarkRoom(room.roomId)}
+                                      title="Bookmark Room"
+                                    >
+                                      <Bookmark size={13} fill={savedRooms && savedRooms.some(r => r.roomId === room.roomId) ? "currentColor" : "transparent"} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                      {filteredCreatedRooms.length > 9 && (
+                        <div className="premium-expand-btn-wrapper">
+                          <button
+                            type="button"
+                            className="premium-expand-grid-btn"
+                            onClick={() => setCreatedRoomsExpanded(!createdRoomsExpanded)}
+                          >
+                            {createdRoomsExpanded ? "Show Less" : `View All (${filteredCreatedRooms.length})`}
+                          </button>
                         </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                      )}
+                    </>
+                  );
+                })()}
+
+                {profileTab === "liked" && (() => {
+                  const filteredLikedRooms = likedRooms;
+                  const displayedLikedRooms = likedRoomsExpanded ? filteredLikedRooms : filteredLikedRooms.slice(0, 9);
+                  return (
+                    <>
+                      <div className="profile-rooms-grid">
+                        {displayedLikedRooms.length === 0 ? (
+                          <p className="profile-rooms-empty-msg">No liked rooms.</p>
+                        ) : (
+                          displayedLikedRooms.map(room => {
+                            const langConfig = getPremiumLangIconConfig(room.language);
+                            return (
+                              <div key={room.roomId} className="premium-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                                {/* Header Premium */}
+                                <div className="profile-room-card-header-premium">
+                                  <div className="profile-room-card-header-left">
+                                    <div className="premium-lang-icon-box" style={{ backgroundColor: langConfig.bg, color: langConfig.color, borderColor: langConfig.border, borderWidth: "1px", borderStyle: "solid" }}>
+                                      {langConfig.text}
+                                    </div>
+                                    <div className="premium-room-title-wrapper">
+                                      <h4 className="profile-room-card-title">{room.title}</h4>
+                                    </div>
+                                  </div>
+
+                                  <div className="premium-room-card-header-right" onClick={e => e.stopPropagation()}>
+                                    <div className={`premium-privacy-badge ${room.isPrivate ? "private" : "public"}`}>
+                                      {room.isPrivate ? <Lock size={11} /> : <Globe size={11} />}
+                                      <span>{room.isPrivate ? "Private" : "Public"}</span>
+                                    </div>
+                                    {isRoomOwner(room) && (
+                                      <button
+                                        type="button"
+                                        className="premium-card-delete-icon-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                        }}
+                                        title="Delete Workspace"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Card Body Premium */}
+                                <div className="profile-room-card-body-premium">
+                                  <div className="profile-room-card-tag-row">
+                                    <span className={`room-lang-badge ${room.language?.toLowerCase()}`}>{room.language?.toUpperCase()}</span>
+                                  </div>
+                                  <p className="profile-room-card-id">ID: {room.roomId}</p>
+                                </div>
+
+                                <hr className="premium-card-divider" />
+
+                                {/* Creator Info */}
+                                <div className="premium-card-creator-row">
+                                  <div className="premium-creator-avatar-wrapper">
+                                    {room.createdBy?.avatar ? (
+                                      <img src={room.createdBy.avatar} alt={room.createdBy.username} className="premium-creator-avatar" />
+                                    ) : (
+                                      <div className="premium-creator-avatar-fallback" style={{ backgroundColor: getAvatarColor(room.createdBy?.username || "D") }}>
+                                        {(room.createdBy?.username || "D").charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="premium-creator-text">
+                                    <p className="premium-creator-name">Created by <span>{room.createdBy?.username || "Developer"}</span></p>
+                                    <p className="premium-creator-date">{new Date(room.createdAt).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+
+                                <hr className="premium-card-divider" />
+
+                                {/* Footer Premium */}
+                                <div className="profile-room-card-footer-premium" onClick={e => e.stopPropagation()}>
+
+                                  <div className="premium-footer-actions">
+                                    {/* Likes count button/pill */}
+                                    <button
+                                      type="button"
+                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                      onClick={() => handleLikeRoom(room.roomId)}
+                                      title="Like Room"
+                                    >
+                                      <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                      <span>{room.likesCount || 0}</span>
+                                    </button>
+
+                                    {/* Participants count pill */}
+                                    <div className="premium-action-pill participants-pill" title="Active Participants">
+                                      <Users size={13} />
+                                      <span>{room.participants?.length || 1}</span>
+                                    </div>
+
+                                    {/* Details button */}
+                                    <button
+                                      type="button"
+                                      className="premium-action-btn details-btn"
+                                      onClick={() => setSelectedRoomDetails(room)}
+                                      title="View Details"
+                                    >
+                                      Details
+                                    </button>
+
+                                    {/* Bookmark button */}
+                                    <button
+                                      type="button"
+                                      className={`premium-action-pill bookmark-pill ${savedRooms && savedRooms.some(r => r.roomId === room.roomId) ? "active" : ""}`}
+                                      onClick={() => handleBookmarkRoom(room.roomId)}
+                                      title="Bookmark Room"
+                                    >
+                                      <Bookmark size={13} fill={savedRooms && savedRooms.some(r => r.roomId === room.roomId) ? "currentColor" : "transparent"} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                      {filteredLikedRooms.length > 9 && (
+                        <div className="premium-expand-btn-wrapper">
+                          <button
+                            type="button"
+                            className="premium-expand-grid-btn"
+                            onClick={() => setLikedRoomsExpanded(!likedRoomsExpanded)}
+                          >
+                            {likedRoomsExpanded ? "Show Less" : `View All (${filteredLikedRooms.length})`}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+
+                {profileTab === "saved" && (() => {
+                  const filteredSavedRooms = savedRooms;
+                  const displayedSavedRooms = savedRoomsExpanded ? filteredSavedRooms : filteredSavedRooms.slice(0, 9);
+                  return (
+                    <>
+                      <div className="profile-rooms-grid">
+                        {displayedSavedRooms.length === 0 ? (
+                          <p className="profile-rooms-empty-msg">No bookmarked rooms.</p>
+                        ) : (
+                          displayedSavedRooms.map(room => {
+                            const langConfig = getPremiumLangIconConfig(room.language);
+                            return (
+                              <div key={room.roomId} className="premium-room-card" onClick={() => handleJoinRoomDirect(room.roomId)}>
+                                {/* Header Premium */}
+                                <div className="profile-room-card-header-premium">
+                                  <div className="profile-room-card-header-left">
+                                    <div className="premium-lang-icon-box" style={{ backgroundColor: langConfig.bg, color: langConfig.color, borderColor: langConfig.border, borderWidth: "1px", borderStyle: "solid" }}>
+                                      {langConfig.text}
+                                    </div>
+                                    <div className="premium-room-title-wrapper">
+                                      <h4 className="profile-room-card-title">{room.title}</h4>
+                                    </div>
+                                  </div>
+
+                                  <div className="premium-room-card-header-right" onClick={e => e.stopPropagation()}>
+                                    <div className={`premium-privacy-badge ${room.isPrivate ? "private" : "public"}`}>
+                                      {room.isPrivate ? <Lock size={11} /> : <Globe size={11} />}
+                                      <span>{room.isPrivate ? "Private" : "Public"}</span>
+                                    </div>
+                                    {isRoomOwner(room) && (
+                                      <button
+                                        type="button"
+                                        className="premium-card-delete-icon-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                        }}
+                                        title="Delete Workspace"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Card Body Premium */}
+                                <div className="profile-room-card-body-premium">
+                                  <div className="profile-room-card-tag-row">
+                                    <span className={`room-lang-badge ${room.language?.toLowerCase()}`}>{room.language?.toUpperCase()}</span>
+                                  </div>
+                                  <p className="profile-room-card-id">ID: {room.roomId}</p>
+                                </div>
+
+                                <hr className="premium-card-divider" />
+
+                                {/* Creator Info */}
+                                <div className="premium-card-creator-row">
+                                  <div className="premium-creator-avatar-wrapper">
+                                    {room.createdBy?.avatar ? (
+                                      <img src={room.createdBy.avatar} alt={room.createdBy.username} className="premium-creator-avatar" />
+                                    ) : (
+                                      <div className="premium-creator-avatar-fallback" style={{ backgroundColor: getAvatarColor(room.createdBy?.username || "D") }}>
+                                        {(room.createdBy?.username || "D").charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="premium-creator-text">
+                                    <p className="premium-creator-name">Created by <span>{room.createdBy?.username || "Developer"}</span></p>
+                                    <p className="premium-creator-date">{new Date(room.createdAt).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+
+                                <hr className="premium-card-divider" />
+
+                                {/* Footer Premium */}
+                                <div className="profile-room-card-footer-premium" onClick={e => e.stopPropagation()}>
+
+                                  <div className="premium-footer-actions">
+                                    {/* Likes count button/pill */}
+                                    <button
+                                      type="button"
+                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
+                                      onClick={() => handleLikeRoom(room.roomId)}
+                                      title="Like Room"
+                                    >
+                                      <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                      <span>{room.likesCount || 0}</span>
+                                    </button>
+
+                                    {/* Participants count pill */}
+                                    <div className="premium-action-pill participants-pill" title="Active Participants">
+                                      <Users size={13} />
+                                      <span>{room.participants?.length || 1}</span>
+                                    </div>
+
+                                    {/* Details button */}
+                                    <button
+                                      type="button"
+                                      className="premium-action-btn details-btn"
+                                      onClick={() => setSelectedRoomDetails(room)}
+                                      title="View Details"
+                                    >
+                                      Details
+                                    </button>
+
+                                    {/* Bookmark button */}
+                                    <button
+                                      type="button"
+                                      className="premium-action-pill bookmark-pill active"
+                                      onClick={() => handleBookmarkRoom(room.roomId)}
+                                      title="Bookmark Room"
+                                    >
+                                      <Bookmark size={13} fill="currentColor" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                      {filteredSavedRooms.length > 9 && (
+                        <div className="premium-expand-btn-wrapper">
+                          <button
+                            type="button"
+                            className="premium-expand-grid-btn"
+                            onClick={() => setSavedRoomsExpanded(!savedRoomsExpanded)}
+                          >
+                            {savedRoomsExpanded ? "Show Less" : `View All (${filteredSavedRooms.length})`}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {profileTab === "activity" && (
                   <div className="profile-activity-list">
@@ -1369,6 +1509,83 @@ const Profile = () => {
         roomId={securityDeleteRoomTarget?.id || ""}
         isDeleting={isDeletingRoomTarget}
       />
+
+      {/* Simplified Room Details Modal for Profile Page */}
+      {selectedRoomDetails && createPortal(
+        <div className="ce-modal-overlay" onClick={() => setSelectedRoomDetails(null)}>
+          <button className="modal-close-btn-outside" onClick={(e) => { e.stopPropagation(); setSelectedRoomDetails(null); }} title="Close Details">
+            <X size={18} />
+          </button>
+          <div className="ce-modal-card room-details-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-new">
+              <span className="modal-label-tag">Room Overview</span>
+              <h3 className="modal-title-new"><Terminal size={18} style={{ marginRight: "8px", color: "var(--ce-accent)", verticalAlign: "middle" }} />{selectedRoomDetails.title}</h3>
+            </div>
+
+            <div className="modal-details-grid">
+              <div className="modal-detail-item">
+                <span className="modal-detail-label">
+                  <Terminal size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Room ID
+                </span>
+                <div className="modal-detail-value-wrapper">
+                  <span className="modal-detail-value mono-text">{selectedRoomDetails.roomId || selectedRoomDetails._id}</span>
+                  <button
+                    onClick={(e) => handleCopyId(e, selectedRoomDetails.roomId || selectedRoomDetails._id)}
+                    className="modal-copy-btn"
+                    title="Copy Room ID"
+                  >
+                    {copiedId === (selectedRoomDetails.roomId || selectedRoomDetails._id) ? <Check size={12} style={{ color: "var(--ce-success)" }} /> : <Copy size={12} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-detail-item">
+                <span className="modal-detail-label">
+                  <Code size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Language
+                </span>
+                <span className="modal-detail-value lang-badge-new">{selectedRoomDetails.language?.toUpperCase()}</span>
+              </div>
+
+              <div className="modal-detail-item">
+                <span className="modal-detail-label">
+                  {selectedRoomDetails.isPrivate ? <Lock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> : <Globe size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} />} Visibility
+                </span>
+                <span className="modal-detail-value privacy-badge-new">
+                  {selectedRoomDetails.isPrivate ? "Private Room" : "Public Room"}
+                </span>
+              </div>
+
+              <div className="modal-detail-item">
+                <span className="modal-detail-label">
+                  <User size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Owner
+                </span>
+                <span className="modal-detail-value">
+                  {selectedRoomDetails.createdBy?.username || "Collaborator"}
+                </span>
+              </div>
+
+              <div className="modal-detail-item">
+                <span className="modal-detail-label">
+                  <Clock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Created At
+                </span>
+                <span className="modal-detail-value">
+                  {new Date(selectedRoomDetails.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="modal-actions-new">
+              <button onClick={() => {
+                handleJoinRoomDirect(selectedRoomDetails.roomId || selectedRoomDetails._id);
+                setSelectedRoomDetails(null);
+              }} className="modal-join-btn-new">
+                Enter Workspace
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
