@@ -998,35 +998,36 @@ const getBadgeStyle = (title) => {
   };
 };
 
-const renderDashboardTaskItem = (task, isCompleted = false, onClick = null) => {
+const renderDashboardTaskItem = (task, isCompleted = false, onClick = null, isPending = false) => {
   const isRoom = task.type === "room";
-  const badgeColor = isRoom ? "#10b981" : "#eab308";
-  const bg = isRoom ? "rgba(16, 185, 129, 0.04)" : "rgba(234, 179, 8, 0.04)";
-  const dateStr = task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "No due date";
   
+  let themeClass = "green-theme";
+  let badgeColor = "#10b981";
+  let badgeBg = "rgba(16, 185, 129, 0.12)";
+  
+  if (isPending) {
+    themeClass = "red-theme";
+    badgeColor = "#ef4444";
+    badgeBg = "rgba(239, 68, 68, 0.12)";
+  } else if (!isRoom) {
+    themeClass = "yellow-theme";
+    badgeColor = "#eab308";
+    badgeBg = "rgba(234, 179, 8, 0.12)";
+  }
+  
+  const dateStr = task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "No due date";
+
   return (
-    <div 
-      key={task._id} 
-      className={`recent-joined-card ${onClick ? "task-card-clickable" : ""}`}
+    <div
+      key={task._id}
+      className={`ce-dashboard-task-card ${themeClass} ${onClick ? "task-card-clickable" : ""}`}
       onClick={() => onClick && onClick(task)}
-      style={{
-        background: bg,
-        padding: "12px 14px",
-        borderRadius: "8px",
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        textAlign: "left",
-        transition: "transform 0.2s, box-shadow 0.2s",
-        cursor: onClick ? "pointer" : "default"
-      }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "3px", textAlign: "left" }}>
-        <span 
-          style={{ 
-            fontSize: "0.85rem", 
-            fontWeight: "600", 
+        <span
+          style={{
+            fontSize: "0.85rem",
+            fontWeight: "600",
             color: "var(--ce-text)",
             textDecoration: isCompleted ? "line-through" : "none",
             opacity: isCompleted ? 0.7 : 1
@@ -1038,14 +1039,14 @@ const renderDashboardTaskItem = (task, isCompleted = false, onClick = null) => {
           {isCompleted ? `Completed` : `Due: ${dateStr}`}
         </span>
       </div>
-      <span 
-        style={{ 
-          fontSize: "0.68rem", 
-          fontWeight: "700", 
-          padding: "2px 6px", 
-          borderRadius: "4px", 
-          background: isRoom ? "rgba(16, 185, 129, 0.12)" : "rgba(234, 179, 8, 0.12)", 
-          color: badgeColor 
+      <span
+        style={{
+          fontSize: "0.68rem",
+          fontWeight: "700",
+          padding: "2px 6px",
+          borderRadius: "4px",
+          background: badgeBg,
+          color: badgeColor
         }}
       >
         {isRoom ? "Room Task" : "Personal"}
@@ -5254,8 +5255,8 @@ function Dashboard() {
 
                         {/* COLUMN 1, ROW 2: PENDING TASKS */}
                         <section className="ce-dashboard-section pending-tasks-section" style={{ marginBottom: 0 }}>
-                          <div 
-                            className="section-header clickable-header" 
+                          <div
+                            className="section-header clickable-header"
                             onClick={() => navigate("/dashboard/planner?plannerTab=personal_tasks")}
                             style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}
                           >
@@ -5268,9 +5269,9 @@ function Dashboard() {
                             </span>
                           </div>
 
-                          <div 
-                            className="recent-joined-list" 
-                            style={{ 
+                          <div
+                            className="recent-joined-list"
+                            style={{
                               height: "180px",
                               overflowY: "auto",
                               paddingRight: "4px",
@@ -5284,7 +5285,7 @@ function Dashboard() {
                                 <p style={{ fontSize: "0.76rem", color: "var(--ce-text-muted)" }}>No pending or overdue tasks! 🎉</p>
                               </div>
                             ) : (
-                              plannerTasks.overdueTasks.map(task => renderDashboardTaskItem(task, false, handleTaskClick))
+                              plannerTasks.overdueTasks.map(task => renderDashboardTaskItem(task, false, handleTaskClick, true))
                             )}
                           </div>
                           <button
@@ -5304,8 +5305,8 @@ function Dashboard() {
 
                         {/* COLUMN 2, ROW 2: TODAY & FUTURE TASKS */}
                         <section className="ce-dashboard-section today-tasks-section" style={{ marginBottom: 0 }}>
-                          <div 
-                            className="section-header clickable-header" 
+                          <div
+                            className="section-header clickable-header"
                             onClick={() => navigate("/dashboard/planner?plannerTab=personal_tasks")}
                             style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}
                           >
@@ -5318,9 +5319,9 @@ function Dashboard() {
                             </span>
                           </div>
 
-                          <div 
-                            className="recent-joined-list" 
-                            style={{ 
+                          <div
+                            className="recent-joined-list"
+                            style={{
                               height: "180px",
                               overflowY: "auto",
                               paddingRight: "4px",
@@ -5335,7 +5336,7 @@ function Dashboard() {
                                 <p style={{ fontSize: "0.76rem", color: "var(--ce-text-muted)" }}>No tasks assigned for today or future.</p>
                               </div>
                             ) : (
-                              [...(plannerTasks.todayTasks || []), ...(plannerTasks.upcomingTasks || [])].map(task => renderDashboardTaskItem(task, false, handleTaskClick))
+                              [...(plannerTasks.todayTasks || []), ...(plannerTasks.upcomingTasks || [])].map(task => renderDashboardTaskItem(task, false, handleTaskClick, false))
                             )}
                           </div>
                           <button
