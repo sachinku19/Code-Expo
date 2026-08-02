@@ -13397,36 +13397,7 @@ select option {
   border-color: rgba(15, 23, 42, 0.08) !important;
 }
 
-/* Align quick action cards height with the right side online status box on desktop */
-@media (min-width: 1025px) {
-  .quick-action-card {
-    height: 124px !important;
-  }
 
-  .online-network-card {
-    height: 124px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-  }
-
-  .online-network-card .online-filter-tabs-bar {
-    margin-bottom: 10px !important;
-  }
-
-  .online-network-card .empty-state-card.compact {
-    padding: 12px 16px !important;
-    flex: 1 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .online-developers-rows {
-    overflow-y: auto !important;
-    max-height: 52px !important;
-  }
-}
 
 /* Dashboard Task Card Inner Boxes styling */
 .ce-dashboard-task-card {
