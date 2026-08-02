@@ -140,8 +140,10 @@ body {
 /* TOP NAVBAR */
 .ce-topnav {
   height: 56px;
-  background-color: rgba(16, 16, 22, 0.97) !important;
-  /* Safe solid/high-opacity default fallback */
+  background-color: var(--ce-surface) !important;
+  /* Transparent glassmorphism style */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--ce-border);
   display: flex;
   justify-content: space-between;
@@ -568,8 +570,8 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  width: 280px;
+  border-radius: 10px;
+  width: 325px;
   padding: 18px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   z-index: 200100;
@@ -601,7 +603,7 @@ body {
   gap: 12px;
   margin-bottom: 16px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid transparent;
   transition: background-color 0.15s ease, border-color 0.15s ease;
@@ -734,7 +736,7 @@ body {
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 12px 4px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
@@ -1314,12 +1316,20 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   min-width: 0;
-  scrollbar-gutter: stable;
   background-color: var(--ce-bg);
   transition: margin-left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: margin-left;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+}
+
+.ce-main-content::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari and Opera */
 }
 
 .ce-main-content.sidebar-collapsed {

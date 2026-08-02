@@ -8975,6 +8975,26 @@ tier-badge.master {
   gap: 6px;
 }
 
+.recent-joined-card.task-card-clickable {
+  cursor: pointer !important;
+}
+
+.recent-joined-card.task-card-clickable:hover {
+  transform: translateY(-2px);
+  border-color: var(--ce-primary) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.section-header.clickable-header {
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.section-header.clickable-header:hover {
+  opacity: 0.85;
+  transform: translateX(3px);
+}
+
 .recent-joined-card:hover {
   border-color: var(--ce-primary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -12579,8 +12599,8 @@ tier-badge.master {
 .quick-action-card {
   display: flex;
   align-items: center;
-  padding: 16px 22px;
-  border-radius: 12px;
+  padding: 12px 18px;
+  border-radius: 6px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -12639,35 +12659,29 @@ tier-badge.master {
 
 /* Purple Create Room Card Styling */
 .create-room-card {
-  background: rgba(168, 85, 247, 0.12) !important;
-  border: 1px solid rgba(168, 85, 247, 0.45) !important;
-}
-
-.create-room-card:hover {
-  background: rgba(168, 85, 247, 0.18) !important;
-  border-color: rgba(168, 85, 247, 0.8) !important;
-  box-shadow: 0 8px 30px rgba(168, 85, 247, 0.25) !important;
+  background-image: 
+    radial-gradient(circle at center, rgba(168, 85, 247, 0.22) 0%, rgba(10, 8, 16, 0.98) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.18'/%3E%3C/svg%3E") !important;
+  background-size: cover, auto !important;
+  border: 1px solid rgba(168, 85, 247, 0.35) !important;
 }
 
 /* Blue Join Room Card Styling */
 .join-room-card {
-  background: rgba(59, 130, 246, 0.12) !important;
-  border: 1px solid rgba(59, 130, 246, 0.45) !important;
-}
-
-.join-room-card:hover {
-  background: rgba(59, 130, 246, 0.18) !important;
-  border-color: rgba(59, 130, 246, 0.8) !important;
-  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25) !important;
+  background-image: 
+    radial-gradient(circle at center, rgba(59, 130, 246, 0.22) 0%, rgba(8, 12, 22, 0.98) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.18'/%3E%3C/svg%3E") !important;
+  background-size: cover, auto !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
 }
 
 .quick-action-icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin-right: 16px;
+  width: 36px;
+  height: 36px;
+  margin-right: 12px;
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
@@ -12682,23 +12696,11 @@ tier-badge.master {
   color: #c084fc;
 }
 
-.quick-action-card.create-room-card:hover .quick-action-icon-wrapper.purple-bg {
-  background: rgba(168, 85, 247, 0.3);
-  border-color: rgba(168, 85, 247, 0.6);
-  transform: scale(1.08);
-}
-
 .quick-action-icon-wrapper.blue-bg {
   border-radius: 50%;
   background: rgba(59, 130, 246, 0.2);
   border: 1px solid rgba(59, 130, 246, 0.4);
   color: #60a5fa;
-}
-
-.quick-action-card.join-room-card:hover .quick-action-icon-wrapper.blue-bg {
-  background: rgba(59, 130, 246, 0.3);
-  border-color: rgba(59, 130, 246, 0.6);
-  transform: scale(1.08);
 }
 
 .quick-action-icon {
@@ -12716,7 +12718,7 @@ tier-badge.master {
 
 .quick-action-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #f8fafc;
   letter-spacing: 0.02em;
@@ -12724,7 +12726,7 @@ tier-badge.master {
 
 .quick-action-description {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: #94a3b8;
 }
@@ -12736,9 +12738,6 @@ tier-badge.master {
   z-index: 2;
 }
 
-.quick-action-card:hover .quick-action-arrow {
-  transform: translateX(4px);
-}
 
 /* Responsive Styling */
 @media (max-width: 768px) {
@@ -12770,25 +12769,19 @@ tier-badge.master {
 }
 
 .light .create-room-card {
-  background: rgba(168, 85, 247, 0.05) !important;
-  border: 1px solid rgba(168, 85, 247, 0.65) !important;
-}
-
-.light .create-room-card:hover {
-  background: rgba(168, 85, 247, 0.1) !important;
-  border-color: rgba(168, 85, 247, 0.95) !important;
-  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.18) !important;
+  background-image: 
+    radial-gradient(circle at center, rgba(168, 85, 247, 0.08) 0%, rgba(255, 255, 255, 0.98) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.13'/%3E%3C/svg%3E") !important;
+  background-size: cover, auto !important;
+  border: 1px solid rgba(168, 85, 247, 0.25) !important;
 }
 
 .light .join-room-card {
-  background: rgba(59, 130, 246, 0.05) !important;
-  border: 1px solid rgba(59, 130, 246, 0.65) !important;
-}
-
-.light .join-room-card:hover {
-  background: rgba(59, 130, 246, 0.1) !important;
-  border-color: rgba(59, 130, 246, 0.95) !important;
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.18) !important;
+  background-image: 
+    radial-gradient(circle at center, rgba(59, 130, 246, 0.08) 0%, rgba(255, 255, 255, 0.98) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.13'/%3E%3C/svg%3E") !important;
+  background-size: cover, auto !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
 }
 
 .light .quick-action-icon-wrapper.purple-bg {
@@ -12797,21 +12790,11 @@ tier-badge.master {
   color: #7e22ce !important;
 }
 
-.light .quick-action-card.create-room-card:hover .quick-action-icon-wrapper.purple-bg {
-  background: rgba(168, 85, 247, 0.22) !important;
-  border-color: rgba(168, 85, 247, 0.5) !important;
-}
-
 .light .quick-action-icon-wrapper.blue-bg {
   border-radius: 50%;
   background: rgba(59, 130, 246, 0.12) !important;
   border-color: rgba(59, 130, 246, 0.3) !important;
   color: #1d4ed8 !important;
-}
-
-.light .quick-action-card.join-room-card:hover .quick-action-icon-wrapper.blue-bg {
-  background: rgba(59, 130, 246, 0.22) !important;
-  border-color: rgba(59, 130, 246, 0.5) !important;
 }
 
 .light .quick-action-title {
@@ -12826,16 +12809,8 @@ tier-badge.master {
   color: #7e22ce;
 }
 
-.light .create-room-card:hover .quick-action-arrow {
-  color: #6b21a8;
-}
-
 .light .join-room-card .quick-action-arrow {
   color: #1d4ed8;
-}
-
-.light .join-room-card:hover .quick-action-arrow {
-  color: #1e40af;
 }
 
 .light .section-subtitle-inline {
@@ -12992,7 +12967,7 @@ select option {
 /* Quick action sub descriptions styling */
 .quick-action-sub-description {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 400;
   color: #64748b;
   text-align: left;
@@ -13344,25 +13319,33 @@ select option {
 }
 
 /* Dashboard Row 2 Task Cards Styling and Spanning */
-.ce-dashboard-split-grid > .ce-dashboard-section.pending-tasks-section,
-.ce-dashboard-split-grid > .ce-dashboard-section.today-tasks-section {
+.ce-dashboard-split-grid>.ce-dashboard-section.pending-tasks-section,
+.ce-dashboard-split-grid>.ce-dashboard-section.today-tasks-section {
   height: 280px !important;
   transition: border-color var(--transition-fast, 0.15s ease), box-shadow var(--transition-fast, 0.15s ease) !important;
 }
 
+.ce-dashboard-split-grid>.ce-dashboard-section.pending-tasks-section {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.ce-dashboard-split-grid>.ce-dashboard-section.pending-tasks-section:hover {
+  border-color: #ef4444 !important;
+}
+
 /* Ensure no scale zoom or transform lift is applied on hover */
-.ce-dashboard-split-grid > .ce-dashboard-section.pending-tasks-section:hover,
-.ce-dashboard-split-grid > .ce-dashboard-section.today-tasks-section:hover {
+.ce-dashboard-split-grid>.ce-dashboard-section.pending-tasks-section:hover,
+.ce-dashboard-split-grid>.ce-dashboard-section.today-tasks-section:hover {
   transform: none !important;
   box-shadow: none !important;
 }
 
-.ce-dashboard-split-grid > .ce-dashboard-section.today-tasks-section {
+.ce-dashboard-split-grid>.ce-dashboard-section.today-tasks-section {
   grid-column: span 2;
 }
 
 @media (max-width: 1366px) {
-  .ce-dashboard-split-grid > .ce-dashboard-section.today-tasks-section {
+  .ce-dashboard-split-grid>.ce-dashboard-section.today-tasks-section {
     grid-column: span 1;
   }
 }

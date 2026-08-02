@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   FolderKanban, ClipboardList, LayoutDashboard, Search, Filter, ArrowUpDown,
   Plus, Check, X, Calendar, AlertCircle, Play, ShieldAlert, Award, Loader2,
@@ -22,9 +23,35 @@ import "./TaskPlanner.css";
 export default function TaskPlanner({ roomId: editorRoomId }) {
   const { user } = useAuth();
   const userId = user?.id || user?._id;
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const queryParams = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const queryTaskId = queryParams.get("taskId");
+  const queryRoomId = queryParams.get("roomId");
+  const queryPlannerTab = queryParams.get("plannerTab");
 
   // Tab management: "personal_dashboard" | "personal_tasks" | "room_dashboard" | "room_board"
-  const [activeTab, setActiveTab] = useState(editorRoomId ? "room_board" : "personal_dashboard");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (editorRoomId) return "room_board";
+    if (queryRoomId) return "room_board";
+    if (queryPlannerTab) return queryPlannerTab;
+    if (queryTaskId) return "personal_tasks";
+    return "personal_dashboard";
+  });
+
+  const handleTabChange = useCallback((newTab) => {
+    setActiveTab(newTab);
+    const params = new URLSearchParams(location.search);
+    if (params.has("taskId") || params.has("roomId") || params.has("type") || params.has("plannerTab")) {
+      params.delete("taskId");
+      params.delete("roomId");
+      params.delete("type");
+      params.delete("plannerTab");
+      const newSearch = params.toString();
+      navigate(newSearch ? `${location.pathname}?${newSearch}` : location.pathname, { replace: true });
+    }
+  }, [location.search, location.pathname, navigate]);
   
   // Tasks state
   const [tasks, setTasks] = useState([]);
@@ -33,7 +60,11 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [myRooms, setMyRooms] = useState([]);
-  const [selectedRoomId, setSelectedRoomId] = useState(editorRoomId || "");
+  const [selectedRoomId, setSelectedRoomId] = useState(() => {
+    if (editorRoomId) return editorRoomId;
+    if (queryRoomId) return queryRoomId;
+    return "";
+  });
   const [roomDetails, setRoomDetails] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState("MEMBER");
   const [showRoomDropdown, setShowRoomDropdown] = useState(false);
@@ -85,14 +116,58 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
         .then((res) => {
           if (res?.success && res.rooms) {
             setMyRooms(res.rooms);
-            if (res.rooms.length > 0) {
+            if (res.rooms.length > 0 && !queryRoomId) {
               setSelectedRoomId(res.rooms[0].roomId);
             }
           }
         })
         .catch(console.error);
     }
-  }, [editorRoomId]);
+  }, [editorRoomId, queryRoomId]);
+
+  // Auto-open task if queryTaskId is present in URL
+  useEffect(() => {
+    if (!queryTaskId) return;
+
+    // A. Check in tasks state
+    if (tasks && tasks.length > 0) {
+      const task = tasks.find((t) => t._id === queryTaskId);
+      if (task) {
+        setSelectedTask(task);
+        return;
+      }
+    }
+
+    // B. Check in personalStats
+    if (personalStats) {
+      const allPersonal = [
+        ...(personalStats.todayTasks || []),
+        ...(personalStats.upcomingTasks || []),
+        ...(personalStats.overdueTasks || []),
+        ...(personalStats.recentlyCompleted || [])
+      ];
+      const task = allPersonal.find((t) => t._id === queryTaskId);
+      if (task) {
+        setSelectedTask(task);
+        return;
+      }
+    }
+
+    // C. Check in roomStats
+    if (roomStats) {
+      const allRoom = [
+        ...(roomStats.todayTasks || []),
+        ...(roomStats.upcomingTasks || []),
+        ...(roomStats.overdueTasks || []),
+        ...(roomStats.recentlyCompleted || [])
+      ];
+      const task = allRoom.find((t) => t._id === queryTaskId);
+      if (task) {
+        setSelectedTask(task);
+        return;
+      }
+    }
+  }, [queryTaskId, tasks, personalStats, roomStats]);
 
   // 2. Fetch data depending on active tab
   const fetchData = useCallback(async (silent = false) => {
@@ -538,28 +613,28 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
             <div className="planner-tabs">
               <button
                 className={`planner-tab-btn ${activeTab === "personal_dashboard" ? "active" : ""}`}
-                onClick={() => setActiveTab("personal_dashboard")}
+                onClick={() => handleTabChange("personal_dashboard")}
               >
                 <LayoutDashboard size={14} />
                 <span>Personal Dashboard</span>
               </button>
               <button
                 className={`planner-tab-btn ${activeTab === "personal_tasks" ? "active" : ""}`}
-                onClick={() => setActiveTab("personal_tasks")}
+                onClick={() => handleTabChange("personal_tasks")}
               >
                 <ClipboardList size={14} />
                 <span>Personal Agenda</span>
               </button>
               <button
                 className={`planner-tab-btn ${activeTab === "room_dashboard" ? "active" : ""}`}
-                onClick={() => setActiveTab("room_dashboard")}
+                onClick={() => handleTabChange("room_dashboard")}
               >
                 <LayoutDashboard size={14} />
                 <span>Room Metrics</span>
               </button>
               <button
                 className={`planner-tab-btn ${activeTab === "room_board" ? "active" : ""}`}
-                onClick={() => setActiveTab("room_board")}
+                onClick={() => handleTabChange("room_board")}
               >
                 <FolderKanban size={14} />
                 <span>Room Board</span>
@@ -631,7 +706,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
                   <PersonalDashboard
                     stats={personalStats}
                     onSelectTask={setSelectedTask}
-                    activeTabChange={setActiveTab}
+                    activeTabChange={handleTabChange}
                   />
                 )}
               </div>
@@ -764,7 +839,16 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
           currentUser={user}
           roomParticipants={selectedTaskRoomParticipants}
           userRole={selectedTaskUserRole}
-          onClose={() => setSelectedTask(null)}
+          onClose={() => {
+            setSelectedTask(null);
+            const params = new URLSearchParams(location.search);
+            params.delete("taskId");
+            params.delete("roomId");
+            params.delete("type");
+            params.delete("plannerTab");
+            const newSearch = params.toString();
+            navigate(newSearch ? `${location.pathname}?${newSearch}` : location.pathname, { replace: true });
+          }}
           onUpdateTask={handleUpdateTaskDetails}
           presenceList={presenceList}
           onRefresh={() => fetchData(true)}

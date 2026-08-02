@@ -222,7 +222,7 @@
   overflow-x: auto;
   padding-bottom: 16px;
   align-items: stretch;
-  height: 100%;
+  height: calc(100% - 56px);
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
@@ -1231,6 +1231,8 @@
   --tp-room-tag-bg: rgba(139, 92, 246, 0.08);
   --tp-accent-bg-tag: rgba(79, 70, 229, 0.08);
 }
+
+
 
 .light .planner-title-group h1 {
   background: none;

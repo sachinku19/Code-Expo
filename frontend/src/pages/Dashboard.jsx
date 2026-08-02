@@ -998,16 +998,17 @@ const getBadgeStyle = (title) => {
   };
 };
 
-const renderDashboardTaskItem = (task, isCompleted = false) => {
+const renderDashboardTaskItem = (task, isCompleted = false, onClick = null) => {
   const isRoom = task.type === "room";
-  const badgeColor = isRoom ? "#10b981" : "var(--ce-primary)";
-  const bg = isRoom ? "rgba(16, 185, 129, 0.04)" : "rgba(168, 85, 247, 0.04)";
+  const badgeColor = isRoom ? "#10b981" : "#eab308";
+  const bg = isRoom ? "rgba(16, 185, 129, 0.04)" : "rgba(234, 179, 8, 0.04)";
   const dateStr = task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "No due date";
   
   return (
     <div 
       key={task._id} 
-      className="recent-joined-card"
+      className={`recent-joined-card ${onClick ? "task-card-clickable" : ""}`}
+      onClick={() => onClick && onClick(task)}
       style={{
         background: bg,
         padding: "12px 14px",
@@ -1018,7 +1019,7 @@ const renderDashboardTaskItem = (task, isCompleted = false) => {
         alignItems: "center",
         textAlign: "left",
         transition: "transform 0.2s, box-shadow 0.2s",
-        cursor: "default"
+        cursor: onClick ? "pointer" : "default"
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "3px", textAlign: "left" }}>
@@ -1043,7 +1044,7 @@ const renderDashboardTaskItem = (task, isCompleted = false) => {
           fontWeight: "700", 
           padding: "2px 6px", 
           borderRadius: "4px", 
-          background: isRoom ? "rgba(16, 185, 129, 0.12)" : "rgba(168, 85, 247, 0.12)", 
+          background: isRoom ? "rgba(16, 185, 129, 0.12)" : "rgba(234, 179, 8, 0.12)", 
           color: badgeColor 
         }}
       >
@@ -1275,6 +1276,19 @@ const renderSubscriptionBadge = (profileUser) => {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const handleTaskClick = useCallback((task) => {
+    const path = "/dashboard/planner";
+    const params = new URLSearchParams();
+    params.set("taskId", task._id);
+    if (task.roomId) {
+      params.set("roomId", task.roomId);
+      params.set("plannerTab", "room_board");
+    } else {
+      params.set("type", "personal");
+      params.set("plannerTab", "personal_tasks");
+    }
+    navigate(`${path}?${params.toString()}`);
+  }, [navigate]);
   const location = useLocation();
   const { user, setUser } = useAuth();
   const { triggerGateTransition } = useGateTransition();
@@ -4868,26 +4882,8 @@ function Dashboard() {
                             className="quick-action-card create-room-card"
                             onClick={() => setShowQuickCreateModal(true)}
                           >
-                            <svg className="card-pattern" viewBox="0 0 100 100" preserveAspectRatio="none">
-                              <path d="M0 20 H100 M0 40 H100 M0 60 H100 M0 80 H100 M20 0 V100 M40 0 V100 M60 0 V100 M80 0 V100" fill="none" stroke="rgba(168, 85, 247, 0.05)" strokeWidth="0.5" />
-                              <line x1="15" y1="20" x2="45" y2="35" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
-                              <line x1="45" y1="35" x2="30" y2="75" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
-                              <line x1="45" y1="35" x2="80" y2="25" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
-                              <line x1="80" y1="25" x2="70" y2="65" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
-                              <line x1="70" y1="65" x2="30" y2="75" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
-                              <line x1="70" y1="65" x2="90" y2="85" stroke="rgba(168, 85, 247, 0.12)" strokeWidth="0.75" />
-                              <circle cx="15" cy="20" r="1.5" fill="rgba(168, 85, 247, 0.5)" />
-                              <circle cx="45" cy="35" r="2.5" fill="rgba(168, 85, 247, 0.7)" />
-                              <circle cx="45" cy="35" r="5" fill="none" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="0.5" />
-                              <circle cx="30" cy="75" r="2" fill="rgba(168, 85, 247, 0.6)" />
-                              <circle cx="80" cy="25" r="2" fill="rgba(168, 85, 247, 0.6)" />
-                              <circle cx="80" cy="25" r="4" fill="none" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="0.5" />
-                              <circle cx="70" cy="65" r="3" fill="rgba(168, 85, 247, 0.7)" />
-                              <circle cx="70" cy="65" r="6" fill="none" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="0.5" />
-                              <circle cx="90" cy="85" r="1.5" fill="rgba(168, 85, 247, 0.5)" />
-                            </svg>
                             <div className="quick-action-icon-wrapper purple-bg">
-                              <Plus size={20} className="quick-action-icon" />
+                              <Plus size={18} className="quick-action-icon" />
                             </div>
                             <div className="quick-action-details">
                               <h4 className="quick-action-title">Create Room</h4>
@@ -4902,26 +4898,8 @@ function Dashboard() {
                             className="quick-action-card join-room-card"
                             onClick={() => setShowQuickJoinModal(true)}
                           >
-                            <svg className="card-pattern" viewBox="0 0 100 100" preserveAspectRatio="none">
-                              <path d="M0 20 H100 M0 40 H100 M0 60 H100 M0 80 H100 M20 0 V100 M40 0 V100 M60 0 V100 M80 0 V100" fill="none" stroke="rgba(59, 130, 246, 0.05)" strokeWidth="0.5" />
-                              <line x1="15" y1="20" x2="45" y2="35" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
-                              <line x1="45" y1="35" x2="30" y2="75" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
-                              <line x1="45" y1="35" x2="80" y2="25" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
-                              <line x1="80" y1="25" x2="70" y2="65" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
-                              <line x1="70" y1="65" x2="30" y2="75" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
-                              <line x1="70" y1="65" x2="90" y2="85" stroke="rgba(59, 130, 246, 0.12)" strokeWidth="0.75" />
-                              <circle cx="15" cy="20" r="1.5" fill="rgba(59, 130, 246, 0.5)" />
-                              <circle cx="45" cy="35" r="2.5" fill="rgba(59, 130, 246, 0.7)" />
-                              <circle cx="45" cy="35" r="5" fill="none" stroke="rgba(59, 130, 246, 0.25)" strokeWidth="0.5" />
-                              <circle cx="30" cy="75" r="2" fill="rgba(59, 130, 246, 0.6)" />
-                              <circle cx="80" cy="25" r="2" fill="rgba(59, 130, 246, 0.6)" />
-                              <circle cx="80" cy="25" r="4" fill="none" stroke="rgba(59, 130, 246, 0.25)" strokeWidth="0.5" />
-                              <circle cx="70" cy="65" r="3" fill="rgba(59, 130, 246, 0.7)" />
-                              <circle cx="70" cy="65" r="6" fill="none" stroke="rgba(59, 130, 246, 0.25)" strokeWidth="0.5" />
-                              <circle cx="90" cy="85" r="1.5" fill="rgba(59, 130, 246, 0.5)" />
-                            </svg>
                             <div className="quick-action-icon-wrapper blue-bg">
-                              <LogIn size={20} className="quick-action-icon" />
+                              <LogIn size={18} className="quick-action-icon" />
                             </div>
                             <div className="quick-action-details">
                               <h4 className="quick-action-title">Join Room</h4>
@@ -5278,7 +5256,11 @@ function Dashboard() {
 
                         {/* COLUMN 1, ROW 2: PENDING TASKS */}
                         <section className="ce-dashboard-section pending-tasks-section" style={{ marginBottom: 0 }}>
-                          <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                          <div 
+                            className="section-header clickable-header" 
+                            onClick={() => navigate("/dashboard/planner?plannerTab=personal_tasks")}
+                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}
+                          >
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <FolderGit size={16} style={{ color: "#ef4444", display: "inline-flex", alignItems: "center" }} />
                               <h3 className="section-title" style={{ margin: 0, padding: 0, display: "inline-flex", alignItems: "center", lineHeight: "1" }}>Pending & Overdue</h3>
@@ -5304,7 +5286,7 @@ function Dashboard() {
                                 <p style={{ fontSize: "0.76rem", color: "var(--ce-text-muted)" }}>No pending or overdue tasks! 🎉</p>
                               </div>
                             ) : (
-                              plannerTasks.overdueTasks.map(task => renderDashboardTaskItem(task, false))
+                              plannerTasks.overdueTasks.map(task => renderDashboardTaskItem(task, false, handleTaskClick))
                             )}
                           </div>
                           <button
@@ -5324,7 +5306,11 @@ function Dashboard() {
 
                         {/* COLUMN 2, ROW 2: TODAY & FUTURE TASKS */}
                         <section className="ce-dashboard-section today-tasks-section" style={{ marginBottom: 0 }}>
-                          <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                          <div 
+                            className="section-header clickable-header" 
+                            onClick={() => navigate("/dashboard/planner?plannerTab=personal_tasks")}
+                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}
+                          >
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <Calendar size={16} style={{ color: "var(--ce-primary)", display: "inline-flex", alignItems: "center" }} />
                               <h3 className="section-title" style={{ margin: 0, padding: 0, display: "inline-flex", alignItems: "center", lineHeight: "1" }}>Assigned Today & Future</h3>
@@ -5351,7 +5337,7 @@ function Dashboard() {
                                 <p style={{ fontSize: "0.76rem", color: "var(--ce-text-muted)" }}>No tasks assigned for today or future.</p>
                               </div>
                             ) : (
-                              [...(plannerTasks.todayTasks || []), ...(plannerTasks.upcomingTasks || [])].map(task => renderDashboardTaskItem(task, false))
+                              [...(plannerTasks.todayTasks || []), ...(plannerTasks.upcomingTasks || [])].map(task => renderDashboardTaskItem(task, false, handleTaskClick))
                             )}
                           </div>
                           <button
