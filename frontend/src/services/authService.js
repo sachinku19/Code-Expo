@@ -13,8 +13,9 @@ const setupInterceptors = (instance) => {
         const url = error.config?.url || "";
         const isAuthSubmit = url.includes("/auth/login") || url.includes("/auth/register") || url.includes("/auth/forgot-password");
 
-        // Do not auto-logout if the 401 was a failed password/credential check during login submit
-        if (!isAuthSubmit) {
+        // Do not auto-logout if the 401 was a failed password/credential check during login submit or if we are already logging out
+        if (!isAuthSubmit && !window.isLoggingOut) {
+          window.isLoggingOut = true; // Set flag to block subsequent redirects
           localStorage.removeItem("token");
           localStorage.removeItem("user");
           localStorage.setItem("session_expired", "true");

@@ -1791,6 +1791,7 @@ function Editor() {
     );
     if (!confirm) return;
 
+    window.isLoggingOut = true;
     window.showLoader("Logging you out securely...");
     logoutUser().catch(err => console.error("Logout error:", err));
 
