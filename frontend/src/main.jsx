@@ -35,10 +35,28 @@ axios.create = function (...args) {
   return instance;
 };
 
+// Debounce auto-reloads to prevent infinite reload loops (e.g. during real offline/disconnect or server down states)
+const reloadWithDebounce = (reason) => {
+  try {
+    const lastReload = sessionStorage.getItem("ce_last_preload_reload");
+    const now = Date.now();
+    // Only reload if the last automatic reload was more than 10 seconds ago
+    if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+      sessionStorage.setItem("ce_last_preload_reload", String(now));
+      console.warn(`${reason}. Reloading page to fetch latest assets...`);
+      window.location.reload();
+    } else {
+      console.error(`${reason}. Skipped automatic reload to prevent infinite loop.`);
+    }
+  } catch (e) {
+    // Fallback if sessionStorage is disabled/blocked in the user's browser
+    window.location.reload();
+  }
+};
+
 // Auto-reload browser when Vercel deploys new build hashes to prevent stale chunk 404/MIME errors
 window.addEventListener('vite:preloadError', (event) => {
-  console.warn('New app deployment detected. Reloading page to fetch latest assets...', event);
-  window.location.reload();
+  reloadWithDebounce("vite:preloadError detected");
 });
 
 window.addEventListener('error', (event) => {
@@ -48,8 +66,7 @@ window.addEventListener('error', (event) => {
      event.message.includes('Importing a module script failed') ||
      event.message.includes('Expected a JavaScript-or-Wasm module script'))
   ) {
-    console.warn('Module load error detected, auto-reloading page...', event.message);
-    window.location.reload();
+    reloadWithDebounce(`Module load error: ${event.message}`);
   }
 });
 
