@@ -1,0 +1,999 @@
+.ce-live-preview-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--ce-bg-page, #090b10);
+  overflow: hidden;
+  position: relative;
+  border-left: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  container-type: inline-size;
+  container-name: livepreview;
+}
+
+.ce-live-preview-container.fullscreen-active {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: #080a0f;
+}
+
+/* 1. Chrome DevTools Style Top Toolbar */
+.preview-toolbar {
+  height: 38px;
+  min-height: 38px;
+  background: var(--ce-bg-code-header, #0d0f17);
+  border-bottom: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  user-select: none;
+  gap: 8px;
+}
+
+.preview-toolbar-left,
+.preview-toolbar-center,
+.preview-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Generic Compact Preview Buttons */
+.preview-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  color: var(--ce-text, #cbd5e1);
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  height: 24px;
+}
+
+.preview-btn.icon-btn {
+  padding: 3px 6px;
+}
+
+.preview-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--ce-border-active, #818cf8);
+}
+
+.preview-btn.run-btn {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  font-weight: 600;
+}
+
+.preview-btn.run-btn:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: #10b981;
+}
+
+.preview-btn.open-browser-btn {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+  font-weight: 500;
+}
+
+.preview-btn.open-browser-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+}
+
+.preview-btn.console-btn.active {
+  background: rgba(129, 140, 248, 0.15);
+  border-color: #818cf8;
+  color: #818cf8;
+}
+
+.console-error-badge {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 10px;
+  line-height: 1.2;
+}
+
+/* URL Pill Box */
+.preview-url-pill {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  padding: 0 8px;
+  height: 24px;
+  gap: 5px;
+  max-width: 200px;
+}
+
+.url-lock-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.url-html-select {
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-family: var(--ce-font-mono, monospace);
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+  text-overflow: ellipsis;
+}
+
+.url-html-select option {
+  background: #14161f;
+  color: #e2e8f0;
+}
+
+/* Chrome DevTools Dimension Inputs Bar */
+.devtools-dimensions-bar {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 6px;
+  gap: 4px;
+  height: 26px;
+}
+
+.devtools-dim-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #38bdf8;
+  font-family: var(--ce-font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  width: 52px;
+  text-align: center;
+  padding: 2px 0;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.devtools-dim-input:focus {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+/* Hide number input spinners */
+.devtools-dim-input::-webkit-inner-spin-button,
+.devtools-dim-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.dim-separator {
+  color: #64748b;
+  font-size: 0.72rem;
+  user-select: none;
+}
+
+.dim-unit {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-family: var(--ce-font-mono, monospace);
+  margin-right: 4px;
+}
+
+.devtools-btn-icon {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 3px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.devtools-btn-icon:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.devtools-btn-reset {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.devtools-btn-reset:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.devtools-btn-reset.is-full {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+/* 3-Dots Options Dropdown Popover */
+.preview-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999;
+  background: transparent;
+}
+
+.preview-options-dropdown {
+  position: absolute;
+  top: 32px;
+  right: 0;
+  z-index: 1000;
+  min-width: 185px;
+  background: #12141d;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: dropdownFadeIn 0.15s ease;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.preview-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.preview-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.preview-dropdown-item.auto-toggle-item {
+  cursor: pointer;
+}
+
+.preview-dropdown-item.auto-toggle-item input {
+  cursor: pointer;
+  accent-color: #818cf8;
+}
+
+
+/* 2. Main Stage Area & Viewport Canvas */
+.preview-frame-wrapper {
+  flex: 1;
+  background: #11131a;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+}
+
+.preview-frame-stage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Chrome DevTools Styled Viewport Container */
+.devtools-viewport-container.is-full-width {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  position: relative;
+}
+
+.devtools-viewport-container.is-custom-size {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  margin: auto;
+}
+
+.devtools-viewport-container.is-resizing {
+  border-color: #38bdf8;
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
+}
+
+.preview-iframe-element {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #ffffff;
+  display: block;
+}
+
+
+/* 3. Chrome DevTools Drag Handles */
+.devtools-handle {
+  position: absolute;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+/* Left & Right Vertical Drag Handles */
+.devtools-handle.handle-left {
+  top: 0;
+  left: -12px;
+  width: 14px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.devtools-handle.handle-right {
+  top: 0;
+  right: -12px;
+  width: 14px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.handle-pill-vertical {
+  width: 6px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.devtools-handle.handle-left:hover .handle-pill-vertical,
+.devtools-handle.handle-right:hover .handle-pill-vertical,
+.devtools-viewport-container.is-resizing .handle-pill-vertical {
+  background: #38bdf8;
+  height: 64px;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+}
+
+/* Bottom Horizontal Drag Handle */
+.devtools-handle.handle-bottom {
+  bottom: -12px;
+  left: 0;
+  width: 100%;
+  height: 14px;
+  cursor: ns-resize;
+}
+
+.handle-pill-horizontal {
+  width: 48px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.devtools-handle.handle-bottom:hover .handle-pill-horizontal,
+.devtools-viewport-container.is-resizing .handle-pill-horizontal {
+  background: #38bdf8;
+  width: 64px;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+}
+
+/* Corner Handles */
+.devtools-handle.handle-bottom-right {
+  bottom: -10px;
+  right: -10px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+
+.devtools-handle.handle-bottom-left {
+  bottom: -10px;
+  left: -10px;
+  width: 16px;
+  height: 16px;
+  cursor: nesw-resize;
+}
+
+.corner-grip-icon {
+  width: 9px;
+  height: 9px;
+  border-right: 2.5px solid rgba(255, 255, 255, 0.4);
+  border-bottom: 2.5px solid rgba(255, 255, 255, 0.4);
+  transition: border-color 0.15s ease;
+}
+
+.devtools-handle.handle-bottom-right:hover .corner-grip-icon,
+.devtools-handle.handle-bottom-left:hover .corner-grip-icon,
+.devtools-viewport-container.is-resizing .corner-grip-icon {
+  border-color: #38bdf8;
+}
+
+
+/* Error Boundary Panel */
+.preview-error-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+  background: #1c1917;
+  color: #fca5a5;
+  width: 100%;
+  height: 100%;
+}
+
+.preview-error-icon {
+  color: #ef4444;
+  margin-bottom: 12px;
+  animation: pulse 2s infinite;
+}
+
+.preview-error-screen h4 {
+  font-size: 1rem;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #f87171;
+}
+
+.preview-error-screen p {
+  font-size: 0.8rem;
+  max-width: 480px;
+  line-height: 1.4;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  padding: 10px;
+  border-radius: 6px;
+  font-family: var(--ce-font-mono, monospace);
+  white-space: pre-wrap;
+}
+
+/* 4. Collapsible Console Drawer */
+.preview-console-drawer {
+  background: var(--ce-bg-nav, #07070a);
+  border-top: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  display: flex;
+  flex-direction: column;
+  transition: height 0.2s ease;
+}
+
+.preview-console-drawer.collapsed {
+  height: 28px !important;
+}
+
+.preview-console-drawer.open {
+  height: 160px;
+  max-height: 40%;
+}
+
+.console-drawer-header {
+  height: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.console-drawer-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.console-drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ce-text, #cbd5e1);
+}
+
+.console-drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.console-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--ce-text-muted, #8e9aa9);
+  padding: 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.console-action-btn:hover {
+  color: var(--ce-text, #cbd5e1);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.console-drawer-logs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--ce-font-mono, monospace);
+  font-size: 0.7rem;
+  background: #09090d;
+}
+
+.console-empty-message {
+  color: var(--ce-text-muted, #8e9aa9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-style: italic;
+}
+
+.console-log-row {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  line-height: 1.3;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.console-log-row.log { color: #e2e8f0; }
+.console-log-row.warn { color: #fde047; background: rgba(254, 240, 138, 0.05); }
+.console-log-row.error { color: #f87171; background: rgba(248, 113, 113, 0.05); }
+.console-log-row.table { color: #60a5fa; }
+
+.log-type-indicator {
+  font-weight: 700;
+  opacity: 0.6;
+  min-width: 46px;
+}
+
+.log-message-text {
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Container Queries for Live Preview Toolbar Responsiveness */
+@container livepreview (max-width: 640px) {
+  .preview-url-pill {
+    max-width: 120px;
+  }
+  .btn-label {
+    display: none;
+  }
+  .devtools-dim-input {
+    width: 44px;
+  }
+  .dim-unit {
+    display: none;
+  }
+}
+
+@container livepreview (max-width: 520px) {
+  .preview-toolbar {
+    padding: 0 4px;
+    gap: 4px;
+  }
+  .preview-toolbar-left,
+  .preview-toolbar-center,
+  .preview-toolbar-right {
+    gap: 3px;
+  }
+  .preview-url-pill {
+    max-width: 90px;
+  }
+  .devtools-dimensions-bar {
+    padding: 2px 3px;
+    gap: 2px;
+  }
+  .devtools-btn-reset {
+    padding: 2px 4px;
+  }
+}
+
+@container livepreview (max-width: 410px) {
+  .preview-toolbar-center {
+    display: none;
+  }
+  .preview-url-pill {
+    max-width: 140px;
+  }
+}
+
+/* ==========================================
+   LIGHT MODE OVERRIDES FOR LIVE PREVIEW
+   ========================================== */
+.light .ce-live-preview-container,
+body.light .ce-live-preview-container,
+html.light .ce-live-preview-container,
+.ce-live-preview-container.light {
+  background: #f8fafc;
+  border-left-color: #e2e8f0;
+}
+
+.light .ce-live-preview-container.fullscreen-active,
+body.light .ce-live-preview-container.fullscreen-active,
+html.light .ce-live-preview-container.fullscreen-active,
+.ce-live-preview-container.light.fullscreen-active {
+  background: #ffffff;
+}
+
+/* 1. Light Toolbar */
+.light .preview-toolbar,
+body.light .preview-toolbar,
+html.light .preview-toolbar,
+.ce-live-preview-container.light .preview-toolbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Light Mode Buttons */
+.light .preview-btn,
+body.light .preview-btn,
+html.light .preview-btn,
+.ce-live-preview-container.light .preview-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+.light .preview-btn:hover,
+body.light .preview-btn:hover,
+html.light .preview-btn:hover,
+.ce-live-preview-container.light .preview-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.light .preview-btn.run-btn,
+body.light .preview-btn.run-btn,
+html.light .preview-btn.run-btn,
+.ce-live-preview-container.light .preview-btn.run-btn {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #059669;
+  font-weight: 600;
+}
+
+.light .preview-btn.run-btn:hover,
+body.light .preview-btn.run-btn:hover,
+html.light .preview-btn.run-btn:hover,
+.ce-live-preview-container.light .preview-btn.run-btn:hover {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.light .preview-btn.run-btn:hover svg,
+body.light .preview-btn.run-btn:hover svg,
+html.light .preview-btn.run-btn:hover svg,
+.ce-live-preview-container.light .preview-btn.run-btn:hover svg {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* Light Mode URL Pill Box */
+.light .preview-url-pill,
+body.light .preview-url-pill,
+html.light .preview-url-pill,
+.ce-live-preview-container.light .preview-url-pill {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+}
+
+.light .url-lock-icon,
+body.light .url-lock-icon,
+html.light .url-lock-icon,
+.ce-live-preview-container.light .url-lock-icon {
+  color: #059669;
+}
+
+.light .url-html-select,
+body.light .url-html-select,
+html.light .url-html-select,
+.ce-live-preview-container.light .url-html-select {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.light .url-html-select option,
+body.light .url-html-select option,
+html.light .url-html-select option,
+.ce-live-preview-container.light .url-html-select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+/* Light Mode DevTools Dimension Inputs Bar */
+.light .devtools-dimensions-bar,
+body.light .devtools-dimensions-bar,
+html.light .devtools-dimensions-bar,
+.ce-live-preview-container.light .devtools-dimensions-bar {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+}
+
+.light .devtools-dim-input,
+body.light .devtools-dim-input,
+html.light .devtools-dim-input,
+.ce-live-preview-container.light .devtools-dim-input {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.light .devtools-dim-input:focus,
+body.light .devtools-dim-input:focus,
+html.light .devtools-dim-input:focus,
+.ce-live-preview-container.light .devtools-dim-input:focus {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.light .dim-separator,
+body.light .dim-separator,
+html.light .dim-separator,
+.ce-live-preview-container.light .dim-separator,
+.light .dim-unit,
+body.light .dim-unit,
+html.light .dim-unit,
+.ce-live-preview-container.light .dim-unit {
+  color: #475569;
+  font-weight: 600;
+}
+
+.light .devtools-btn-icon,
+body.light .devtools-btn-icon,
+html.light .devtools-btn-icon,
+.ce-live-preview-container.light .devtools-btn-icon {
+  color: #475569;
+}
+
+.light .devtools-btn-icon:hover,
+body.light .devtools-btn-icon:hover,
+html.light .devtools-btn-icon:hover,
+.ce-live-preview-container.light .devtools-btn-icon:hover {
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+.light .devtools-btn-reset,
+body.light .devtools-btn-reset,
+html.light .devtools-btn-reset,
+.ce-live-preview-container.light .devtools-btn-reset {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-weight: 600;
+}
+
+.light .devtools-btn-reset:hover,
+body.light .devtools-btn-reset:hover,
+html.light .devtools-btn-reset:hover,
+.ce-live-preview-container.light .devtools-btn-reset:hover {
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+.light .devtools-btn-reset.is-full,
+body.light .devtools-btn-reset.is-full,
+html.light .devtools-btn-reset.is-full,
+.ce-live-preview-container.light .devtools-btn-reset.is-full {
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+  font-weight: 700;
+}
+
+/* Light Mode 3-Dots Dropdown Menu */
+.light .preview-options-dropdown,
+body.light .preview-options-dropdown,
+html.light .preview-options-dropdown,
+.ce-live-preview-container.light .preview-options-dropdown {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
+.light .preview-dropdown-item,
+body.light .preview-dropdown-item,
+html.light .preview-dropdown-item,
+.ce-live-preview-container.light .preview-dropdown-item {
+  color: #334155;
+}
+
+.light .preview-dropdown-item:hover,
+body.light .preview-dropdown-item:hover,
+html.light .preview-dropdown-item:hover,
+.ce-live-preview-container.light .preview-dropdown-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Light Mode Main Stage & Handles */
+.light .preview-frame-wrapper,
+body.light .preview-frame-wrapper,
+html.light .preview-frame-wrapper,
+.ce-live-preview-container.light .preview-frame-wrapper {
+  background: #f1f5f9;
+}
+
+.light .devtools-viewport-container.is-custom-size,
+body.light .devtools-viewport-container.is-custom-size,
+html.light .devtools-viewport-container.is-custom-size,
+.ce-live-preview-container.light .devtools-viewport-container.is-custom-size {
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.light .handle-pill-vertical,
+body.light .handle-pill-vertical,
+html.light .handle-pill-vertical,
+.ce-live-preview-container.light .handle-pill-vertical,
+.light .handle-pill-horizontal,
+body.light .handle-pill-horizontal,
+html.light .handle-pill-horizontal,
+.ce-live-preview-container.light .handle-pill-horizontal {
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Light Mode Developer Console Drawer */
+.light .preview-console-drawer,
+body.light .preview-console-drawer,
+html.light .preview-console-drawer,
+.ce-live-preview-container.light .preview-console-drawer {
+  background: #ffffff;
+  border-top-color: #e2e8f0;
+}
+
+.light .console-drawer-header,
+body.light .console-drawer-header,
+html.light .console-drawer-header,
+.ce-live-preview-container.light .console-drawer-header {
+  background: #f8fafc;
+}
+
+.light .console-drawer-header:hover,
+body.light .console-drawer-header:hover,
+html.light .console-drawer-header:hover,
+.ce-live-preview-container.light .console-drawer-header:hover {
+  background: #f1f5f9;
+}
+
+.light .console-drawer-title,
+body.light .console-drawer-title,
+html.light .console-drawer-title,
+.ce-live-preview-container.light .console-drawer-title {
+  color: #334155;
+}
+
+.light .console-action-btn,
+body.light .console-action-btn,
+html.light .console-action-btn,
+.ce-live-preview-container.light .console-action-btn {
+  color: #64748b;
+}
+
+.light .console-action-btn:hover,
+body.light .console-action-btn:hover,
+html.light .console-action-btn:hover,
+.ce-live-preview-container.light .console-action-btn:hover {
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+.light .console-drawer-logs,
+body.light .console-drawer-logs,
+html.light .console-drawer-logs,
+.ce-live-preview-container.light .console-drawer-logs {
+  background: #ffffff;
+}
+
+.light .console-log-row,
+body.light .console-log-row,
+html.light .console-log-row,
+.ce-live-preview-container.light .console-log-row {
+  border-bottom-color: #f1f5f9;
+}
+
+.light .console-log-row.log,
+body.light .console-log-row.log,
+html.light .console-log-row.log,
+.ce-live-preview-container.light .console-log-row.log {
+  color: #1e293b;
+}
+
+.light .console-log-row.warn,
+body.light .console-log-row.warn,
+html.light .console-log-row.warn,
+.ce-live-preview-container.light .console-log-row.warn {
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.light .console-log-row.error,
+body.light .console-log-row.error,
+html.light .console-log-row.error,
+.ce-live-preview-container.light .console-log-row.error {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.light .console-empty-message,
+body.light .console-empty-message,
+html.light .console-empty-message,
+.ce-live-preview-container.light .console-empty-message {
+  color: #64748b;
+}
+

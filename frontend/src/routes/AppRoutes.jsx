@@ -21,6 +21,7 @@ const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
 const ResetPassword = lazy(() => import("../pages/ResetPassword"));
 const PublicPostView = lazy(() => import("../pages/PublicPostView"));
 const SetupUsername = lazy(() => import("../pages/SetupUsername"));
+const StandalonePreview = lazy(() => import("../pages/StandalonePreview"));
 
 // Protected routes
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -186,6 +187,7 @@ const AppRoutes = () => {
 
                     {/* Other Protected Pages */}
                     <Route path={ROUTES.EDITOR} element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+                    <Route path={ROUTES.PREVIEW} element={<StandalonePreview />} />
                     <Route path={ROUTES.ADMIN} element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
                     {/* Fallback 404 handler */}

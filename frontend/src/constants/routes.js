@@ -8,6 +8,7 @@ export const ROUTES = {
   POST: "/post/:postId",
   DASHBOARD: "/dashboard",
   EDITOR: "/editor/:roomId",
+  PREVIEW: "/preview/:roomId",
   ADMIN: "/admin",
   RESET_PASSWORD: "/reset-password/:token",
   NOT_FOUND: "/404",

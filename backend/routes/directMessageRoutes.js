@@ -16,7 +16,9 @@ const {
   deleteGroupChat,
   addGroupMember,
   removeGroupMember,
-  updateGroupChat
+  updateGroupChat,
+  promoteGroupAdmin,
+  demoteGroupAdmin
 } = require("../controllers/directMessageControllers");
 
 const router = express.Router();
@@ -82,6 +84,8 @@ router.put("/edit/:messageId", auth_protect, editDirectMessage);
 router.delete("/group/:groupId", auth_protect, deleteGroupChat);
 router.post("/group/:groupId/members/add", auth_protect, addGroupMember);
 router.post("/group/:groupId/members/remove", auth_protect, removeGroupMember);
+router.post("/group/:groupId/admin/promote", auth_protect, promoteGroupAdmin);
+router.post("/group/:groupId/admin/demote", auth_protect, demoteGroupAdmin);
 router.put(
   "/group/:groupId/update",
   auth_protect,

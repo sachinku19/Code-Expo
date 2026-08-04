@@ -32,7 +32,7 @@ const canModifyItem = (room, item, userId) => {
 
   // MEMBER can only edit files they created
   if (participant.role === "MEMBER") {
-    return !item.createdBy || item.createdBy.toString() === userId.toString();
+    return !!item.createdBy && item.createdBy.toString() === userId.toString();
   }
 
   return false;
@@ -174,6 +174,14 @@ exports.createWorkspaceItem = async (req, res) => {
         return res.status(400).json({
           success: false,
           message: "Parent must be a folder"
+        });
+      }
+
+      // Check parent folder write permission (members can only create files inside folders they created)
+      if (!canModifyItem(room, parent, req.user._id)) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to create items inside this folder"
         });
       }
     }
@@ -336,6 +344,14 @@ exports.moveWorkspaceItem = async (req, res) => {
         return res.status(400).json({
           success: false,
           message: "Target parent must be a folder"
+        });
+      }
+
+      // Check target parent folder write permission (members can only move items into folders they created)
+      if (!canModifyItem(room, parent, req.user._id)) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to move items into this folder"
         });
       }
     }
@@ -593,6 +609,34 @@ exports.getRoomHistory = async (req, res) => {
     res.status(200).json({
       success: true,
       history
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// 10. Get All Workspace Files with Content (for Live Preview compilation)
+exports.getWorkspaceContents = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const room = await checkRoomAccess(roomId, req.user._id);
+    if (!room) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to view this workspace"
+      });
+    }
+
+    const items = await WorkspaceItem.find({ roomId, type: "file" })
+      .select("name type parentId content language isEntryPoint")
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      files: items
     });
   } catch (error) {
     res.status(500).json({

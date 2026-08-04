@@ -9,7 +9,7 @@ import {
   Hash, Copy, Check, Share2, UserPlus, Layers, ChevronDown, ChevronRight, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
-  Gem, Sparkles, FolderKanban, NotebookPen
+  Gem, Sparkles, FolderKanban, NotebookPen, PanelRightOpen, PanelRightClose
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -20,6 +20,7 @@ import * as dmService from "../services/directMessageService";
 import { submitWebsiteRating, getWebsiteRatingInfo } from "../services/websiteRatingService";
 import "./MainLayout.css";
 import Logo from "../components/shared/Logo";
+import WorkspaceActionsDropdown from "../components/WorkspaceActionsDropdown";
 
 const SquareCode = (props) => {
   const { className, size = 18, ...rest } = props;
@@ -80,7 +81,16 @@ export default function MainLayout({
   onOpenInvite = null,
   userXP = 0,
   userRank = "Junior Coder",
-  activeCallUsers = []
+  activeCallUsers = [],
+  onTasksClick = null,
+  layoutMode = null,
+  currentUserRole = null,
+  onToggleRightSidebar = null,
+  rightSidebarCollapsed = false,
+  onExitRoom = null,
+  onDeleteRoom = null,
+  isOwner = false,
+  tabs = []
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1256,24 +1266,21 @@ export default function MainLayout({
             <Menu size={18} />
           </button>
 
-          <div className="topnav-brand-container" onClick={() => handleConfirmNavigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginRight: "16px" }}>
-            <Logo size={28} showText={true} />
-          </div>
-
-
+          {(!roomId || roomId === "default") && (
+            <div className="topnav-brand-container" onClick={() => handleConfirmNavigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginRight: "16px" }}>
+              <Logo size={28} showText={true} />
+            </div>
+          )}
 
           {roomId && roomId !== "default" && (
-            <>
-              <div className="ce-nav-divider" />
-              <div className="ce-room-info">
-                <span className="ce-room-title">{roomTitle || "Workspace"}</span>
-                <div className="ce-nav-badge" onClick={copyRoomId} title="Copy Room ID">
-                  <Hash size={12} />
-                  <span>{roomId}</span>
-                  {copiedId ? <Check size={12} className="text-success" style={{ marginLeft: "4px" }} /> : <Copy size={12} style={{ marginLeft: "4px" }} />}
-                </div>
+            <div className="ce-room-info">
+              <span className="ce-room-title">{roomTitle || "Workspace"}</span>
+              <div className="ce-nav-badge" onClick={copyRoomId} title="Copy Room ID">
+                <Hash size={12} />
+                <span>{roomId}</span>
+                {copiedId ? <Check size={12} className="text-success" style={{ marginLeft: "4px" }} /> : <Copy size={12} style={{ marginLeft: "4px" }} />}
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -1285,61 +1292,83 @@ export default function MainLayout({
               <div className="ce-nav-status">
                 <span className={`status-dot ${socketConnected ? "connected" : "disconnected"}`} />
                 <span className="status-label">
-                  {socketConnected ? "Connected" : "Offline"}
+                  {socketConnected ? "Live" : "Offline"}
                 </span>
               </div>
 
-              <div className="ce-nav-avatar-group" style={{ position: "relative" }}>
-                <div className="ce-avatar-stack">
-                  {uniqueUsers.slice(0, 3).map((u) => (
-                    <div
-                      key={u.socketId}
-                      className="ce-stacked-avatar"
-                      style={{ backgroundColor: u.avatar ? "transparent" : getCursorColor(u.username) }}
-                      title={u.username}
-                    >
-                      {u.avatar ? (
-                        <img src={u.avatar} alt={u.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                      ) : (
-                        u.username.charAt(0).toUpperCase()
-                      )}
-                    </div>
-                  ))}
-                  {uniqueUsers.length > 3 && (
-                    <div className="ce-stacked-avatar more-count">
-                      +{uniqueUsers.length - 3}
-                    </div>
-                  )}
-                </div>
-                <button
-                  className="ce-avatar-arrow-btn"
-                  onClick={() => setParticipantsDropdownOpen(!participantsDropdownOpen)}
-                >
-                  <ChevronDown size={14} style={{ transform: participantsDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
-                </button>
+              {(() => {
+                const displayUsers = (uniqueUsers || []).filter(
+                  (u) => u && u.username && u.username !== "User" && u.username !== "Browser Previewer" && !u.isPreview && u.isOnline !== false
+                );
+                const onlineCount = displayUsers.length;
 
-                {participantsDropdownOpen && (
-                  <div className="ce-participants-dropdown">
-                    <div className="dropdown-header">Online Participants</div>
-                    <div className="dropdown-body" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      {uniqueUsers.map((u) => (
-                        <div key={u.socketId} className="dropdown-user-item">
-                          <div className="user-avatar-small" style={{ backgroundColor: u.avatar ? "transparent" : getCursorColor(u.username) }}>
-                            {u.avatar ? (
-                              <img src={u.avatar} alt={u.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                            ) : (
-                              u.username.charAt(0).toUpperCase()
-                            )}
-                          </div>
-                          <span className="user-name" style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "var(--ce-text)" }}>
-                            {u.username} {u.userId === user?.id ? "(you)" : ""}
-                          </span>
+                return (
+                  <div
+                    className="ce-nav-avatar-group"
+                    style={{ position: "relative", cursor: "pointer" }}
+                    onClick={() => setParticipantsDropdownOpen(!participantsDropdownOpen)}
+                    title="Click to view online workspace participants"
+                  >
+                    <div className="ce-avatar-stack">
+                      {displayUsers.slice(0, 3).map((u) => (
+                        <div
+                          key={u.socketId || u.userId || Math.random()}
+                          className="ce-stacked-avatar"
+                          style={{ backgroundColor: u?.avatar ? "transparent" : getCursorColor(u?.username || "User") }}
+                          title={`${u?.username || "User"} (${u.isOnline !== false ? "Online" : "Offline"})`}
+                        >
+                          {u?.avatar ? (
+                            <img src={u.avatar} alt={u.username || "User"} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                          ) : (
+                            (u?.username || "U").charAt(0).toUpperCase()
+                          )}
+                          <span className={`avatar-online-dot ${u.isOnline !== false ? "online" : "offline"}`} />
                         </div>
                       ))}
+                      {displayUsers.length > 3 && (
+                        <div className="ce-stacked-avatar more-count">
+                          +{displayUsers.length - 3}
+                        </div>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      className="ce-avatar-arrow-btn"
+                    >
+                      <ChevronDown size={14} style={{ transform: participantsDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+                    </button>
+
+                    {participantsDropdownOpen && (
+                      <div className="ce-participants-dropdown" onClick={(e) => e.stopPropagation()}>
+                        <div className="dropdown-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span>Participants</span>
+                          <span className="online-count-badge">{onlineCount} Online</span>
+                        </div>
+                        <div className="dropdown-body" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          {displayUsers.map((u) => (
+                            <div key={u.socketId || u.userId || Math.random()} className="dropdown-user-item">
+                              <div className="user-avatar-small" style={{ backgroundColor: u?.avatar ? "transparent" : getCursorColor(u?.username || "User"), position: "relative" }}>
+                                {u?.avatar ? (
+                                  <img src={u.avatar} alt={u.username || "User"} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                ) : (
+                                  (u?.username || "U").charAt(0).toUpperCase()
+                                )}
+                                <span className={`avatar-online-dot ${u.isOnline !== false ? "online" : "offline"}`} />
+                              </div>
+                              <span className="user-name" style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "var(--ce-text)" }}>
+                                {u?.username || "User"} {String(u?.userId) === String(user?.id || user?._id) ? "(you)" : ""}
+                              </span>
+                              <span className={`user-online-label ${u.isOnline !== false ? "online" : "offline"}`}>
+                                {u.isOnline !== false ? "Online" : "Offline"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
 
               {onJoinCall && (
                 inCall ? (
@@ -1365,7 +1394,7 @@ export default function MainLayout({
                       border: "none",
                       fontWeight: 700,
                       padding: "6px 14px",
-                      borderRadius: "20px",
+                      borderRadius: "8px",
                       display: "flex",
                       alignItems: "center",
                       gap: "6px",
@@ -1383,6 +1412,7 @@ export default function MainLayout({
               )}
 
               <button
+                type="button"
                 className="ce-nav-action-btn invite-btn"
                 onClick={onOpenInvite || copyRoomId}
                 title="Invite Followers to Workspace"
@@ -1392,7 +1422,7 @@ export default function MainLayout({
                   border: "none",
                   fontWeight: 700,
                   padding: "6px 14px",
-                  borderRadius: "20px",
+                  borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
@@ -1402,6 +1432,44 @@ export default function MainLayout({
                 <UserPlus size={14} color="#ffffff" />
                 <span style={{ color: "#ffffff", fontWeight: 700 }}>Invite</span>
               </button>
+
+              {/* WORKSPACE ACTIONS DROPDOWN (IMMEDIATELY TO THE RIGHT OF INVITE BUTTON) */}
+              <WorkspaceActionsDropdown
+                roomId={roomId}
+                isOwner={isOwner}
+                currentUserRole={currentUserRole}
+                onCopyId={copyRoomId}
+                onExitRoom={onExitRoom}
+                onDeleteRoom={onDeleteRoom}
+                tabs={tabs}
+              />
+
+              {onToggleRightSidebar && (
+                <button
+                  type="button"
+                  className={`ce-nav-action-btn sidebar-toggle-nav-btn ${rightSidebarCollapsed ? "collapsed" : ""}`}
+                  onClick={onToggleRightSidebar}
+                  title={rightSidebarCollapsed ? "Show Chat & Participants Panel" : "Hide Chat & Participants Panel"}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    padding: 0,
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: rightSidebarCollapsed
+                      ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
+                      : "rgba(255, 255, 255, 0.08)",
+                    color: "#ffffff",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    flexShrink: 0,
+                    cursor: "pointer"
+                  }}
+                >
+                  {rightSidebarCollapsed ? <PanelRightOpen size={16} color="#ffffff" /> : <PanelRightClose size={16} color="#ffffff" />}
+                </button>
+              )}
 
               {joinRequests.length > 0 && (
                 <div className="topnav-btn warning-glow" title="Join Requests Pending" style={{ color: "var(--ce-danger)" }}>

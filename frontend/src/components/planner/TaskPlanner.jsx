@@ -306,7 +306,6 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
       plannerSocket.off("task-updated");
       plannerSocket.off("task-deleted");
       plannerSocket.emit("leave-room");
-      plannerSocket.disconnect();
     };
   }, [activeTab, selectedRoomId, editorRoomId, userId, user?.username, fetchData]);
 

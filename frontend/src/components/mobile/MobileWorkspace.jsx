@@ -63,7 +63,7 @@ export default function MobileWorkspace() {
 
           <div className="ide-status-badge">
             <span className="dot-online" />
-            <span>Connected</span>
+            <span>Live</span>
           </div>
         </div>
 

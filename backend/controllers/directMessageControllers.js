@@ -109,6 +109,7 @@ exports.getConversations = async (req, res) => {
     const myGroups = await GroupChat.find({ members: myId })
       .populate("members", "username avatar bio isOnline")
       .populate("createdBy", "username avatar")
+      .populate("admins", "username avatar")
       .lean();
 
     const groupIds = myGroups.map(g => g._id);
@@ -156,7 +157,8 @@ exports.getConversations = async (req, res) => {
         bio: group.bio,
         members: group.members,
         isGroup: true,
-        createdBy: group.createdBy
+        createdBy: group.createdBy,
+        admins: group.admins || []
       },
       lastMessage: groupLastMsgMap[String(group._id)] || null,
       unreadCount: 0
@@ -717,6 +719,7 @@ exports.createGroupChat = async (req, res) => {
       avatarMetadata: uploadedMedia,
       members: memberIds,
       createdBy: myId,
+      admins: [myId],
       isGroup: true
     });
 
@@ -727,7 +730,8 @@ exports.createGroupChat = async (req, res) => {
 
     const populatedGroup = await GroupChat.findById(newGroup._id)
       .populate("members", "username avatar bio")
-      .populate("createdBy", "username avatar");
+      .populate("createdBy", "username avatar")
+      .populate("admins", "username avatar");
 
     // Emit group:created to all group members via socket
     const io = req.app.get("io");
@@ -854,9 +858,10 @@ exports.addGroupMember = async (req, res) => {
       return res.status(404).json({ success: false, message: "Group not found" });
     }
 
-    // Only creator (admin) can add members
-    if (group.createdBy.toString() !== myId.toString()) {
-      return res.status(403).json({ success: false, message: "Only the group creator/admin can add members" });
+    // Only admins can add members
+    const isAdmin = (group.admins || []).map(id => id.toString()).includes(myId.toString()) || group.createdBy.toString() === myId.toString();
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, message: "Only group admins can add members" });
     }
 
     // Check if user is already a member
@@ -868,13 +873,31 @@ exports.addGroupMember = async (req, res) => {
     group.members.push(userId);
     await group.save();
 
+    // Create system message
+    const adminUser = await User.findById(myId).select("username").lean();
+    const targetUser = await User.findById(userId).select("username").lean();
+    const systemMsgText = `@${adminUser?.username || "Admin"} added @${targetUser?.username || "someone"}`;
+
+    const systemMsg = await DirectMessage.create({
+      sender: myId,
+      groupChat: groupId,
+      message: systemMsgText,
+      isSystem: true
+    });
+
+    const populatedMsg = await DirectMessage.findById(systemMsg._id)
+      .populate("sender", "username avatar");
+
     // Populate updated group details
     const populatedGroup = await GroupChat.findById(groupId)
       .populate("members", "username avatar bio isOnline")
-      .populate("createdBy", "username avatar");
+      .populate("createdBy", "username avatar")
+      .populate("admins", "username avatar");
 
     const io = req.app.get("io");
     if (io) {
+      // Broadcast system message
+      io.to(String(groupId)).emit("dm:receive", populatedMsg);
       // Broadcast to existing group members that a user joined
       io.to(String(groupId)).emit("group:member-added", { groupId, member: { _id: userId }, group: populatedGroup });
       // Tell the specific user they were added to the group
@@ -899,19 +922,24 @@ exports.removeGroupMember = async (req, res) => {
       return res.status(404).json({ success: false, message: "Group not found" });
     }
 
-    const isCreator = group.createdBy.toString() === myId.toString();
+    const isAdmin = (group.admins || []).map(id => id.toString()).includes(myId.toString()) || group.createdBy.toString() === myId.toString();
     const isRemovingSelf = userId.toString() === myId.toString();
 
-    // Requesters can only remove others if they are the admin (creator).
+    // Requesters can only remove others if they are the admin.
     // Or users can remove themselves (leave).
-    if (!isCreator && !isRemovingSelf) {
-      return res.status(403).json({ success: false, message: "Only the admin can remove members, or you can leave by removing yourself" });
+    if (!isAdmin && !isRemovingSelf) {
+      return res.status(403).json({ success: false, message: "Only group admins can remove members, or you can leave by removing yourself" });
     }
 
     // Pull from members list
     group.members = group.members.filter(id => id.toString() !== userId.toString());
 
-    // If no members are left, or if creator leaves and group is empty, delete the group
+    // Pull from admins list if present
+    if (group.admins) {
+      group.admins = group.admins.filter(id => id.toString() !== userId.toString());
+    }
+
+    // If no members are left, delete the group
     if (group.members.length === 0) {
       // Clean up avatar
       if (group.avatarMetadata) await MediaService.deleteMedia(group.avatarMetadata).catch(console.error);
@@ -929,16 +957,48 @@ exports.removeGroupMember = async (req, res) => {
     // If the creator leaves, re-assign creator to the next member
     if (group.createdBy.toString() === userId.toString()) {
       group.createdBy = group.members[0];
+      // Also ensure new creator is an admin
+      if (group.admins && !group.admins.map(id => id.toString()).includes(group.createdBy.toString())) {
+        group.admins.push(group.createdBy);
+      }
     }
+
+    // If no admins are left, set the new owner (or first member) as admin
+    if (!group.admins || group.admins.length === 0) {
+      group.admins = [group.createdBy];
+    }
+
+    // Create system message
+    const adminUser = await User.findById(myId).select("username").lean();
+    const targetUser = await User.findById(userId).select("username").lean();
+    let systemMsgText = "";
+    if (isRemovingSelf) {
+      systemMsgText = `@${targetUser?.username || "someone"} left the group`;
+    } else {
+      systemMsgText = `@${adminUser?.username || "Admin"} removed @${targetUser?.username || "someone"}`;
+    }
+
+    const systemMsg = await DirectMessage.create({
+      sender: myId,
+      groupChat: groupId,
+      message: systemMsgText,
+      isSystem: true
+    });
+
+    const populatedMsg = await DirectMessage.findById(systemMsg._id)
+      .populate("sender", "username avatar");
 
     await group.save();
 
     const populatedGroup = await GroupChat.findById(groupId)
       .populate("members", "username avatar bio isOnline")
-      .populate("createdBy", "username avatar");
+      .populate("createdBy", "username avatar")
+      .populate("admins", "username avatar");
 
     const io = req.app.get("io");
     if (io) {
+      // Broadcast system message
+      io.to(String(groupId)).emit("dm:receive", populatedMsg);
       // Notify group members that a user was removed
       io.to(String(groupId)).emit("group:member-removed", { groupId, userId, group: populatedGroup });
       // Notify the removed user specifically that they were kicked/removed
@@ -966,11 +1026,12 @@ exports.updateGroupChat = async (req, res) => {
       });
     }
 
-    // Verify creator is updating
-    if (String(group.createdBy) !== String(myId)) {
+    // Verify group admin is updating
+    const isAdmin = (group.admins || []).map(id => id.toString()).includes(myId.toString()) || String(group.createdBy) === String(myId);
+    if (!isAdmin) {
       return res.status(403).json({
         success: false,
-        message: "Only the group creator can update group details"
+        message: "Only group admins can update group details"
       });
     }
 
@@ -1006,7 +1067,8 @@ exports.updateGroupChat = async (req, res) => {
 
     const populatedGroup = await GroupChat.findById(groupId)
       .populate("members", "username avatar bio isOnline")
-      .populate("createdBy", "username avatar");
+      .populate("createdBy", "username avatar")
+      .populate("admins", "username avatar");
 
     // Emit group:member-added (to trigger frontend update of group details)
     const io = req.app.get("io");
@@ -1035,5 +1097,138 @@ exports.updateGroupChat = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+exports.promoteGroupAdmin = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { groupId } = req.params;
+    const { userId } = req.body;
+
+    const group = await GroupChat.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
+
+    const myIdStr = myId.toString();
+    const isAdmin = (group.admins || []).map(id => id.toString()).includes(myIdStr) || group.createdBy.toString() === myIdStr;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, message: "Only group admins can promote other members" });
+    }
+
+    const targetIdStr = userId.toString();
+    if (!group.members.map(id => id.toString()).includes(targetIdStr)) {
+      return res.status(400).json({ success: false, message: "User must be a member of the group first" });
+    }
+
+    // Initialize admins array if not present
+    if (!group.admins) {
+      group.admins = [group.createdBy];
+    }
+
+    if (group.admins.map(id => id.toString()).includes(targetIdStr)) {
+      return res.status(400).json({ success: false, message: "User is already an admin" });
+    }
+
+    group.admins.push(userId);
+    await group.save();
+
+    // Create system message
+    const adminUser = await User.findById(myId).select("username").lean();
+    const targetUser = await User.findById(userId).select("username").lean();
+    const systemMsgText = `@${adminUser?.username || "Admin"} made @${targetUser?.username || "someone"} an admin`;
+
+    const systemMsg = await DirectMessage.create({
+      sender: myId,
+      groupChat: groupId,
+      message: systemMsgText,
+      isSystem: true
+    });
+
+    const populatedMsg = await DirectMessage.findById(systemMsg._id)
+      .populate("sender", "username avatar");
+
+    const populatedGroup = await GroupChat.findById(groupId)
+      .populate("members", "username avatar bio isOnline")
+      .populate("createdBy", "username avatar")
+      .populate("admins", "username avatar");
+
+    const io = req.app.get("io");
+    if (io) {
+      // Broadcast system message
+      io.to(String(groupId)).emit("dm:receive", populatedMsg);
+      populatedGroup.members.forEach(member => {
+        io.to(String(member._id)).emit("group:member-added", { groupId, group: populatedGroup });
+      });
+    }
+
+    res.status(200).json({ success: true, group: populatedGroup });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.demoteGroupAdmin = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const { groupId } = req.params;
+    const { userId } = req.body;
+
+    const group = await GroupChat.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
+
+    const myIdStr = myId.toString();
+    const isAdmin = (group.admins || []).map(id => id.toString()).includes(myIdStr) || group.createdBy.toString() === myIdStr;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, message: "Only group admins can demote other admins" });
+    }
+
+    const targetIdStr = userId.toString();
+    if (group.createdBy.toString() === targetIdStr) {
+      return res.status(400).json({ success: false, message: "The group creator cannot be demoted" });
+    }
+
+    if (!group.admins || !group.admins.map(id => id.toString()).includes(targetIdStr)) {
+      return res.status(400).json({ success: false, message: "User is not an admin" });
+    }
+
+    group.admins = group.admins.filter(id => id.toString() !== targetIdStr);
+    await group.save();
+
+    // Create system message
+    const adminUser = await User.findById(myId).select("username").lean();
+    const targetUser = await User.findById(userId).select("username").lean();
+    const systemMsgText = `@${adminUser?.username || "Admin"} dismissed @${targetUser?.username || "someone"} as admin`;
+
+    const systemMsg = await DirectMessage.create({
+      sender: myId,
+      groupChat: groupId,
+      message: systemMsgText,
+      isSystem: true
+    });
+
+    const populatedMsg = await DirectMessage.findById(systemMsg._id)
+      .populate("sender", "username avatar");
+
+    const populatedGroup = await GroupChat.findById(groupId)
+      .populate("members", "username avatar bio isOnline")
+      .populate("createdBy", "username avatar")
+      .populate("admins", "username avatar");
+
+    const io = req.app.get("io");
+    if (io) {
+      // Broadcast system message
+      io.to(String(groupId)).emit("dm:receive", populatedMsg);
+      populatedGroup.members.forEach(member => {
+        io.to(String(member._id)).emit("group:member-added", { groupId, group: populatedGroup });
+      });
+    }
+
+    res.status(200).json({ success: true, group: populatedGroup });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

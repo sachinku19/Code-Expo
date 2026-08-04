@@ -103,3 +103,13 @@ export const updateGroupChat = async (groupId, formData) => {
   });
   return response.data;
 };
+
+export const promoteGroupAdmin = async (groupId, userId) => {
+  const response = await API.post(`/group/${groupId}/admin/promote`, { userId }, getHeaders());
+  return response.data;
+};
+
+export const demoteGroupAdmin = async (groupId, userId) => {
+  const response = await API.post(`/group/${groupId}/admin/demote`, { userId }, getHeaders());
+  return response.data;
+};

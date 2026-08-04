@@ -47,17 +47,52 @@ const createRoom = async (req, res) => {
             }
         };
 
-        const defaultFile = defaults[roomLanguage];
-        if (defaultFile) {
+        if (roomLanguage === "html") {
+            // 1. Create style.css
             await WorkspaceItem.create({
                 roomId,
-                name: defaultFile.name,
+                name: "style.css",
                 type: "file",
-                content: defaultFile.content,
-                language: roomLanguage,
+                content: `/* style.css */\nbody {\n    margin: 0;\n    padding: 0;\n    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n    background: linear-gradient(135deg, #0f172a, #1e1b4b);\n    color: #ffffff;\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    min-height: 100vh;\n    text-align: center;\n}\n\n.welcome-container {\n    background: rgba(255, 255, 255, 0.05);\n    border: 1px solid rgba(255, 255, 255, 0.1);\n    backdrop-filter: blur(10px);\n    padding: 40px;\n    border-radius: 16px;\n    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);\n    max-width: 500px;\n}\n\nh1 {\n    font-size: 2.2rem;\n    margin-bottom: 16px;\n    background: linear-gradient(to right, #a855f7, #6366f1);\n    -webkit-background-clip: text;\n    -webkit-text-fill-color: transparent;\n}\n\np {\n    font-size: 1rem;\n    color: rgba(255, 255, 255, 0.7);\n    margin-bottom: 12px;\n}\n\nbutton {\n    background: linear-gradient(135deg, #a855f7, #6366f1);\n    color: #ffffff;\n    border: none;\n    padding: 10px 24px;\n    border-radius: 8px;\n    font-size: 1rem;\n    font-weight: 600;\n    cursor: pointer;\n    transition: all 0.3s ease;\n    margin-top: 16px;\n}\n\nbutton:hover {\n    transform: translateY(-2px);\n    box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);\n}\n`,
+                language: "css",
                 isEntryPoint: false,
                 createdBy: req.user._id
             });
+
+            // 2. Create script.js
+            await WorkspaceItem.create({
+                roomId,
+                name: "script.js",
+                type: "file",
+                content: `// script.js\nconsole.log("Web project loaded successfully!");\n\nconst btn = document.getElementById("action-btn");\nif (btn) {\n    btn.addEventListener("click", () => {\n        console.log("Action button clicked!");\n        alert("Hello from script.js inside CodeExpo!");\n    });\n}\n`,
+                language: "javascript",
+                isEntryPoint: false,
+                createdBy: req.user._id
+            });
+
+            // 3. Create index.html (entrypoint)
+            await WorkspaceItem.create({
+                roomId,
+                name: "index.html",
+                type: "file",
+                content: `<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>CodeExpo Web Project</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n    <div class="welcome-container">\n        <h1>🌐 CodeExpo Web Workspace!</h1>\n        <p>This is a real-time collaborative multi-file environment.</p>\n        <p>Edit HTML, CSS, or JS files to see the preview update live.</p>\n        <button id="action-btn">Click Me</button>\n    </div>\n    <script type="module" src="script.js"></script>\n</body>\n</html>\n`,
+                language: "html",
+                isEntryPoint: true,
+                createdBy: req.user._id
+            });
+        } else {
+            const defaultFile = defaults[roomLanguage];
+            if (defaultFile) {
+                await WorkspaceItem.create({
+                    roomId,
+                    name: defaultFile.name,
+                    type: "file",
+                    content: defaultFile.content,
+                    language: roomLanguage,
+                    isEntryPoint: false,
+                    createdBy: req.user._id
+                });
+            }
         }
 
         res.status(201).json({

@@ -13,6 +13,7 @@ import { runCode } from "../services/compilerService";
 import { getMessage } from "../services/messageService";
 import Whiteboard from "../components/Whiteboard";
 import FileExplorer from "../components/FileExplorer";
+import LivePreview from "../components/LivePreview";
 import TaskPlanner from "../components/planner/TaskPlanner";
 import ReportUserModal from "../components/social/ReportUserModal";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
@@ -20,6 +21,7 @@ import AIAssistantPanel from "../components/ai/AIAssistantPanel";
 import AIHistoryTab from "../components/ai/AIHistoryTab";
 import * as workspaceService from "../services/workspaceService";
 import * as collabService from "../services/collaborationService";
+import pathAutocompleteService from "../services/pathAutocompleteService";
 import MainLayout from "../layouts/MainLayout";
 import GoogleMeetLobbyModal from "../components/meet/GoogleMeetLobbyModal";
 import GoogleMeetStage from "../components/meet/GoogleMeetStage";
@@ -46,6 +48,8 @@ import {
   Loader2,
   DoorOpen,
   Trash2,
+  PanelRightClose,
+  PanelRightOpen,
   Terminal,
   Code2,
   Hash,
@@ -88,6 +92,7 @@ import {
   Maximize2,
   Minimize2,
   FolderKanban,
+  FileClock,
   Lock,
   Scroll
 } from "lucide-react";
@@ -243,7 +248,7 @@ function Editor() {
     setMeetMicOn(isMicOn);
     setMeetVideoOn(isVideoOn);
     setShowMeetLobby(false);
-    
+
     // Brief delay to let the browser cleanly release camera hardware from lobby preview
     setTimeout(() => {
       setInMeet(true);
@@ -358,12 +363,19 @@ function Editor() {
   const [activeFileId, setActiveFileId] = useState(null);
   const [editorLanguage, setEditorLanguage] = useState("javascript");
   const [explorerPath, setExplorerPath] = useState([]);
+  const [workspaceItems, setWorkspaceItems] = useState([]);
   const hasAutoSelectedRef = useRef(false);
+  const isTabRestoredRef = useRef(false);
 
   const activeFileIdRef = useRef(activeFileId);
   useEffect(() => {
     activeFileIdRef.current = activeFileId;
   }, [activeFileId]);
+
+  // Synchronize path autocomplete cache index dynamically
+  useEffect(() => {
+    pathAutocompleteService.updateItems(workspaceItems, activeFileId);
+  }, [workspaceItems, activeFileId]);
 
   const ydocRef = useRef(null);
   const bindingRef = useRef(null);
@@ -414,6 +426,11 @@ function Editor() {
   };
 
   const handleFileSelect = async (fileId, fileInfo = null) => {
+    isTabRestoredRef.current = true;
+    if (layoutMode !== "editor" && layoutMode !== "split") {
+      changeLayoutMode("editor");
+    }
+    setLeftActiveTab("files");
     try {
       if (isMobileScreen) {
         setMobileTab("editor");
@@ -435,6 +452,10 @@ function Editor() {
         setActiveFileId(existingTab._id);
         setCode(existingTab.content || "");
         setEditorLanguage(existingTab.language || "javascript");
+
+        requestAnimationFrame(() => {
+          if (editorRef.current) editorRef.current.layout();
+        });
 
         // Load stats asynchronously
         loadCollaborationState(roomId, existingTab._id);
@@ -903,6 +924,14 @@ function Editor() {
       setShowWhiteboard(false);
     } else {
       setShowWhiteboard(true);
+    }
+    if (mode === "editor" || mode === "split") {
+      requestAnimationFrame(() => {
+        if (editorRef.current) editorRef.current.layout();
+      });
+      setTimeout(() => {
+        if (editorRef.current) editorRef.current.layout();
+      }, 50);
     }
   };
 
@@ -1463,7 +1492,39 @@ function Editor() {
 
   const [sidebarWidth, setSidebarWidth] = useState(320); // Left sidebar width in pixels
   const [isResizing, setIsResizing] = useState(false); // Global resizing lock state
-  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
+  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      if (window.innerWidth <= 768) return true;
+      const saved = localStorage.getItem("ce_editor_rightSidebarCollapsed");
+      return saved !== null ? saved === "true" : false;
+    }
+    return false;
+  });
+
+  const toggleRightSidebar = (forceState) => {
+    setRightSidebarCollapsed((prev) => {
+      const nextState = typeof forceState === "boolean" ? forceState : !prev;
+      try {
+        localStorage.setItem("ce_editor_rightSidebarCollapsed", String(nextState));
+      } catch (e) { }
+
+      // 60 FPS Continuous Monaco Layout Animation Loop during 280ms transition
+      const startTime = performance.now();
+      const duration = 280;
+
+      const step = (now) => {
+        if (editorRef.current) {
+          editorRef.current.layout();
+        }
+        if (now - startTime < duration) {
+          requestAnimationFrame(step);
+        }
+      };
+      requestAnimationFrame(step);
+
+      return nextState;
+    });
+  };
 
   // Collapsible Mock Notes Drawer State
   const [notesText, setNotesText] = useState(
@@ -1492,7 +1553,7 @@ function Editor() {
     localStorage.getItem("editor_autoSave") || "off"
   );
   const [editorFontFamily, setEditorFontFamily] = useState(
-    localStorage.getItem("editor_fontFamily") || "Fira Code, JetBrains Mono, monospace"
+    localStorage.getItem("editor_fontFamily") || "'Fira Code', 'JetBrains Mono', 'Cascadia Code', 'Source Code Pro', Consolas, monospace"
   );
   const [editorCursorBlinking, setEditorCursorBlinking] = useState(
     localStorage.getItem("editor_cursorBlinking") || "blink"
@@ -1771,9 +1832,12 @@ function Editor() {
   };
 
   const { resolvedTheme: editorTheme, setTheme: setGlobalTheme } = useTheme();
-  const [editorFontSize, setEditorFontSize] = useState(
-    Number(localStorage.getItem("editor_fontSize")) || 14
-  );
+  const [editorFontSize, setEditorFontSize] = useState(() => {
+    const saved = Number(localStorage.getItem("editor_fontSize"));
+    return (saved && saved >= 10 && saved <= 18) ? saved : 13;
+  });
+
+
 
   // Auto collapse sidebars on load for smaller laptop/tablet views
   useEffect(() => {
@@ -2244,60 +2308,119 @@ function Editor() {
     fetchRoom();
   }, [roomId, navigate, user.id]);
 
-  // Fetch workspace files on load and auto-select entry point file
+  // Persist open tabs and active file tab to localStorage per room ONLY AFTER session restoration!
   useEffect(() => {
-    const autoSelectEntryPoint = async () => {
+    if (!roomId || roomId === "default" || !isTabRestoredRef.current) return;
+    if (tabs.length > 0) {
+      const openTabIds = tabs.map((t) => t._id);
+      localStorage.setItem(`ce_open_tabs_${roomId}`, JSON.stringify(openTabIds));
+    } else {
+      localStorage.removeItem(`ce_open_tabs_${roomId}`);
+    }
+    if (activeFileId) {
+      localStorage.setItem(`ce_active_tab_${roomId}`, activeFileId);
+    }
+  }, [tabs, activeFileId, roomId]);
+
+  // Fetch workspace files on load and restore all open tabs (or auto-select entry point)
+  useEffect(() => {
+    const restoreWorkspaceSession = async () => {
       if (!roomId || roomId === "default" || hasAutoSelectedRef.current) return;
-      hasAutoSelectedRef.current = true; // Set synchronously immediately to prevent React race conditions!
+      hasAutoSelectedRef.current = true; // Set synchronously immediately to prevent race conditions!
+      isTabRestoredRef.current = false;
       try {
         const data = await workspaceService.getWorkspaceTree(roomId);
         if (data && data.items) {
-          const files = data.items.filter(item => item.type === "file");
+          const files = data.items.filter((item) => item.type === "file");
           if (files.length > 0) {
-            const entry = files.find(f => f.isEntryPoint);
-            const toSelect = entry || files[0];
-            await handleFileSelect(toSelect._id, toSelect);
+            // Check for saved open tabs in localStorage for this room
+            let savedTabIds = [];
+            let savedActiveId = null;
+            try {
+              const tabStr = localStorage.getItem(`ce_open_tabs_${roomId}`);
+              if (tabStr) savedTabIds = JSON.parse(tabStr);
+              savedActiveId = localStorage.getItem(`ce_active_tab_${roomId}`);
+            } catch (e) { }
+
+            // Match saved tab IDs in original order
+            const validSavedFiles = (savedTabIds || [])
+              .map((id) => files.find((f) => String(f._id) === String(id)))
+              .filter(Boolean);
+
+            if (validSavedFiles.length > 0) {
+              // Fetch content for all saved open tabs in parallel
+              const loadedTabs = await Promise.all(
+                validSavedFiles.map(async (file) => {
+                  try {
+                    const contentData = await workspaceService.getFileContent(file._id);
+                    return { ...file, content: contentData?.file?.content || "" };
+                  } catch (err) {
+                    return { ...file, content: "" };
+                  }
+                })
+              );
+
+              setTabs(loadedTabs);
+
+              const targetActiveId = (savedActiveId && loadedTabs.some((t) => String(t._id) === String(savedActiveId)))
+                ? savedActiveId
+                : loadedTabs[0]._id;
+
+              const targetTab = loadedTabs.find((t) => String(t._id) === String(targetActiveId));
+              setActiveFileId(targetActiveId);
+              setCode(targetTab?.content || "");
+              setEditorLanguage(targetTab?.language || "javascript");
+              loadCollaborationState(roomId, targetActiveId);
+              isTabRestoredRef.current = true;
+            } else {
+              // Default to entry point or first file
+              const entry = files.find((f) => f.isEntryPoint);
+              const toSelect = entry || files[0];
+              await handleFileSelect(toSelect._id, toSelect);
+              isTabRestoredRef.current = true;
+            }
           }
         }
       } catch (err) {
-        console.error("Error auto-selecting entry point file:", err);
+        console.error("Error restoring workspace session tabs:", err);
       }
     };
 
     if (room) {
-      autoSelectEntryPoint();
+      restoreWorkspaceSession();
     }
   }, [roomId, room]);
 
-  // Join Room via Socket.IO
+  // Join Room & Synchronize Socket.IO Connection (Mount & Reconnect Resilient)
   useEffect(() => {
-    if (!room || !user || hasJoinedRef.current) return;
-    const roomCreatorId = room.createdBy?._id || room.createdBy;
-    socket.emit("join-room", {
-      roomId,
-      username: user.username,
-      userId: user.id,
-      isOwner: String(roomCreatorId) === String(user.id),
-      avatar: user.avatar
-    });
-    hasJoinedRef.current = true;
-  }, [room, roomId]);
+    if (!room || !user || !roomId) return;
 
-  // Leave Room on unmount or roomId change
-  useEffect(() => {
-    return () => {
-      socket.emit("leave-room", { roomId });
-      hasJoinedRef.current = false;
-      hasAutoSelectedRef.current = false;
+    const emitJoinRoom = () => {
+      const roomCreatorId = room.createdBy?._id || room.createdBy;
+      console.log(`[Socket] Emitting join-room for room: ${roomId} (user: ${user.username})`);
+      socket.emit("join-room", {
+        roomId,
+        username: user.username,
+        userId: user.id,
+        isOwner: String(roomCreatorId) === String(user.id),
+        avatar: user.avatar
+      });
+      hasJoinedRef.current = true;
     };
-  }, [roomId]);
 
-  // Monitor socket connectivity
-  useEffect(() => {
-    const handleConnect = () => setSocketConnected(true);
-    const handleDisconnect = () => {
+    // Emit initial join
+    emitJoinRoom();
+
+    const handleConnect = () => {
+      console.log(`[Socket] Connected/Reconnected (socketId: ${socket.id}). Re-joining room: ${roomId}`);
+      setSocketConnected(true);
+      emitJoinRoom();
+    };
+
+    const handleDisconnect = (reason) => {
+      console.warn(`[Socket] Disconnected (reason: ${reason}). Preserving presence state until re-sync.`);
       setSocketConnected(false);
-      setUsers([]);
+      // Retain existing users list during temporary reconnects to prevent presence wiping
     };
 
     socket.on("connect", handleConnect);
@@ -2307,7 +2430,19 @@ function Editor() {
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
     };
-  }, []);
+  }, [room, roomId, user]);
+
+  // Leave Room ONLY when leaving workspace (unmount of Editor page or roomId change)
+  useEffect(() => {
+    return () => {
+      if (roomId) {
+        console.log(`[Socket] Leaving workspace room: ${roomId}`);
+        socket.emit("leave-room", { roomId });
+      }
+      hasJoinedRef.current = false;
+      hasAutoSelectedRef.current = false;
+    };
+  }, [roomId]);
 
   // Socket triggers
   useEffect(() => {
@@ -2317,8 +2452,9 @@ function Editor() {
     };
 
     const handleRoomUsers = (usersList) => {
+      console.log(`[Socket] Room users list received (${usersList?.length || 0} online users):`, usersList);
       setUsers(usersList);
-      if (usersList.length > 0 && !privateRecipientRef.current) {
+      if (usersList && usersList.length > 0 && !privateRecipientRef.current) {
         const firstOther = usersList.find((u) => u.userId !== userRef.current.id);
         if (firstOther) setPrivateRecipient(firstOther.socketId);
       }
@@ -3141,51 +3277,8 @@ function Editor() {
   const blameDecorationsRef = useRef([]);
 
   const applyRecentEditDecoration = (startLine, addedCount) => {
-    const editor = editorRef.current;
-    const monaco = monacoRef.current;
-    if (!editor || !monaco) return;
-
-    const color = getCursorColor(user?.username);
-    const sanitizedId = (user.id || "guest").replace(/[^a-zA-Z0-9]/g, "");
-    const className = `line-recent-edited-${sanitizedId}`;
-
-    // Inject dynamic stylesheet style tag for custom colors
-    let styleTag = document.getElementById(className);
-    if (!styleTag) {
-      styleTag = document.createElement("style");
-      styleTag.id = className;
-      document.head.appendChild(styleTag);
-    }
-    styleTag.innerHTML = `
-      .${className} {
-        border-left: 3px solid ${color} !important;
-        background-color: transparent !important;
-      }
-    `;
-
-    const endLine = startLine + addedCount;
-    const newDecorations = [];
-    for (let l = startLine; l <= endLine; l++) {
-      newDecorations.push({
-        range: new monaco.Range(l, 1, l, 1),
-        options: {
-          isWholeLine: false,
-          className: `${className} line-recent-edited-decoration`
-        }
-      });
-    }
-
-    const oldDecs = recentDecorationsRef.current[startLine] || [];
-    const decIds = editor.deltaDecorations(oldDecs, newDecorations);
-    recentDecorationsRef.current[startLine] = decIds;
-
-    // Remove decoration after 8 seconds fade effect
-    setTimeout(() => {
-      if (editorRef.current && editorRef.current.getModel()) {
-        editorRef.current.deltaDecorations(decIds, []);
-        delete recentDecorationsRef.current[startLine];
-      }
-    }, 8000);
+    // Disabled edit line decorations per user request
+    return;
   };
 
   const updateBlameDecorations = () => {
@@ -3359,6 +3452,20 @@ function Editor() {
     );
     editorDisposablesRef.current.push(...hoverDisposables);
 
+    // 1a. Dynamic Workspace Path Autocomplete Provider
+    const pathAutocompleteLanguages = ["html", "css", "javascript"];
+    const pathDisposables = pathAutocompleteLanguages.map(lang =>
+      monaco.languages.registerCompletionItemProvider(lang, {
+        triggerCharacters: ['"', "'", '/', '.', '@', '('],
+        provideCompletionItems: (model, position) => {
+          return pathAutocompleteService.provideSuggestions(model, position, monaco);
+        }
+      })
+    );
+    editorDisposablesRef.current.push(...pathDisposables);
+
+
+
     // 1b. Line limit check (Max 1000 lines)
     const lineLimitDisposable = editor.onDidChangeModelContent(() => {
       const model = editor.getModel();
@@ -3526,8 +3633,11 @@ function Editor() {
   useEffect(() => {
     if (editorInstance) {
       editorInstance.updateOptions({
-        fontSize: editorFontSize,
-        fontFamily: editorFontFamily,
+        fontSize: editorFontSize || 13,
+        fontFamily: editorFontFamily || "'Fira Code', 'JetBrains Mono', 'Cascadia Code', 'Source Code Pro', Consolas, monospace",
+        fontLigatures: true,
+        fontWeight: "400",
+        lineHeight: 19,
         minimap: { enabled: editorShowMinimap },
         tabSize: editorTabSize,
         wordWrap: editorWordWrap,
@@ -3765,10 +3875,55 @@ function Editor() {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
-  // Filter unique participants
-  const uniqueUsers = users.filter(
-    (u, index, self) => index === self.findIndex((el) => el.userId === u.userId)
-  );
+  // Filter & merge unique human participants from room participants and active socket clients
+  const combinedUsersMap = new Map();
+  const activeOnlineSet = new Set((users || []).map((u) => String(u.userId || u._id || u.id || "")));
+  if (user?.id || user?._id) activeOnlineSet.add(String(user.id || user._id));
+
+  if (room?.participants && room.participants.length > 0) {
+    room.participants.forEach((p) => {
+      const uObj = p.user || p;
+      const uid = String(uObj._id || uObj.id || uObj.userId || "");
+      if (uid && uObj.username && uObj.username !== "User" && uObj.username !== "Browser Previewer" && !uObj.isPreview) {
+        combinedUsersMap.set(uid, {
+          userId: uid,
+          username: uObj.username,
+          avatar: uObj.avatar,
+          role: p.role || "MEMBER",
+          isOnline: activeOnlineSet.has(uid)
+        });
+      }
+    });
+  }
+
+  if (users && users.length > 0) {
+    users.forEach((u) => {
+      const uid = String(u.userId || u._id || u.id || "");
+      if (uid && u.username && u.username !== "User" && u.username !== "Browser Previewer" && !u.isPreview) {
+        const existing = combinedUsersMap.get(uid) || {};
+        combinedUsersMap.set(uid, {
+          ...existing,
+          userId: uid,
+          username: u.username || existing.username,
+          avatar: u.avatar || existing.avatar,
+          socketId: u.socketId,
+          isOnline: true
+        });
+      }
+    });
+  }
+
+  if (combinedUsersMap.size === 0 && user) {
+    const uid = String(user.id || user._id || "");
+    combinedUsersMap.set(uid, {
+      userId: uid,
+      username: user.username || user.name || "You",
+      avatar: user.avatar,
+      isOnline: true
+    });
+  }
+
+  const uniqueUsers = Array.from(combinedUsersMap.values());
 
   if (roomId === "default") {
     return (
@@ -3977,6 +4132,13 @@ function Editor() {
       onLeaveCall={handleLeaveMeeting}
       activeCallUsers={activeMeetUsers}
       onOpenInvite={handleOpenInviteModal}
+      layoutMode={layoutMode}
+      onTasksClick={() => changeLayoutMode(layoutMode === "planner" ? "editor" : "planner")}
+      currentUserRole={currentUserRole}
+      onExitRoom={handleExitWorkspaceAction}
+      onDeleteRoom={handleDeleteRoomAction}
+      isOwner={isCurrentUserOwner || currentUserRole === "OWNER"}
+      tabs={tabs}
     >
       <div className={`ce-editor-page mobile-tab-${mobileTab}`}>
         {/* Main Core Body */}
@@ -3992,10 +4154,15 @@ function Editor() {
           >
             <div className="sidebar-tabs">
               <button
-                className={`sidebar-tab-btn ${leftActiveTab === "files" && !leftSidebarCollapsed ? "active" : ""}`}
+                className={`sidebar-tab-btn ${layoutMode !== "planner" && leftActiveTab === "files" ? "active" : ""}`}
                 onClick={() => {
-                  if (leftActiveTab === "files") setLeftSidebarCollapsed(!leftSidebarCollapsed);
-                  else {
+                  if (layoutMode === "planner") {
+                    changeLayoutMode("editor");
+                    setLeftActiveTab("files");
+                    setLeftSidebarCollapsed(false);
+                  } else if (leftActiveTab === "files") {
+                    setLeftSidebarCollapsed(!leftSidebarCollapsed);
+                  } else {
                     setLeftActiveTab("files");
                     setLeftSidebarCollapsed(false);
                   }
@@ -4004,31 +4171,28 @@ function Editor() {
               >
                 <FolderOpen size={20} />
               </button>
+
+              {currentUserRole !== "VIEWER" && (
+                <button
+                  type="button"
+                  className={`sidebar-tab-btn ${layoutMode === "planner" ? "active" : ""}`}
+                  onClick={() => changeLayoutMode(layoutMode === "planner" ? "editor" : "planner")}
+                  title="Task Planner / Kanban Board"
+                >
+                  <FileClock size={20} />
+                </button>
+              )}
+
               <button
-                className={`sidebar-tab-btn ${leftActiveTab === "notes" && !leftSidebarCollapsed ? "active" : ""}`}
+                className={`sidebar-tab-btn ${layoutMode !== "planner" && leftActiveTab === "activity" ? "active" : ""}`}
                 onClick={() => {
-                  if (leftActiveTab === "notes") setLeftSidebarCollapsed(!leftSidebarCollapsed);
-                  else {
-                    setLeftActiveTab("notes");
+                  if (layoutMode === "planner") {
+                    changeLayoutMode("editor");
+                    setLeftActiveTab("activity");
                     setLeftSidebarCollapsed(false);
-                  }
-                }}
-                title="Notes"
-              >
-                <BookOpen size={20} />
-              </button>
-              <button
-                className={`sidebar-tab-btn ${layoutMode !== "editor" ? "active" : ""}`}
-                onClick={toggleWhiteboard}
-                title="Toggle Whiteboard Split"
-              >
-                <Palette size={20} />
-              </button>
-              <button
-                className={`sidebar-tab-btn ${leftActiveTab === "activity" && !leftSidebarCollapsed ? "active" : ""}`}
-                onClick={() => {
-                  if (leftActiveTab === "activity") setLeftSidebarCollapsed(!leftSidebarCollapsed);
-                  else {
+                  } else if (leftActiveTab === "activity") {
+                    setLeftSidebarCollapsed(!leftSidebarCollapsed);
+                  } else {
                     setLeftActiveTab("activity");
                     setLeftSidebarCollapsed(false);
                   }
@@ -4037,25 +4201,18 @@ function Editor() {
               >
                 <Activity size={20} />
               </button>
-              <button
-                className={`sidebar-tab-btn ${leftActiveTab === "versions" && !leftSidebarCollapsed ? "active" : ""}`}
-                onClick={() => {
-                  if (leftActiveTab === "versions") setLeftSidebarCollapsed(!leftSidebarCollapsed);
-                  else {
-                    setLeftActiveTab("versions");
-                    setLeftSidebarCollapsed(false);
-                  }
-                }}
-                title="Version Timeline"
-              >
-                <History size={20} />
-              </button>
+
               {isCurrentUserOwner && (
                 <button
-                  className={`sidebar-tab-btn ${leftActiveTab === "history" && !leftSidebarCollapsed ? "active" : ""}`}
+                  className={`sidebar-tab-btn ${layoutMode !== "planner" && leftActiveTab === "history" ? "active" : ""}`}
                   onClick={() => {
-                    if (leftActiveTab === "history") setLeftSidebarCollapsed(!leftSidebarCollapsed);
-                    else {
+                    if (layoutMode === "planner") {
+                      changeLayoutMode("editor");
+                      setLeftActiveTab("history");
+                      setLeftSidebarCollapsed(false);
+                    } else if (leftActiveTab === "history") {
+                      setLeftSidebarCollapsed(!leftSidebarCollapsed);
+                    } else {
                       setLeftActiveTab("history");
                       setLeftSidebarCollapsed(false);
                     }
@@ -4066,10 +4223,15 @@ function Editor() {
                 </button>
               )}
               <button
-                className={`sidebar-tab-btn ${leftActiveTab === "settings" && !leftSidebarCollapsed ? "active" : ""}`}
+                className={`sidebar-tab-btn ${layoutMode !== "planner" && leftActiveTab === "settings" ? "active" : ""}`}
                 onClick={() => {
-                  if (leftActiveTab === "settings") setLeftSidebarCollapsed(!leftSidebarCollapsed);
-                  else {
+                  if (layoutMode === "planner") {
+                    changeLayoutMode("editor");
+                    setLeftActiveTab("settings");
+                    setLeftSidebarCollapsed(false);
+                  } else if (leftActiveTab === "settings") {
+                    setLeftSidebarCollapsed(!leftSidebarCollapsed);
+                  } else {
                     setLeftActiveTab("settings");
                     setLeftSidebarCollapsed(false);
                   }
@@ -4086,13 +4248,29 @@ function Editor() {
                 title={leftSidebarCollapsed ? "Expand Left Sidebar (Files / Notes)" : "Collapse Left Sidebar"}
                 style={{
                   marginTop: "auto",
-                  marginBottom: "8px",
+                  marginBottom: "6px",
                   color: "var(--ce-accent, #818cf8)",
                   background: "rgba(99, 102, 241, 0.15)",
                   border: "1px solid rgba(99, 102, 241, 0.3)"
                 }}
               >
                 {leftSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+              </button>
+
+              {/* Exit Workspace Button (Placed Below Collapse Arrow) */}
+              <button
+                type="button"
+                className="sidebar-tab-btn exit-workspace-sidebar-btn"
+                onClick={handleExitWorkspaceAction}
+                title="Exit Workspace"
+                style={{
+                  marginBottom: "10px",
+                  color: "#ef4444",
+                  background: "rgba(239, 68, 68, 0.12)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)"
+                }}
+              >
+                <DoorOpen size={18} />
               </button>
             </div>
 
@@ -4126,118 +4304,11 @@ function Editor() {
                     openTabs={tabs}
                     onFileDelete={handleFileDelete}
                     onPathChange={handlePathChange}
+                    onItemsUpdate={(items) => setWorkspaceItems(items)}
                   />
                 )}
 
-                {leftActiveTab === "notes" && (
-                  <div className="notes-pane">
-                    {/* Top Mode Header / Tabs */}
-                    <div className="notes-mode-header">
-                      <div className="notes-mode-tabs">
-                        <button
-                          type="button"
-                          className={`notes-mode-btn ${notesMode === "edit" ? "active" : ""}`}
-                          onClick={() => setNotesMode("edit")}
-                        >
-                          <Edit2 size={12} />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={`notes-mode-btn ${notesMode === "preview" ? "active" : ""}`}
-                          onClick={() => setNotesMode("preview")}
-                        >
-                          <Eye size={12} />
-                          <span>Preview</span>
-                        </button>
-                      </div>
 
-                      <div className="notes-export-wrapper">
-                        <button
-                          type="button"
-                          className="notes-export-trigger-btn"
-                          onClick={() => setNotesExportMenuOpen(!notesExportMenuOpen)}
-                          title="Export Notes"
-                        >
-                          <Download size={12} />
-                          <span>Export</span>
-                          <ChevronDown size={10} />
-                        </button>
-
-                        {notesExportMenuOpen && (
-                          <>
-                            <div className="notes-export-overlay" onClick={() => setNotesExportMenuOpen(false)} />
-                            <div className="notes-export-dropdown">
-                              <button type="button" className="export-item" onClick={() => downloadNotes("md")}>
-                                <FileText size={12} />
-                                <span>Save as Markdown (.md)</span>
-                              </button>
-                              <button type="button" className="export-item" onClick={() => downloadNotes("txt")}>
-                                <FileText size={12} />
-                                <span>Save as Text (.txt)</span>
-                              </button>
-                              <button type="button" className="export-item" onClick={() => downloadNotes("html")}>
-                                <FileText size={12} />
-                                <span>Save as Styled HTML (.html)</span>
-                              </button>
-                              <div className="export-divider" />
-                              <button type="button" className="export-item" onClick={copyNotesToClipboard}>
-                                {copiedNotes ? <Check size={12} style={{ color: "#2ea043" }} /> : <Copy size={12} />}
-                                <span>{copiedNotes ? "Copied!" : "Copy to Clipboard"}</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Formatting Toolbar - Only visible in Edit Mode */}
-                    {notesMode === "edit" && (
-                      <div className="notes-formatting-toolbar">
-                        <button type="button" className="format-btn" onClick={() => insertMarkdown("bold")} title="Bold text">
-                          <Bold size={12} />
-                        </button>
-                        <button type="button" className="format-btn" onClick={() => insertMarkdown("italic")} title="Italic text">
-                          <Italic size={12} />
-                        </button>
-                        <button type="button" className="format-btn" onClick={() => insertMarkdown("heading")} title="Heading">
-                          <Heading size={12} />
-                        </button>
-                        <span className="format-divider" />
-                        <button type="button" className="format-btn" onClick={() => insertMarkdown("list")} title="Bullet List">
-                          <List size={12} />
-                        </button>
-                        <button type="button" className="format-btn" onClick={() => insertMarkdown("code")} title="Code Block">
-                          <Code size={12} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Main Content Area */}
-                    {notesMode === "edit" ? (
-                      <textarea
-                        ref={notesTextareaRef}
-                        className="notes-textarea"
-                        value={notesText}
-                        onChange={(e) => setNotesText(e.target.value)}
-                        placeholder="Capture thoughts or copy paste reference documents..."
-                      />
-                    ) : (
-                      <div
-                        className="notes-preview"
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(notesText) || '<p style="color: var(--ce-text-muted); font-style: italic;">No notes content yet.</p>' }}
-                      />
-                    )}
-
-                    {/* Footer Stats */}
-                    <div className="notes-footer-status">
-                      <span>Auto-saved to workspace</span>
-                      <span className="notes-stats">
-                        {getNotesStats().wordCount} W | {getNotesStats().charCount} C
-                      </span>
-                    </div>
-                  </div>
-                )}
 
                 {leftActiveTab === "activity" && (
                   <div className="activity-logs-pane">
@@ -4282,96 +4353,10 @@ function Editor() {
                   </div>
                 )}
 
-                {leftActiveTab === "versions" && (
-                  <div className="version-timeline-pane">
-                    <div className="version-timeline-header">
-                      <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>Workspace Snapshots</span>
-                      {currentUserRole !== "VIEWER" && (
-                        <button className="version-save-btn" onClick={handleSaveVersion}>
-                          <Plus size={12} />
-                          <span>Snapshot</span>
-                        </button>
-                      )}
-                    </div>
 
-                    {versions.length > 0 ? (
-                      <>
-                        <button
-                          className="ce-btn-primary"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "8px",
-                            padding: "8px",
-                            fontSize: "0.8rem"
-                          }}
-                          onClick={startPlayback}
-                        >
-                          <Play size={14} fill="currentColor" />
-                          <span>Replay Workspace History</span>
-                        </button>
-
-                        <div className="versions-list">
-                          {versions.map((ver) => (
-                            <div key={ver.versionId} className="version-card">
-                              <div className="version-card-meta">
-                                <span className="version-tag">{ver.versionId}</span>
-                                <span className="version-time">
-                                  {new Date(ver.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                </span>
-                              </div>
-                              <div className="version-author">
-                                <User size={12} style={{ color: "var(--ce-accent)" }} />
-                                <span>{ver.editedBy.username}</span>
-                              </div>
-                              <div className="version-card-actions">
-                                <button
-                                  className="version-action-btn"
-                                  onClick={() => {
-                                    setDiffVersion(ver);
-                                    setIsDiffModalOpen(true);
-                                  }}
-                                >
-                                  Compare
-                                </button>
-                                <button
-                                  className="version-action-btn restore"
-                                  onClick={async () => {
-                                    const confirmRestore = await window.showConfirm("Are you sure you want to restore the file to this version snapshot?", "Restore Snapshot", "warning");
-                                    if (confirmRestore) {
-                                      try {
-                                        await collabService.restoreVersion(roomId, activeFileIdRef.current, ver.versionId);
-                                        triggerNotification("Snapshot restored successfully.");
-                                      } catch (err) {
-                                        alert(err.response?.data?.message || "Failed to restore version.");
-                                      }
-                                    }
-                                  }}
-                                >
-                                  Restore
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="activity-empty-state">
-                        <div className="empty-state-icon-wrapper">
-                          <History size={24} />
-                        </div>
-                        <h4 className="empty-state-title">No snapshots yet</h4>
-                        <p className="empty-state-desc">
-                          Click "Snapshot" above to capture a point-in-time state of your code to compare and restore later.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {leftActiveTab === "history" && (
-                  <div className="room-history-timeline-pane" style={{ padding: "16px", display: "flex", flexDirection: "column", height: "100%", overflowY: "auto" }}>
+                  <div className="room-history-timeline-pane" style={{ padding: "16px", display: "flex", flexDirection: "column", height: "100%" }}>
                     <div className="room-history-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                       <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>Creator Audit Logs</span>
                       <button
@@ -4384,41 +4369,30 @@ function Editor() {
                     </div>
 
                     {roomHistoryLoading ? (
-                      <div style={{ textAlign: "center", padding: "20px", color: "#6b7280", fontSize: "0.8rem" }}>
+                      <div style={{ textAlign: "center", padding: "20px", color: "var(--ce-text-muted)", fontSize: "0.8rem" }}>
                         Loading audit logs...
                       </div>
                     ) : roomHistory.length > 0 ? (
-                      <div className="room-history-list" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div className="room-history-list" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {roomHistory.map((item) => (
-                          <div
-                            key={item._id}
-                            style={{
-                              background: "rgba(255, 255, 255, 0.02)",
-                              border: "1px solid rgba(255, 255, 255, 0.05)",
-                              padding: "10px",
-                              borderRadius: "8px",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "4px"
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.68rem", color: "#6b7280" }}>
-                              <span style={{ fontWeight: 600, color: "var(--ce-accent, #818cf8)" }}>@{item.username}</span>
-                              <span>{new Date(item.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}</span>
+                          <div key={item._id} className="room-history-item-card">
+                            <div className="room-history-meta">
+                              <span className="room-history-user">@{item.username}</span>
+                              <span className="room-history-time">{new Date(item.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}</span>
                             </div>
-                            <div style={{ fontSize: "0.78rem", color: "#d1d5db" }}>
+                            <div className="room-history-action">
                               {item.action}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="activity-empty-state" style={{ textAlign: "center", padding: "30px 10px", color: "#4b5563" }}>
+                      <div className="activity-empty-state" style={{ textAlign: "center", padding: "30px 10px" }}>
                         <div className="empty-state-icon-wrapper" style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}>
                           <Scroll size={24} />
                         </div>
-                        <h4 className="empty-state-title" style={{ fontSize: "0.85rem", fontWeight: 700, color: "#9ca3af", margin: "0 0 4px 0" }}>No history logs yet</h4>
-                        <p className="empty-state-desc" style={{ fontSize: "0.75rem", margin: 0 }}>
+                        <h4 className="empty-state-title" style={{ fontSize: "0.85rem", fontWeight: 700, margin: "0 0 4px 0" }}>No history logs yet</h4>
+                        <p className="empty-state-desc" style={{ fontSize: "0.75rem", margin: 0, color: "var(--ce-text-muted)" }}>
                           Workspace creation and modification logs will appear here.
                         </p>
                       </div>
@@ -4683,7 +4657,7 @@ function Editor() {
             <div className="workspace-editor-header">
               <div className="workspace-editor-tabs" style={{ display: "flex", gap: "2px", overflowX: "auto", maxWidth: "calc(100% - 240px)" }}>
                 {tabs.map((tab) => {
-                  const isActive = tab._id === activeFileId;
+                  const isActive = layoutMode !== "planner" && tab._id === activeFileId;
                   return (
                     <div
                       key={tab._id}
@@ -4733,11 +4707,22 @@ function Editor() {
                     type="button"
                     className={`layout-switcher-btn ${layoutMode === "split" ? "active" : ""}`}
                     onClick={() => changeLayoutMode("split")}
-                    title="Split view (Editor + Board)"
+                    title={room?.language === "html" ? "Split view (Editor + Preview)" : "Split view (Editor + Board)"}
                   >
                     <Layers size={12} />
                     <span>Split</span>
                   </button>
+                  {room?.language === "html" && (
+                    <button
+                      type="button"
+                      className={`layout-switcher-btn ${layoutMode === "preview" ? "active" : ""}`}
+                      onClick={() => changeLayoutMode("preview")}
+                      title="Web Preview Fullscreen"
+                    >
+                      <Eye size={12} />
+                      <span>Preview</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={`layout-switcher-btn ${layoutMode === "whiteboard" ? "active" : ""}`}
@@ -4747,24 +4732,8 @@ function Editor() {
                     <Palette size={12} />
                     <span>Board</span>
                   </button>
-                  {currentUserRole !== "VIEWER" && (
-                    <button
-                      type="button"
-                      className={`layout-switcher-btn ${layoutMode === "planner" ? "active" : ""}`}
-                      onClick={() => changeLayoutMode("planner")}
-                      title="Task Planner Fullscreen"
-                    >
-                      <FolderKanban size={12} />
-                      <span>Tasks</span>
-                    </button>
-                  )}
+
                 </div>
-
-                <select className="ce-select-box" value={editorLanguage} disabled>
-                  <option value={editorLanguage}>{editorLanguage.toUpperCase()}</option>
-                </select>
-
-
 
                 <button
                   className={`btn-fullscreen-toggle ${isFullscreen ? "active" : ""}`}
@@ -4772,6 +4741,17 @@ function Editor() {
                   title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                 >
                   {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+
+                {/* Top Header Toolbar Right Sidebar Collapse/Expand Button */}
+                <button
+                  type="button"
+                  className={`btn-sidebar-toggle ${rightSidebarCollapsed ? "collapsed" : "active"}`}
+                  onClick={() => toggleRightSidebar()}
+                  title={rightSidebarCollapsed ? "Expand Chat & Participants Panel (◀)" : "Collapse Chat & Participants Panel (▶)"}
+                  aria-label={rightSidebarCollapsed ? "Expand Right Sidebar" : "Collapse Right Sidebar"}
+                >
+                  {rightSidebarCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
                 </button>
 
 
@@ -4783,8 +4763,8 @@ function Editor() {
               <div
                 className="monaco-pane"
                 style={{
-                  width: layoutMode === "editor" ? "100%" : (layoutMode === "whiteboard" || layoutMode === "planner") ? "0%" : `${splitPercent}%`,
-                  display: (layoutMode === "whiteboard" || layoutMode === "planner") ? "none" : "block"
+                  width: layoutMode === "editor" ? "100%" : (layoutMode === "whiteboard" || layoutMode === "planner" || layoutMode === "preview") ? "0%" : `${splitPercent}%`,
+                  display: (layoutMode === "whiteboard" || layoutMode === "planner" || layoutMode === "preview") ? "none" : "block"
                 }}
               >
                 <div className="ce-editor-pane-container" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -4814,88 +4794,7 @@ function Editor() {
                           </span>
                         )}
 
-                        {/* Interactive Zoom Indicator Pill & Controls */}
-                        <div
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            padding: "2px 8px",
-                            borderRadius: "12px",
-                            background: "rgba(255, 255, 255, 0.05)",
-                            border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.1))",
-                            fontSize: "0.68rem"
-                          }}
-                        >
-                          <span style={{ color: "var(--ce-text-muted)", fontWeight: 600, opacity: 0.8 }} title="Pinch with 2 fingers or Ctrl + Scroll to zoom">
-                            Zoom: {Math.round(editorFontSize)}px
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newSize = Math.max(10, Math.round(editorFontSize) - 1);
-                              setEditorFontSize(newSize);
-                              if (editorRef.current) editorRef.current.updateOptions({ fontSize: newSize });
-                            }}
-                            title="Zoom Out (2-finger pinch in / Ctrl + Scroll Down)"
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "var(--ce-text)",
-                              cursor: "pointer",
-                              padding: "0 2px",
-                              fontWeight: "bold",
-                              fontSize: "0.75rem",
-                              lineHeight: 1
-                            }}
-                          >
-                            -
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newSize = Math.min(32, Math.round(editorFontSize) + 1);
-                              setEditorFontSize(newSize);
-                              if (editorRef.current) editorRef.current.updateOptions({ fontSize: newSize });
-                            }}
-                            title="Zoom In (2-finger pinch out / Ctrl + Scroll Up)"
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "var(--ce-text)",
-                              cursor: "pointer",
-                              padding: "0 2px",
-                              fontWeight: "bold",
-                              fontSize: "0.75rem",
-                              lineHeight: 1
-                            }}
-                          >
-                            +
-                          </button>
-                          {editorFontSize !== 14 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditorFontSize(14);
-                                if (editorRef.current) editorRef.current.updateOptions({ fontSize: 14 });
-                              }}
-                              title="Reset Zoom to 14px"
-                              style={{
-                                background: "rgba(99, 102, 241, 0.2)",
-                                border: "1px solid rgba(99, 102, 241, 0.4)",
-                                color: "#818cf8",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                                fontSize: "0.62rem",
-                                padding: "1px 4px",
-                                marginLeft: "2px",
-                                fontWeight: 700
-                              }}
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
+
                       </div>
                     </div>
                   )}
@@ -4924,8 +4823,11 @@ function Editor() {
                         }
                         options={{
                           readOnly: isEditorReadOnly,
-                          fontSize: isMobileScreen ? Math.min(editorFontSize, 13) : editorFontSize,
-                          fontFamily: editorFontFamily,
+                          fontSize: isMobileScreen ? Math.min(editorFontSize || 13, 12) : (editorFontSize || 13),
+                          fontFamily: editorFontFamily || "'Fira Code', 'JetBrains Mono', 'Cascadia Code', 'Source Code Pro', Consolas, monospace",
+                          fontLigatures: true,
+                          fontWeight: "400",
+                          lineHeight: 19,
                           mouseWheelZoom: true,
                           minimap: { enabled: !isMobileScreen && editorShowMinimap },
                           tabSize: editorTabSize,
@@ -5019,15 +4921,25 @@ function Editor() {
               {/* Collaborative Whiteboard Split Pane */}
               {(layoutMode !== "editor" && layoutMode !== "planner" || mobileTab === "whiteboard") && (
                 <div
-                  className="whiteboard-pane"
-                  style={{ width: layoutMode === "whiteboard" ? "100%" : `${100 - splitPercent}%` }}
+                  className={room?.language === "html" && (layoutMode === "split" || layoutMode === "preview") ? "preview-pane" : "whiteboard-pane"}
+                  style={{ width: (layoutMode === "whiteboard" || layoutMode === "preview") ? "100%" : `${100 - splitPercent}%`, height: "100%" }}
                 >
-                  <Whiteboard
-                    roomId={roomId}
-                    activeUsers={users}
-                    currentUser={user}
-                    room={room}
-                  />
+                  {room?.language === "html" && (layoutMode === "split" || layoutMode === "preview") ? (
+                    <LivePreview
+                      roomId={roomId}
+                      workspaceItems={workspaceItems}
+                      tabs={tabs}
+                      activeCode={code}
+                      activeFileId={activeFileId}
+                    />
+                  ) : (
+                    <Whiteboard
+                      roomId={roomId}
+                      activeUsers={users}
+                      currentUser={user}
+                      room={room}
+                    />
+                  )}
                 </div>
               )}
 
@@ -5218,18 +5130,16 @@ function Editor() {
             </div>
           </main>
 
+          {/* Mobile Backdrop Overlay when Right Sidebar is Expanded on Phone Viewports */}
+          {!rightSidebarCollapsed && isMobileScreen && (
+            <div
+              className="ce-right-sidebar-mobile-backdrop"
+              onClick={() => toggleRightSidebar(true)}
+            />
+          )}
+
           {/* 5. RIGHT SIDEBAR WRAPPER */}
           <div className={`ce-right-sidebar-wrapper ${rightSidebarCollapsed ? "collapsed" : ""}`}>
-            {/* Toggle Button */}
-            <button
-              type="button"
-              className={`right-sidebar-toggle-btn ${rightSidebarCollapsed ? "collapsed" : ""}`}
-              onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
-              title={rightSidebarCollapsed ? "Expand Right Panel" : "Collapse Right Panel"}
-            >
-              {rightSidebarCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-            </button>
-
             {/* 5. RIGHT SIDEBAR */}
             <aside className="ce-right-sidebar">
               <div className="right-sidebar-content">
@@ -5243,7 +5153,7 @@ function Editor() {
                     title={mobileOnlineDropdownOpen ? "Hide online connected users" : "View online connected users"}
                   >
                     <span className="ce-status-dot online" />
-                    <span className="ce-status-text">Connected</span>
+                    <span className="ce-status-text">Live</span>
                   </div>
 
                   <button
@@ -5587,7 +5497,7 @@ function Editor() {
                                         e.stopPropagation();
                                         handleUserRowClick(e, p);
                                       }}
-                                      style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", cursor: "pointer", color: "var(--ce-premium-muted)" }}
+                                      style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", cursor: "pointer", color: "var(--ce-premium-muted)", marginRight: "10px" }}
                                       title="Options"
                                     >
                                       <MoreVertical size={14} />
@@ -5718,7 +5628,7 @@ function Editor() {
                                   <img src={msg.sender.avatar} alt={msg.username} className="chat-bubble-avatar-img" />
                                 ) : (
                                   <div className="chat-bubble-avatar-initial" style={{ backgroundColor: getCursorColor(msg.username) }}>
-                                    {msg.username?.charAt(0).toUpperCase()}
+                                    {(msg?.username || "U").charAt(0).toUpperCase()}
                                   </div>
                                 )}
                               </div>
@@ -5811,7 +5721,7 @@ function Editor() {
                                   <img src={user.avatar} alt="Me" className="chat-bubble-avatar-img" />
                                 ) : (
                                   <div className="chat-bubble-avatar-initial self" style={{ backgroundColor: getCursorColor(user.username) }}>
-                                    {user.username?.charAt(0).toUpperCase()}
+                                    {(user?.username || "U").charAt(0).toUpperCase()}
                                   </div>
                                 )}
                               </div>
@@ -5844,7 +5754,7 @@ function Editor() {
                                     <img src={senderObject.user.avatar} alt={msg.username} className="chat-bubble-avatar-img" />
                                   ) : (
                                     <div className="chat-bubble-avatar-initial" style={{ backgroundColor: getCursorColor(msg.username) }}>
-                                      {msg.username?.charAt(0).toUpperCase()}
+                                      {(msg?.username || "U").charAt(0).toUpperCase()}
                                     </div>
                                   )}
                                 </div>
@@ -5943,7 +5853,7 @@ function Editor() {
                                     <img src={user.avatar} alt="Me" className="chat-bubble-avatar-img" />
                                   ) : (
                                     <div className="chat-bubble-avatar-initial self" style={{ backgroundColor: getCursorColor(user.username) }}>
-                                      {user.username?.charAt(0).toUpperCase()}
+                                      {(user?.username || "U").charAt(0).toUpperCase()}
                                     </div>
                                   )}
                                 </div>
@@ -5981,20 +5891,6 @@ function Editor() {
                     </button>
                   </div>
                 </section>
-
-                {/* Room Deletion & Leave Section */}
-                <div className="workspace-danger-footer">
-                  {String(room.createdBy?._id || room.createdBy) === String(user?.id) && (
-                    <button className="ce-btn-danger ce-btn-block" onClick={handleDeleteRoomAction}>
-                      <Trash2 size={14} />
-                      <span>Delete Room</span>
-                    </button>
-                  )}
-                  <button className="ce-btn-danger ce-btn-block" onClick={handleExitWorkspaceAction}>
-                    <DoorOpen size={14} />
-                    <span>Exit Workspace</span>
-                  </button>
-                </div>
               </div>
             </aside>
           </div>
@@ -6160,7 +6056,7 @@ function Editor() {
                 className="incoming-call-avatar"
                 style={{ backgroundColor: getCursorColor(incomingCall.username) }}
               >
-                {incomingCall.username.charAt(0).toUpperCase()}
+                {(incomingCall?.username || "U").charAt(0).toUpperCase()}
               </div>
               <div className="incoming-call-text">
                 <span className="incoming-call-user">{incomingCall.username}</span>
@@ -6759,7 +6655,7 @@ function Editor() {
                             <img src={follower.avatar} alt={follower.username} className="candidate-avatar" style={{ width: "32px", height: "32px", borderRadius: "50%", marginRight: "12px", border: "1px solid var(--ce-border)" }} />
                           ) : (
                             <div className="candidate-avatar-placeholder" style={{ width: "32px", height: "32px", borderRadius: "50%", marginRight: "12px", background: "var(--ce-primary)", color: "#fff", display: "grid", placeItems: "center", fontWeight: "bold", fontSize: "0.85rem" }}>
-                              {follower.username.charAt(0).toUpperCase()}
+                              {(follower?.username || "U").charAt(0).toUpperCase()}
                             </div>
                           )}
                           <div className="candidate-info" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
@@ -7067,7 +6963,7 @@ function CallParticipantCard({ id, username, stream, isLocal, isMuted, isCameraO
             {avatar ? (
               <img src={avatar} alt={username} />
             ) : (
-              username.charAt(0).toUpperCase()
+              (username || "U").charAt(0).toUpperCase()
             )}
           </div>
         </div>

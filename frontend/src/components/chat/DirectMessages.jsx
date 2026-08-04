@@ -17,12 +17,15 @@ import {
   deleteGroupChat,
   addGroupMember,
   removeGroupMember,
-  updateGroupChat
+  updateGroupChat,
+  promoteGroupAdmin,
+  demoteGroupAdmin
 } from "../../services/directMessageService";
 import {
   Send, User, MessageSquare, Search, Plus, ArrowLeft,
   Phone, Video, X, ArrowUpRight, ArrowDownLeft,
-  Check, CheckCheck, Trash2, Image, Code2, Sliders, MoreVertical, Info, Users, Ban, ShieldAlert
+  Check, CheckCheck, Trash2, Image, Code2, Sliders, MoreVertical, Info, Users, Ban, ShieldAlert,
+  Shield, Edit2
 } from "lucide-react";
 import { useCall } from "../../context/CallContext";
 import "./DirectMessages.css";
@@ -380,6 +383,10 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [showGroupInfoPanel, setShowGroupInfoPanel] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [isEditingGroupName, setIsEditingGroupName] = useState(false);
+  const [isEditingGroupBio, setIsEditingGroupBio] = useState(false);
+  const [editedGroupName, setEditedGroupName] = useState("");
+  const [editedGroupBio, setEditedGroupBio] = useState("");
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -1107,6 +1114,86 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     } catch (err) {
       console.error("Error updating group icon:", err);
       alert(err.response?.data?.message || "Failed to update group icon. Please try again.");
+    }
+  };
+
+  const handleSaveGroupName = async () => {
+    if (!editedGroupName.trim() || !activeChat) return;
+    try {
+      const formData = new FormData();
+      formData.append("name", editedGroupName.trim());
+      const res = await updateGroupChat(activeChat._id, formData);
+      if (res.success) {
+        setActiveChat(res.group);
+        setConversations(prev => prev.map(c => {
+          if (c.isGroup && String(c.group?._id) === String(activeChat._id)) {
+            return { ...c, group: res.group };
+          }
+          return c;
+        }));
+        setIsEditingGroupName(false);
+      }
+    } catch (err) {
+      console.error("Error updating group name:", err);
+      alert(err.response?.data?.message || "Failed to update group name.");
+    }
+  };
+
+  const handleSaveGroupBio = async () => {
+    if (!activeChat) return;
+    try {
+      const formData = new FormData();
+      formData.append("bio", editedGroupBio.trim());
+      const res = await updateGroupChat(activeChat._id, formData);
+      if (res.success) {
+        setActiveChat(res.group);
+        setConversations(prev => prev.map(c => {
+          if (c.isGroup && String(c.group?._id) === String(activeChat._id)) {
+            return { ...c, group: res.group };
+          }
+          return c;
+        }));
+        setIsEditingGroupBio(false);
+      }
+    } catch (err) {
+      console.error("Error updating group bio:", err);
+      alert(err.response?.data?.message || "Failed to update group bio.");
+    }
+  };
+
+  const handlePromoteAdmin = async (targetUserId) => {
+    try {
+      const res = await promoteGroupAdmin(activeChat._id, targetUserId);
+      if (res.success) {
+        setActiveChat(res.group);
+        setConversations(prev => prev.map(c => {
+          if (c.isGroup && String(c.group?._id) === String(activeChat._id)) {
+            return { ...c, group: res.group };
+          }
+          return c;
+        }));
+      }
+    } catch (err) {
+      console.error("Error promoting member:", err);
+      alert(err.response?.data?.message || "Failed to promote member to admin.");
+    }
+  };
+
+  const handleDemoteAdmin = async (targetUserId) => {
+    try {
+      const res = await demoteGroupAdmin(activeChat._id, targetUserId);
+      if (res.success) {
+        setActiveChat(res.group);
+        setConversations(prev => prev.map(c => {
+          if (c.isGroup && String(c.group?._id) === String(activeChat._id)) {
+            return { ...c, group: res.group };
+          }
+          return c;
+        }));
+      }
+    } catch (err) {
+      console.error("Error demoting admin:", err);
+      alert(err.response?.data?.message || "Failed to demote admin.");
     }
   };
 
@@ -1935,7 +2022,14 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                               <span className="chat-date-badge">{formatChatDate(msg.createdAt)}</span>
                             </div>
                           )}
-                          <div className={`message-bubble-wrapper ${isMe ? "sent" : "received"}`}>
+                          {msg.isSystem ? (
+                            <div className="chat-system-message-container">
+                              <span className="chat-system-message-badge">
+                                {msg.message}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className={`message-bubble-wrapper ${isMe ? "sent" : "received"}`}>
                             {!isMe && (
                               <div className="bubble-avatar-container">
                                 <SafeAvatar
@@ -2097,6 +2191,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                               )}
                             </div>
                           </div>
+                          )}
                         </React.Fragment>
                       );
                     });
@@ -2226,158 +2321,260 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               </div>
             )}
 
-            {/* SLIDING GROUP INFO PANEL */}
-            {showGroupInfoPanel && activeChat.isGroup && (
-              <div className="group-info-panel animate-slide-left" onClick={(e) => e.stopPropagation()}>
-                <div className="group-info-header">
-                  <h3>Group Info</h3>
-                  <button type="button" className="close-panel-btn" onClick={() => setShowGroupInfoPanel(false)}>
-                    <X size={18} />
-                  </button>
-                </div>
+              {showGroupInfoPanel && activeChat.isGroup && (() => {
+              const isOwnerOfGroup = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId));
+              const isAdminOfGroup = (activeChat.admins || []).some(admin => String(admin._id || admin) === String(currentUserId)) || isOwnerOfGroup;
+              return (
+                <div className="group-info-panel animate-slide-left" onClick={(e) => e.stopPropagation()}>
+                  <div className="group-info-header">
+                    <h3>Group Info</h3>
+                    <button type="button" className="close-panel-btn" onClick={() => setShowGroupInfoPanel(false)}>
+                      <X size={18} />
+                    </button>
+                  </div>
 
-                <div className="group-info-scroll-container">
-                  {/* Avatar & Meta */}
-                  {(() => {
-                    const isAdminOfGroup = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId));
-                    return (
-                      <div className="group-info-meta-card">
-                        <div
-                          className={`group-info-avatar-box ${isAdminOfGroup ? "editable" : ""}`}
-                          onClick={() => {
-                            if (isAdminOfGroup) {
-                              document.getElementById("group-info-avatar-input").click();
-                            }
-                          }}
-                          style={{ cursor: isAdminOfGroup ? "pointer" : "default" }}
-                          title={isAdminOfGroup ? "Change Group Icon" : ""}
-                        >
-                          {activeChat.avatar ? (
-                            <img src={activeChat.avatar} alt={activeChat.name} className="group-info-avatar" />
-                          ) : (
-                            <div className="group-info-avatar-placeholder">
-                              <Users size={32} />
-                            </div>
-                          )}
+                  <div className="group-info-scroll-container">
+                    {/* Avatar & Meta */}
+                    <div className="group-info-meta-card">
+                      <div
+                        className={`group-info-avatar-box ${isAdminOfGroup ? "editable" : ""}`}
+                        onClick={() => {
+                          if (isAdminOfGroup) {
+                            document.getElementById("group-info-avatar-input").click();
+                          }
+                        }}
+                        style={{ cursor: isAdminOfGroup ? "pointer" : "default" }}
+                        title={isAdminOfGroup ? "Change Group Icon" : ""}
+                      >
+                        {activeChat.avatar ? (
+                          <img src={activeChat.avatar} alt={activeChat.name} className="group-info-avatar" />
+                        ) : (
+                          <div className="group-info-avatar-placeholder">
+                            <Users size={32} />
+                          </div>
+                        )}
+                        {isAdminOfGroup && (
+                          <div className="group-info-avatar-edit-overlay">
+                            <span className="edit-icon-text">Change DP</span>
+                          </div>
+                        )}
+                      </div>
+                      {isAdminOfGroup && (
+                        <input
+                          type="file"
+                          id="group-info-avatar-input"
+                          style={{ display: "none" }}
+                          accept="image/png, image/jpeg, image/jpg, image/webp"
+                          onChange={handleUpdateGroupAvatar}
+                        />
+                      )}
+
+                      {isEditingGroupName ? (
+                        <div className="group-info-edit-row">
+                          <input
+                            type="text"
+                            className="group-info-edit-input"
+                            value={editedGroupName}
+                            onChange={(e) => setEditedGroupName(e.target.value)}
+                            maxLength={30}
+                            autoFocus
+                          />
+                          <div className="group-info-edit-actions">
+                            <button className="edit-save-btn" onClick={handleSaveGroupName}>
+                              <Check size={14} />
+                            </button>
+                            <button className="edit-cancel-btn" onClick={() => setIsEditingGroupName(false)}>
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group-info-name-wrapper">
+                          <h4 className="group-info-name">{activeChat.name}</h4>
                           {isAdminOfGroup && (
-                            <div className="group-info-avatar-edit-overlay">
-                              <span className="edit-icon-text">Change DP</span>
-                            </div>
+                            <button
+                              type="button"
+                              className="group-info-edit-trigger-btn"
+                              onClick={() => {
+                                setEditedGroupName(activeChat.name);
+                                setIsEditingGroupName(true);
+                              }}
+                              title="Edit Name"
+                            >
+                              <Edit2 size={12} />
+                            </button>
                           )}
                         </div>
-                        {isAdminOfGroup && (
-                          <input
-                            type="file"
-                            id="group-info-avatar-input"
-                            style={{ display: "none" }}
-                            accept="image/png, image/jpeg, image/jpg, image/webp"
-                            onChange={handleUpdateGroupAvatar}
-                          />
-                        )}
-                        <h4 className="group-info-name">{activeChat.name}</h4>
-                        <p className="group-info-bio">{activeChat.bio || "No group description."}</p>
-                        <span className="group-info-created-by">
-                          Admin: @{activeChat.createdBy?.username || activeChat.createdBy || "Admin"}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Members List */}
-                  <div className="group-info-members-section">
-                    <div className="members-section-header">
-                      <h4>Group Members ({activeChat.members?.length || 0})</h4>
-                      {activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId)) && (
-                        <button
-                          type="button"
-                          className="add-member-trigger-btn"
-                          onClick={() => setShowAddMemberModal(true)}
-                          title="Add Member"
-                        >
-                          <Plus size={14} /> Add
-                        </button>
                       )}
+
+                      {isEditingGroupBio ? (
+                        <div className="group-info-edit-row column">
+                          <textarea
+                            className="group-info-edit-textarea"
+                            value={editedGroupBio}
+                            onChange={(e) => setEditedGroupBio(e.target.value)}
+                            maxLength={150}
+                            autoFocus
+                            placeholder="Describe the group..."
+                          />
+                          <div className="group-info-edit-actions justify-end">
+                            <button className="edit-save-btn" onClick={handleSaveGroupBio}>
+                              <Check size={14} /> Save
+                            </button>
+                            <button className="edit-cancel-btn" onClick={() => setIsEditingGroupBio(false)}>
+                              <X size={14} /> Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group-info-bio-wrapper">
+                          <p className="group-info-bio">{activeChat.bio || "No group description."}</p>
+                          {isAdminOfGroup && (
+                            <button
+                              type="button"
+                              className="group-info-edit-trigger-btn"
+                              onClick={() => {
+                                setEditedGroupBio(activeChat.bio || "");
+                                setIsEditingGroupBio(true);
+                              }}
+                              title="Edit Description"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <span className="group-info-created-by">
+                        Owner: @{activeChat.createdBy?.username || "Admin"}
+                      </span>
                     </div>
 
-                    <div className="group-members-list">
-                      {activeChat.members && activeChat.members.map((member) => {
-                        const isCreator = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(member._id));
-                        const isAdminOfGroup = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId));
-                        const isMe = String(member._id) === String(currentUserId);
+                    {/* Members List */}
+                    <div className="group-info-members-section">
+                      <div className="members-section-header">
+                        <h4>Group Members ({activeChat.members?.length || 0})</h4>
+                        {isAdminOfGroup && (
+                          <button
+                            type="button"
+                            className="add-member-trigger-btn"
+                            onClick={() => setShowAddMemberModal(true)}
+                            title="Add Member"
+                          >
+                            <Plus size={14} /> Add
+                          </button>
+                        )}
+                      </div>
 
-                        return (
-                          <div key={member._id} className="group-member-row">
-                            <div
-                              className={`member-row-left ${onViewProfile ? "clickable" : ""}`}
-                              onClick={() => {
-                                if (onViewProfile) {
-                                  onViewProfile(member._id);
-                                }
-                              }}
-                              style={{ cursor: onViewProfile ? "pointer" : "default" }}
-                              title={onViewProfile ? `View @${member.username}'s profile` : ""}
-                            >
-                              <div className="member-row-avatar-box">
-                                {member.avatar ? (
-                                  <img src={member.avatar} alt={member.username} className="member-row-avatar" />
+                      <div className="group-members-list">
+                        {activeChat.members && activeChat.members.map((member) => {
+                          const isCreator = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(member._id));
+                          const isMemberAdmin = (activeChat.admins || []).some(admin => String(admin._id || admin) === String(member._id)) || isCreator;
+                          const isMe = String(member._id) === String(currentUserId);
+
+                          return (
+                            <div key={member._id} className="group-member-row">
+                              <div
+                                className={`member-row-left ${onViewProfile ? "clickable" : ""}`}
+                                onClick={() => {
+                                  if (onViewProfile) {
+                                    onViewProfile(member._id);
+                                  }
+                                }}
+                                style={{ cursor: onViewProfile ? "pointer" : "default" }}
+                                title={onViewProfile ? `View @${member.username}'s profile` : ""}
+                              >
+                                <div className="member-row-avatar-box">
+                                  {member.avatar ? (
+                                    <img src={member.avatar} alt={member.username} className="member-row-avatar" />
+                                  ) : (
+                                    <div className="member-row-avatar-placeholder">
+                                      {member.username.charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                  {member.isOnline && <span className="member-row-online-badge" />}
+                                </div>
+                                <div className="member-row-details">
+                                  <span className="member-row-username">
+                                    {member.username} {isMe && "(You)"}
+                                  </span>
+                                  <span className="member-row-bio">{member.bio || "Developer"}</span>
+                                </div>
+                              </div>
+                              <div className="member-row-right">
+                                {isCreator ? (
+                                  <span className="member-role-badge owner">Owner</span>
                                 ) : (
-                                  <div className="member-row-avatar-placeholder">
-                                    {member.username.charAt(0).toUpperCase()}
+                                  <div className="member-row-badges-actions">
+                                    {isMemberAdmin && <span className="member-role-badge admin">Admin</span>}
+                                    {isMe ? (
+                                      <span className="member-role-badge self">You</span>
+                                    ) : (
+                                      isAdminOfGroup && (
+                                        <div className="member-row-actions">
+                                          {!isMemberAdmin && (
+                                            <button
+                                              type="button"
+                                              className="member-row-action-btn promote-btn"
+                                              onClick={() => handlePromoteAdmin(member._id)}
+                                              title="Promote to Admin"
+                                            >
+                                              <Shield size={12} /> Make Admin
+                                            </button>
+                                          )}
+                                          {isMemberAdmin && isOwnerOfGroup && (
+                                            <button
+                                              type="button"
+                                              className="member-row-action-btn demote-btn"
+                                              onClick={() => handleDemoteAdmin(member._id)}
+                                              title="Demote Admin"
+                                            >
+                                              <ShieldAlert size={12} /> Dismiss Admin
+                                            </button>
+                                          )}
+                                          <button
+                                            type="button"
+                                            className="member-row-action-btn remove-btn"
+                                            onClick={() => handleRemoveMemberSubmit(member._id, member.username)}
+                                            title={`Remove @${member.username}`}
+                                          >
+                                            Remove
+                                          </button>
+                                        </div>
+                                      )
+                                    )}
                                   </div>
                                 )}
-                                {member.isOnline && <span className="member-row-online-badge" />}
-                              </div>
-                              <div className="member-row-details">
-                                <span className="member-row-username">
-                                  {member.username} {isMe && "(You)"}
-                                </span>
-                                <span className="member-row-bio">{member.bio || "Developer"}</span>
                               </div>
                             </div>
-                            <div className="member-row-right">
-                              {isCreator ? (
-                                <span className="member-admin-badge">Admin</span>
-                              ) : (
-                                isAdminOfGroup && (
-                                  <button
-                                    type="button"
-                                    className="member-row-remove-btn"
-                                    onClick={() => handleRemoveMemberSubmit(member._id, member.username)}
-                                    title={`Remove @${member.username}`}
-                                  >
-                                    Remove
-                                  </button>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="group-info-footer">
-                  {activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId)) ? (
-                    <button
-                      type="button"
-                      className="group-info-danger-btn"
-                      onClick={() => handleDeleteGroup(activeChat._id)}
-                    >
-                      <Trash2 size={14} /> Delete Group
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="group-info-danger-btn"
-                      onClick={() => handleRemoveMemberSubmit(currentUserId, user?.username)}
-                    >
-                      <ArrowLeft size={14} /> Leave Group
-                    </button>
-                  )}
+                  <div className="group-info-footer">
+                    {isOwnerOfGroup ? (
+                      <button
+                        type="button"
+                        className="group-info-danger-btn"
+                        onClick={() => handleDeleteGroup(activeChat._id)}
+                      >
+                        <Trash2 size={14} /> Delete Group
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="group-info-danger-btn"
+                        onClick={() => handleRemoveMemberSubmit(currentUserId, user?.username)}
+                      >
+                        <ArrowLeft size={14} /> Leave Group
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* ADD MEMBER MODAL */}
             {showAddMemberModal && (

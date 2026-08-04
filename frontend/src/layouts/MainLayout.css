@@ -454,6 +454,56 @@ body {
   font-size: 0.78rem;
 }
 
+.ce-stacked-avatar {
+  position: relative;
+}
+
+.avatar-online-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ce-bg-header, #181b26);
+  z-index: 5;
+}
+
+.avatar-online-dot.online {
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.avatar-online-dot.offline {
+  background-color: #64748b;
+}
+
+.user-online-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.user-online-label.online {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.user-online-label.offline {
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.online-count-badge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
 .user-avatar-small {
   width: 18px;
   height: 18px;
@@ -3180,4 +3230,93 @@ body::-webkit-scrollbar,
   height: 0 !important;
   background: transparent !important;
   display: none !important;
+}
+
+/* ==========================================================================
+   Tasks Topnav Button (Dark & Light Theme Efficiency Overrides)
+   ========================================================================== */
+.ce-nav-action-btn.tasks-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  height: 32px;
+  user-select: none;
+}
+
+.ce-nav-action-btn.tasks-btn .nav-btn-icon {
+  color: #10b981;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.ce-nav-action-btn.tasks-btn .nav-btn-text {
+  font-weight: 700;
+}
+
+.ce-nav-action-btn.tasks-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.ce-nav-action-btn.tasks-btn:hover .nav-btn-icon {
+  transform: scale(1.1);
+}
+
+.ce-nav-action-btn.tasks-btn.active-tasks {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+}
+
+.ce-nav-action-btn.tasks-btn.active-tasks .nav-btn-icon {
+  color: #ffffff !important;
+}
+
+/* Light Mode Overrides for Tasks Button */
+.light .ce-nav-action-btn.tasks-btn,
+body.light .ce-nav-action-btn.tasks-btn,
+html.light .ce-nav-action-btn.tasks-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+}
+
+.light .ce-nav-action-btn.tasks-btn .nav-btn-icon,
+body.light .ce-nav-action-btn.tasks-btn .nav-btn-icon,
+html.light .ce-nav-action-btn.tasks-btn .nav-btn-icon {
+  color: #059669;
+}
+
+.light .ce-nav-action-btn.tasks-btn:hover,
+body.light .ce-nav-action-btn.tasks-btn:hover,
+html.light .ce-nav-action-btn.tasks-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.light .ce-nav-action-btn.tasks-btn.active-tasks,
+body.light .ce-nav-action-btn.tasks-btn.active-tasks,
+html.light .ce-nav-action-btn.tasks-btn.active-tasks {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25) !important;
+}
+
+.light .ce-nav-action-btn.tasks-btn.active-tasks .nav-btn-icon,
+body.light .ce-nav-action-btn.tasks-btn.active-tasks .nav-btn-icon,
+html.light .ce-nav-action-btn.tasks-btn.active-tasks .nav-btn-icon {
+  color: #ffffff !important;
 }

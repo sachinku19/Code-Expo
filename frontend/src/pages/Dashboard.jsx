@@ -4079,10 +4079,15 @@ function Dashboard() {
   };
 
   const handleJoinRoomDirect = (targetRoomId) => {
-    const room = liveRooms.find(r => r.roomId === targetRoomId) ||
-      historyRooms.find(r => r.roomId === targetRoomId) ||
-      publicRooms.find(r => r.roomId === targetRoomId) ||
-      { roomId: targetRoomId, title: "Workspace Room" };
+    if (!targetRoomId) return;
+    const id = typeof targetRoomId === "object" ? targetRoomId.roomId : targetRoomId;
+    const title = typeof targetRoomId === "object" ? (targetRoomId.title || targetRoomId.name || "Workspace Room") : "Workspace Room";
+
+    const room = (liveRooms && liveRooms.find(r => r.roomId === id)) ||
+      (historyRooms && historyRooms.find(r => r.roomId === id)) ||
+      (publicRooms && publicRooms.find(r => r.roomId === id)) ||
+      (userRooms && userRooms.find(r => r.roomId === id)) ||
+      { roomId: id, title };
 
     setJoinTargetRoom(room);
     setShowJoinConfirmModal(true);
@@ -7557,6 +7562,7 @@ function Dashboard() {
                             <option value="python">Python</option>
                             <option value="cpp">C++</option>
                             <option value="java">Java</option>
+                            <option value="html">HTML, CSS & JavaScript</option>
                           </select>
                         </div>
 
@@ -7661,6 +7667,7 @@ function Dashboard() {
                               <option value="python">Python</option>
                               <option value="cpp">C++</option>
                               <option value="java">Java</option>
+                              <option value="html">HTML, CSS & JavaScript</option>
                             </select>
                           </div>
 
@@ -7811,6 +7818,7 @@ function Dashboard() {
                               <option value="python">Python</option>
                               <option value="cpp">C++</option>
                               <option value="java">Java</option>
+                              <option value="html">HTML/CSS/JS</option>
                             </select>
 
                             <select
@@ -8233,6 +8241,7 @@ function Dashboard() {
                       <option value="python">Python</option>
                       <option value="cpp">C++</option>
                       <option value="java">Java</option>
+                      <option value="html">HTML/CSS/JS</option>
                     </select>
 
                     <select value={historySortBy} onChange={(e) => setHistorySortBy(e.target.value)}>
@@ -10028,6 +10037,7 @@ function Dashboard() {
                               <option value="python">Python</option>
                               <option value="cpp">C++</option>
                               <option value="java">Java</option>
+                              <option value="html">HTML, CSS & JavaScript</option>
                             </select>
                           </div>
                           <div className="settings-form-field flex-1">
@@ -10840,6 +10850,7 @@ function Dashboard() {
                       <option value="python">Python</option>
                       <option value="cpp">C++</option>
                       <option value="java">Java</option>
+                      <option value="html">HTML, CSS & JavaScript</option>
                     </select>
                   </div>
 

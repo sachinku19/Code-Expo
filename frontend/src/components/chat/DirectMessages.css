@@ -5356,3 +5356,295 @@
   background: rgba(0, 0, 0, 0.05);
 }
 
+/* Edit Details Styling */
+.group-info-name-wrapper,
+.group-info-bio-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.group-info-name-wrapper {
+  margin-bottom: 6px;
+}
+
+.group-info-bio-wrapper {
+  margin-bottom: 12px;
+}
+
+.group-info-edit-trigger-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.group-info-edit-trigger-btn:hover {
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.group-info-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 220px;
+  margin-bottom: 8px;
+}
+
+.group-info-edit-row.column {
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 100%;
+  padding: 0 10px;
+}
+
+.group-info-edit-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #ffffff;
+  padding: 4px 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.group-info-edit-input:focus {
+  border-color: #a855f7;
+}
+
+.group-info-edit-textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #ffffff;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  outline: none;
+  min-height: 50px;
+  resize: none;
+  transition: border-color 0.2s;
+}
+
+.group-info-edit-textarea:focus {
+  border-color: #a855f7;
+}
+
+.group-info-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-info-edit-actions.justify-end {
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.edit-save-btn,
+.edit-cancel-btn {
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.edit-save-btn {
+  background: #a855f7;
+  color: #ffffff;
+}
+
+.edit-save-btn:hover {
+  background: #9333ea;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+}
+
+.edit-cancel-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.edit-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Member Action Buttons & Badges */
+.member-row-badges-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-role-badge {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.member-role-badge.owner {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.1);
+}
+
+.member-role-badge.admin {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
+}
+
+.member-role-badge.self {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.member-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.member-row-action-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.2s;
+}
+
+.member-row-action-btn.promote-btn {
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.member-row-action-btn.promote-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.member-row-action-btn.demote-btn {
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.member-row-action-btn.demote-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.member-row-action-btn.remove-btn {
+  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.member-row-action-btn.remove-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Light mode support */
+.light .group-info-name-wrapper h4 {
+  color: #0f172a;
+}
+
+.light .group-info-edit-input,
+.light .group-info-edit-textarea {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.light .group-info-edit-input:focus,
+.light .group-info-edit-textarea:focus {
+  border-color: #a855f7;
+}
+
+.light .group-info-edit-trigger-btn {
+  color: rgba(15, 23, 42, 0.4);
+}
+
+.light .group-info-edit-trigger-btn:hover {
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.05);
+}
+
+.light .edit-cancel-btn {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.light .edit-cancel-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.light .member-row-action-btn.remove-btn {
+  color: rgba(15, 23, 42, 0.6);
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+.light .member-row-action-btn.remove-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* System Message Notifications (WhatsApp-style) */
+.chat-system-message-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 12px 0;
+  padding: 0 16px;
+}
+
+.chat-system-message-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 5px 14px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  max-width: 80%;
+  word-break: break-word;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Light mode overrides */
+.light .chat-system-message-badge {
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+

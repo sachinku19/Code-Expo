@@ -399,13 +399,36 @@ const socketHandler = (io) => {
       io.to(roomId).emit("meet:update-users", Object.values(meetUsers[roomId]));
     });
 
+    // Standalone Browser Preview Socket Listener (Read-only channel subscription)
+    socket.on("join-preview-room", ({ roomId }) => {
+      if (!roomId) return;
+      socket.roomId = roomId;
+      socket.isPreview = true;
+      socket.join(roomId);
+      console.log(`🌐 Preview tab joined room ${roomId}`);
+    });
+
+    socket.on("preview-code-update", (data) => {
+      if (data && data.roomId) {
+        socket.to(data.roomId).emit("preview-code-update", data);
+      }
+    });
+
     socket.on("join-room", async ({
       roomId,
       username,
       userId,
       isOwner,
-      avatar
+      avatar,
+      isPreview
     }) => {
+      if (isPreview) {
+        socket.roomId = roomId;
+        socket.isPreview = true;
+        socket.join(roomId);
+        console.log(`🌐 Preview tab joined room ${roomId}`);
+        return;
+      }
 
       socket.roomId = roomId;
       socket.username = username;
@@ -444,7 +467,8 @@ const socketHandler = (io) => {
         );
 
         if (socketAlreadyInRoom) {
-          // Same socket connection re-emitting join-room. Do not block.
+          // Same socket connection re-emitting join-room. Return current synchronized user list to client.
+          socket.emit("room-users", roomUsers[roomId]);
           return;
         }
 

@@ -61,3 +61,8 @@ export const getRoomHistory = async (roomId) => {
   const response = await API.get(`/${roomId}/history`, getHeaders());
   return response.data;
 };
+
+export const getWorkspaceContents = async (roomId) => {
+  const response = await API.get(`/${roomId}/contents`, getHeaders());
+  return response.data;
+};
