@@ -7275,22 +7275,3 @@ body.light .chat-call-btn.video-call-btn:hover {
 .light .ce-exit-transition-content {
   color: #1f2937;
 }
-
-opacity: 1;
-}
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Light Mode Overrides for exit transition */
-.light .ce-exit-transition-overlay {
-  background: rgba(249, 250, 251, 0.98);
-}
-
-.light .ce-exit-transition-content {
-  color: #1f2937;
-}
