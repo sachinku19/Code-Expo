@@ -46,6 +46,7 @@ import {
   adminResolvePendingSubscription
 } from "../services/adminService";
 import socket from "../socket/socket";
+import { subscribeToLikes } from "../services/likeEngine";
 import { adminGetAppeals, adminResolveAppeal } from "../services/trustSafetyService";
 import {
   Users,
@@ -932,18 +933,21 @@ const AdminDashboard = () => {
 
     socket.on("post:created", handlePostCreated);
     socket.on("post:deleted", handlePostDeleted);
-    socket.on("post:liked", handlePostLiked);
     socket.on("post:commented", handlePostCommented);
     socket.on("admin-post-action", handleAdminPostAction);
     socket.on("user:status", handleUserStatus);
 
+    const unsubPostLikes = subscribeToLikes("POST", (data) => {
+      handlePostLiked({ postId: data.entityId, likes: data.likes, likesCount: data.likesCount });
+    });
+
     return () => {
       socket.off("post:created", handlePostCreated);
       socket.off("post:deleted", handlePostDeleted);
-      socket.off("post:liked", handlePostLiked);
       socket.off("post:commented", handlePostCommented);
       socket.off("admin-post-action", handleAdminPostAction);
       socket.off("user:status", handleUserStatus);
+      unsubPostLikes();
     };
   }, []);
 

@@ -59,6 +59,7 @@ import {
   deletePost
 } from "../services/socialService";
 import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBanner, deleteCoverBanner } from "../services/userService";
+import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../services/likeEngine";
 
 const ExpandableText = ({ children, text, lines = 3 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1651,24 +1652,24 @@ function Dashboard() {
   }, [selectedPostModal]);
 
   const handleLikePostInModal = async () => {
-    if (!selectedPostModal) return;
-    try {
-      await toggleLikePost(selectedPostModal._id);
-      const res = await getPosts(1, 100);
-      if (res?.success) {
-        const found = res.posts.find(p => p._id === selectedPostModal._id);
-        if (found) {
-          setSelectedPostModal(found);
-        }
-        const filtered = res.posts.filter(post => {
-          const authorId = post.author?._id || post.author;
-          return String(authorId) === String(viewingUserProfile?._id || user?.id || user?._id);
-        });
-        setProfilePosts(filtered);
+    if (!selectedPostModal || !user) return;
+    const postId = selectedPostModal._id || selectedPostModal.id;
+    await toggleLikeOptimistic({
+      entityType: "POST",
+      entityId: postId,
+      currentUser: user,
+      currentLikes: selectedPostModal.likes || [],
+      apiCall: () => toggleLikePost(postId),
+      onStateUpdate: ({ likes, likesCount }) => {
+        const updateFn = p => (p._id === postId || p.id === postId) ? { ...p, likes, likesCount } : p;
+        setSelectedPostModal(prev => prev && (prev._id === postId || prev.id === postId) ? { ...prev, likes, likesCount } : prev);
+        setAllFeedPosts(prev => prev.map(updateFn));
+        setProfilePosts(prev => prev.map(updateFn));
+      },
+      onError: (err) => {
+        addToast(err.response?.data?.message || err.message || "Failed to update like", "error");
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
   };
 
   const handleAddCommentInModal = async (e) => {
@@ -2855,125 +2856,66 @@ function Dashboard() {
   };
 
   const handleLikeRoom = async (roomId) => {
-    const currentUser = user;
-    if (!currentUser) return;
+    if (!user) return;
 
     setAnimatingLikes(prev => ({ ...prev, [roomId]: true }));
     setTimeout(() => {
       setAnimatingLikes(prev => ({ ...prev, [roomId]: false }));
     }, 600);
 
-    const prevLikedRooms = [...likedRooms];
-    const prevTrendingRooms = [...trendingRooms];
-    const prevHistoryRooms = [...historyRooms];
-    const prevViewingUserLikedRooms = [...viewingUserLikedRooms];
-    const prevPublicRooms = [...publicRooms];
-    const prevLiveRooms = [...liveRooms];
-    const prevRecentRooms = [...recentRooms];
-    const prevViewingUserRooms = [...viewingUserRooms];
-    const prevSavedRooms = [...savedRooms];
+    const currentRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      trendingRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      publicRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      liveRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      recentRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      likedRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
 
-    const wasLiked = isRoomLiked(roomId);
-    const isAdd = !wasLiked;
+    const currentLikes = currentRoom ? (currentRoom.likes || currentRoom.likedBy || []) : [];
 
-    // Optimistically update likedRooms list
-    if (wasLiked) {
-      setLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
-    } else {
-      const matchedRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-        trendingRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-        publicRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-        liveRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-        recentRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-        savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-        viewingUserRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
-      if (matchedRoom) {
-        const updatedMatched = {
-          ...matchedRoom,
-          likesCount: (matchedRoom.likesCount || 0) + 1,
-          likedBy: [...(matchedRoom.likedBy || []), currentUser]
-        };
-        setLikedRooms(prev => [...prev, updatedMatched]);
-      }
-    }
-
-    const toggleRoomInArray = (roomsArray) => {
-      if (!roomsArray) return roomsArray;
-      return roomsArray.map(r => {
-        if (r && (r.roomId === roomId || r._id === roomId)) {
-          const alreadyLiked = (r.likedBy || []).some(u => String(u._id || u) === String(currentUser.id || currentUser._id));
-          let updatedLikedBy = r.likedBy || [];
-          if (isAdd) {
-            if (!alreadyLiked) updatedLikedBy = [...updatedLikedBy, currentUser];
-          } else {
-            updatedLikedBy = updatedLikedBy.filter(u => String(u._id || u) !== String(currentUser.id || currentUser._id));
+    await toggleLikeOptimistic({
+      entityType: "ROOM",
+      entityId: roomId,
+      currentUser: user,
+      currentLikes,
+      apiCall: () => toggleLikeRoom(roomId),
+      onStateUpdate: ({ likes, likesCount }) => {
+        const updateRoomFn = r => {
+          if (r && (r.roomId === roomId || r._id === roomId)) {
+            return {
+              ...r,
+              likes,
+              likesCount,
+              likedBy: likes
+            };
           }
-          return {
-            ...r,
-            likesCount: updatedLikedBy.length,
-            likedBy: updatedLikedBy
-          };
-        }
-        return r;
-      });
-    };
+          return r;
+        };
 
-    // Optimistically update counts and avatars on all lists
-    setTrendingRooms(prev => toggleRoomInArray(prev));
-    setHistoryRooms(prev => toggleRoomInArray(prev));
-    setPublicRooms(prev => toggleRoomInArray(prev));
-    setLiveRooms(prev => toggleRoomInArray(prev));
-    setRecentRooms(prev => toggleRoomInArray(prev));
-    setViewingUserRooms(prev => toggleRoomInArray(prev));
-    setSavedRooms(prev => toggleRoomInArray(prev));
-
-    if (viewingUserProfile) {
-      if (wasLiked) {
-        setViewingUserLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
-      } else {
-        const matchedRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-          trendingRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-          publicRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-          liveRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-          recentRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-          savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-          viewingUserRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
-        if (matchedRoom) {
-          const updatedMatched = {
-            ...matchedRoom,
-            likesCount: (matchedRoom.likesCount || 0) + 1,
-            likedBy: [...(matchedRoom.likedBy || []), currentUser]
-          };
-          setViewingUserLikedRooms(prev => [...prev, updatedMatched]);
-        }
+        setTrendingRooms(prev => prev.map(updateRoomFn));
+        setHistoryRooms(prev => prev.map(updateRoomFn));
+        setPublicRooms(prev => prev.map(updateRoomFn));
+        setLiveRooms(prev => prev.map(updateRoomFn));
+        setRecentRooms(prev => prev.map(updateRoomFn));
+        setViewingUserRooms(prev => prev.map(updateRoomFn));
+        setSavedRooms(prev => prev.map(updateRoomFn));
+        setLikedRooms(prev => {
+          const isUserLiked = isEntityLiked(likes, user);
+          if (isUserLiked) {
+            const exists = prev.some(r => r && (r.roomId === roomId || r._id === roomId));
+            if (!exists && currentRoom) {
+              return [...prev, { ...currentRoom, likes, likesCount, likedBy: likes }];
+            }
+            return prev.map(updateRoomFn);
+          } else {
+            return prev.filter(r => r && r.roomId !== roomId && r._id !== roomId);
+          }
+        });
+      },
+      onError: (err) => {
+        addToast(err.response?.data?.message || err.message || "Failed to update like status", "error");
       }
-    }
-
-    try {
-      const res = await toggleLikeRoom(roomId);
-      if (res.success) {
-        const notifRes = await getNotifications(1, 20).catch(() => ({ success: false, notifications: [], unreadCount: 0 }));
-        if (notifRes.success) {
-          setNotificationsList(notifRes.notifications || []);
-          setUnreadNotificationsCount(notifRes.unreadCount || 0);
-          setNotifPage(1);
-          setNotifTotalPages(notifRes.totalPages || 1);
-        }
-      } else {
-        throw new Error(res.message || "Failed to update like status");
-      }
-    } catch (err) {
-      addToast(err.response?.data?.message || err.message, "error");
-      setLikedRooms(prevLikedRooms);
-      setTrendingRooms(prevTrendingRooms);
-      setHistoryRooms(prevHistoryRooms);
-      setViewingUserLikedRooms(prevViewingUserLikedRooms);
-      setPublicRooms(prevPublicRooms);
-      setLiveRooms(prevLiveRooms);
-      setRecentRooms(prevRecentRooms);
-      setViewingUserRooms(prevViewingUserRooms);
-      setSavedRooms(prevSavedRooms);
-    }
+    });
   };
 
   const handleBookmarkRoom = async (roomId) => {
@@ -3591,6 +3533,58 @@ function Dashboard() {
   }, [user, addToast, fetchTrustStatus]);
 
   useEffect(() => {
+    const unsubRoom = subscribeToLikes("ROOM", (data) => {
+      const roomId = data.entityId;
+      const updateRoomFn = r => {
+        if (r && (r.roomId === roomId || r._id === roomId)) {
+          return {
+            ...r,
+            likes: data.likes,
+            likesCount: data.likesCount !== undefined ? data.likesCount : (data.likes ? data.likes.length : r.likesCount),
+            likedBy: data.likes || r.likedBy
+          };
+        }
+        return r;
+      };
+
+      setTrendingRooms(prev => prev.map(updateRoomFn));
+      setHistoryRooms(prev => prev.map(updateRoomFn));
+      setPublicRooms(prev => prev.map(updateRoomFn));
+      setLiveRooms(prev => prev.map(updateRoomFn));
+      setRecentRooms(prev => prev.map(updateRoomFn));
+      setViewingUserRooms(prev => prev.map(updateRoomFn));
+      setSavedRooms(prev => prev.map(updateRoomFn));
+      setLikedRooms(prev => {
+        const isUserLiked = isEntityLiked(data.likes, user);
+        if (isUserLiked) {
+          const exists = prev.some(r => r && (r.roomId === roomId || r._id === roomId));
+          if (!exists) {
+            const matched = liveRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+              trendingRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
+            if (matched) return [...prev, { ...matched, likes: data.likes, likesCount: data.likesCount, likedBy: data.likes }];
+          }
+          return prev.map(updateRoomFn);
+        } else {
+          return prev.filter(r => r && r.roomId !== roomId && r._id !== roomId);
+        }
+      });
+    });
+
+    const unsubPost = subscribeToLikes("POST", (data) => {
+      const postId = data.entityId;
+      const updatePostFn = p => (p._id === postId || p.id === postId) ? { ...p, likes: data.likes, likesCount: data.likesCount } : p;
+      setAllFeedPosts(prev => prev.map(updatePostFn));
+      setProfilePosts(prev => prev.map(updatePostFn));
+      setSelectedPostModal(prev => (prev && (prev._id === postId || prev.id === postId)) ? { ...prev, likes: data.likes, likesCount: data.likesCount } : prev);
+    });
+
+    return () => {
+      unsubRoom();
+      unsubPost();
+    };
+  }, [user]);
+
+  useEffect(() => {
     if (activeAds.length > 0 && !hasShownPopup) {
       const popupAd = activeAds.find(ad => ad.format === "POPUP");
       if (popupAd) {
@@ -3971,8 +3965,6 @@ function Dashboard() {
     };
 
     socket.on("live-rooms-update", handleLiveRoomsUpdate);
-    socket.on("room:like-update", handleRoomLikeUpdate);
-    socket.on("room:my-likes-update", handleRoomMyLikesUpdate);
     socket.on("room:bookmark-update", handleRoomBookmarkUpdate);
     socket.on("user:follow-update", handleUserFollowUpdate);
     socket.on("user:followers-update", handleUserFollowersUpdate);
@@ -3999,8 +3991,6 @@ function Dashboard() {
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       socket.off("live-rooms-update", handleLiveRoomsUpdate);
-      socket.off("room:like-update", handleRoomLikeUpdate);
-      socket.off("room:my-likes-update", handleRoomMyLikesUpdate);
       socket.off("room:bookmark-update", handleRoomBookmarkUpdate);
       socket.off("user:follow-update", handleUserFollowUpdate);
       socket.off("user:followers-update", handleUserFollowersUpdate);

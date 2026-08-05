@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play, Search, MoreVertical, Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost, searchUsers } from "../../services/socialService";
+import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../../services/likeEngine";
 import { createPortal } from "react-dom";
 import socket from "../../socket/socket";
 import ProfileAvatar from "../ProfileAvatar";
@@ -1068,18 +1069,22 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
     socket.on("post:created", handlePostCreated);
     socket.on("post:deleted", handlePostDeleted);
-    socket.on("post:liked", handlePostLiked);
     socket.on("post:commented", handlePostCommented);
     socket.on("admin-post-action", handleAdminPostAction);
     socket.on("admin-user-action", handleAdminUserAction);
 
+    const unsubPostLikes = subscribeToLikes("POST", (data) => {
+      const postId = data.entityId;
+      setPosts(prev => prev.map(p => (p._id === postId || p.id === postId) ? { ...p, likes: data.likes, likesCount: data.likesCount } : p));
+    });
+
     return () => {
       socket.off("post:created", handlePostCreated);
       socket.off("post:deleted", handlePostDeleted);
-      socket.off("post:liked", handlePostLiked);
       socket.off("post:commented", handlePostCommented);
       socket.off("admin-post-action", handleAdminPostAction);
       socket.off("admin-user-action", handleAdminUserAction);
+      unsubPostLikes();
     };
   }, [user?.id, user?._id]);
 
@@ -1337,28 +1342,27 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   };
 
   const handleLikePost = async (postId, emoji = "👍") => {
-    setPosts(prev => prev.map(post => {
-      if (post._id === postId) {
-        const isAlreadyLiked = post.likes.includes(user?.id || user?._id);
-        const updatedLikes = isAlreadyLiked
-          ? post.likes.filter(id => id !== (user?.id || user?._id))
-          : [...post.likes, (user?.id || user?._id)];
-        return { ...post, likes: updatedLikes };
-      }
-      return post;
-    }));
+    if (!user) return;
+    const currentPost = posts.find(p => p._id === postId || p.id === postId);
+    const currentLikes = currentPost ? (currentPost.likes || []) : [];
 
-    try {
-      await toggleLikePost(postId);
-      if (emoji !== "👍") {
-        addToast(`Reacted with ${emoji}!`, "success");
+    await toggleLikeOptimistic({
+      entityType: "POST",
+      entityId: postId,
+      currentUser: user,
+      currentLikes,
+      apiCall: () => toggleLikePost(postId),
+      onStateUpdate: ({ likes, likesCount }) => {
+        setPosts(prev => prev.map(p => (p._id === postId || p.id === postId) ? { ...p, likes, likesCount } : p));
+        if (emoji !== "👍") {
+          addToast(`Reacted with ${emoji}!`, "success");
+        }
+      },
+      onError: (err) => {
+        addToast(err.response?.data?.message || err.message || "Failed to react to post", "error");
       }
-    } catch (err) {
-      fetchPosts();
-      addToast("Failed to react to post", "error");
-    } finally {
-      setActivePickerPost(null);
-    }
+    });
+    setActivePickerPost(null);
   };
 
   const handleAddComment = async (e, postId) => {

@@ -221,7 +221,7 @@ const toggleLikeRoom = async (req, res) => {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
 
-    const isLiked = room.likes ? room.likes.some(id => String(id) === String(userId)) : false;
+    const isLiked = room.likes ? room.likes.some(id => String(id._id || id) === String(userId)) : false;
     const updateQuery = isLiked 
       ? { $pull: { likes: userId } } 
       : { $addToSet: { likes: userId } };
@@ -235,11 +235,17 @@ const toggleLikeRoom = async (req, res) => {
     ).populate("likes", "username avatar email bio");
 
     const likesCount = updatedRoom.likes ? updatedRoom.likes.length : 0;
-    const likedBy = updatedRoom.likes || [];
+    const version = Date.now();
 
     if (io) {
-      io.emit("room:like-update", { roomId, likesCount, likedBy });
-      io.to(String(userId)).emit("room:my-likes-update", { roomId, isLiked: !isLiked });
+      io.emit("like:update", {
+        entityType: "ROOM",
+        entityId: roomId,
+        likes: updatedRoom.likes,
+        likesCount,
+        version,
+        updatedAt: updatedRoom.updatedAt || new Date().toISOString()
+      });
     }
 
     if (!isLiked) {
@@ -253,6 +259,8 @@ const toggleLikeRoom = async (req, res) => {
       success: true,
       isLiked: !isLiked,
       likes: updatedRoom.likes,
+      likesCount,
+      version,
       message: isLiked ? "Room unliked" : "Room liked"
     });
   } catch (error) {

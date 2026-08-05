@@ -246,24 +246,30 @@ const toggleLikePost = async (req, res) => {
       return res.status(404).json({ success: false, message: "Post not found" });
     }
 
-    const isLiked = post.likes.some(id => String(id) === String(userId));
+    const isLiked = post.likes ? post.likes.some(id => String(id._id || id) === String(userId)) : false;
     const updateQuery = isLiked 
       ? { $pull: { likes: userId } } 
       : { $addToSet: { likes: userId } };
 
     const [updatedPost] = await Promise.all([
-      Post.findByIdAndUpdate(postId, updateQuery, { returnDocument: 'after', select: "likes" }).lean(),
+      Post.findByIdAndUpdate(postId, updateQuery, { returnDocument: 'after', select: "likes updatedAt" }).lean(),
       User.findByIdAndUpdate(post.author, { $inc: { reputationScore: isLiked ? -2 : 2 } })
     ]);
+
+    const version = Date.now();
+    const likesCount = updatedPost.likes ? updatedPost.likes.length : 0;
 
     // Emit real-time socket event
     try {
       const socketHandler = require("../sockets/socketHandler");
       if (socketHandler.io) {
-        socketHandler.io.emit("post:liked", {
-          postId,
+        socketHandler.io.emit("like:update", {
+          entityType: "POST",
+          entityId: postId,
           likes: updatedPost.likes,
-          likesCount: updatedPost.likes.length
+          likesCount,
+          version,
+          updatedAt: updatedPost.updatedAt || new Date().toISOString()
         });
 
         // Send notification to the post author if liked by another user
@@ -273,10 +279,16 @@ const toggleLikePost = async (req, res) => {
         }
       }
     } catch (e) {
-      console.error("Failed to emit post:liked or send notification:", e.message);
+      console.error("Failed to emit like:update or send notification:", e.message);
     }
 
-    res.status(200).json({ success: true, likes: updatedPost.likes, isLiked: !isLiked });
+    res.status(200).json({
+      success: true,
+      likes: updatedPost.likes,
+      likesCount,
+      isLiked: !isLiked,
+      version
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

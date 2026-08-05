@@ -18,6 +18,7 @@ import {
 } from "../services/socialService";
 import { updateUserProfile } from "../services/userService";
 import { useTheme } from "../context/ThemeContext";
+import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../services/likeEngine";
 import {
   X, Heart, Bookmark, Users, Sparkles, Terminal, Mail,
   Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin,
@@ -100,7 +101,11 @@ const Profile = () => {
   const [activities, setActivities] = useState([]);
   const [animatingLikes, setAnimatingLikes] = useState({});
   const isRoomLiked = (roomId) => {
-    return likedRooms.some(lr => lr && (lr.roomId === roomId || lr._id === roomId));
+    const currentRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      likedRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
+    return isEntityLiked(currentRoom?.likes || currentRoom?.likedBy || [], authUser) ||
+      likedRooms.some(lr => lr && (lr.roomId === roomId || lr._id === roomId));
   };
 
   const [followersList, setFollowersList] = useState([]);
@@ -228,6 +233,41 @@ const Profile = () => {
   useEffect(() => {
     fetchProfileData();
   }, []);
+
+  useEffect(() => {
+    const unsubRoom = subscribeToLikes("ROOM", (data) => {
+      const roomId = data.entityId;
+      const updateRoomFn = r => {
+        if (r && (r.roomId === roomId || r._id === roomId)) {
+          return {
+            ...r,
+            likes: data.likes,
+            likesCount: data.likesCount !== undefined ? data.likesCount : (data.likes ? data.likes.length : r.likesCount),
+            likedBy: data.likes || r.likedBy
+          };
+        }
+        return r;
+      };
+
+      setHistoryRooms(prev => prev.map(updateRoomFn));
+      setSavedRooms(prev => prev.map(updateRoomFn));
+      setLikedRooms(prev => {
+        const isUserLiked = isEntityLiked(data.likes, authUser);
+        if (isUserLiked) {
+          const exists = prev.some(r => r && (r.roomId === roomId || r._id === roomId));
+          if (!exists) {
+            const matched = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
+            if (matched) return [...prev, { ...matched, likes: data.likes, likesCount: data.likesCount, likedBy: data.likes }];
+          }
+          return prev.map(updateRoomFn);
+        } else {
+          return prev.filter(r => r && r.roomId !== roomId && r._id !== roomId);
+        }
+      });
+    });
+
+    return () => unsubRoom();
+  }, [authUser, historyRooms]);
 
   const startEditingProfile = () => {
     setBioInput(profileUser?.bio || "");
@@ -358,76 +398,52 @@ const Profile = () => {
   };
 
   const handleLikeRoom = async (roomId) => {
-    const currentUser = authUser;
-    if (!currentUser) return;
+    if (!authUser) return;
 
     setAnimatingLikes(prev => ({ ...prev, [roomId]: true }));
     setTimeout(() => {
       setAnimatingLikes(prev => ({ ...prev, [roomId]: false }));
     }, 600);
 
-    const prevLikedRooms = [...likedRooms];
-    const prevHistoryRooms = [...historyRooms];
-    const prevSavedRooms = [...savedRooms];
-    const wasLiked = isRoomLiked(roomId);
-    const isAdd = !wasLiked;
+    const currentRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
+      likedRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
 
-    // Optimistically toggle like state
-    if (wasLiked) {
-      setLikedRooms(prev => prev.filter(r => r && r.roomId !== roomId && r._id !== roomId));
-    } else {
-      const matchedRoom = historyRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-        savedRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
-        likedRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
-      if (matchedRoom) {
-        const updatedMatched = { 
-          ...matchedRoom, 
-          likesCount: (matchedRoom.likesCount || 0) + 1,
-          likedBy: [...(matchedRoom.likedBy || []), currentUser]
-        };
-        setLikedRooms(prev => [...prev, updatedMatched]);
-      }
-    }
+    const currentLikes = currentRoom ? (currentRoom.likes || currentRoom.likedBy || []) : [];
 
-    const toggleRoomInArray = (roomsArray) => {
-      if (!roomsArray) return roomsArray;
-      return roomsArray.map(r => {
-        if (r && (r.roomId === roomId || r._id === roomId)) {
-          const alreadyLiked = (r.likedBy || []).some(u => String(u._id || u) === String(currentUser.id || currentUser._id));
-          let updatedLikedBy = r.likedBy || [];
-          if (isAdd) {
-            if (!alreadyLiked) updatedLikedBy = [...updatedLikedBy, currentUser];
-          } else {
-            updatedLikedBy = updatedLikedBy.filter(u => String(u._id || u) !== String(currentUser.id || currentUser._id));
+    await toggleLikeOptimistic({
+      entityType: "ROOM",
+      entityId: roomId,
+      currentUser: authUser,
+      currentLikes,
+      apiCall: () => toggleLikeRoom(roomId),
+      onStateUpdate: ({ likes, likesCount }) => {
+        const updateRoomFn = r => {
+          if (r && (r.roomId === roomId || r._id === roomId)) {
+            return { ...r, likes, likesCount, likedBy: likes };
           }
-          return {
-            ...r,
-            likesCount: updatedLikedBy.length,
-            likedBy: updatedLikedBy
-          };
-        }
-        return r;
-      });
-    };
+          return r;
+        };
 
-    setHistoryRooms(prev => toggleRoomInArray(prev));
-    setSavedRooms(prev => toggleRoomInArray(prev));
-
-    try {
-      const res = await toggleLikeRoom(roomId);
-      if (res.success) {
-        addToast(res.message, "success");
-        const likedRes = await getLikedRooms().catch(() => ({ success: false, rooms: [] }));
-        if (likedRes.success) setLikedRooms(likedRes.rooms || []);
-      } else {
-        throw new Error(res.message || "Failed to toggle like");
+        setHistoryRooms(prev => prev.map(updateRoomFn));
+        setSavedRooms(prev => prev.map(updateRoomFn));
+        setLikedRooms(prev => {
+          const isUserLiked = isEntityLiked(likes, authUser);
+          if (isUserLiked) {
+            const exists = prev.some(r => r && (r.roomId === roomId || r._id === roomId));
+            if (!exists && currentRoom) {
+              return [...prev, { ...currentRoom, likes, likesCount, likedBy: likes }];
+            }
+            return prev.map(updateRoomFn);
+          } else {
+            return prev.filter(r => r && r.roomId !== roomId && r._id !== roomId);
+          }
+        });
+      },
+      onError: (err) => {
+        addToast(err.response?.data?.message || err.message || "Failed to toggle like", "error");
       }
-    } catch (err) {
-      addToast(err.response?.data?.message || err.message, "error");
-      setLikedRooms(prevLikedRooms);
-      setHistoryRooms(prevHistoryRooms);
-      setSavedRooms(prevSavedRooms);
-    }
+    });
   };
 
   const handleBookmarkRoom = async (roomId) => {

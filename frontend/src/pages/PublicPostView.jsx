@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getPostById, toggleLikePost, addCommentPost } from "../services/socialService";
 import socket from "../socket/socket";
+import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../services/likeEngine";
 import {
   Heart, Bookmark, ChevronLeft, ChevronRight, MessageSquare,
   Send, Share2, ArrowLeft, ShieldAlert, Sparkles, Copy, Check
@@ -147,15 +148,20 @@ export default function PublicPostView() {
     };
 
     socket.on("post:deleted", handlePostDeleted);
-    socket.on("post:liked", handlePostLiked);
     socket.on("post:commented", handlePostCommented);
     socket.on("admin-post-action", handleAdminPostAction);
 
+    const unsubPostLikes = subscribeToLikes("POST", (data) => {
+      if (String(data.entityId) === String(postId)) {
+        setPost(prev => prev ? { ...prev, likes: data.likes } : prev);
+      }
+    });
+
     return () => {
       socket.off("post:deleted", handlePostDeleted);
-      socket.off("post:liked", handlePostLiked);
       socket.off("post:commented", handlePostCommented);
       socket.off("admin-post-action", handleAdminPostAction);
+      unsubPostLikes();
     };
   }, [postId]);
 
@@ -171,19 +177,21 @@ export default function PublicPostView() {
   };
 
   const handleLike = async () => {
-    if (!requireAuth("like this post")) return;
+    if (!requireAuth("like this post") || !post) return;
 
-    try {
-      const res = await toggleLikePost(postId);
-      if (res?.success) {
-        setPost(prev => ({
-          ...prev,
-          likes: res.likes
-        }));
+    await toggleLikeOptimistic({
+      entityType: "POST",
+      entityId: postId,
+      currentUser: user,
+      currentLikes: post.likes || [],
+      apiCall: () => toggleLikePost(postId),
+      onStateUpdate: ({ likes }) => {
+        setPost(prev => prev ? { ...prev, likes } : prev);
+      },
+      onError: (err) => {
+        addToast(err.response?.data?.message || err.message || "Failed to update like", "error");
       }
-    } catch (err) {
-      addToast("Failed to update like", "error");
-    }
+    });
   };
 
   const handleAddComment = async (e) => {
