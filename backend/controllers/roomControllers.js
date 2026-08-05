@@ -135,6 +135,11 @@ const joinRoom = async (req, res) => {
         );
 
         if (isOwner || alreadyjoined) {
+            const Notification = require("../models/Notification");
+            await Notification.updateMany(
+                { recipient: req.user._id, targetRoom: room._id, type: { $in: ["INVITE", "JOIN_APPROVED"] } },
+                { isRead: true, isUsed: true }
+            );
             return res.status(200).json({
                 success: true,
                 room
@@ -161,6 +166,13 @@ const joinRoom = async (req, res) => {
         }
 
         if (room.isPrivate) {
+            const requestExists = room.pendingRequests && room.pendingRequests.some(r => r.user && r.user.toString() === req.user._id.toString());
+            if (!requestExists) {
+                if (!room.pendingRequests) room.pendingRequests = [];
+                room.pendingRequests.push({ user: req.user._id, username: req.user.username });
+                room.rejectedRequests = (room.rejectedRequests || []).filter(r => r.user && r.user.toString() !== req.user._id.toString());
+                await room.save();
+            }
             return res.status(200).json({
                 success: true,
                 requiresApproval: true,
@@ -171,6 +183,11 @@ const joinRoom = async (req, res) => {
         if (!alreadyjoined) {
             room.participants.push({ user: req.user._id, role: "MEMBER" });
             await room.save();
+            const Notification = require("../models/Notification");
+            await Notification.updateMany(
+                { recipient: req.user._id, targetRoom: room._id, type: { $in: ["INVITE", "JOIN_APPROVED"] } },
+                { isRead: true, isUsed: true }
+            );
         }
 
         res.status(200).json({
@@ -578,6 +595,11 @@ const respondToJoinRequest = async (req, res) => {
             if (room.kickedUsers) {
                 room.kickedUsers = room.kickedUsers.filter(k => k.user && k.user.toString() !== requesterId.toString());
             }
+
+            // Create and send notification to the requester
+            const { createAndSendNotification } = require("./notificationControllers");
+            const io = req.app.get("io");
+            await createAndSendNotification(requesterId, req.user._id, "JOIN_APPROVED", "COLLABORATION", room._id, io);
         } else if (action === "reject") {
             if (!room.rejectedRequests) room.rejectedRequests = [];
             const alreadyRejected = room.rejectedRequests.some(r => r.user.toString() === requesterId);
@@ -700,13 +722,59 @@ const removeUser = async (req, res) => {
             return res.status(403).json({ success: false, message: "Access denied. Only owners and moderators can remove participants" });
         }
 
+        if (!room.kickedUsers) room.kickedUsers = [];
+        if (!room.kickedUsers.some(k => k.user && k.user.toString() === userId.toString())) {
+            room.kickedUsers.push({
+                user: userId,
+                username: target.user?.username || "User",
+                kickedAt: new Date()
+            });
+        }
+
         // Remove user from participants list
         room.participants = room.participants.filter(p => p.user && p.user.toString() !== userId.toString());
-
-        // Also remove from pending requests just in case
         room.pendingRequests = room.pendingRequests.filter(r => r.user.toString() !== userId.toString());
 
         await room.save();
+
+        // Socket sync & disconnect
+        const socketHandler = require("../sockets/socketHandler");
+        const roomUsers = socketHandler.roomUsers || {};
+        const io = req.app.get("io");
+
+        if (io) {
+            io.to(roomId).emit("user-kicked", {
+                userId,
+                roomId,
+                username: target.user?.username || "User"
+            });
+        }
+
+        if (roomUsers[roomId]) {
+            const usersToKick = roomUsers[roomId].filter(u => String(u.userId) === String(userId));
+            if (io && usersToKick.length > 0) {
+                usersToKick.forEach(userToKick => {
+                    const kickedSocket = io.sockets.sockets.get(userToKick.socketId);
+                    if (kickedSocket) {
+                        kickedSocket.emit("kicked", {
+                            roomId,
+                            message: "You have been removed from this room by the owner or moderator."
+                        });
+                        kickedSocket.leave(roomId);
+                    }
+                });
+
+                const firstUser = usersToKick[0];
+                roomUsers[roomId] = roomUsers[roomId].filter(u => String(u.userId) !== String(userId));
+
+                io.to(roomId).emit("room-users", roomUsers[roomId]);
+                io.to(roomId).emit("user-left", {
+                    socketId: firstUser.socketId,
+                    username: firstUser.username,
+                    message: `${firstUser.username} was removed from the room.`
+                });
+            }
+        }
 
         res.status(200).json({
             success: true,
@@ -974,14 +1042,24 @@ const kickUser = async (req, res) => {
         // Sync with socket
         const socketHandler = require("../sockets/socketHandler");
         const roomUsers = socketHandler.roomUsers || {};
+        const io = req.app.get("io");
+
+        if (io) {
+            io.to(roomId).emit("user-kicked", {
+                userId,
+                roomId,
+                username: target.user?.username || "User"
+            });
+        }
+
         if (roomUsers[roomId]) {
             const usersToKick = roomUsers[roomId].filter(u => String(u.userId) === String(userId));
-            const io = req.app.get("io");
             if (io && usersToKick.length > 0) {
                 usersToKick.forEach(userToKick => {
                     const kickedSocket = io.sockets.sockets.get(userToKick.socketId);
                     if (kickedSocket) {
                         kickedSocket.emit("kicked", {
+                            roomId,
                             message: "You have been removed from this room by the owner or moderator."
                         });
                         kickedSocket.leave(roomId);
@@ -997,7 +1075,6 @@ const kickUser = async (req, res) => {
                     username: firstUser.username,
                     message: `${firstUser.username} was removed from the room.`
                 });
-                io.to(roomId).emit("user-kicked", { userId });
             }
         }
 
@@ -1146,9 +1223,31 @@ const acceptWorkspaceInvite = async (req, res) => {
         const isOwner = room.createdBy.toString() === userId.toString();
         const alreadyJoined = room.participants.some(p => p.user && p.user.toString() === userId.toString());
 
+        const isKicked = room.kickedUsers && room.kickedUsers.some(k => k.user && k.user.toString() === userId.toString());
+        if (isKicked) {
+            return res.status(403).json({ success: false, message: "You cannot join this workspace because you were removed by the host." });
+        }
+
+        const Notification = require("../models/Notification");
+        const hasInvite = await Notification.findOne({
+            recipient: userId,
+            targetRoom: room._id,
+            type: "INVITE",
+            isUsed: false
+        });
+
+        if (!hasInvite && !isOwner && !alreadyJoined) {
+            return res.status(403).json({ success: false, message: "Invitation is invalid or has already been used." });
+        }
+
         if (!isOwner && !alreadyJoined) {
             room.participants.push({ user: userId, role: "MEMBER" });
             await room.save();
+            
+            await Notification.updateMany(
+                { recipient: userId, targetRoom: room._id, type: { $in: ["INVITE", "JOIN_APPROVED"] } },
+                { isRead: true, isUsed: true }
+            );
             
             const io = req.app.get("io");
             if (io) {
@@ -1167,10 +1266,166 @@ const acceptWorkspaceInvite = async (req, res) => {
     }
 };
 
+const updateRoom = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const { title, isPrivate } = req.body;
+
+        if (!roomId) {
+            return res.status(400).json({
+                success: false,
+                message: "Room ID is required"
+            });
+        }
+
+        const room = await Room.findOne({
+            $or: [{ roomId: roomId }, { _id: roomId.match(/^[0-9a-fA-F]{24}$/) ? roomId : null }]
+        }).populate("createdBy", "username displayName avatar email");
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: "Room not found"
+            });
+        }
+
+        // Only Room Owner can edit
+        const creatorId = String(room.createdBy?._id || room.createdBy);
+        const currentUserId = String(req.user._id || req.user.id);
+
+        if (creatorId !== currentUserId) {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized: Only the room owner can edit this room"
+            });
+        }
+
+        const updateFields = {};
+        let titleChanged = false;
+        let privacyChanged = false;
+        const previousTitle = room.title;
+        const previousIsPrivate = room.isPrivate;
+
+        // 1. Title Validation
+        if (typeof title !== "undefined") {
+            if (typeof title !== "string") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Title must be a string"
+                });
+            }
+
+            const trimmedTitle = title.trim();
+            if (!trimmedTitle || trimmedTitle.length < 3 || trimmedTitle.length > 60) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Room title must be between 3 and 60 characters"
+                });
+            }
+
+            if (trimmedTitle !== room.title) {
+                updateFields.title = trimmedTitle;
+                titleChanged = true;
+            }
+        }
+
+        // 2. Privacy Validation
+        if (typeof isPrivate !== "undefined") {
+            const nextIsPrivate = Boolean(isPrivate);
+            if (nextIsPrivate !== room.isPrivate) {
+                updateFields.isPrivate = nextIsPrivate;
+                privacyChanged = true;
+            }
+        }
+
+        // If no fields actually changed, return 200 without unnecessary writes or socket broadcasts
+        if (!titleChanged && !privacyChanged) {
+            return res.status(200).json({
+                success: true,
+                message: "No changes detected",
+                room,
+                titleChanged: false,
+                privacyChanged: false
+            });
+        }
+
+        updateFields.lastActivity = new Date();
+
+        // 3. Atomic MongoDB Update
+        const updatedRoom = await Room.findOneAndUpdate(
+            { _id: room._id },
+            { $set: updateFields },
+            { new: true }
+        ).populate("createdBy", "username displayName avatar email");
+
+        // 4. Create Activity Logs
+        const Activity = require("../models/Activity");
+        if (titleChanged) {
+            await Activity.create({
+                user: req.user._id,
+                userId: req.user._id,
+                username: req.user.username,
+                room: updatedRoom._id,
+                roomTitle: updatedRoom.title,
+                action: `renamed room to "${updatedRoom.title}"`,
+                activityType: "ROOM_RENAME",
+                timestamp: new Date()
+            }).catch(err => console.error("Error logging room rename activity:", err));
+        }
+
+        if (privacyChanged) {
+            const privacyText = updatedRoom.isPrivate ? "Private" : "Public";
+            await Activity.create({
+                user: req.user._id,
+                userId: req.user._id,
+                username: req.user.username,
+                room: updatedRoom._id,
+                roomTitle: updatedRoom.title,
+                action: `changed room privacy to ${privacyText}`,
+                activityType: "ROOM_PRIVACY",
+                timestamp: new Date()
+            }).catch(err => console.error("Error logging room privacy activity:", err));
+        }
+
+        // 5. Emit single Socket.IO event: room:updated
+        const io = req.app.get("io");
+        if (io) {
+            const socketPayload = {
+                roomId: updatedRoom.roomId,
+                title: updatedRoom.title,
+                isPrivate: updatedRoom.isPrivate,
+                updatedBy: {
+                    _id: req.user._id,
+                    username: req.user.username,
+                    displayName: req.user.displayName
+                },
+                updatedAt: updatedRoom.updatedAt,
+                titleChanged,
+                privacyChanged,
+                previousTitle,
+                previousIsPrivate
+            };
+
+            io.emit("room:updated", socketPayload);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Room updated successfully",
+            room: updatedRoom,
+            titleChanged,
+            privacyChanged
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     createRoom,
     joinRoom,
     getRoom,
+    updateRoom,
     leaveRoom,
     deleteRoom,
     getUserRoomsHistory,

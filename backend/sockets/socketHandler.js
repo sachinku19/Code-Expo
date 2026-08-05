@@ -573,7 +573,7 @@ const socketHandler = (io) => {
           return;
         }
 
-        const room = await Room.findOne({ roomId });
+        const room = await Room.findOne({ roomId }).populate("createdBy", "_id username");
         if (room) {
           // Add to pendingRequests in database
           const requestExists = room.pendingRequests.some(r => r.user.toString() === userId);
@@ -585,20 +585,37 @@ const socketHandler = (io) => {
           await room.save();
         }
 
+        const ownerId = room?.createdBy?._id ? String(room.createdBy._id) : (room?.createdBy ? String(room.createdBy) : null);
+
+        const requestPayload = {
+          roomId,
+          roomTitle: room?.title || title || "Workspace Room",
+          userId,
+          username,
+          requesterSocketId: socket.id,
+          createdAt: new Date()
+        };
+
+        // 1. Emit to owner's personal user channel (reaches owner instantly anywhere on CodeExpo)
+        if (ownerId) {
+          io.to(ownerId).emit("join-request", requestPayload);
+        }
+
+        // 2. Emit to room ID channel (reaches owner/moderators currently in editor)
+        io.to(roomId).emit("join-request", requestPayload);
+
+        // 3. Emit to all active admin sockets in roomUsers
         const admins = roomUsers[roomId]?.filter(
           user => user.role === "OWNER" || user.role === "MODERATOR"
         ) || [];
 
         admins.forEach(admin => {
-          io.to(admin.socketId).emit("join-request", {
-            roomId,
-            userId,
-            username,
-            requesterSocketId: socket.id
-          });
+          if (admin.socketId !== socket.id) {
+            io.to(admin.socketId).emit("join-request", requestPayload);
+          }
         });
 
-        console.log(`${username} requested to join roomid ${roomId} `);
+        console.log(`${username} requested to join room ${roomId} (Owner: ${ownerId})`);
       } catch (err) {
         console.error("Socket join-request error:", err.message);
       }
@@ -644,11 +661,21 @@ const socketHandler = (io) => {
           const { logActivity } = require("../controllers/activityControllers");
           await logActivity(userId, username || "User", room._id, room.title, "joined");
 
-          // Broadcast to everyone (including dashboard sockets) so the approved user redirects
-          io.emit("join-approved", {
+          const approvePayload = {
             roomId,
             userId
-          });
+          };
+
+          // 1. Emit to requesting user's personal channel INSTANTLY
+          io.to(String(userId)).emit("join-approved", approvePayload);
+
+          if (requesterSocketId) {
+            io.to(requesterSocketId).emit("join-approved", approvePayload);
+          }
+
+          // 2. Broadcast to room and global live rooms
+          io.to(roomId).emit("join-approved", approvePayload);
+          io.emit("live-rooms-update");
         } catch (err) {
           console.error(err);
         }
@@ -677,12 +704,17 @@ const socketHandler = (io) => {
           await room.save();
         }
 
+        const rejectPayload = {
+          roomId,
+          userId,
+          message: "Your join request was rejected"
+        };
+
+        // Emit directly to requesting user's personal channel
+        io.to(String(userId)).emit("join-rejected", rejectPayload);
+
         if (requesterSocketId) {
-          io.to(requesterSocketId).emit("join-rejected", {
-            roomId,
-            userId,
-            message: "Your join request was rejected"
-          });
+          io.to(requesterSocketId).emit("join-rejected", rejectPayload);
         }
       } catch (err) {
         console.error(err);
@@ -722,6 +754,16 @@ const socketHandler = (io) => {
         await room.save();
 
         console.log(`Owner/Moderator requested to kick user ${userId} from room ${roomId}`);
+        
+        const targetUsername = targetParticipant.user?.username || "User";
+        
+        // Broadcast user-kicked event IMMEDIATELY to everyone in the room
+        io.to(roomId).emit("user-kicked", {
+          userId,
+          roomId,
+          username: targetUsername
+        });
+
         if (roomUsers[roomId]) {
           const usersToKick = roomUsers[roomId].filter(u => String(u.userId) === String(userId));
           if (usersToKick.length > 0) {
@@ -729,6 +771,7 @@ const socketHandler = (io) => {
               const kickedSocket = io.sockets.sockets.get(userToKick.socketId);
               if (kickedSocket) {
                 kickedSocket.emit("kicked", {
+                  roomId,
                   message: `You have been removed from this room by a ${actorRole.toLowerCase()}.`
                 });
                 kickedSocket.leave(roomId);
@@ -746,10 +789,9 @@ const socketHandler = (io) => {
             // Notify others
             socket.to(roomId).emit("user-left", {
               socketId: firstUser.socketId,
-              username: firstUser.username,
-              message: `${firstUser.username} was removed from the room.`
+              username: firstUser.username || targetUsername,
+              message: `${firstUser.username || targetUsername} was removed from the room.`
             });
-            io.to(roomId).emit("user-kicked", { userId });
 
             if (roomUsers[roomId].length === 0) {
               delete roomUsers[roomId];

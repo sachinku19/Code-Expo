@@ -17,6 +17,7 @@ import LivePreview from "../components/LivePreview";
 import TaskPlanner from "../components/planner/TaskPlanner";
 import ReportUserModal from "../components/social/ReportUserModal";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
+import EditRoomModal from "../components/modals/EditRoomModal";
 import AIAssistantPanel from "../components/ai/AIAssistantPanel";
 import AIHistoryTab from "../components/ai/AIHistoryTab";
 import * as workspaceService from "../services/workspaceService";
@@ -1574,12 +1575,14 @@ function Editor() {
   const [copiedId, setCopiedId] = useState(false);
   const [whiteboardActivities, setWhiteboardActivities] = useState([]);
   const [roomDeletedModalOpen, setRoomDeletedModalOpen] = useState(false);
+  const [editRoomModalOpen, setEditRoomModalOpen] = useState(false);
   const [securityDeleteRoomTarget, setSecurityDeleteRoomTarget] = useState(null);
   const [isDeletingRoomTarget, setIsDeletingRoomTarget] = useState(false);
   const [duplicateSessionModalOpen, setDuplicateSessionModalOpen] = useState(false);
   const [kickMessage, setKickMessage] = useState("");
   const [kickModalOpen, setKickModalOpen] = useState(false);
   const [kickTarget, setKickTarget] = useState({ userId: "", username: "" });
+  const [isKickedFromRoom, setIsKickedFromRoom] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1665,6 +1668,28 @@ function Editor() {
       }
     }
   };
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleRoomUpdated = (data) => {
+      if (data && String(data.roomId) === String(roomId)) {
+        setRoom((prev) => (prev ? { ...prev, title: data.title, isPrivate: data.isPrivate } : prev));
+
+        if (data.titleChanged) {
+          showToastNotification(`✏️ Room renamed to "${data.title}"`);
+        }
+        if (data.privacyChanged) {
+          showToastNotification(
+            data.isPrivate ? "🔒 Room privacy changed to Private" : "🌍 Room is now Public"
+          );
+        }
+      }
+    };
+    socket.on("room:updated", handleRoomUpdated);
+    return () => {
+      socket.off("room:updated", handleRoomUpdated);
+    };
+  }, [socket, roomId]);
 
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
@@ -1810,24 +1835,65 @@ function Editor() {
     }
   };
 
-  const handleActionKick = async (targetUserId) => {
+  const handleActionKick = async (targetUserId, targetUsername) => {
+    if (!targetUserId) return;
+
+    // 0ms optimistic removal on host UI
+    setUsers((prev) => prev.filter((u) => String(u.userId || u._id || u.id) !== String(targetUserId)));
+    setRoom((prev) => {
+      if (!prev || !prev.participants) return prev;
+      return {
+        ...prev,
+        participants: prev.participants.filter(
+          (p) => String(p.user?._id || p.user?.id || p.user) !== String(targetUserId)
+        )
+      };
+    });
+
+    if (socket && socket.connected) {
+      socket.emit("kick-user", { roomId, userId: targetUserId });
+    }
+
+    showToastNotification(`🚫 Removing ${targetUsername || "user"} from workspace...`);
+
     try {
       await kickUser(roomId, targetUserId);
-      triggerNotification("User kicked successfully.");
       fetchRoom();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to kick user");
+      showToastNotification(err.response?.data?.message || "Failed to kick user", "error");
+      fetchRoom();
     }
   };
 
   const confirmKickUser = async () => {
-    const { userId } = kickTarget;
+    const { userId, username } = kickTarget;
     setKickModalOpen(false);
+    if (!userId) return;
+
+    // 0ms optimistic removal on host UI
+    setUsers((prev) => prev.filter((u) => String(u.userId || u._id || u.id) !== String(userId)));
+    setRoom((prev) => {
+      if (!prev || !prev.participants) return prev;
+      return {
+        ...prev,
+        participants: prev.participants.filter(
+          (p) => String(p.user?._id || p.user?.id || p.user) !== String(userId)
+        )
+      };
+    });
+
+    if (socket && socket.connected) {
+      socket.emit("kick-user", { roomId, userId });
+    }
+
+    showToastNotification(`🚫 Removed ${username || "user"} from workspace.`);
+
     try {
       await kickUser(roomId, userId);
       fetchRoom();
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      showToastNotification(error.response?.data?.message || error.message || "Failed to kick user", "error");
+      fetchRoom();
     }
   };
 
@@ -2245,6 +2311,19 @@ function Editor() {
   // Fetch Room Details
   const [socketConnected, setSocketConnected] = useState(socket.connected);
 
+  const saveJoinedCodeToHistory = (code) => {
+    if (!code || code === "default") return;
+    try {
+      let list = JSON.parse(localStorage.getItem("ce_recent_joined_codes") || "[]");
+      list = list.filter((c) => c !== code);
+      list.unshift(code);
+      list = list.slice(0, 10);
+      localStorage.setItem("ce_recent_joined_codes", JSON.stringify(list));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const fetchRoom = async () => {
     try {
       if (roomId === "default") {
@@ -2289,6 +2368,9 @@ function Editor() {
       }
 
       setRoom(data.room);
+      if (data.room.roomId) {
+        saveJoinedCodeToHistory(data.room.roomId);
+      }
       if (data.room.code) {
         setCode((prev) => prev || data.room.code);
       }
@@ -2637,18 +2719,39 @@ function Editor() {
       setDuplicateSessionModalOpen(true);
     };
 
+    const executeImmediateKickedExit = (reasonMessage) => {
+      if (roomId && roomId !== "default") {
+        saveJoinedCodeToHistory(roomId);
+      }
+      localStorage.removeItem("ceLastActiveRoomId");
+      setKickMessage(reasonMessage || "You have been removed from this room by the owner or moderator.");
+      setIsKickedFromRoom(true);
+
+      if (inMeet) {
+        setInMeet(false);
+        setShowMeetLobby(false);
+      }
+
+      if (socket && socket.connected) {
+        socket.emit("leave-room", { roomId, userId: userRef.current?.id || userRef.current?._id });
+      }
+
+      // Fast auto-redirect to dashboard
+      setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 1200);
+    };
+
     const handleKicked = (data) => {
-      setKickMessage(data?.message || "You have been removed from this room by the owner.");
-      setDuplicateSessionModalOpen(true);
+      executeImmediateKickedExit(data?.message || "You have been removed from this workspace by the host.");
     };
 
     const handleKickedReentryBlocked = (data) => {
-      setKickMessage(data?.message || "You were previously removed from this room. You must request permission from the host to enter.");
-      setDuplicateSessionModalOpen(true);
+      executeImmediateKickedExit(data?.message || "You were previously removed from this workspace. Access denied.");
     };
 
     const handleMeetError = ({ message }) => {
-      addToast(message, "error");
+      showToastNotification(message);
       setInMeet(false);
       setShowMeetLobby(false);
     };
@@ -2684,11 +2787,22 @@ function Editor() {
       triggerNotification(`${username || "User"} was demoted to Member`);
     };
 
-    const handleUserKicked = ({ userId }) => {
-      fetchRoom();
-      if (String(userId) === String(userRef.current.id)) {
-        setKickMessage("You have been kicked from the room.");
-        setDuplicateSessionModalOpen(true);
+    const handleUserKicked = ({ userId, username }) => {
+      const currentUserId = String(userRef.current?.id || userRef.current?._id || "");
+      if (String(userId) === currentUserId) {
+        executeImmediateKickedExit("You have been removed from this workspace by the host.");
+      } else {
+        setUsers((prev) => prev.filter((u) => String(u.userId || u._id || u.id) !== String(userId)));
+        setRoom((prev) => {
+          if (!prev || !prev.participants) return prev;
+          return {
+            ...prev,
+            participants: prev.participants.filter(
+              (p) => String(p.user?._id || p.user?.id || p.user) !== String(userId)
+            )
+          };
+        });
+        showToastNotification(`🚫 ${username || "A participant"} was removed from the workspace.`);
       }
     };
 
@@ -4118,6 +4232,8 @@ function Editor() {
     <MainLayout
       roomId={roomId}
       roomTitle={room.title}
+      isPrivate={room?.isPrivate}
+      onEditRoom={() => setEditRoomModalOpen(true)}
       socketConnected={socketConnected}
       uniqueUsers={uniqueUsers}
       joinRequests={joinRequests}
@@ -5974,6 +6090,16 @@ function Editor() {
           isDeleting={isDeletingRoomTarget}
         />
 
+        {/* Edit Room Modal */}
+        <EditRoomModal
+          isOpen={editRoomModalOpen}
+          onClose={() => setEditRoomModalOpen(false)}
+          room={room}
+          onRoomUpdated={(updatedRoom) => {
+            setRoom((prev) => (prev ? { ...prev, title: updatedRoom.title, isPrivate: updatedRoom.isPrivate } : prev));
+          }}
+        />
+
         {/* Room Deleted Modal */}
         {roomDeletedModalOpen && createPortal(
           <div className="ce-modal-overlay">
@@ -5988,6 +6114,30 @@ function Editor() {
                 navigate("/dashboard");
               }} style={{ background: "var(--ce-accent)", color: "#000000", border: "none", borderRadius: "6px", padding: "10px 20px", fontWeight: "700", cursor: "pointer", fontSize: "0.85rem", width: "100%" }}>
                 Return to Dashboard
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Immediate Kicked Exit Modal */}
+        {isKickedFromRoom && createPortal(
+          <div className="ce-modal-overlay" style={{ position: "fixed", inset: 0, zIndex: 9999999, background: "rgba(8, 9, 15, 0.94)", backdropFilter: "blur(30px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+            <div className="ce-modal-card warning-glow" style={{ position: "relative", width: "440px", maxWidth: "92vw", padding: "36px 28px", borderRadius: "24px", background: "var(--ce-surface, #12121a)", border: "1px solid rgba(239, 68, 68, 0.3)", boxShadow: "0 25px 80px rgba(239, 68, 68, 0.25)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{ width: "68px", height: "68px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(239, 68, 68, 0.15)", border: "2px solid rgba(239, 68, 68, 0.4)", color: "#ef4444", marginBottom: "18px", boxShadow: "0 0 30px rgba(239, 68, 68, 0.3)" }}>
+                <UserMinus size={34} />
+              </div>
+              <h2 style={{ fontSize: "1.4rem", fontWeight: "800", color: "#ffffff", marginBottom: "8px" }}>Workspace Access Revoked</h2>
+              <p style={{ fontSize: "0.88rem", color: "#9ca3af", marginBottom: "24px", lineHeight: "1.5" }}>{kickMessage || "You have been removed from this room by the owner or moderator."}</p>
+              <button
+                className="ce-btn-primary"
+                onClick={() => {
+                  localStorage.removeItem("ceLastActiveRoomId");
+                  navigate("/dashboard", { replace: true });
+                }}
+                style={{ background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", color: "#ffffff", border: "none", borderRadius: "12px", padding: "12px 24px", fontWeight: "700", cursor: "pointer", fontSize: "0.9rem", width: "100%", boxShadow: "0 4px 20px rgba(239, 68, 68, 0.4)" }}
+              >
+                Return to Dashboard Now
               </button>
             </div>
           </div>,

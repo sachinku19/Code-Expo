@@ -5,6 +5,7 @@ const {
     createRoom,
     joinRoom,
     getRoom,
+    updateRoom,
     leaveRoom,
     deleteRoom,
     getUserRoomsHistory,
@@ -47,6 +48,7 @@ router.post("/mute", auth_protect, checkRoomRole(["OWNER", "MODERATOR"]), muteUs
 router.get("/:roomId/members", auth_protect, checkRoomRole(["OWNER", "MODERATOR", "MEMBER", "VIEWER"]), getRoomMembers);
 
 router.get("/:roomId", auth_protect, getRoom);
+router.patch("/:roomId", auth_protect, updateRoom);
 router.delete("/leave/:roomId", auth_protect, leaveRoom);
 router.delete("/delete/:roomId", auth_protect, deleteRoom);
 

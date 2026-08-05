@@ -13,7 +13,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["FOLLOW", "LIKE", "BOOKMARK", "COMMENT", "JOIN", "MENTION", "INVITE", "MODERATION_ACTION", "APPEAL_STATUS", "TICKET_UPDATE"],
+    enum: ["FOLLOW", "LIKE", "BOOKMARK", "COMMENT", "JOIN", "MENTION", "INVITE", "MODERATION_ACTION", "APPEAL_STATUS", "TICKET_UPDATE", "JOIN_APPROVED"],
     required: true
   },
   category: {
@@ -42,6 +42,10 @@ const notificationSchema = new mongoose.Schema({
     default: ""
   },
   isRead: {
+    type: Boolean,
+    default: false
+  },
+  isUsed: {
     type: Boolean,
     default: false
   }

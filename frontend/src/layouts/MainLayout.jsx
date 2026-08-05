@@ -9,7 +9,7 @@ import {
   Hash, Copy, Check, Share2, UserPlus, Layers, ChevronDown, ChevronRight, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
-  Gem, Sparkles, FolderKanban, NotebookPen, PanelRightOpen, PanelRightClose
+  Gem, Sparkles, FolderKanban, NotebookPen, PanelRightOpen, PanelRightClose, Edit3, Lock, GitPullRequest
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -90,6 +90,8 @@ export default function MainLayout({
   onExitRoom = null,
   onDeleteRoom = null,
   isOwner = false,
+  isPrivate = undefined,
+  onEditRoom = null,
   tabs = []
 }) {
   const navigate = useNavigate();
@@ -856,6 +858,7 @@ export default function MainLayout({
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
     { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard/rooms?subtab=explore" },
     { id: "liverooms", label: "Live Rooms", icon: Radio, path: "/dashboard/live-rooms" },
+    { id: "room-requests", label: "Room Requests", icon: GitPullRequest, path: "/dashboard/room-requests" },
     { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard/feed" },
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard/following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard/messages" },
@@ -907,6 +910,7 @@ export default function MainLayout({
       const section = path.substring("/dashboard/".length);
       if (section === "rooms") return "explore-rooms";
       if (section === "live-rooms") return "liverooms";
+      if (section === "room-requests") return "room-requests";
       if (section === "trust-safety" || section === "feed-action") return "trust-safety";
       if (section === "settings") return "settings";
       if (section === "history" || section === "whiteboards" || section === "bookmarks" || section === "trust-safety") return section;
@@ -931,6 +935,7 @@ export default function MainLayout({
       return "explore-rooms";
     }
     if (rawTab === "liverooms") return "liverooms";
+    if (rawTab === "room-requests") return "room-requests";
     if (rawTab === "feed") return "feed";
     if (rawTab === "following") return "following";
     if (rawTab === "planner") return "planner";
@@ -1275,6 +1280,23 @@ export default function MainLayout({
           {roomId && roomId !== "default" && (
             <div className="ce-room-info">
               <span className="ce-room-title">{roomTitle || "Workspace"}</span>
+              {isPrivate !== undefined && (
+                <span className={`ce-privacy-pill ${isPrivate ? "private" : "public"}`} title={isPrivate ? "Private Room" : "Public Room"}>
+                  {isPrivate ? <Lock size={11} /> : <Globe size={11} />}
+                  <span>{isPrivate ? "Private" : "Public"}</span>
+                </span>
+              )}
+              {isOwner && onEditRoom && (
+                <button
+                  type="button"
+                  className="ce-edit-room-header-btn"
+                  onClick={onEditRoom}
+                  title="Edit Workspace Title & Privacy"
+                >
+                  <Edit3 size={12} />
+                  <span>Edit</span>
+                </button>
+              )}
               <div className="ce-nav-badge" onClick={copyRoomId} title="Copy Room ID">
                 <Hash size={12} />
                 <span>{roomId}</span>
@@ -1837,6 +1859,8 @@ export default function MainLayout({
                   badgeCount = unreadMessageCount;
                 } else if (item.id === "notifications") {
                   badgeCount = unreadNotifCount;
+                } else if (item.id === "room-requests") {
+                  badgeCount = joinRequests.length;
                 }
 
                 return (
@@ -1931,6 +1955,8 @@ export default function MainLayout({
                 badgeCount = unreadMessageCount;
               } else if (item.id === "notifications") {
                 badgeCount = unreadNotifCount;
+              } else if (item.id === "room-requests") {
+                badgeCount = joinRequests.length;
               }
 
               return (

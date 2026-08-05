@@ -19,6 +19,7 @@ export const DASHBOARD_SECTIONS = {
   CP: "cp",
   ROOMS: "rooms",
   LIVE_ROOMS: "live-rooms",
+  ROOM_REQUESTS: "room-requests",
   BOOKMARKS: "bookmarks",
   FEED: "feed",
   FOLLOWING: "following",

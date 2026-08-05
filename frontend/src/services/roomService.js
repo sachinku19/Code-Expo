@@ -310,3 +310,17 @@ export const acceptWorkspaceInvite = async (roomId) => {
     );
     return response.data;
 };
+
+export const updateRoomDetails = async (roomId, { title, isPrivate }) => {
+    const token = localStorage.getItem("token");
+    const response = await API.patch(
+        `/rooms/${roomId}`,
+        { title, isPrivate },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    return response.data;
+};

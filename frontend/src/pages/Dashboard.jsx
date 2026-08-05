@@ -13,6 +13,7 @@ import {
   getActivityFeed,
   getActivityStats,
   removeUser,
+  kickUser,
   leaveRoom,
   deleteRoom,
   getAllPublicRooms,
@@ -24,6 +25,7 @@ import { useAuth } from "../context/AuthContext";
 import { getUserProfile, changePassword, getPublicUserProfile } from "../services/authService";
 import ReportUserModal from "../components/social/ReportUserModal";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
+import EditRoomModal from "../components/modals/EditRoomModal";
 import { getPersonalDashboard } from "../services/plannerService";
 import {
   Plus, LogIn, History as HistoryIcon, User,
@@ -32,8 +34,8 @@ import {
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
-  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2,
-  Volume2, VolumeX, Radio
+  Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2, Edit3,
+  Volume2, VolumeX, Radio, GitPullRequest, Send, DoorOpen
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -1338,6 +1340,7 @@ function Dashboard() {
   const [isDeletingProfilePost, setIsDeletingProfilePost] = useState(false);
   const [securityDeleteRoomTarget, setSecurityDeleteRoomTarget] = useState(null);
   const [isDeletingRoomTarget, setIsDeletingRoomTarget] = useState(false);
+  const [editingRoomTarget, setEditingRoomTarget] = useState(null);
   const [showMobileCreateModal, setShowMobileCreateModal] = useState(false);
   const [showMobileJoinModal, setShowMobileJoinModal] = useState(false);
 
@@ -2199,6 +2202,14 @@ function Dashboard() {
     localStorage.setItem("ce_activeRoomsTab", activeRoomsTab);
   }, [activeRoomsTab]);
   const [myRoomsTabSearch, setMyRoomsTabSearch] = useState("");
+  const [roomRequestsTab, setRoomRequestsTab] = useState("myrooms");
+  const [roomRequestsSearch, setRoomRequestsSearch] = useState("");
+  const [roomRequestsFilter, setRoomRequestsFilter] = useState("all");
+  const [manageRequestsRoomId, setManageRequestsRoomId] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [manageRequestSearch, setManageRequestSearch] = useState("");
+  const [manageRequestSort, setManageRequestSort] = useState("newest");
+  const [manageRequestLimit, setManageRequestLimit] = useState(10);
   const [bookmarkSearch, setBookmarkSearch] = useState("");
   const [followingSearch, setFollowingSearch] = useState("");
   const filteredFollowing = useMemo(() => {
@@ -2266,21 +2277,34 @@ function Dashboard() {
   const [joinTargetRoom, setJoinTargetRoom] = useState(null);
 
   const confirmKickUser = async () => {
-    const { roomId: targetRoomId, userId } = kickTarget;
+    const { roomId: targetRoomId, userId, username } = kickTarget;
     setKickModalOpen(false);
-    try {
-      await removeUser(targetRoomId, userId);
+    if (!targetRoomId || !userId) return;
+
+    // 0ms Optimistic UI update in selectedRoomDetails modal
+    setSelectedRoomDetails((prev) => {
+      if (!prev || (prev.roomId !== targetRoomId && prev._id !== targetRoomId)) return prev;
+      return {
+        ...prev,
+        participants: (prev.participants || []).filter(
+          (p) => String(p.user?._id || p.user?.id || p.user || p._id || p) !== String(userId)
+        )
+      };
+    });
+
+    // 0ms Socket broadcast
+    if (socket && socket.connected) {
       socket.emit("kick-user", { roomId: targetRoomId, userId });
+    }
+
+    addToast(`🚫 Removed ${username || "user"} from room`, "success");
+
+    try {
+      await kickUser(targetRoomId, userId);
       fetchDashboardData();
-      setSelectedRoomDetails(prev => {
-        if (!prev || prev.roomId !== targetRoomId) return prev;
-        return {
-          ...prev,
-          participants: (prev.participants || []).filter(p => String(p.user?._id || p.user || p._id || p) !== String(userId))
-        };
-      });
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      addToast(error.response?.data?.message || error.message || "Failed to kick user", "error");
+      fetchDashboardData();
     }
   };
 
@@ -3312,7 +3336,7 @@ function Dashboard() {
       await acceptWorkspaceInvite(targetRoomId);
       await markNotificationsRead(notifId);
       setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
-      setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true } : n));
+      setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true, isUsed: true } : n));
       navigate(`/editor/${targetRoomId}`);
     } catch (err) {
       console.error("Failed to accept workspace invite:", err);
@@ -3323,7 +3347,7 @@ function Dashboard() {
     try {
       await markNotificationsRead(notifId);
       setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
-      setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true } : n));
+      setNotificationsList(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true, isUsed: true } : n));
     } catch (err) {
       console.error("Failed to ignore workspace invite:", err);
     }
@@ -3657,7 +3681,28 @@ function Dashboard() {
 
     const handleJoinRequest = (data) => {
       playNotificationSound();
-      fetchDashboardData();
+      if (!data) return;
+
+      const newReq = {
+        requestId: data.requestId || (Date.now() + Math.random()),
+        roomId: data.roomId,
+        roomTitle: data.roomTitle || data.title || "Workspace Room",
+        user: {
+          _id: data.userId,
+          username: data.username,
+          avatar: data.avatar
+        },
+        createdAt: data.createdAt || new Date()
+      };
+
+      setJoinRequests((prev) => {
+        const filtered = (prev || []).filter(r => !(r.roomId === data.roomId && (r.user?._id || r.user) === data.userId));
+        const updated = [newReq, ...filtered];
+        localStorage.setItem("ce_cache_joinRequests", JSON.stringify(updated));
+        return updated;
+      });
+
+      addToast(`🔔 ${data.username || "Developer"} requested to join "${data.roomTitle || "Workspace"}"`, "info");
     };
 
     const handleRealtimeNotification = (notif) => {
@@ -3678,6 +3723,7 @@ function Dashboard() {
       else if (notif.type === "JOIN") actionText = `wants to join "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "COMMENT") actionText = `commented on your post "${getPostSnippet(notif.targetPost)}"`;
       else if (notif.type === "INVITE") actionText = `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"`;
+      else if (notif.type === "JOIN_APPROVED") actionText = `approved your join request to "${notif.targetRoom?.title || "workspace"}"`;
       else actionText = "sent you a notification";
 
       const msg = `${notif.sender?.username || "Someone"} ${actionText}`;
@@ -3686,8 +3732,8 @@ function Dashboard() {
 
     const handleJoinApproved = (data) => {
       if (data && String(data.userId) === String(user?.id || user?._id)) {
-        addToast("Your join request has been approved! Redirecting...", "success");
-        triggerGateAndNavigate(data.roomId);
+        addToast("Your join request has been approved! You can now join this workspace whenever you want.", "success");
+        fetchDashboardData();
       }
     };
 
@@ -4049,20 +4095,24 @@ function Dashboard() {
   };
 
   const proceedJoinRoom = async (targetRoomId) => {
+    if (!targetRoomId) return;
+    const id = typeof targetRoomId === "object" ? targetRoomId.roomId : targetRoomId;
+    saveJoinedCodeToHistory(id);
+
     try {
-      const data = await joinRoom(targetRoomId);
+      const data = await joinRoom(id);
       if (data.requiresApproval) {
         socket.emit("join-request", {
-          roomId: targetRoomId,
-          userId: user?.id,
+          roomId: id,
+          userId: user?.id || user?._id,
           username: user?.username,
         });
         playNotificationSound();
         addToast("Join request sent to room owner for approval", "success");
+        fetchDashboardData();
         return;
       }
-      saveJoinedCodeToHistory(targetRoomId);
-      triggerGateAndNavigate(targetRoomId);
+      triggerGateAndNavigate(id);
     } catch (error) {
       addToast(error.response?.data?.message || error.message, "error");
     }
@@ -4073,11 +4123,13 @@ function Dashboard() {
     const id = typeof targetRoomId === "object" ? targetRoomId.roomId : targetRoomId;
     const title = typeof targetRoomId === "object" ? (targetRoomId.title || targetRoomId.name || "Workspace Room") : "Workspace Room";
 
-    const room = (liveRooms && liveRooms.find(r => r.roomId === id)) ||
-      (historyRooms && historyRooms.find(r => r.roomId === id)) ||
-      (publicRooms && publicRooms.find(r => r.roomId === id)) ||
-      (userRooms && userRooms.find(r => r.roomId === id)) ||
-      { roomId: id, title };
+    saveJoinedCodeToHistory(id);
+
+    const room = (liveRooms && liveRooms.find(r => r && (r.roomId === id || r._id === id))) ||
+      (historyRooms && historyRooms.find(r => r && (r.roomId === id || r._id === id))) ||
+      (publicRooms && publicRooms.find(r => r && (r.roomId === id || r._id === id))) ||
+      (recentRooms && recentRooms.find(r => r && (r.roomId === id || r._id === id))) ||
+      (typeof targetRoomId === "object" ? targetRoomId : { roomId: id, title });
 
     setJoinTargetRoom(room);
     setShowJoinConfirmModal(true);
@@ -4165,6 +4217,43 @@ function Dashboard() {
   const handleDeleteRoom = (targetRoomId, targetRoomTitle = "Workspace") => {
     handleDeleteRoomClick(targetRoomId, targetRoomTitle);
   };
+
+  useEffect(() => {
+    const handleRoomUpdated = (data) => {
+      if (!data || !data.roomId) return;
+      const updateRoomFn = (r) => {
+        if (r && (r.roomId === data.roomId || r._id === data.roomId)) {
+          return {
+            ...r,
+            title: data.title,
+            isPrivate: data.isPrivate
+          };
+        }
+        return r;
+      };
+
+      setHistoryRooms((prev) => prev.map(updateRoomFn));
+      setSavedRooms((prev) => prev.map(updateRoomFn));
+      setLikedRooms((prev) => prev.map(updateRoomFn));
+
+      setPublicRooms((prev) => {
+        if (data.isPrivate) {
+          return prev.filter((r) => r.roomId !== data.roomId && r._id !== data.roomId);
+        } else {
+          const exists = prev.some((r) => r.roomId === data.roomId || r._id === data.roomId);
+          if (exists) {
+            return prev.map(updateRoomFn);
+          }
+          return prev;
+        }
+      });
+    };
+
+    socket.on("room:updated", handleRoomUpdated);
+    return () => {
+      socket.off("room:updated", handleRoomUpdated);
+    };
+  }, []);
 
   useEffect(() => {
     const handleGlobalClick = () => {
@@ -4705,6 +4794,7 @@ function Dashboard() {
       else if (notif.type === "BOOKMARK") actionText = `bookmarked room "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "JOIN") actionText = `wants to join "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "INVITE") actionText = `invited you to join workspace "${notif.targetRoom?.title || "workspace"}"`;
+      else if (notif.type === "JOIN_APPROVED") actionText = `approved your join request to "${notif.targetRoom?.title || "workspace"}"`;
       else if (notif.type === "COMMENT") actionText = `commented on your post "${getPostSnippet(notif.targetPost)}"`;
       return {
         id: notif._id,
@@ -4746,6 +4836,7 @@ function Dashboard() {
       notifications={dashboardNotifications}
       clearNotifications={handleMarkAllNotificationsRead}
       onSearchSelect={handleSearchSelect}
+      joinRequests={joinRequests}
     >
       <div className={`ce-dashboard-container ${activeSection === "feed" ? "feed-layout-active" : ""} ${activeSection === "messages" ? "messages-layout-active" : ""}`}>
         <AnimatePresence mode="wait">
@@ -5428,7 +5519,7 @@ function Dashboard() {
                                       <img src={leaderboardData[1].avatar} alt={leaderboardData[1].username} />
                                     ) : (
                                       <div className="ce-bottom-podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[1].username) }}>
-                                        {leaderboardData[1].username.charAt(0).toUpperCase()}
+                                        {(leaderboardData[1].username || "D").charAt(0).toUpperCase()}
                                       </div>
                                     )
                                   ) : (
@@ -5453,7 +5544,7 @@ function Dashboard() {
                                       <img src={leaderboardData[0].avatar} alt={leaderboardData[0].username} />
                                     ) : (
                                       <div className="ce-bottom-podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[0].username) }}>
-                                        {leaderboardData[0].username.charAt(0).toUpperCase()}
+                                        {(leaderboardData[0].username || "D").charAt(0).toUpperCase()}
                                       </div>
                                     )
                                   ) : (
@@ -5478,7 +5569,7 @@ function Dashboard() {
                                       <img src={leaderboardData[2].avatar} alt={leaderboardData[2].username} />
                                     ) : (
                                       <div className="ce-bottom-podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[2].username) }}>
-                                        {leaderboardData[2].username.charAt(0).toUpperCase()}
+                                        {(leaderboardData[2].username || "D").charAt(0).toUpperCase()}
                                       </div>
                                     )
                                   ) : (
@@ -5536,44 +5627,6 @@ function Dashboard() {
 
                     {/* RIGHT COLUMN */}
                     <div className="ce-column-right">
-
-
-                      {/* PENDING JOIN REQUESTS */}
-                      {joinRequests.length > 0 && (
-                        <section className="ce-dashboard-section" style={{ borderColor: "var(--ce-warning)" }}>
-                          <div className="section-header">
-                            <ShieldAlert size={14} className="warning-theme-color" />
-                            <h3 className="section-title">Pending Access Requests</h3>
-                          </div>
-                          <div className="join-requests-grid">
-                            {joinRequests.map(req => (
-                              <div key={req.requestId} className="join-request-card">
-                                <div className="request-user-info">
-                                  <div className="req-user-avatar" style={{ backgroundColor: req.user?.avatar ? "transparent" : getAvatarColor(req.username) }}>
-                                    {req.user?.avatar ? (
-                                      <img src={req.user.avatar} alt={req.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                                    ) : (
-                                      req.username.charAt(0).toUpperCase()
-                                    )}
-                                  </div>
-                                  <div className="req-details">
-                                    <strong>{req.username}</strong>
-                                    <span>wants to join <b>{req.roomTitle}</b></span>
-                                  </div>
-                                </div>
-                                <div className="request-actions">
-                                  <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "accept")} className="accept-btn">
-                                    Accept
-                                  </button>
-                                  <button onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "reject")} className="reject-btn">
-                                    Reject
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </section>
-                      )}
 
                       {/* REDESIGNED ONLINE NETWORK CARD MATCHING TARGET REFERENCE */}
                       <section className="ce-dashboard-section online-network-card">
@@ -5685,7 +5738,7 @@ function Dashboard() {
                                         <img src={s.avatar} alt={s.username} style={{ width: "100%", height: "100%", borderRadius: "4px", objectFit: "cover" }} />
                                       ) : (
                                         <div className="suggestion-avatar-initial" style={{ width: "100%", height: "100%", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: getAvatarColor(s.username), fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                          {s.username.charAt(0).toUpperCase()}
+                                          {(s.username || "D").charAt(0).toUpperCase()}
                                         </div>
                                       )}
                                       {s.isOnline && (
@@ -5713,27 +5766,27 @@ function Dashboard() {
                                                     <div
                                                       key={mUser._id || mIdx}
                                                       style={{
-                                                        width: "14px",
-                                                        height: "14px",
+                                                        width: "22px",
+                                                        height: "22px",
                                                         borderRadius: "50%",
                                                         overflow: "hidden",
-                                                        border: "1px solid var(--ce-surface-card)",
+                                                        border: "1.5px solid var(--ce-surface-card)",
                                                         background: mUser.avatar ? "transparent" : getAvatarColor(username),
-                                                        marginLeft: mIdx === 0 ? 0 : "-4px",
+                                                        marginLeft: mIdx === 0 ? 0 : "-8px",
                                                         display: "flex",
                                                         alignItems: "center",
                                                         justifyContent: "center",
-                                                        fontSize: "0.45rem",
+                                                        fontSize: "0.62rem",
                                                         fontWeight: "700",
                                                         color: "#fff",
-                                                        zIndex: 3 - mIdx
+                                                        zIndex: 4 - mIdx
                                                       }}
                                                       title={`@${username}`}
                                                     >
                                                       {mUser.avatar ? (
                                                         <img src={mUser.avatar} alt={username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                                       ) : (
-                                                        username.charAt(0).toUpperCase()
+                                                        (username || "D").charAt(0).toUpperCase()
                                                       )}
                                                     </div>
                                                   );
@@ -5836,7 +5889,7 @@ function Dashboard() {
                                           {creatorAvatar ? (
                                             <img src={creatorAvatar} alt={creatorName} />
                                           ) : (
-                                            creatorName.charAt(0).toUpperCase()
+                                            (creatorName || "D").charAt(0).toUpperCase()
                                           )}
                                         </div>
                                         <span className="trending-creator-name">@{creatorName}</span>
@@ -6139,6 +6192,1093 @@ function Dashboard() {
               </div>
             </motion.div>
           )}
+
+          {/* ROOM REQUESTS & MY ROOMS SECTION */}
+          {activeSection === "room-requests" && (() => {
+            const ownedRooms = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
+            
+            // Filtering for My Created Rooms tab
+            const filteredOwnedRooms = ownedRooms.filter(room => {
+              if (!room) return false;
+              const term = (roomRequestsSearch || "").toLowerCase();
+              const title = (room.title || "").toLowerCase();
+              const roomId = (room.roomId || "").toLowerCase();
+              const lang = (room.language || "").toLowerCase();
+              const matchesSearch = title.includes(term) || roomId.includes(term) || lang.includes(term);
+              
+              if (!matchesSearch) return false;
+              
+              if (roomRequestsFilter === "pending") {
+                const roomReqs = joinRequests.filter(req => req.roomId === room.roomId);
+                return roomReqs.length > 0;
+              }
+              if (roomRequestsFilter === "private") return !!room.isPrivate;
+              if (roomRequestsFilter === "public") return !room.isPrivate;
+              return true;
+            });
+
+            return (
+              <motion.div
+                key="room-requests"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                style={{ width: "100%", height: "100%" }}
+              >
+                <div className="room-requests-section-container" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                  
+                   {/* Top Section Banner & Action Header */}
+                  <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <GitPullRequest size={18} className="brand-logo" style={{ color: "var(--ce-primary)" }} />
+                        <h3 className="section-title">Room Requests & Workspaces</h3>
+                      </div>
+                      <p style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", margin: 0 }}>
+                        View and manage all your created workspaces, incoming join approvals, and sent requests.
+                      </p>
+                    </div>
+                    <button
+                      className="ce-btn-primary"
+                      onClick={() => {
+                        setFormData({ title: "", language: "javascript", isPrivate: false });
+                        setShowQuickCreateModal(true);
+                      }}
+                      style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", borderRadius: "8px", fontWeight: "600", fontSize: "0.82rem", background: "var(--ce-primary)", color: "#fff", border: "none", cursor: "pointer" }}
+                    >
+                      <Plus size={14} /> Create Workspace
+                    </button>
+                  </div>
+
+                  {/* Top Stats Cards Grid */}
+                  <div className="ce-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+                    <div className="compact-stat-card" style={{
+                      background: activeTheme === "light"
+                        ? "linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(99, 102, 241, 0.01) 100%)"
+                        : "linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0.01) 100%)",
+                      border: "1px solid rgba(99, 102, 241, 0.15)",
+                      borderRadius: "14px",
+                      padding: "16px 20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "14px",
+                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                      transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-3px)";
+                      e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.4)";
+                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(99, 102, 241, 0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.15)";
+                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15)";
+                    }}
+                    >
+                      <div style={{
+                        width: "44px",
+                        height: "44px",
+                        borderRadius: "12px",
+                        background: "rgba(99, 102, 241, 0.12)",
+                        color: "rgb(99, 102, 241)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 12px rgba(99, 102, 241, 0.2)"
+                      }}>
+                        <FolderGit size={20} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "0.74rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "0.6px" }}>My Workspaces</span>
+                        <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "#6366f1", textShadow: "0 0 10px rgba(99, 102, 241, 0.3)" }}>{ownedRooms.length}</span>
+                      </div>
+                    </div>
+
+                    <div className="compact-stat-card" style={{
+                      background: activeTheme === "light"
+                        ? "linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, rgba(245, 158, 11, 0.01) 100%)"
+                        : "linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(245, 158, 11, 0.01) 100%)",
+                      border: "1px solid rgba(245, 158, 11, 0.15)",
+                      borderRadius: "14px",
+                      padding: "16px 20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "14px",
+                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                      transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-3px)";
+                      e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.4)";
+                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(245, 158, 11, 0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.15)";
+                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15)";
+                    }}
+                    >
+                      <div style={{
+                        width: "44px",
+                        height: "44px",
+                        borderRadius: "12px",
+                        background: "rgba(245, 158, 11, 0.12)",
+                        color: "rgb(245, 158, 11)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 12px rgba(245, 158, 11, 0.2)"
+                      }}>
+                        <ShieldAlert size={20} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "0.74rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "0.6px" }}>Pending Access Requests</span>
+                        <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "#f59e0b", textShadow: "0 0 10px rgba(245, 158, 11, 0.3)" }}>{joinRequests.length}</span>
+                      </div>
+                    </div>
+
+                    <div className="compact-stat-card" style={{
+                      background: activeTheme === "light"
+                        ? "linear-gradient(135deg, rgba(139, 92, 246, 0.04) 0%, rgba(139, 92, 246, 0.01) 100%)"
+                        : "linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(139, 92, 246, 0.01) 100%)",
+                      border: "1px solid rgba(139, 92, 246, 0.15)",
+                      borderRadius: "14px",
+                      padding: "16px 20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "14px",
+                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                      transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-3px)";
+                      e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.4)";
+                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(139, 92, 246, 0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.15)";
+                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15)";
+                    }}
+                    >
+                      <div style={{
+                        width: "44px",
+                        height: "44px",
+                        borderRadius: "12px",
+                        background: "rgba(139, 92, 246, 0.12)",
+                        color: "rgb(139, 92, 246)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 12px rgba(139, 92, 246, 0.2)"
+                      }}>
+                        <Lock size={20} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "0.74rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "0.6px" }}>Private Rooms</span>
+                        <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "#8b5cf6", textShadow: "0 0 10px rgba(139, 92, 246, 0.3)" }}>{ownedRooms.filter(r => r.isPrivate).length}</span>
+                      </div>
+                    </div>
+
+                    <div className="compact-stat-card" style={{
+                      background: activeTheme === "light"
+                        ? "linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(16, 185, 129, 0.01) 100%)"
+                        : "linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(16, 185, 129, 0.01) 100%)",
+                      border: "1px solid rgba(16, 185, 129, 0.15)",
+                      borderRadius: "14px",
+                      padding: "16px 20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "14px",
+                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                      transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-3px)";
+                      e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.4)";
+                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(16, 185, 129, 0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.15)";
+                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15)";
+                    }}
+                    >
+                      <div style={{
+                        width: "44px",
+                        height: "44px",
+                        borderRadius: "12px",
+                        background: "rgba(16, 185, 129, 0.12)",
+                        color: "rgb(16, 185, 129)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 12px rgba(16, 185, 129, 0.2)"
+                      }}>
+                        <Radio size={20} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "0.74rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "0.6px" }}>Live Active Rooms</span>
+                        <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "#10b981", textShadow: "0 0 10px rgba(16, 185, 129, 0.3)" }}>{ownedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tab Navigation Pill Bar */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid var(--ce-border)", paddingBottom: "16px", marginBottom: "16px" }}>
+                    <div className="ce-segmented-control" style={{ display: "flex", gap: "6px", background: activeTheme === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)", border: "1px solid var(--ce-border)", padding: "4px", borderRadius: "12px" }}>
+                      <button
+                        className={`ce-pill-btn ${roomRequestsTab === "myrooms" ? "active" : ""}`}
+                        onClick={() => setRoomRequestsTab("myrooms")}
+                        style={{
+                          padding: "8px 18px",
+                          borderRadius: "10px",
+                          border: "none",
+                          background: roomRequestsTab === "myrooms" ? "linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%)" : "transparent",
+                          color: roomRequestsTab === "myrooms" ? "#fff" : "var(--ce-text-muted)",
+                          boxShadow: roomRequestsTab === "myrooms" ? "0 4px 12px var(--ce-primary-glow)" : "none",
+                          fontWeight: "700",
+                          fontSize: "0.82rem",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        <FolderGit size={14} /> My Created Rooms ({ownedRooms.length})
+                      </button>
+                      <button
+                        className={`ce-pill-btn ${roomRequestsTab === "incoming" ? "active" : ""}`}
+                        onClick={() => setRoomRequestsTab("incoming")}
+                        style={{
+                          padding: "8px 18px",
+                          borderRadius: "10px",
+                          border: "none",
+                          background: roomRequestsTab === "incoming" ? "linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%)" : "transparent",
+                          color: roomRequestsTab === "incoming" ? "#fff" : "var(--ce-text-muted)",
+                          boxShadow: roomRequestsTab === "incoming" ? "0 4px 12px var(--ce-primary-glow)" : "none",
+                          fontWeight: "700",
+                          fontSize: "0.82rem",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        <ShieldAlert size={14} /> Incoming Requests ({joinRequests.length})
+                        {joinRequests.length > 0 && (
+                          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                        )}
+                      </button>
+                      <button
+                        className={`ce-pill-btn ${roomRequestsTab === "sent" ? "active" : ""}`}
+                        onClick={() => setRoomRequestsTab("sent")}
+                        style={{
+                          padding: "8px 18px",
+                          borderRadius: "10px",
+                          border: "none",
+                          background: roomRequestsTab === "sent" ? "linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%)" : "transparent",
+                          color: roomRequestsTab === "sent" ? "#fff" : "var(--ce-text-muted)",
+                          boxShadow: roomRequestsTab === "sent" ? "0 4px 12px var(--ce-primary-glow)" : "none",
+                          fontWeight: "700",
+                          fontSize: "0.82rem",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        <Send size={14} /> Sent Requests ({mySentRequests.length})
+                      </button>
+                    </div>
+
+                    {roomRequestsTab === "myrooms" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div className="section-search-container" style={{ minWidth: "240px", marginBottom: 0, padding: "6px 14px", borderRadius: "9999px" }}>
+                          <Search size={14} className="section-search-icon" />
+                          <input
+                            type="text"
+                            placeholder="Search my rooms..."
+                            value={roomRequestsSearch}
+                            onChange={(e) => setRoomRequestsSearch(e.target.value)}
+                            className="section-search-input"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* TAB CONTENT: MY CREATED ROOMS */}
+                  {roomRequestsTab === "myrooms" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      
+                      {/* Filter Quick Pills */}
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.78rem", fontWeight: "600", color: "var(--ce-text-muted)", marginRight: "4px" }}>Filter:</span>
+                        {[
+                          { id: "all", label: "All Rooms" },
+                          { id: "pending", label: `Pending Requests (${joinRequests.length})` },
+                          { id: "private", label: "Private Only" },
+                          { id: "public", label: "Public Only" }
+                        ].map(f => (
+                          <button
+                            key={f.id}
+                            onClick={() => setRoomRequestsFilter(f.id)}
+                            style={{
+                              padding: "4px 12px",
+                              borderRadius: "16px",
+                              fontSize: "0.75rem",
+                              fontWeight: "600",
+                              border: roomRequestsFilter === f.id ? "1px solid var(--ce-primary)" : "1px solid var(--ce-border)",
+                              background: roomRequestsFilter === f.id ? "rgba(139, 92, 246, 0.15)" : "transparent",
+                              color: roomRequestsFilter === f.id ? "var(--ce-primary)" : "var(--ce-text-muted)",
+                              cursor: "pointer"
+                            }}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {ownedRooms.length === 0 ? (
+                        <div className="empty-state-card" style={{ padding: "48px 24px", textAlign: "center" }}>
+                          <FolderGit size={36} className="empty-state-icon" style={{ color: "var(--ce-primary)", marginBottom: "16px" }} />
+                          <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)", fontSize: "1.1rem" }}>No Workspaces Created Yet</h3>
+                          <p style={{ margin: "0 0 20px 0", color: "var(--ce-text-muted)", fontSize: "0.85rem" }}>
+                            Create your first collaborative code room to start inviting developers and receiving join requests!
+                          </p>
+                          <button
+                            className="ce-btn-primary"
+                            style={{ margin: "0 auto", padding: "10px 20px" }}
+                            onClick={() => {
+                              setFormData({ title: "", language: "javascript", isPrivate: false });
+                              setShowQuickCreateModal(true);
+                            }}
+                          >
+                            <Plus size={16} /> Create Your First Workspace
+                          </button>
+                        </div>
+                      ) : filteredOwnedRooms.length === 0 ? (
+                        <div className="empty-state-card" style={{ padding: "32px", textAlign: "center" }}>
+                          <Search size={24} className="empty-state-icon" style={{ marginBottom: "8px" }} />
+                          <p style={{ color: "var(--ce-text-muted)", margin: 0 }}>No rooms match your filter or search criteria.</p>
+                        </div>
+                      ) : (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
+                          {filteredOwnedRooms.map(room => {
+                            const roomPendingRequests = joinRequests.filter(req => req.roomId === room.roomId);
+                            const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
+                            const isLive = liveRoomObj && (liveRoomObj.activeUsersCount || 0) > 0;
+                            const activeCount = liveRoomObj ? (liveRoomObj.activeUsersCount || 0) : 0;
+
+                            const lang = (room.language || "javascript").toLowerCase();
+                            const isJS = lang === "javascript" || lang === "js";
+                            const isPy = lang === "python";
+                            const isCpp = lang === "cpp" || lang === "c++";
+                            const isJava = lang === "java";
+                            const isHtml = lang === "html";
+
+                            const langColor = isJS ? "#f59e0b" : isPy ? "#3b82f6" : isCpp ? "#06b6d4" : isJava ? "#ef4444" : isHtml ? "#f97316" : "var(--ce-primary)";
+                            const langBg = isJS ? "rgba(245, 158, 11, 0.12)" : isPy ? "rgba(59, 130, 246, 0.12)" : isCpp ? "rgba(6, 182, 212, 0.12)" : isJava ? "rgba(239, 68, 68, 0.12)" : isHtml ? "rgba(249, 115, 22, 0.12)" : "rgba(139, 92, 246, 0.12)";
+                            const langBorder = isJS ? "1px solid rgba(245, 158, 11, 0.25)" : isPy ? "1px solid rgba(59, 130, 246, 0.25)" : isCpp ? "1px solid rgba(6, 182, 212, 0.25)" : isJava ? "1px solid rgba(239, 68, 68, 0.25)" : isHtml ? "1px solid rgba(249, 115, 22, 0.25)" : "1px solid rgba(139, 92, 246, 0.25)";
+
+                            return (
+                              <div
+                                key={room.roomId || room._id}
+                                className="ce-my-room-card"
+                                style={{
+                                  background: activeTheme === "light"
+                                    ? "linear-gradient(135deg, #ffffff 0%, rgba(245, 245, 255, 0.4) 100%)"
+                                    : "linear-gradient(135deg, var(--ce-surface-card) 0%, rgba(255, 255, 255, 0.01) 100%)",
+                                  border: roomPendingRequests.length > 0 ? "1.5px solid #f59e0b" : "1px solid var(--ce-border)",
+                                  borderRadius: "14px",
+                                  padding: "20px",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "16px",
+                                  position: "relative",
+                                  boxShadow: roomPendingRequests.length > 0 ? "0 8px 24px rgba(245, 158, 11, 0.12)" : "0 4px 15px rgba(0,0,0,0.06)",
+                                  transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = "translateY(-4px)";
+                                  e.currentTarget.style.boxShadow = roomPendingRequests.length > 0
+                                    ? "0 12px 30px rgba(245, 158, 11, 0.22)"
+                                    : "0 12px 30px rgba(139, 92, 246, 0.12)";
+                                  if (roomPendingRequests.length === 0) {
+                                    e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.45)";
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = "translateY(0)";
+                                  e.currentTarget.style.boxShadow = roomPendingRequests.length > 0
+                                    ? "0 8px 24px rgba(245, 158, 11, 0.12)"
+                                    : "0 4px 15px rgba(0,0,0,0.06)";
+                                  e.currentTarget.style.borderColor = roomPendingRequests.length > 0 ? "#f59e0b" : "var(--ce-border)";
+                                }}
+                              >
+                                {/* Card Header */}
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                                  <div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                                      <h3 style={{ fontSize: "1.08rem", fontWeight: "800", color: "var(--ce-text-h)", margin: 0 }}>
+                                        {room.title}
+                                      </h3>
+                                      <span style={{ fontSize: "0.68rem", fontWeight: "700", textTransform: "uppercase", padding: "2px 8px", borderRadius: "6px", background: langBg, color: langColor, border: langBorder }}>
+                                        {room.language || "javascript"}
+                                      </span>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", color: "var(--ce-text-muted)" }}>
+                                      <span>ID: <code style={{ background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: "4px", color: "var(--ce-text)" }}>{room.roomId}</code></span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigator.clipboard.writeText(room.roomId);
+                                          addToast("Room ID copied to clipboard!", "success");
+                                        }}
+                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--ce-primary)", display: "flex", alignItems: "center" }}
+                                        title="Copy Room ID"
+                                      >
+                                        <Copy size={12} />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                                    {room.isPrivate ? (
+                                      <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "3px 8px", borderRadius: "12px", background: "rgba(239, 68, 68, 0.12)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.22)", display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <Lock size={11} /> Private
+                                      </span>
+                                    ) : (
+                                      <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "3px 8px", borderRadius: "12px", background: "rgba(16, 185, 129, 0.12)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.22)", display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <Globe size={11} /> Public
+                                      </span>
+                                    )}
+
+                                    <span style={{ fontSize: "0.72rem", fontWeight: "600", color: isLive ? "#10b981" : "var(--ce-text-muted)", display: "flex", alignItems: "center", gap: "5px" }}>
+                                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isLive ? "#10b981" : "#9ca3af" }} />
+                                      {isLive ? `${activeCount} Online` : "Idle"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Room Code Info for Private Rooms */}
+                                {room.isPrivate && room.joinCode && (
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(139, 92, 246, 0.04)", border: "1px dashed rgba(139, 92, 246, 0.25)", borderRadius: "8px", padding: "8px 12px" }}>
+                                    <span style={{ fontSize: "0.75rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Private Join Code:</span>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                      <code style={{ fontSize: "0.82rem", fontWeight: "700", color: "var(--ce-primary)", letterSpacing: "1px" }}>{room.joinCode}</code>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigator.clipboard.writeText(room.joinCode);
+                                          addToast("Private code copied!", "success");
+                                        }}
+                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--ce-primary)", display: "flex" }}
+                                        title="Copy Join Code"
+                                      >
+                                        <Copy size={12} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Action Buttons Footer */}
+                                <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "6px" }}>
+                                  <button
+                                    onClick={() => proceedJoinRoom(room.roomId)}
+                                    style={{
+                                      flex: 1,
+                                      padding: "8px 14px",
+                                      borderRadius: "8px",
+                                      background: "linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%)",
+                                      color: "#fff",
+                                      border: "none",
+                                      fontSize: "0.82rem",
+                                      fontWeight: "750",
+                                      cursor: "pointer",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "6px",
+                                      boxShadow: "0 4px 12px var(--ce-primary-glow)",
+                                      transition: "transform 0.15s ease"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                  >
+                                    <DoorOpen size={14} /> Enter Room
+                                  </button>
+                                  {room.isPrivate && (
+                                    <button
+                                      onClick={() => {
+                                        setManageRequestsRoomId(room.roomId);
+                                        setRoomRequestsTab("incoming");
+                                      }}
+                                      style={{
+                                        padding: "8px 12px",
+                                        borderRadius: "8px",
+                                        background: roomPendingRequests.length > 0 ? "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" : "rgba(139, 92, 246, 0.06)",
+                                        color: roomPendingRequests.length > 0 ? "#fff" : "var(--ce-text)",
+                                        border: roomPendingRequests.length > 0 ? "none" : "1px solid var(--ce-border)",
+                                        boxShadow: roomPendingRequests.length > 0 ? "0 4px 12px rgba(245, 158, 11, 0.25)" : "none",
+                                        fontSize: "0.8rem",
+                                        fontWeight: "700",
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        transition: "all 0.15s ease"
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+                                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                      title="Manage Pending Access Requests"
+                                    >
+                                      <ShieldAlert size={14} /> Requests ({roomPendingRequests.length})
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => setSelectedRoomDetails(room)}
+                                    style={{
+                                      padding: "8px 12px",
+                                      borderRadius: "8px",
+                                      background: activeTheme === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                                      color: "var(--ce-text)",
+                                      border: "1px solid var(--ce-border)",
+                                      fontSize: "0.8rem",
+                                      fontWeight: "600",
+                                      cursor: "pointer",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      transition: "all 0.15s ease"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                    title="View Members & Details"
+                                  >
+                                    <SettingsIcon size={14} /> Manage
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB CONTENT: INCOMING REQUESTS */}
+                  {roomRequestsTab === "incoming" && (() => {
+                    const filteredRequests = joinRequests
+                      .filter(req => {
+                        if (manageRequestsRoomId && req.roomId !== manageRequestsRoomId) return false;
+                        const term = (manageRequestSearch || "").toLowerCase();
+                        const uname = (req.username || req.user?.username || "").toLowerCase();
+                        const rtitle = (req.roomTitle || "").toLowerCase();
+                        return uname.includes(term) || rtitle.includes(term);
+                      })
+                      .sort((a, b) => {
+                        const tA = new Date(a.createdAt || 0).getTime();
+                        const tB = new Date(b.createdAt || 0).getTime();
+                        return manageRequestSort === "newest" ? tB - tA : tA - tB;
+                      });
+
+                    const activeRequest = filteredRequests.find(r => r.requestId === selectedRequestId) || filteredRequests[0];
+
+                    const handleAcceptAll = async () => {
+                      if (filteredRequests.length === 0) return;
+                      addToast(`Approving ${filteredRequests.length} join requests...`, "info");
+                      for (const req of filteredRequests) {
+                        await handleRespondRequest(req.roomId, req.user?._id || req.user, "accept");
+                      }
+                      addToast(`Approved all requests!`, "success");
+                    };
+
+                    const handleRejectAll = async () => {
+                      if (filteredRequests.length === 0) return;
+                      addToast(`Declining ${filteredRequests.length} join requests...`, "info");
+                      for (const req of filteredRequests) {
+                        await handleRespondRequest(req.roomId, req.user?._id || req.user, "reject");
+                      }
+                      addToast(`Declined all requests.`, "success");
+                    };
+
+                    const getMockIP = (userId) => {
+                      if (!userId) return "192.168.1.12";
+                      let codeSum = 0;
+                      for (let i = 0; i < userId.length; i++) codeSum += userId.charCodeAt(i);
+                      return `192.168.1.${(codeSum % 250) + 2}`;
+                    };
+
+                    const getMockDevice = (userId) => {
+                      if (!userId) return "Windows • Chrome";
+                      const platforms = ["Windows • Chrome", "macOS • Safari", "Linux • Firefox", "iOS • Safari App", "Android • Chrome Mobile"];
+                      let codeSum = 0;
+                      for (let i = 0; i < userId.length; i++) codeSum += userId.charCodeAt(i);
+                      return platforms[codeSum % platforms.length];
+                    };
+
+                    const getMockMemberSince = (reqUser) => {
+                      const regDateStr = reqUser?.createdAt || reqUser?.user?.createdAt;
+                      if (regDateStr) {
+                        return new Date(regDateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+                      }
+                      return "May 10, 2025";
+                    };
+
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                        
+                        {/* Go Back Link if viewing room requests for a specific room */}
+                        {manageRequestsRoomId && (
+                          <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "4px", marginBottom: "10px" }}>
+                            <button
+                              onClick={() => {
+                                setManageRequestsRoomId(null);
+                                setRoomRequestsTab("myrooms");
+                              }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                background: "none",
+                                border: "none",
+                                color: "var(--ce-primary)",
+                                fontWeight: "700",
+                                fontSize: "0.85rem",
+                                cursor: "pointer",
+                                padding: 0,
+                                transition: "color 0.2s ease"
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = "var(--ce-text-h)"}
+                              onMouseLeave={(e) => e.currentTarget.style.color = "var(--ce-primary)"}
+                            >
+                              <ArrowLeft size={16} /> Back to My Workspaces
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Banner Card Header */}
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: "16px",
+                          background: activeTheme === "light"
+                            ? "linear-gradient(135deg, rgba(139, 92, 246, 0.04) 0%, rgba(139, 92, 246, 0.01) 100%)"
+                            : "linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(139, 92, 246, 0.01) 100%)",
+                          border: "1px solid var(--ce-border)",
+                          borderRadius: "14px",
+                          padding: "18px 24px",
+                          boxShadow: "0 4px 15px rgba(0, 0, 0, 0.03)"
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "rgba(139, 92, 246, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ce-primary)", boxShadow: "0 0 10px rgba(139, 92, 246, 0.15)" }}>
+                              <ShieldAlert size={20} />
+                            </div>
+                            <div>
+                              <h3 style={{ fontSize: "1.15rem", fontWeight: "800", color: "var(--ce-text-h)", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                                Pending Access Requests
+                                <span style={{ fontSize: "0.78rem", fontWeight: "750", background: "var(--ce-primary)", color: "#fff", padding: "2px 8px", borderRadius: "12px", boxShadow: "0 2px 6px var(--ce-primary-glow)" }}>
+                                  {filteredRequests.length}
+                                </span>
+                              </h3>
+                              <p style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)", margin: "2px 0 0 0" }}>
+                                Manage and review developers who want to join your workspace sessions.
+                              </p>
+                            </div>
+                          </div>
+
+                          {filteredRequests.length > 0 && (
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                onClick={handleRejectAll}
+                                style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", fontSize: "0.82rem", fontWeight: "700", cursor: "pointer" }}
+                              >
+                                <X size={14} /> Decline All
+                              </button>
+                              <button
+                                onClick={handleAcceptAll}
+                                style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px", background: "var(--ce-primary)", color: "#fff", border: "none", fontSize: "0.82rem", fontWeight: "700", cursor: "pointer" }}
+                              >
+                                <Check size={14} /> Approve All
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {joinRequests.length === 0 ? (
+                          <div className="empty-state-card" style={{ padding: "48px 24px", textAlign: "center" }}>
+                            <Check size={32} className="empty-state-icon" style={{ color: "#10b981", marginBottom: "12px" }} />
+                            <h3 style={{ margin: "0 0 6px 0", color: "var(--ce-text-h)" }}>No Pending Join Requests</h3>
+                            <p style={{ margin: 0, color: "var(--ce-text-muted)", fontSize: "0.84rem" }}>
+                              All access requests for your private rooms have been processed!
+                            </p>
+                          </div>
+                        ) : filteredRequests.length === 0 ? (
+                          <div className="empty-state-card" style={{ padding: "32px", textAlign: "center" }}>
+                            <Search size={24} className="empty-state-icon" style={{ marginBottom: "8px" }} />
+                            <p style={{ color: "var(--ce-text-muted)", margin: 0 }}>No pending requests match your search filter.</p>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                            
+                            {/* Search and Sort Toolbar */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                <div className="section-search-container" style={{ minWidth: "240px", marginBottom: 0, padding: "6px 12px" }}>
+                                  <Search size={14} className="section-search-icon" />
+                                  <input
+                                    type="text"
+                                    placeholder="Search users..."
+                                    value={manageRequestSearch}
+                                    onChange={(e) => {
+                                      setManageRequestSearch(e.target.value);
+                                      setManageRequestLimit(10);
+                                    }}
+                                    className="section-search-input"
+                                  />
+                                </div>
+                                <select
+                                  value={manageRequestSort}
+                                  onChange={(e) => setManageRequestSort(e.target.value)}
+                                  style={{
+                                    padding: "6px 12px",
+                                    borderRadius: "9999px",
+                                    border: "1px solid var(--ce-border)",
+                                    background: activeTheme === "light" ? "#fff" : "var(--ce-surface-card)",
+                                    color: "var(--ce-text)",
+                                    fontSize: "0.78rem",
+                                    outline: "none",
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  <option value="newest">Newest First</option>
+                                  <option value="oldest">Oldest First</option>
+                                </select>
+                              </div>
+
+                              <div style={{ fontSize: "0.82rem", color: "var(--ce-text-muted)" }}>
+                                Showing 1-{Math.min(manageRequestLimit, filteredRequests.length)} of {filteredRequests.length} requests
+                              </div>
+                            </div>
+
+                            {/* Split Layout: Left List vs Right Detail Panel */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "24px" }} className="manage-requests-split-layout">
+                              
+                              {/* Left Column: Requests Cards List */}
+                              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                {filteredRequests.slice(0, manageRequestLimit).map(req => {
+                                  const isActive = activeRequest && String(req.requestId) === String(activeRequest.requestId);
+                                  return (
+                                    <div
+                                      key={req.requestId}
+                                      onClick={() => setSelectedRequestId(req.requestId)}
+                                      style={{
+                                        background: isActive
+                                          ? (activeTheme === "light" ? "rgba(139, 92, 246, 0.05)" : "rgba(139, 92, 246, 0.08)")
+                                          : (activeTheme === "light" ? "#fff" : "var(--ce-surface-card)"),
+                                        border: isActive ? "1.5px solid var(--ce-primary)" : "1px solid var(--ce-border)",
+                                        borderLeft: isActive ? "4px solid var(--ce-primary)" : "1px solid var(--ce-border)",
+                                        borderRadius: "12px",
+                                        padding: "16px",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        cursor: "pointer",
+                                        boxShadow: isActive ? "0 4px 16px rgba(139, 92, 246, 0.12)" : "none",
+                                        transform: isActive ? "translateX(4px)" : "none",
+                                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                                      }}
+                                    >
+                                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                        <div style={{ width: "40px", height: "40px", borderRadius: "50%", overflow: "hidden", background: req.user?.avatar ? "transparent" : getAvatarColor(req.username || req.user?.username || "D"), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "700", fontSize: "0.95rem" }}>
+                                          {req.user?.avatar ? (
+                                            <img src={req.user.avatar} alt={req.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                          ) : (
+                                            (req.username || req.user?.username || "D").charAt(0).toUpperCase()
+                                          )}
+                                        </div>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                          <span style={{ fontSize: "0.9rem", fontWeight: "700", color: "var(--ce-text-h)" }}>
+                                            {req.username || req.user?.username}
+                                          </span>
+                                          <span style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)" }}>
+                                            Room: <strong>{req.roomTitle}</strong>
+                                          </span>
+                                          <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
+                                            Requested {timeAgo(req.createdAt)}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div style={{ display: "flex", gap: "6px" }} onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "accept")}
+                                          style={{ width: "30px", height: "30px", borderRadius: "8px", background: "#10b981", color: "#fff", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "transform 0.15s ease" }}
+                                          title="Accept Request"
+                                          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.08)"}
+                                          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                        >
+                                          <Check size={14} />
+                                        </button>
+                                        <button
+                                          onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "reject")}
+                                          style={{ width: "30px", height: "30px", borderRadius: "8px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "transform 0.15s ease" }}
+                                          title="Reject Request"
+                                          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.08)"}
+                                          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+
+                                {/* Load More Pagination Controls */}
+                                {filteredRequests.length > manageRequestLimit && (
+                                  <button
+                                    onClick={() => setManageRequestLimit(prev => prev + 10)}
+                                    style={{
+                                      width: "100%",
+                                      padding: "12px",
+                                      borderRadius: "10px",
+                                      background: "transparent",
+                                      border: "1px dashed var(--ce-border)",
+                                      color: "var(--ce-primary)",
+                                      fontWeight: "600",
+                                      fontSize: "0.82rem",
+                                      cursor: "pointer",
+                                      textAlign: "center",
+                                      marginTop: "4px",
+                                      transition: "all 0.2s ease"
+                                    }}
+                                  >
+                                    Load More Requests ↓
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Right Column: Requester Detailed Info Inspector Card */}
+                              <div>
+                                {activeRequest ? (
+                                  <div
+                                    style={{
+                                      background: activeTheme === "light" ? "#fff" : "var(--ce-surface-card)",
+                                      border: "1px solid var(--ce-border)",
+                                      borderRadius: "14px",
+                                      padding: "24px",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "20px",
+                                      position: "sticky",
+                                      top: "20px",
+                                      boxShadow: "0 8px 30px rgba(0, 0, 0, 0.05)"
+                                    }}
+                                  >
+                                    {/* Big Header Avatar Stack */}
+                                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                                      <div style={{ position: "relative" }}>
+                                        <div style={{ width: "64px", height: "64px", borderRadius: "50%", overflow: "hidden", background: activeRequest.user?.avatar ? "transparent" : getAvatarColor(activeRequest.username || activeRequest.user?.username || "D"), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.6rem", fontWeight: "700" }}>
+                                          {activeRequest.user?.avatar ? (
+                                            <img src={activeRequest.user.avatar} alt={activeRequest.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                          ) : (
+                                            (activeRequest.username || activeRequest.user?.username || "D").charAt(0).toUpperCase()
+                                          )}
+                                        </div>
+                                        <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#10b981", border: "2px solid var(--ce-surface-card)", position: "absolute", bottom: "2px", right: "2px" }} />
+                                      </div>
+                                      <div style={{ display: "flex", flexDirection: "column" }}>
+                                        <span style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--ce-text-h)" }}>
+                                          {activeRequest.username || activeRequest.user?.username}
+                                        </span>
+                                        <span style={{ fontSize: "0.85rem", color: "var(--ce-text-muted)" }}>
+                                          {activeRequest.user?.email || `${activeRequest.username || "developer"}@codeexpo.com`}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Detailed Properties Grid */}
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: activeTheme === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", padding: "18px", borderRadius: "10px" }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
+                                          <Code size={14} style={{ color: "var(--ce-primary)" }} />
+                                          <span>Requested Room</span>
+                                        </div>
+                                        <span style={{ fontWeight: "700", color: "var(--ce-text-h)" }}>{activeRequest.roomTitle}</span>
+                                      </div>
+
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
+                                          <Clock size={14} style={{ color: "#3b82f6" }} />
+                                          <span>Requested At</span>
+                                        </div>
+                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h)" }}>
+                                          {timeAgo(activeRequest.createdAt)}
+                                        </span>
+                                      </div>
+
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
+                                          <Activity size={14} style={{ color: "#10b981" }} />
+                                          <span>User Status</span>
+                                        </div>
+                                        <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "2px 8px", borderRadius: "10px", background: "rgba(16, 185, 129, 0.12)", color: "#10b981", textTransform: "uppercase" }}>Online</span>
+                                      </div>
+
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
+                                          <User size={14} style={{ color: "#f59e0b" }} />
+                                          <span>User Role</span>
+                                        </div>
+                                        <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "2px 8px", borderRadius: "10px", background: "rgba(59, 130, 246, 0.12)", color: "#3b82f6", textTransform: "uppercase" }}>User</span>
+                                      </div>
+
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
+                                          <Globe size={14} style={{ color: "#06b6d4" }} />
+                                          <span>IP Address</span>
+                                        </div>
+                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h)" }}>{getMockIP(activeRequest.user?._id || activeRequest.user)}</span>
+                                      </div>
+
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
+                                          <Laptop size={14} style={{ color: "#8b5cf6" }} />
+                                          <span>Device</span>
+                                        </div>
+                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h)" }}>{getMockDevice(activeRequest.user?._id || activeRequest.user)}</span>
+                                      </div>
+
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
+                                          <Calendar size={14} style={{ color: "#ec4899" }} />
+                                          <span>Member Since</span>
+                                        </div>
+                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h)" }}>{getMockMemberSince(activeRequest.user)}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Additional Info Section */}
+                                    <div style={{ borderTop: "1px solid var(--ce-border)", paddingTop: "12px" }}>
+                                      <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--ce-text-muted)", textTransform: "uppercase" }}>Additional Info</span>
+                                      <p style={{ fontSize: "0.82rem", color: "var(--ce-text)", margin: "4px 0 0 0", fontStyle: "italic" }}>
+                                        No additional information available for this user request.
+                                      </p>
+                                    </div>
+
+                                    {/* Action Buttons Footer inside inspector */}
+                                    <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+                                      <button
+                                        onClick={() => handleRespondRequest(activeRequest.roomId, activeRequest.user?._id || activeRequest.user, "accept")}
+                                        style={{ flex: 1, padding: "12px 18px", borderRadius: "10px", background: "#10b981", color: "#fff", border: "none", fontWeight: "700", fontSize: "0.84rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)", transition: "transform 0.15s ease" }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                                      >
+                                        <Check size={16} /> Accept Request
+                                      </button>
+                                      <button
+                                        onClick={() => handleRespondRequest(activeRequest.roomId, activeRequest.user?._id || activeRequest.user, "reject")}
+                                        style={{ flex: 1, padding: "12px 18px", borderRadius: "10px", background: "#ef4444", color: "#fff", border: "none", fontWeight: "700", fontSize: "0.84rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)", transition: "transform 0.15s ease" }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                                      >
+                                        <X size={16} /> Reject Request
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "240px", border: "1px dashed var(--ce-border)", borderRadius: "12px", padding: "32px", color: "var(--ce-text-muted)" }}>
+                                    <ShieldAlert size={28} style={{ marginBottom: "8px" }} />
+                                    <p style={{ margin: 0, fontSize: "0.82rem", textAlign: "center" }}>Select an incoming request to view detailed profile metadata</p>
+                                  </div>
+                                )}
+                              </div>
+
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* TAB CONTENT: SENT REQUESTS */}
+                  {roomRequestsTab === "sent" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      {mySentRequests.length === 0 ? (
+                        <div className="empty-state-card" style={{ padding: "48px 24px", textAlign: "center" }}>
+                          <Send size={32} className="empty-state-icon" style={{ color: "var(--ce-primary)", marginBottom: "12px" }} />
+                          <h3 style={{ margin: "0 0 6px 0", color: "var(--ce-text-h)" }}>No Sent Access Requests</h3>
+                          <p style={{ margin: 0, color: "var(--ce-text-muted)", fontSize: "0.84rem" }}>
+                            You haven't submitted join requests to any private workspaces recently.
+                          </p>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {mySentRequests.map(req => (
+                            <div
+                              key={req.roomId}
+                              style={{
+                                background: activeTheme === "light" ? "#fff" : "var(--ce-surface-card)",
+                                border: "1px solid var(--ce-border)",
+                                borderRadius: "10px",
+                                padding: "16px",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                                gap: "16px"
+                              }}
+                            >
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <span style={{ fontSize: "0.95rem", fontWeight: "700", color: "var(--ce-text-h)" }}>{req.title}</span>
+                                  <span style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", background: "rgba(139, 92, 246, 0.12)", color: "var(--ce-primary)", fontWeight: "700", textTransform: "uppercase" }}>{req.language}</span>
+                                </div>
+                                <span style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)" }}>
+                                  Room Owner: <strong>{req.createdBy?.username || "Owner"}</strong> ({req.createdBy?.email})
+                                </span>
+                              </div>
+
+                              <div>
+                                {req.status === "pending" && (
+                                  <span style={{ fontSize: "0.78rem", fontWeight: "700", padding: "6px 14px", background: "rgba(245, 158, 11, 0.12)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: "16px" }}>
+                                    ⏳ Pending Approval
+                                  </span>
+                                )}
+                                {req.status === "rejected" && (
+                                  <span style={{ fontSize: "0.78rem", fontWeight: "700", padding: "6px 14px", background: "rgba(239, 68, 68, 0.12)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "16px" }}>
+                                    ❌ Request Declined
+                                  </span>
+                                )}
+                                {req.status === "accepted" && (
+                                  <button
+                                    onClick={() => proceedJoinRoom(req.roomId)}
+                                    style={{ padding: "6px 16px", borderRadius: "8px", background: "#10b981", color: "#fff", border: "none", fontSize: "0.8rem", fontWeight: "700", cursor: "pointer" }}
+                                  >
+                                    Enter Approved Room
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              </motion.div>
+            );
+          })()}
 
           {/* LIVE ROOMS SECTION */}
           {activeSection === "liverooms" && (
@@ -6666,7 +7806,7 @@ function Dashboard() {
                                               }}
                                               title={`View @${dev.username}'s profile`}
                                             >
-                                              {dev.username.charAt(0).toUpperCase()}
+                                              {(dev.username || "D").charAt(0).toUpperCase()}
                                             </div>
                                           )}
                                           <span className={`dev-online-status-badge ${isOnline ? "online" : "offline"}`} />
@@ -6846,7 +7986,7 @@ function Dashboard() {
                                         <img src={dev.avatar} alt={dev.username} className="suggested-avatar" />
                                       ) : (
                                         <div className="suggested-avatar-fallback" style={{ backgroundColor: getAvatarColor(dev.username) }}>
-                                          {dev.username.charAt(0).toUpperCase()}
+                                          {(dev.username || "D").charAt(0).toUpperCase()}
                                         </div>
                                       )}
                                       <span className={`dev-online-status-badge mini ${dev.isOnline === true || dev.isOnline === "true" ? "online" : "offline"}`} />
@@ -6946,7 +8086,7 @@ function Dashboard() {
                           <img src={leaderboardData[1].avatar} alt={leaderboardData[1].username} className="podium-avatar" />
                         ) : (
                           <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[1].username) }}>
-                            {leaderboardData[1].username.charAt(0).toUpperCase()}
+                            {(leaderboardData[1].username || "D").charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div className="podium-badge">2</div>
@@ -6967,7 +8107,7 @@ function Dashboard() {
                           <img src={leaderboardData[0].avatar} alt={leaderboardData[0].username} className="podium-avatar" />
                         ) : (
                           <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[0].username) }}>
-                            {leaderboardData[0].username.charAt(0).toUpperCase()}
+                            {(leaderboardData[0].username || "D").charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div className="podium-badge"><Trophy size={14} fill="#ffd700" /></div>
@@ -6988,7 +8128,7 @@ function Dashboard() {
                           <img src={leaderboardData[2].avatar} alt={leaderboardData[2].username} className="podium-avatar" />
                         ) : (
                           <div className="podium-avatar-fallback" style={{ backgroundColor: getAvatarColor(leaderboardData[2].username) }}>
-                            {leaderboardData[2].username.charAt(0).toUpperCase()}
+                            {(leaderboardData[2].username || "D").charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div className="podium-badge">3</div>
@@ -7125,7 +8265,7 @@ function Dashboard() {
                                       <img src={item.avatar} alt={item.username} className="user-avatar-small" style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover" }} />
                                     ) : (
                                       <div className="user-avatar-small" style={{ width: "28px", height: "28px", borderRadius: "50%", backgroundColor: getAvatarColor(item.username), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: "600", color: "#fff" }}>
-                                        {item.username.charAt(0).toUpperCase()}
+                                        {(item.username || "D").charAt(0).toUpperCase()}
                                       </div>
                                     )}
                                     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -8550,6 +9690,10 @@ function Dashboard() {
                             notifIcon = <Mail size={14} style={{ color: "#10b981" }} />;
                             actionText = `invited you to join workspace "${roomTitle}"`;
                             typeClass = "notif-type-invite";
+                          } else if (notif.type === "JOIN_APPROVED") {
+                            notifIcon = <ShieldCheck size={14} style={{ color: "#10b981" }} />;
+                            actionText = `approved your join request to "${roomTitle}"`;
+                            typeClass = "notif-type-invite";
                           } else if (notif.type === "MODERATION_ACTION") {
                             notifIcon = <ShieldAlert size={14} style={{ color: "#ef4444" }} />;
                             actionText = notif.message || "sent you a moderation alert";
@@ -8587,7 +9731,7 @@ function Dashboard() {
                                   {senderAvatar ? (
                                     <img src={senderAvatar} alt={senderName} className="notif-sender-img" />
                                   ) : (
-                                    <span className="notif-sender-initial">{senderName.charAt(0).toUpperCase()}</span>
+                                    <span className="notif-sender-initial">{(senderName || "D").charAt(0).toUpperCase()}</span>
                                   )}
                                 </div>
                                 <div className="notif-main-info">
@@ -8694,7 +9838,7 @@ function Dashboard() {
 
                                   {notif.type === "INVITE" && (
                                     <div style={{ marginTop: "4px" }}>
-                                      {!notif.isRead ? (
+                                      {!notif.isUsed ? (
                                         <div style={{ display: "flex", gap: "8px" }}>
                                           <button
                                             onClick={(e) => {
@@ -8741,6 +9885,43 @@ function Dashboard() {
                                     </div>
                                   )}
 
+                                  {notif.type === "JOIN_APPROVED" && (
+                                    <div style={{ marginTop: "4px" }}>
+                                      {!notif.isUsed ? (
+                                        <div style={{ display: "flex", gap: "8px" }}>
+                                          <button
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              try {
+                                                await proceedJoinRoom(roomLink);
+                                                // Mark locally as used/read
+                                                setNotificationsList(prev => prev.map(n => n._id === notif._id ? { ...n, isRead: true, isUsed: true } : n));
+                                              } catch (err) {
+                                                console.error(err);
+                                              }
+                                            }}
+                                            className="history-resume-btn notif-action-btn accept"
+                                            style={{
+                                              fontSize: "0.68rem",
+                                              padding: "3px 8px",
+                                              borderRadius: "6px",
+                                              background: "rgba(16, 185, 129, 0.12)",
+                                              color: "#10b981",
+                                              border: "1px solid rgba(16, 185, 129, 0.25)",
+                                              cursor: "pointer"
+                                            }}
+                                          >
+                                            Join Workspace
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="notif-action-status-label" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)" }}>
+                                          Request processed
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
                                   <div className="notif-meta-tags" style={{ marginTop: "2px" }}>
                                     <span className="notif-tag-badge">{notif.category}</span>
                                   </div>
@@ -8749,7 +9930,7 @@ function Dashboard() {
 
                               <div className="notif-right-content">
                                 <span className="notif-time-badge">{formatLastActive(notif.createdAt)}</span>
-                                {roomLink && notif.type !== "JOIN" && (
+                                {roomLink && notif.type !== "JOIN" && !notif.isUsed && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -8895,7 +10076,7 @@ function Dashboard() {
                               {viewingUserProfile.avatar ? (
                                 <img src={viewingUserProfile.avatar} alt={viewingUserProfile.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                               ) : (
-                                viewingUserProfile.username.charAt(0).toUpperCase()
+                                (viewingUserProfile.username || "D").charAt(0).toUpperCase()
                               )}
                             </div>
                           ) : (
@@ -9378,17 +10559,30 @@ function Dashboard() {
                                                 <span>{room.isPrivate ? "Private" : "Public"}</span>
                                               </div>
                                               {isRoomOwner(room) && (
-                                                <button
-                                                  type="button"
-                                                  className="premium-card-delete-icon-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteRoomClick(room.roomId || room._id, room.title);
-                                                  }}
-                                                  title="Delete Workspace"
-                                                >
-                                                  <Trash2 size={13} />
-                                                </button>
+                                                <>
+                                                  <button
+                                                    type="button"
+                                                    className="premium-card-edit-icon-btn"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setEditingRoomTarget(room);
+                                                    }}
+                                                    title="Edit Workspace"
+                                                  >
+                                                    <Edit3 size={13} />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="premium-card-delete-icon-btn"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                                    }}
+                                                    title="Delete Workspace"
+                                                  >
+                                                    <Trash2 size={13} />
+                                                  </button>
+                                                </>
                                               )}
                                             </div>
                                           </div>
@@ -9429,11 +10623,11 @@ function Dashboard() {
                                               {/* Likes count button/pill */}
                                               <button
                                                 type="button"
-                                                className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                                onClick={() => handleLikeRoom(room.roomId)}
+                                                className={`premium-action-pill like-pill ${isRoomLiked(room.roomId || room._id) ? "liked" : ""}`}
+                                                onClick={() => handleLikeRoom(room.roomId || room._id)}
                                                 title="Like Room"
                                               >
-                                                <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                                <Heart size={13} fill={isRoomLiked(room.roomId || room._id) ? "currentColor" : "transparent"} />
                                                 <span>{room.likesCount || 0}</span>
                                               </button>
 
@@ -9594,17 +10788,30 @@ function Dashboard() {
                                                 <span>{room.isPrivate ? "Private" : "Public"}</span>
                                               </div>
                                               {isRoomOwner(room) && (
-                                                <button
-                                                  type="button"
-                                                  className="premium-card-delete-icon-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteRoomClick(room.roomId || room._id, room.title);
-                                                  }}
-                                                  title="Delete Workspace"
-                                                >
-                                                  <Trash2 size={13} />
-                                                </button>
+                                                <>
+                                                  <button
+                                                    type="button"
+                                                    className="premium-card-edit-icon-btn"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setEditingRoomTarget(room);
+                                                    }}
+                                                    title="Edit Workspace"
+                                                  >
+                                                    <Edit3 size={13} />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="premium-card-delete-icon-btn"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                                    }}
+                                                    title="Delete Workspace"
+                                                  >
+                                                    <Trash2 size={13} />
+                                                  </button>
+                                                </>
                                               )}
                                             </div>
                                           </div>
@@ -9645,11 +10852,11 @@ function Dashboard() {
                                               {/* Likes count button/pill */}
                                               <button
                                                 type="button"
-                                                className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                                onClick={() => handleLikeRoom(room.roomId)}
+                                                className={`premium-action-pill like-pill ${isRoomLiked(room.roomId || room._id) ? "liked" : ""}`}
+                                                onClick={() => handleLikeRoom(room.roomId || room._id)}
                                                 title="Like Room"
                                               >
-                                                <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                                <Heart size={13} fill={isRoomLiked(room.roomId || room._id) ? "currentColor" : "transparent"} />
                                                 <span>{room.likesCount || 0}</span>
                                               </button>
 
@@ -9730,17 +10937,30 @@ function Dashboard() {
                                                 <span>{room.isPrivate ? "Private" : "Public"}</span>
                                               </div>
                                               {isRoomOwner(room) && (
-                                                <button
-                                                  type="button"
-                                                  className="premium-card-delete-icon-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteRoomClick(room.roomId || room._id, room.title);
-                                                  }}
-                                                  title="Delete Workspace"
-                                                >
-                                                  <Trash2 size={13} />
-                                                </button>
+                                                <>
+                                                  <button
+                                                    type="button"
+                                                    className="premium-card-edit-icon-btn"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setEditingRoomTarget(room);
+                                                    }}
+                                                    title="Edit Workspace"
+                                                  >
+                                                    <Edit3 size={13} />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="premium-card-delete-icon-btn"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleDeleteRoomClick(room.roomId || room._id, room.title);
+                                                    }}
+                                                    title="Delete Workspace"
+                                                  >
+                                                    <Trash2 size={13} />
+                                                  </button>
+                                                </>
                                               )}
                                             </div>
                                           </div>
@@ -9781,11 +11001,11 @@ function Dashboard() {
                                               {/* Likes count button/pill */}
                                               <button
                                                 type="button"
-                                                className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                                onClick={() => handleLikeRoom(room.roomId)}
+                                                className={`premium-action-pill like-pill ${isRoomLiked(room.roomId || room._id) ? "liked" : ""}`}
+                                                onClick={() => handleLikeRoom(room.roomId || room._id)}
                                                 title="Like Room"
                                               >
-                                                <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                                <Heart size={13} fill={isRoomLiked(room.roomId || room._id) ? "currentColor" : "transparent"} />
                                                 <span>{room.likesCount || 0}</span>
                                               </button>
 
@@ -11057,7 +12277,7 @@ function Dashboard() {
                               <img src={item.avatar} alt={item.username} className="social-member-avatar-img" style={{ borderRadius: "4px" }} />
                             ) : (
                               <div className="social-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username), borderRadius: "4px" }}>
-                                {item.username.charAt(0).toUpperCase()}
+                                {(item.username || "D").charAt(0).toUpperCase()}
                               </div>
                             )}
                             <div className="social-member-meta">
@@ -11195,7 +12415,7 @@ function Dashboard() {
                               <img src={item.avatar} alt={item.username} className="social-member-avatar-img" />
                             ) : (
                               <div className="social-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username) }}>
-                                {item.username.charAt(0).toUpperCase()}
+                                {(item.username || "D").charAt(0).toUpperCase()}
                               </div>
                             )}
                             <div className="social-member-meta">
@@ -11309,7 +12529,7 @@ function Dashboard() {
                               <img src={item.avatar} alt={item.username} className="social-member-avatar-img" />
                             ) : (
                               <div className="social-member-avatar-placeholder" style={{ backgroundColor: getAvatarColor(item.username) }}>
-                                {item.username.charAt(0).toUpperCase()}
+                                {(item.username || "D").charAt(0).toUpperCase()}
                               </div>
                             )}
                             <div className="social-member-meta">
@@ -11964,6 +13184,13 @@ function Dashboard() {
           roomTitle={securityDeleteRoomTarget?.title || "Workspace"}
           roomId={securityDeleteRoomTarget?.id || ""}
           isDeleting={isDeletingRoomTarget}
+        />
+
+        {/* Edit Room Modal */}
+        <EditRoomModal
+          isOpen={!!editingRoomTarget}
+          onClose={() => setEditingRoomTarget(null)}
+          room={editingRoomTarget}
         />
 
       </div>

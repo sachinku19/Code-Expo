@@ -165,6 +165,7 @@ const AppRoutes = () => {
                       <Route path="cp" element={<React.Fragment />} />
                       <Route path="rooms" element={<React.Fragment />} />
                       <Route path="live-rooms" element={<React.Fragment />} />
+                      <Route path="room-requests" element={<React.Fragment />} />
                       <Route path="bookmarks" element={<React.Fragment />} />
                       <Route path="feed" element={<React.Fragment />} />
                       <Route path="following" element={<React.Fragment />} />

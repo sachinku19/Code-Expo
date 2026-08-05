@@ -22,9 +22,12 @@ import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../servic
 import {
   X, Heart, Bookmark, Users, Sparkles, Terminal, Mail,
   Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin,
-  LayoutGrid, Activity, Trash2, Code, User
+  LayoutGrid, Activity, Trash2, Code, User, Edit3
 } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
+import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
+import EditRoomModal from "../components/modals/EditRoomModal";
+import socket from "../socket/socket";
 import "./Profile.css";
 
 const INDIA_STATES = [
@@ -127,9 +130,35 @@ const Profile = () => {
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [securityDeleteRoomTarget, setSecurityDeleteRoomTarget] = useState(null);
   const [isDeletingRoomTarget, setIsDeletingRoomTarget] = useState(false);
+  const [editingRoomTarget, setEditingRoomTarget] = useState(null);
   const [createdRoomsExpanded, setCreatedRoomsExpanded] = useState(false);
   const [likedRoomsExpanded, setLikedRoomsExpanded] = useState(false);
   const [savedRoomsExpanded, setSavedRoomsExpanded] = useState(false);
+
+  useEffect(() => {
+    const handleRoomUpdated = (data) => {
+      if (!data || !data.roomId) return;
+      const updateRoomFn = (r) => {
+        if (r && (r.roomId === data.roomId || r._id === data.roomId)) {
+          return {
+            ...r,
+            title: data.title,
+            isPrivate: data.isPrivate
+          };
+        }
+        return r;
+      };
+
+      setHistoryRooms((prev) => prev.map(updateRoomFn));
+      setSavedRooms((prev) => prev.map(updateRoomFn));
+      setLikedRooms((prev) => prev.map(updateRoomFn));
+    };
+
+    socket.on("room:updated", handleRoomUpdated);
+    return () => {
+      socket.off("room:updated", handleRoomUpdated);
+    };
+  }, []);
 
   const handleDeleteRoomClick = (targetRoomId, targetRoomTitle = "Workspace") => {
     setSecurityDeleteRoomTarget({ id: targetRoomId, title: targetRoomTitle });
@@ -979,11 +1008,11 @@ const Profile = () => {
                                     {/* Likes count button/pill */}
                                     <button
                                       type="button"
-                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                      onClick={() => handleLikeRoom(room.roomId)}
+                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId || room._id) ? "liked" : ""}`}
+                                      onClick={() => handleLikeRoom(room.roomId || room._id)}
                                       title="Like Room"
                                     >
-                                      <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                      <Heart size={13} fill={isRoomLiked(room.roomId || room._id) ? "currentColor" : "transparent"} />
                                       <span>{room.likesCount || 0}</span>
                                     </button>
 
@@ -1006,11 +1035,11 @@ const Profile = () => {
                                     {/* Bookmark button */}
                                     <button
                                       type="button"
-                                      className={`premium-action-pill bookmark-pill ${savedRooms && savedRooms.some(r => r.roomId === room.roomId) ? "active" : ""}`}
-                                      onClick={() => handleBookmarkRoom(room.roomId)}
+                                      className={`premium-action-pill bookmark-pill ${savedRooms && savedRooms.some(r => (r.roomId || r._id) === (room.roomId || room._id)) ? "active" : ""}`}
+                                      onClick={() => handleBookmarkRoom(room.roomId || room._id)}
                                       title="Bookmark Room"
                                     >
-                                      <Bookmark size={13} fill={savedRooms && savedRooms.some(r => r.roomId === room.roomId) ? "currentColor" : "transparent"} />
+                                      <Bookmark size={13} fill={savedRooms && savedRooms.some(r => (r.roomId || r._id) === (room.roomId || room._id)) ? "currentColor" : "transparent"} />
                                     </button>
                                   </div>
                                 </div>
@@ -1115,11 +1144,11 @@ const Profile = () => {
                                     {/* Likes count button/pill */}
                                     <button
                                       type="button"
-                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                      onClick={() => handleLikeRoom(room.roomId)}
+                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId || room._id) ? "liked" : ""}`}
+                                      onClick={() => handleLikeRoom(room.roomId || room._id)}
                                       title="Like Room"
                                     >
-                                      <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                      <Heart size={13} fill={isRoomLiked(room.roomId || room._id) ? "currentColor" : "transparent"} />
                                       <span>{room.likesCount || 0}</span>
                                     </button>
 
@@ -1142,11 +1171,11 @@ const Profile = () => {
                                     {/* Bookmark button */}
                                     <button
                                       type="button"
-                                      className={`premium-action-pill bookmark-pill ${savedRooms && savedRooms.some(r => r.roomId === room.roomId) ? "active" : ""}`}
-                                      onClick={() => handleBookmarkRoom(room.roomId)}
+                                      className={`premium-action-pill bookmark-pill ${savedRooms && savedRooms.some(r => (r.roomId || r._id) === (room.roomId || room._id)) ? "active" : ""}`}
+                                      onClick={() => handleBookmarkRoom(room.roomId || room._id)}
                                       title="Bookmark Room"
                                     >
-                                      <Bookmark size={13} fill={savedRooms && savedRooms.some(r => r.roomId === room.roomId) ? "currentColor" : "transparent"} />
+                                      <Bookmark size={13} fill={savedRooms && savedRooms.some(r => (r.roomId || r._id) === (room.roomId || room._id)) ? "currentColor" : "transparent"} />
                                     </button>
                                   </div>
                                 </div>
@@ -1251,11 +1280,11 @@ const Profile = () => {
                                     {/* Likes count button/pill */}
                                     <button
                                       type="button"
-                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId) ? "liked" : ""}`}
-                                      onClick={() => handleLikeRoom(room.roomId)}
+                                      className={`premium-action-pill like-pill ${isRoomLiked(room.roomId || room._id) ? "liked" : ""}`}
+                                      onClick={() => handleLikeRoom(room.roomId || room._id)}
                                       title="Like Room"
                                     >
-                                      <Heart size={13} fill={isRoomLiked(room.roomId) ? "currentColor" : "transparent"} />
+                                      <Heart size={13} fill={isRoomLiked(room.roomId || room._id) ? "currentColor" : "transparent"} />
                                       <span>{room.likesCount || 0}</span>
                                     </button>
 
@@ -1279,7 +1308,7 @@ const Profile = () => {
                                     <button
                                       type="button"
                                       className="premium-action-pill bookmark-pill active"
-                                      onClick={() => handleBookmarkRoom(room.roomId)}
+                                      onClick={() => handleBookmarkRoom(room.roomId || room._id)}
                                       title="Bookmark Room"
                                     >
                                       <Bookmark size={13} fill="currentColor" />
@@ -1524,6 +1553,13 @@ const Profile = () => {
         roomTitle={securityDeleteRoomTarget?.title || "Workspace"}
         roomId={securityDeleteRoomTarget?.id || ""}
         isDeleting={isDeletingRoomTarget}
+      />
+
+      {/* Edit Room Modal */}
+      <EditRoomModal
+        isOpen={!!editingRoomTarget}
+        onClose={() => setEditingRoomTarget(null)}
+        room={editingRoomTarget}
       />
 
       {/* Simplified Room Details Modal for Profile Page */}
