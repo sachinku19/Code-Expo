@@ -24,7 +24,7 @@ export default function LeftSidebar({ user, activeSection, setActiveTab, setTab 
           </div>
           <h3 className="premium-profile-name">@{user?.username || "developer"}</h3>
           <p className="premium-profile-username">{user?.title || "Developer"}</p>
-          
+
           <div className="streak-container">
             <Flame size={14} fill="#f87171" />
             <span>🔥 {streak} Day Coding Streak</span>
@@ -49,7 +49,7 @@ export default function LeftSidebar({ user, activeSection, setActiveTab, setTab 
           <Compass size={14} style={{ color: "#3b82f6" }} /> Navigator
         </h4>
         <div className="premium-nav-list">
-          <button 
+          <button
             onClick={() => setTab("explore")}
             className="premium-nav-item"
           >
@@ -59,7 +59,7 @@ export default function LeftSidebar({ user, activeSection, setActiveTab, setTab 
             </div>
           </button>
 
-          <button 
+          <button
             onClick={() => setTab("bookmarks")}
             className="premium-nav-item"
           >
@@ -69,7 +69,7 @@ export default function LeftSidebar({ user, activeSection, setActiveTab, setTab 
             </div>
           </button>
 
-          <button 
+          <button
             onClick={() => setTab("messages")}
             className="premium-nav-item"
           >
@@ -93,8 +93,8 @@ export default function LeftSidebar({ user, activeSection, setActiveTab, setTab 
             { repo: "facebook/react", desc: "Library for user interfaces", stars: "220k" },
             { repo: "codeexpo/editor", desc: "Collaborative sandbox module", stars: "4.8k" }
           ].map(r => (
-            <div 
-              key={r.repo} 
+            <div
+              key={r.repo}
               className="trend-item"
               onClick={() => window.open(`https://github.com/${r.repo}`, "_blank")}
             >

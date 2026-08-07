@@ -58,8 +58,11 @@ import {
   getPostById,
   toggleLikePost,
   addCommentPost,
+  toggleLikeCommentPost,
+  deleteCommentPost,
   deletePost
 } from "../services/socialService";
+import { CommentTreeItem, InstaImageCarousel } from "../components/social/feed/FeedContent/PostCard";
 import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBanner, deleteCoverBanner } from "../services/userService";
 import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../services/likeEngine";
 
@@ -351,36 +354,57 @@ const timeAgo = (dateStr) => {
   return "just now";
 };
 
+const countAllComments = (comments) => {
+  if (!comments || !Array.isArray(comments)) return 0;
+  return comments.reduce((total, comment) => {
+    return total + 1 + countAllComments(comment.replies || []);
+  }, 0);
+};
+
 // Reusable styled ProfilePostCard component for the profile grid
 const ProfilePostCard = ({ post, onOpen, user, onDelete, onReport }) => {
+  const currentUserId = String(user?.id || user?._id || "");
+  const likesArr = Array.isArray(post.likes) ? post.likes : [];
+  const likesCount = likesArr.length || post.likesCount || 0;
+  const isLiked = likesArr.some((id) => String(id._id || id || id?.id) === currentUserId);
+  const totalCommentsCount = countAllComments(post.comments || []);
+
   const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
   const hasImage = postImages.length > 0;
+  const hasVideo = !!post.video;
   const codeDetails = extractCodeBlock(post.text);
   const hasCode = !!codeDetails;
-  const hasVideo = !!post.video;
 
   const renderBadge = () => {
-    if (hasCode) return <span className="profile-card-type-badge code">{codeDetails.lang}</span>;
-    if (hasVideo) return <span className="profile-card-type-badge video">Video</span>;
-    if (hasImage) return <span className="profile-card-type-badge image">Image</span>;
-    return <span className="profile-card-type-badge text">Text</span>;
+    if (hasCode) {
+      const langName = (codeDetails.lang || "code").toUpperCase();
+      return <span className="profile-card-badge code">{langName}</span>;
+    }
+    if (hasVideo) {
+      return <span className="profile-card-badge video">VIDEO</span>;
+    }
+    if (hasImage) {
+      return <span className="profile-card-badge image">IMAGE</span>;
+    }
+    return <span className="profile-card-badge text">POST</span>;
   };
 
   const renderBody = () => {
     if (hasCode) {
-      const codeLines = codeDetails.code.split(/\r?\n/);
-      const totalLines = codeLines.length;
-      const previewLines = codeLines.slice(0, 6);
-
+      const cleanDesc = getRightSideText(post.text);
       return (
-        <div className="profile-card-code-preview">
-          {previewLines.map((line, idx) => (
-            <div key={idx} className="profile-card-code-line" dangerouslySetInnerHTML={{ __html: highlightCode(line) }} />
-          ))}
-          <div className="profile-card-code-fade" />
-          <span className="profile-card-code-lines-count">
-            {totalLines} lines
-          </span>
+        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <div className="profile-card-code-preview">
+            <div className="profile-card-code-header">
+              <span>{codeDetails.lang || "code"}</span>
+            </div>
+            <pre className="profile-card-code-content">
+              <code>{codeDetails.code.slice(0, 150)}{codeDetails.code.length > 150 ? "..." : ""}</code>
+            </pre>
+          </div>
+          {cleanDesc && (
+            <p className="profile-card-image-caption">{cleanDesc}</p>
+          )}
         </div>
       );
     }
@@ -422,7 +446,7 @@ const ProfilePostCard = ({ post, onOpen, user, onDelete, onReport }) => {
   const author = post.author || user || {};
 
   return (
-    <div className="profile-post-card-item" onClick={onOpen}>
+    <div className="profile-post-card-item" onClick={onOpen} style={{ cursor: "pointer" }}>
       <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
         {/* Header */}
         <div className="profile-card-header">
@@ -517,15 +541,15 @@ const ProfilePostCard = ({ post, onOpen, user, onDelete, onReport }) => {
       {/* Footer */}
       <div className="profile-card-footer">
         <div className="profile-card-stats">
-          <span className="profile-card-stat">
-            <Heart size={14} fill="none" /> {post.likes?.length || 0}
+          <span className="profile-card-stat" style={{ color: isLiked ? "#ef4444" : "var(--ce-text-muted)" }}>
+            <Heart size={14} fill={isLiked ? "#ef4444" : "none"} color={isLiked ? "#ef4444" : "currentColor"} /> {likesCount}
           </span>
           <span className="profile-card-stat">
-            <MessageSquare size={14} /> {post.comments?.length || 0}
+            <MessageSquare size={14} /> {totalCommentsCount}
           </span>
         </div>
 
-        <button className="profile-card-action-btn">
+        <button className="profile-card-action-btn" onClick={(e) => { e.stopPropagation(); onOpen(); }}>
           {hasCode ? "View Full Code" : "Read More"}
         </button>
       </div>
@@ -2123,6 +2147,20 @@ function Dashboard() {
     }
     return "dashboard";
   }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (activeSection === "feed") {
+      document.documentElement.classList.add("feed-layout-active-body");
+      document.body.classList.add("feed-layout-active-body");
+    } else {
+      document.documentElement.classList.remove("feed-layout-active-body");
+      document.body.classList.remove("feed-layout-active-body");
+    }
+    return () => {
+      document.documentElement.classList.remove("feed-layout-active-body");
+      document.body.classList.remove("feed-layout-active-body");
+    };
+  }, [activeSection]);
 
   const setActiveSection = useCallback((newSection) => {
     let segment = newSection;
@@ -7623,31 +7661,16 @@ function Dashboard() {
               className="feed-section-container"
               style={{ width: "100%" }}
             >
-              <div className="premium-layout-wrapper">
-                <div className="premium-stories-column">
-                  <StoriesSystem user={user} addToast={addToast} vertical={true} />
-                </div>
-                <div className="premium-center-feed">
-                  <DeveloperFeed
-                    user={user}
-                    addToast={addToast}
-                    followingList={followingList}
-                    handleFollowToggle={handleFollowToggle}
-                    onViewProfile={handleViewUserProfile}
-                    suggestions={suggestions}
-                    onOpenPost={handleOpenPostModal}
-                  />
-                </div>
-                <NetworkSidebar
-                  suggestions={suggestions}
-                  onlineFollows={onlineFollows}
-                  followingList={followingList}
-                  handleFollowToggle={handleFollowToggle}
-                  handleViewUserProfile={handleViewUserProfile}
-                  setPreselectedChatPartner={setPreselectedChatPartner}
-                  navigate={navigate}
-                />
-              </div>
+              <DeveloperFeed
+                user={user}
+                addToast={addToast}
+                followingList={followingList}
+                handleFollowToggle={handleFollowToggle}
+                onViewProfile={handleViewUserProfile}
+                suggestions={suggestions}
+                onOpenPost={handleOpenPostModal}
+                onlineUsers={onlineFollows}
+              />
             </motion.div>
           )}
 
@@ -12825,49 +12848,7 @@ function Dashboard() {
 
                   {(!hasVideo && hasImage) && (
                     <div style={{ flex: 1, height: "100%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-                      <div style={{ display: "flex", height: "100%", width: "100%", transition: "transform 0.3s ease", transform: `translateX(-${modalActiveImageIdx * 100}%)` }}>
-                        {postImages.map((src, i) => (
-                          <img
-                            key={i}
-                            src={src}
-                            alt={`Post media view ${i}`}
-                            style={{ width: "100%", height: "100%", flexShrink: 0, objectFit: "cover" }}
-                          />
-                        ))}
-                      </div>
-                      {/* Carousel Arrow Controls */}
-                      {postImages.length > 1 && (
-                        <>
-                          <button
-                            onClick={() => setModalActiveImageIdx(prev => (prev - 1 + postImages.length) % postImages.length)}
-                            style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
-                          >
-                            <ChevronLeft size={16} />
-                          </button>
-                          <button
-                            onClick={() => setModalActiveImageIdx(prev => (prev + 1) % postImages.length)}
-                            style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 5 }}
-                          >
-                            <ChevronRight size={16} />
-                          </button>
-
-                          {/* Carousel Dots indicators */}
-                          <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", zIndex: 5 }}>
-                            {postImages.map((_, i) => (
-                              <div
-                                key={i}
-                                style={{
-                                  width: "6px",
-                                  height: "6px",
-                                  borderRadius: "50%",
-                                  background: modalActiveImageIdx === i ? "#fff" : "rgba(255,255,255,0.4)",
-                                  transition: "background 0.2s"
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
+                      <InstaImageCarousel images={postImages} height="100%" />
                     </div>
                   )}
 
@@ -12989,27 +12970,47 @@ function Dashboard() {
                       {/* Divider line */}
                       <div style={{ borderBottom: "1px solid var(--ce-border)" }} />
 
-                      {/* Comments list */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      {/* Comments list with YouTube-style tree layout */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {selectedPostModal.comments && selectedPostModal.comments.length > 0 ? (
                           selectedPostModal.comments.map((comment, index) => (
-                            <div key={index} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                              <div style={{ width: "24px", height: "24px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
-                                {comment.avatar ? (
-                                  <img src={comment.avatar} alt={comment.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                ) : (
-                                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.7rem" }}>
-                                    {(comment.username || "D").charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                              </div>
-                              <div style={{ margin: 0, fontSize: "0.85rem", lineHeight: "1.4", color: "var(--ce-text)", flex: 1 }}>
-                                <ExpandableText lines={3} text={comment.text}>
-                                  <strong style={{ color: "var(--ce-text-h)", marginRight: "6px" }}>@{comment.username}:</strong>
-                                  {comment.text}
-                                </ExpandableText>
-                              </div>
-                            </div>
+                            <CommentTreeItem
+                              key={comment._id || index}
+                              comment={comment}
+                              user={user}
+                              isPostOwner={String(selectedPostModal.author?._id || selectedPostModal.author?.id || selectedPostModal.author) === String(user?.id || user?._id)}
+                              onLikeComment={async (commentId) => {
+                                try {
+                                  const res = await toggleLikeCommentPost(selectedPostModal._id, commentId);
+                                  if (res && res.success && res.comments) {
+                                    setSelectedPostModal(prev => prev ? { ...prev, comments: res.comments } : null);
+                                  }
+                                } catch (err) {
+                                  console.error("Failed to toggle comment like:", err);
+                                }
+                              }}
+                              onReplyComment={async (commentId, replyText) => {
+                                try {
+                                  const res = await addCommentPost(selectedPostModal._id, replyText, commentId);
+                                  if (res && res.success && res.comments) {
+                                    setSelectedPostModal(prev => prev ? { ...prev, comments: res.comments } : null);
+                                  }
+                                } catch (err) {
+                                  console.error("Failed to submit reply comment:", err);
+                                }
+                              }}
+                              onDeleteComment={async (commentId) => {
+                                try {
+                                  const res = await deleteCommentPost(selectedPostModal._id, commentId);
+                                  if (res && res.success && res.comments) {
+                                    setSelectedPostModal(prev => prev ? { ...prev, comments: res.comments } : null);
+                                    addToast("Comment deleted", "success");
+                                  }
+                                } catch (err) {
+                                  console.error("Failed to delete comment:", err);
+                                }
+                              }}
+                            />
                           ))
                         ) : (
                           <p style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)", textAlign: "center", marginTop: "20px" }}>No comments yet. Be first to comment!</p>

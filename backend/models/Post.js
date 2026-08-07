@@ -1,6 +1,65 @@
 const mongoose = require("mongoose");
 const MediaSchema = require("./Media");
 
+const replySchema = new mongoose.Schema();
+replySchema.add({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
+  username: {
+    type: String,
+    required: true
+  },
+  avatar: {
+    type: String,
+    default: ""
+  },
+  text: {
+    type: String,
+    required: true
+  },
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }],
+  replies: [replySchema],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const commentSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
+  username: {
+    type: String,
+    required: true
+  },
+  avatar: {
+    type: String,
+    default: ""
+  },
+  text: {
+    type: String,
+    required: true
+  },
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }],
+  replies: [replySchema],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const postSchema = new mongoose.Schema({
   author: {
     type: mongoose.Schema.Types.ObjectId,
@@ -100,29 +159,7 @@ const postSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   }],
-  comments: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
-    },
-    username: {
-      type: String,
-      required: true
-    },
-    avatar: {
-      type: String,
-      default: ""
-    },
-    text: {
-      type: String,
-      required: true
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  }]
+  comments: [commentSchema]
 }, { timestamps: true });
 
 module.exports = mongoose.model("Post", postSchema);

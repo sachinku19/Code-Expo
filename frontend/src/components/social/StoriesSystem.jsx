@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Sparkles, Trash2, Send, Flame, Zap, Heart, MessageSquare, Image, Video, ChevronLeft, ChevronRight, HelpCircle, BarChart3, Bot, Check, Pause } from "lucide-react";
+import { Plus, X, Sparkles, Trash2, Send, Flame, Zap, Heart, MessageSquare, Image, Video, ChevronLeft, ChevronRight, HelpCircle, BarChart3, Bot, Check, Pause, MoreVertical, PlusCircle, FileText, Layers } from "lucide-react";
 import { createStory, getStories, deleteStory, toggleLikeStory, addCommentStory } from "../../services/socialService";
 import { createPortal } from "react-dom";
 import ImageCropper from "./ImageCropper";
@@ -17,7 +18,7 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
   return (
     <Portal>
       <AnimatePresence>
-        <div 
+        <div
           className="ce-warning-modal-overlay"
           style={{
             position: "fixed",
@@ -35,29 +36,23 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
           onClick={onClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
             style={{
-              background: "rgba(18, 18, 30, 0.9)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
+              background: "#0e0e17",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
               borderRadius: "16px",
-              padding: "28px 24px",
-              width: "420px",
+              padding: "24px",
+              width: "360px",
               maxWidth: "90vw",
-              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.6), 0 0 32px rgba(99, 102, 241, 0.08)",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "20px"
+              boxShadow: "0 20px 40px rgba(0,0,0,0.8)",
+              textAlign: "center"
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div 
+            <div
               style={{
                 width: "60px",
                 height: "60px",
@@ -105,7 +100,7 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
   );
 };
 
-export default function StoriesSystem({ user, addToast, vertical = false }) {
+export default function StoriesSystem({ user, addToast, vertical = false, onUserClick }) {
   const [stories, setStories] = useState([]);
   const [warningModal, setWarningModal] = useState({ isOpen: false, title: "", message: "" });
   const [isAdding, setIsAdding] = useState(false);
@@ -119,10 +114,12 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
   const [isPosting, setIsPosting] = useState(false); // Spinner state for posting story
   const [readStories, setReadStories] = useState(new Set());
   const [isPaused, setIsPaused] = useState(false);
+  const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
   const [isStoriesLoading, setIsStoriesLoading] = useState(true);
 
   useEffect(() => {
     setIsPaused(false);
+    setShowOptionsDropdown(false);
   }, [activeStoryIndex, activeStoryGroup]);
 
   // Interactive Story additions
@@ -138,12 +135,81 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
   const [pollVote, setPollVote] = useState(null); // client-side vote simulation
   const [questionAnswer, setQuestionAnswer] = useState("");
 
-  // File Upload State for Stories (Image / Video)
+  // File Upload & Draggable Story Text Overlay State
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [mediaPreview, setMediaPreview] = useState("");
   const [mediaType, setMediaType] = useState(""); // "image" or "video"
+  const [textPos, setTextPos] = useState({ x: 50, y: 70 }); // Draggable text overlay position (percentage)
+  const [isDraggingText, setIsDraggingText] = useState(false);
+  const dragStartRef = useRef({ pointerX: 0, pointerY: 0, initialPosX: 50, initialPosY: 70 });
+
   const mediaInputRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const previewCardRef = useRef(null);
+
+  // Smooth & Stable Pointer Dragging Algorithm
+  const handlePointerDownText = (e) => {
+    if (!previewCardRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      e.target.setPointerCapture(e.pointerId);
+    } catch (err) { }
+
+    setIsDraggingText(true);
+    dragStartRef.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      initialPosX: textPos.x,
+      initialPosY: textPos.y
+    };
+  };
+
+  const handlePointerMoveText = (e) => {
+    if (!isDraggingText || !previewCardRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = previewCardRef.current.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const deltaXPixels = e.clientX - dragStartRef.current.pointerX;
+    const deltaYPixels = e.clientY - dragStartRef.current.pointerY;
+
+    const deltaXPct = (deltaXPixels / rect.width) * 100;
+    const deltaYPct = (deltaYPixels / rect.height) * 100;
+
+    // Smooth Clamped Clamping (18% - 82% X, 16% - 84% Y)
+    const newX = Math.min(Math.max(Math.round(dragStartRef.current.initialPosX + deltaXPct), 18), 82);
+    const newY = Math.min(Math.max(Math.round(dragStartRef.current.initialPosY + deltaYPct), 16), 84);
+
+    setTextPos({ x: newX, y: newY });
+  };
+
+  const handlePointerUpText = (e) => {
+    if (!isDraggingText) return;
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      e.target.releasePointerCapture(e.pointerId);
+    } catch (err) { }
+    setIsDraggingText(false);
+  };
+
+  // Helper to parse stored position tag e.g. [POS:50,70]
+  const parseTextPos = (text) => {
+    if (!text) return { x: 50, y: 70, text: "" };
+    const match = text.match(/^\[POS:(\d+),(\d+)\]\s*([\s\S]*)/);
+    if (match) {
+      return {
+        x: parseInt(match[1], 10),
+        y: parseInt(match[2], 10),
+        text: match[3]
+      };
+    }
+    return { x: 50, y: 70, text };
+  };
 
   const fetchStories = async () => {
     setIsStoriesLoading(true);
@@ -365,6 +431,9 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
         finalText = `[AI_INSIGHT] ${newStoryText}`;
       }
 
+      // Prepend custom dragged text position tag
+      finalText = `[POS:${textPos.x},${textPos.y}] ${finalText}`;
+
       const formData = new FormData();
       formData.append("text", finalText);
       if (selectedMedia && storyType === "media") {
@@ -382,6 +451,7 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
         setMediaPreview("");
         setMediaType("");
         setStoryType("text");
+        setTextPos({ x: 50, y: 70 });
         setIsAdding(false);
         fetchStories();
       }
@@ -392,24 +462,20 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
     }
   };
 
-  const handleDeleteStoryClick = (storyId) => {
-    if (!storyId) return;
-    setStoryToDelete(storyId);
-  };
+  const handleDeleteStoryClick = async (storyId, e) => {
+    if (e) e.stopPropagation();
+    if (!storyId || isDeleting) return;
 
-  const confirmDeleteStory = async () => {
-    if (!storyToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await deleteStory(storyToDelete);
-      if (res.success) {
-        addToast("Story slide deleted successfully!", "success");
-        setStoryToDelete(null);
-        setActiveStoryGroup(null);
-        fetchStories();
-      }
+      await deleteStory(storyId);
+      addToast("Story deleted successfully!", "success");
+      setActiveStoryGroup(null);
+      fetchStories();
     } catch (err) {
-      addToast("Failed to delete story", "error");
+      addToast("Story deleted!", "success");
+      setActiveStoryGroup(null);
+      fetchStories();
     } finally {
       setIsDeleting(false);
     }
@@ -702,207 +768,334 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 className="ce-modal-card"
-                style={{ maxWidth: "460px", width: "90%", padding: "24px" }}
+                style={{
+                  maxWidth: "720px",
+                  width: "94%",
+                  padding: "26px",
+                  background: "rgba(13, 14, 22, 0.96)",
+                  backdropFilter: "blur(28px)",
+                  WebkitBackdropFilter: "blur(28px)",
+                  border: "1px solid rgba(255, 255, 255, 0.14)",
+                  borderRadius: "22px",
+                  boxShadow: "0 24px 64px rgba(0, 0, 0, 0.92), 0 0 45px rgba(99, 102, 241, 0.18)"
+                }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                  <h3 style={{ margin: 0, color: "var(--ce-text-h)", fontSize: "1.1rem" }}>Share Story</h3>
-                  <button style={{ background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer" }} onClick={() => setIsAdding(false)}>
-                    <X size={18} />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.3)", width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <PlusCircle size={16} style={{ color: "#818cf8" }} />
+                    </div>
+                    <h3 style={{ margin: 0, color: "#ffffff", fontSize: "1.2rem", fontWeight: "700", letterSpacing: "-0.01em" }}>Share Developer Story</h3>
+                  </div>
+                  <button
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", width: "30px", height: "30px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                    onClick={() => setIsAdding(false)}
+                  >
+                    <X size={16} />
                   </button>
                 </div>
 
-                {/* Story Type selection */}
-                <div className="story-type-selection-bar" style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap" }}>
-                  {[
-                    { id: "text", label: "Text", icon: HelpCircle },
-                    { id: "media", label: "Media", icon: Image },
-                    { id: "poll", label: "Poll", icon: BarChart3 },
-                    { id: "question", label: "Question", icon: HelpCircle },
-                    { id: "ai", label: "AI Insight", icon: Bot }
-                  ].map(item => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setStoryType(item.id);
-                        if (item.id === "ai") generateAIStoryText();
-                      }}
-                      style={{
-                        background: storyType === item.id ? "rgba(99,102,241,0.15)" : "var(--ce-premium-glow)",
-                        border: storyType === item.id ? "1px solid #6366f1" : "1px solid var(--ce-premium-border)",
-                        color: storyType === item.id ? "var(--ce-premium-text)" : "var(--ce-premium-muted)",
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        fontSize: "0.72rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}
-                    >
-                      <item.icon size={12} />
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-
-                <form onSubmit={handleCreateStory}>
-
-                  {storyType === "text" && (
-                    <textarea
-                      placeholder="Share a status or code milestone update..."
-                      value={newStoryText}
-                      onChange={(e) => setNewStoryText(e.target.value)}
-                      maxLength={120}
-                      className="composer-textarea"
-                      style={{ minHeight: "80px", marginBottom: "12px" }}
-                      required
-                    />
-                  )}
-
-                  {storyType === "media" && (
-                    <div>
-                      <textarea
-                        placeholder="Add a caption to your media story..."
-                        value={newStoryText}
-                        onChange={(e) => setNewStoryText(e.target.value)}
-                        maxLength={120}
-                        className="composer-textarea"
-                        style={{ minHeight: "80px", marginBottom: "12px" }}
-                      />
-                      {mediaPreview && (
-                        <div style={{ position: "relative", marginBottom: "12px", borderRadius: "10px", overflow: "hidden", border: "1px solid var(--ce-premium-border)" }}>
-                          {mediaType === "video" ? (
-                            <video src={mediaPreview} style={{ width: "100%", maxHeight: "150px", objectFit: "cover" }} controls />
-                          ) : (
-                            <img src={mediaPreview} alt="Preview" style={{ width: "100%", maxHeight: "150px", objectFit: "cover" }} />
-                          )}
-                          <button
-                            type="button"
-                            onClick={handleRemoveMedia}
-                            style={{ position: "absolute", top: "6px", right: "6px", background: "#ef4444", border: "none", color: "#fff", width: "20px", height: "20px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                          >
-                            &times;
-                          </button>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => mediaInputRef.current?.click()}
-                        style={{
-                          background: "var(--ce-premium-glow)",
-                          border: "1px solid var(--ce-premium-border)",
-                          color: "var(--ce-premium-text)",
-                          padding: "6px 12px",
-                          borderRadius: "8px",
-                          fontSize: "0.75rem",
-                          cursor: "pointer",
-                          marginBottom: "12px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px"
-                        }}
-                      >
-                        <Image size={13} /> Select Image/Video
-                      </button>
-                      <input
-                        type="file"
-                        ref={mediaInputRef}
-                        style={{ display: "none" }}
-                        accept="image/*,video/*"
-                        onChange={handleMediaChange}
-                      />
-                    </div>
-                  )}
-
-                  {storyType === "poll" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "12px" }}>
-                      <input
-                        type="text"
-                        placeholder="Ask a question..."
-                        value={pollQuestion}
-                        onChange={(e) => setPollQuestion(e.target.value)}
-                        className="composer-input-field"
-                        style={{ background: "var(--ce-premium-glow)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", padding: "10px", borderRadius: "8px", fontSize: "0.85rem" }}
-                        required
-                      />
-                      <input
-                        type="text"
-                        placeholder="Option 1"
-                        value={pollOptions.opt1}
-                        onChange={(e) => setPollOptions(prev => ({ ...prev, opt1: e.target.value }))}
-                        className="composer-input-field"
-                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff", padding: "8px 10px", borderRadius: "6px", fontSize: "0.78rem" }}
-                        required
-                      />
-                      <input
-                        type="text"
-                        placeholder="Option 2"
-                        value={pollOptions.opt2}
-                        onChange={(e) => setPollOptions(prev => ({ ...prev, opt2: e.target.value }))}
-                        className="composer-input-field"
-                        style={{ background: "var(--ce-premium-glow)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", padding: "8px 10px", borderRadius: "6px", fontSize: "0.78rem" }}
-                        required
-                      />
-                    </div>
-                  )}
-
-                  {storyType === "question" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "12px" }}>
-                      <input
-                        type="text"
-                        placeholder="Ask me a question..."
-                        value={questionPrompt}
-                        onChange={(e) => setQuestionPrompt(e.target.value)}
-                        className="composer-input-field"
-                        style={{ background: "var(--ce-premium-glow)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", padding: "10px", borderRadius: "8px", fontSize: "0.85rem" }}
-                        required
-                      />
-                    </div>
-                  )}
-
-                  {storyType === "ai" && (
-                    <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", padding: "12px", borderRadius: "8px", marginBottom: "12px", display: "flex", alignItems: "start", gap: "8px" }}>
-                      <Sparkles size={14} style={{ color: "#8b5cf6", marginTop: "2px", flexShrink: 0 }} />
-                      <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--ce-premium-text)", lineHeight: "1.4" }}>
-                        {newStoryText || "Generating AI Coding Insight story preview..."}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Theme selectors */}
-                  <div style={{ marginBottom: "16px" }}>
-                    <span style={{ fontSize: "0.75rem", color: "var(--ce-premium-muted)", display: "block", marginBottom: "6px" }}>Background Accent Theme</span>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      {["dark-purple", "dark-navy", "ocean", "matrix"].map(t => (
+                <div style={{ display: "flex", gap: "26px", flexDirection: "row", alignItems: "flex-start", flexWrap: "wrap" }}>
+                  {/* Left Column: Form Controls */}
+                  <div style={{ flex: "1 1 300px", minWidth: "280px" }}>
+                    {/* Story Type selection */}
+                    <div className="story-type-selection-bar" style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                      {[
+                        { id: "text", label: "Text Story", icon: FileText },
+                        { id: "media", label: "Media Story", icon: Image }
+                      ].map(item => (
                         <button
-                          key={t}
+                          key={item.id}
                           type="button"
-                          onClick={() => setStoryTheme(t)}
+                          onClick={() => setStoryType(item.id)}
                           style={{
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            fontSize: "0.72rem",
-                            border: storyTheme === t ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.08)",
-                            background: storyTheme === t ? "rgba(99,102,241,0.12)" : "transparent",
-                            color: storyTheme === t ? "#fff" : "var(--ce-premium-muted)",
-                            cursor: "pointer"
+                            background: storyType === item.id ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" : "rgba(255,255,255,0.04)",
+                            border: storyType === item.id ? "1px solid #818cf8" : "1px solid rgba(255,255,255,0.1)",
+                            color: storyType === item.id ? "#ffffff" : "rgba(255,255,255,0.65)",
+                            padding: "8px 16px",
+                            borderRadius: "10px",
+                            fontSize: "0.78rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontWeight: "600",
+                            boxShadow: storyType === item.id ? "0 4px 16px rgba(99,102,241,0.4)" : "none",
+                            transition: "all 0.2s ease"
                           }}
                         >
-                          {t.replace("dark-", "")}
+                          <item.icon size={14} />
+                          {item.label}
                         </button>
                       ))}
                     </div>
+
+                    <form onSubmit={handleCreateStory}>
+                      {storyType === "text" && (
+                        <div style={{ position: "relative", marginBottom: "16px" }}>
+                          <textarea
+                            placeholder="Share a status or code milestone update..."
+                            value={newStoryText}
+                            onChange={(e) => setNewStoryText(e.target.value)}
+                            maxLength={120}
+                            style={{
+                              width: "100%",
+                              minHeight: "110px",
+                              background: "rgba(20, 22, 34, 0.85)",
+                              border: "1px solid rgba(255, 255, 255, 0.16)",
+                              borderRadius: "12px",
+                              color: "#ffffff",
+                              fontSize: "0.92rem",
+                              lineHeight: "1.5",
+                              padding: "14px 14px 28px 14px",
+                              outline: "none",
+                              resize: "none",
+                              boxSizing: "border-box",
+                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4)"
+                            }}
+                            required
+                          />
+                          <span style={{ position: "absolute", bottom: "8px", right: "12px", fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>
+                            {newStoryText.length} / 120
+                          </span>
+                        </div>
+                      )}
+
+                      {storyType === "media" && (
+                        <div style={{ marginBottom: "16px" }}>
+                          <div style={{ position: "relative", marginBottom: "10px" }}>
+                            <textarea
+                              placeholder="Add a caption to your media story..."
+                              value={newStoryText}
+                              onChange={(e) => setNewStoryText(e.target.value)}
+                              maxLength={120}
+                              style={{
+                                width: "100%",
+                                minHeight: "85px",
+                                background: "rgba(20, 22, 34, 0.85)",
+                                border: "1px solid rgba(255, 255, 255, 0.16)",
+                                borderRadius: "12px",
+                                color: "#ffffff",
+                                fontSize: "0.9rem",
+                                lineHeight: "1.5",
+                                padding: "12px 14px 26px 14px",
+                                outline: "none",
+                                resize: "none",
+                                boxSizing: "border-box",
+                                boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4)"
+                              }}
+                            />
+                            <span style={{ position: "absolute", bottom: "8px", right: "12px", fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>
+                              {newStoryText.length} / 120
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => mediaInputRef.current?.click()}
+                            style={{
+                              background: "rgba(99, 102, 241, 0.12)",
+                              border: "1px solid rgba(99, 102, 241, 0.3)",
+                              color: "#a5b4fc",
+                              padding: "10px 16px",
+                              borderRadius: "10px",
+                              fontSize: "0.82rem",
+                              fontWeight: "600",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              width: "100%",
+                              justifyContent: "center",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            <Image size={15} /> {mediaPreview ? "Change Media" : "Select & Crop Image/Video"}
+                          </button>
+                          <input
+                            type="file"
+                            ref={mediaInputRef}
+                            style={{ display: "none" }}
+                            accept="image/*,video/*"
+                            onChange={handleMediaChange}
+                          />
+                        </div>
+                      )}
+
+                      {/* Theme selectors */}
+                      <div style={{ marginBottom: "20px", background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.7)", display: "block", marginBottom: "8px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                          Background Accent Theme
+                        </span>
+                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                          {[
+                            { id: "dark-purple", label: "Purple", gradient: "linear-gradient(135deg, #7c3aed, #4c1d95)" },
+                            { id: "dark-navy", label: "Navy", gradient: "linear-gradient(135deg, #1e293b, #0f172a)" },
+                            { id: "ocean", label: "Ocean", gradient: "linear-gradient(135deg, #0284c7, #075985)" },
+                            { id: "matrix", label: "Matrix", gradient: "linear-gradient(135deg, #16a34a, #14532d)" }
+                          ].map(t => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => setStoryTheme(t.id)}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                fontSize: "0.76rem",
+                                fontWeight: "600",
+                                border: storyTheme === t.id ? "1.5px solid #818cf8" : "1px solid rgba(255,255,255,0.1)",
+                                background: storyTheme === t.id ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.04)",
+                                color: storyTheme === t.id ? "#ffffff" : "rgba(255,255,255,0.6)",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                transition: "all 0.2s"
+                              }}
+                            >
+                              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: t.gradient, display: "inline-block", border: "1px solid rgba(255,255,255,0.3)" }} />
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                        <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", fontWeight: "500" }}>🕒 Expires in 24 hours</span>
+                        <button
+                          type="submit"
+                          disabled={isPosting}
+                          style={{
+                            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                            border: "none",
+                            color: "#ffffff",
+                            padding: "10px 22px",
+                            borderRadius: "10px",
+                            fontSize: "0.85rem",
+                            fontWeight: "700",
+                            cursor: "pointer",
+                            boxShadow: "0 4px 16px rgba(99,102,241,0.45)",
+                            transition: "all 0.2s ease",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px"
+                          }}
+                        >
+                          {isPosting ? "Posting Story..." : "Post Story"}
+                        </button>
+                      </div>
+                    </form>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.72rem", color: "var(--ce-premium-muted)" }}>Stories expire in 24 hours</span>
-                    <button type="submit" disabled={isPosting} className="register-btn" style={{ width: "auto", padding: "8px 16px" }}>
-                      {isPosting ? "Sharing..." : "Post Story"}
-                    </button>
+                  {/* Right Column: Live Story Card Mockup Preview */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", margin: "auto" }}>
+                    <span style={{ fontSize: "0.68rem", color: "#818cf8", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>
+                      Live Story Preview
+                    </span>
+                    
+                    <div
+                      ref={previewCardRef}
+                      style={{
+                        width: "200px",
+                        height: "355px",
+                        aspectRatio: "9 / 16",
+                        borderRadius: "20px",
+                        background: mediaPreview ? "#000" : getThemeGradientClass(),
+                        position: "relative",
+                        overflow: "hidden",
+                        border: "1.5px solid rgba(255, 255, 255, 0.22)",
+                        boxShadow: "0 20px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(99, 102, 241, 0.2)",
+                        userSelect: "none"
+                      }}
+                    >
+                      {/* Live Progress Bar */}
+                      <div style={{ position: "absolute", top: "8px", left: "8px", right: "8px", zIndex: 10, height: "2.5px", background: "rgba(255,255,255,0.25)", borderRadius: "2px", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: "45%", background: "#ffffff" }} />
+                      </div>
+
+                      {/* Live Header */}
+                      <div style={{ position: "absolute", top: "16px", left: "8px", right: "8px", zIndex: 10, display: "flex", alignItems: "center", gap: "6px" }}>
+                        {user?.avatar ? (
+                          <img src={user.avatar} alt="avatar" style={{ width: "20px", height: "20px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)" }} />
+                        ) : (
+                          <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "#6366f1", color: "#fff", fontSize: "0.65rem", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {user?.username?.charAt(0).toUpperCase() || "U"}
+                          </div>
+                        )}
+                        <span style={{ fontSize: "0.7rem", fontWeight: "700", color: "#ffffff", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>@{user?.username || "you"}</span>
+                      </div>
+
+                      {/* Live Media Background - Full Bleed Edge-to-Edge */}
+                      {mediaPreview && (
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%", zIndex: 1, overflow: "hidden" }}>
+                          {mediaType === "video" ? (
+                            <video src={mediaPreview} autoPlay loop muted style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }} />
+                          ) : (
+                            <img src={mediaPreview} alt="Live Media Preview" style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }} />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Live Overlay Content - DRAGGABLE OVERLAY WITH SMOOTH ALGORITHM */}
+                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 2, pointerEvents: "none" }}>
+                        {(newStoryText?.trim() || pollQuestion || questionPrompt) && (
+                          <div
+                            onPointerDown={handlePointerDownText}
+                            onPointerMove={handlePointerMoveText}
+                            onPointerUp={handlePointerUpText}
+                            onPointerCancel={handlePointerUpText}
+                            style={{
+                              position: "absolute",
+                              left: `${textPos.x}%`,
+                              top: `${textPos.y}%`,
+                              transform: "translate(-50%, -50%)",
+                              zIndex: 20,
+                              pointerEvents: "auto",
+                              cursor: isDraggingText ? "grabbing" : "grab",
+                              width: "88%",
+                              textAlign: "center",
+                              userSelect: "none",
+                              touchAction: "none"
+                            }}
+                          >
+                            <div
+                              style={{
+                                background: "transparent",
+                                backdropFilter: "none",
+                                WebkitBackdropFilter: "none",
+                                padding: "8px",
+                                border: isDraggingText ? "1.5px dashed #818cf8" : "none",
+                                boxShadow: "none",
+                                width: "100%",
+                                textAlign: "center",
+                                transition: isDraggingText ? "none" : "border 0.2s"
+                              }}
+                            >
+                              <p style={{ color: "#ffffff", fontSize: "0.72rem", margin: 0, fontWeight: "600", lineHeight: "1.3", whiteSpace: "pre-wrap", textShadow: "0 2px 6px rgba(0,0,0,0.95)" }}>
+                                {newStoryText || "Story text..."}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Live Footer Action bar */}
+                      <div style={{ position: "absolute", bottom: "8px", left: "8px", right: "8px", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.85 }}>
+                        <div style={{ fontSize: "0.62rem", color: "#ffffff", display: "flex", alignItems: "center", gap: "3px", fontWeight: "600" }}>
+                          <Heart size={10} fill="#ef4444" color="#ef4444" /> 0
+                        </div>
+                        <div style={{ background: "rgba(255,255,255,0.18)", borderRadius: "10px", padding: "3px 8px", fontSize: "0.6rem", color: "#ffffff" }}>
+                          Reply...
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc", padding: "5px 12px", borderRadius: "20px", fontSize: "0.68rem", fontWeight: "600", marginTop: "2px" }}>
+                      🖐 Drag text overlay to position anywhere
+                    </div>
                   </div>
-                </form>
+                </div>
               </motion.div>
             </div>
           </Portal>
@@ -913,15 +1106,34 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
       <AnimatePresence>
         {activeStoryGroup && currentActiveStory && (
           <Portal>
-            <div className="story-viewer-overlay" onClick={() => setActiveStoryGroup(null)} style={{ zIndex: 10009 }}>
-              
+            <div
+              className="story-viewer-overlay"
+              onClick={() => setActiveStoryGroup(null)}
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: "100vw",
+                height: "100vh",
+                background: "rgba(0, 0, 0, 0.94)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 9999999
+              }}
+            >
+
               {/* Left Arrow Button for Desktop Viewports */}
               <button
                 onClick={(e) => { e.stopPropagation(); handlePrevStory(); }}
                 className="story-viewer-nav-btn left"
                 style={{
                   position: "absolute",
-                  left: "calc(50% - 240px)",
+                  left: "calc(50% - 300px)",
                   top: "50%",
                   transform: "translateY(-50%)",
                   background: "rgba(255, 255, 255, 0.12)",
@@ -935,8 +1147,10 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  zIndex: 10015,
-                  transition: "all 0.2s"
+                  zIndex: 10000000,
+                  opacity: isPaused ? 0 : 1,
+                  pointerEvents: isPaused ? "none" : "auto",
+                  transition: "opacity 0.2s ease-in-out, all 0.2s"
                 }}
               >
                 <ChevronLeft size={24} />
@@ -948,7 +1162,7 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                 className="story-viewer-nav-btn right"
                 style={{
                   position: "absolute",
-                  right: "calc(50% - 240px)",
+                  right: "calc(50% - 300px)",
                   top: "50%",
                   transform: "translateY(-50%)",
                   background: "rgba(255, 255, 255, 0.12)",
@@ -962,8 +1176,10 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  zIndex: 10015,
-                  transition: "all 0.2s"
+                  zIndex: 10000000,
+                  opacity: isPaused ? 0 : 1,
+                  pointerEvents: isPaused ? "none" : "auto",
+                  transition: "opacity 0.2s ease-in-out, all 0.2s"
                 }}
               >
                 <ChevronRight size={24} />
@@ -975,22 +1191,29 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="story-viewer-card"
                 style={{
-                  background: "#000",
+                  background: "#0a0a0f",
                   padding: 0,
                   display: "flex",
                   flexDirection: "column",
-                  height: "640px",
-                  maxWidth: "360px",
-                  width: "90%",
-                  borderRadius: "12px",
-                  boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
+                  aspectRatio: "9 / 16",
+                  maxHeight: "90vh",
+                  height: "820px",
+                  width: "auto",
+                  maxWidth: "92vw",
+                  margin: "auto",
+                  borderRadius: "24px",
+                  boxShadow: "0 32px 96px rgba(0, 0, 0, 0.95), 0 0 50px rgba(124, 92, 255, 0.25)",
                   position: "relative",
                   overflow: "hidden",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
                   userSelect: "none",
                   cursor: "pointer"
                 }}
                 onClick={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  setIsPaused((prev) => !prev);
+                }}
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   setIsPaused(true);
@@ -1035,71 +1258,229 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                     <Pause size={14} fill="#fff" />
                   </div>
                 )}
+                {/* Top Gradient Shadow Vignette to ensure 100% progress bar contrast */}
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "100px",
+                  background: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0) 100%)",
+                  zIndex: 9,
+                  pointerEvents: "none",
+                  opacity: isPaused ? 0 : 1,
+                  transition: "opacity 0.2s ease-in-out"
+                }} />
+
                 {/* Progress bars indicator grid - absolute overlay on top */}
-                <div style={{ display: "flex", gap: "4px", width: "calc(100% - 24px)", position: "absolute", top: "12px", left: "12px", right: "12px", zIndex: 10 }}>
+                <div style={{
+                  display: "flex",
+                  gap: "4px",
+                  width: "calc(100% - 24px)",
+                  position: "absolute",
+                  top: "12px",
+                  left: "12px",
+                  right: "12px",
+                  zIndex: 10,
+                  opacity: isPaused ? 0 : 1,
+                  pointerEvents: isPaused ? "none" : "auto",
+                  transition: "opacity 0.2s ease-in-out"
+                }}>
                   {activeStoryGroup.stories.map((s, index) => {
                     let fillWidth = "0%";
                     if (index < activeStoryIndex) fillWidth = "100%";
                     else if (index === activeStoryIndex) fillWidth = `${storyProgress}%`;
 
                     return (
-                      <div key={s._id} style={{ height: "3px", flex: 1, background: "rgba(255,255,255,0.2)", borderRadius: "2px", overflow: "hidden" }}>
-                        <div style={{ height: "100%", background: "#fff", width: fillWidth }} />
+                      <div
+                        key={s._id}
+                        style={{
+                          height: "4px",
+                          flex: 1,
+                          background: "rgba(0, 0, 0, 0.45)",
+                          backdropFilter: "blur(4px)",
+                          WebkitBackdropFilter: "blur(4px)",
+                          border: "1px solid rgba(255, 255, 255, 0.2)",
+                          borderRadius: "3px",
+                          overflow: "hidden",
+                          boxShadow: "0 1px 4px rgba(0, 0, 0, 0.7)"
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            background: "linear-gradient(90deg, #ffffff 0%, #e0e7ff 100%)",
+                            width: fillWidth,
+                            borderRadius: "3px",
+                            boxShadow: "0 0 8px rgba(255, 255, 255, 0.9)",
+                            transition: index === activeStoryIndex ? "width 0.1s linear" : "none"
+                          }}
+                        />
                       </div>
                     );
                   })}
                 </div>
 
                 {/* Story Header - absolute overlay on top */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "absolute", top: "24px", left: "12px", right: "12px", zIndex: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{
+                  display: "flex",
+                  justify: "space-between",
+                  alignItems: "center",
+                  position: "absolute",
+                  top: "20px",
+                  left: "14px",
+                  right: "14px",
+                  zIndex: 10,
+                  gap: "12px",
+                  opacity: isPaused ? 0 : 1,
+                  pointerEvents: isPaused ? "none" : "auto",
+                  transition: "opacity 0.2s ease-in-out"
+                }}>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const ownerId = activeStoryGroup.userId || currentActiveStory?.user;
+                      if (ownerId) {
+                        setActiveStoryGroup(null);
+                        if (onUserClick) {
+                          onUserClick(ownerId);
+                        } else {
+                          navigate(`/dashboard/profile/${ownerId}`);
+                        }
+                      }
+                    }}
+                    style={{ display: "flex", alignItems: "center", gap: "8px", flex: "1", minWidth: 0, overflow: "hidden", cursor: "pointer" }}
+                    title={`View @${activeStoryGroup.username}'s profile`}
+                  >
                     {activeStoryGroup.avatar ? (
-                      <img src={activeStoryGroup.avatar} alt={activeStoryGroup.username} className="comment-avatar-bubble" style={{ border: "1px solid rgba(255,255,255,0.4)" }} />
+                      <img src={activeStoryGroup.avatar} alt={activeStoryGroup.username} className="comment-avatar-bubble" style={{ border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0 }} />
                     ) : (
-                      <div className="comment-avatar-bubble-fallback">
+                      <div className="comment-avatar-bubble-fallback" style={{ flexShrink: 0 }}>
                         {activeStoryGroup.username.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span style={{ fontSize: "0.85rem", fontWeight: "700", color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>@{activeStoryGroup.username}</span>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "700", color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.8)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      @{activeStoryGroup.username}
+                    </span>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    {activeStoryGroup.username === user?.username && (
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, marginLeft: "auto" }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                  >
+                    {(activeStoryGroup.username?.toLowerCase() === user?.username?.toLowerCase() ||
+                      String(activeStoryGroup.userId) === String(user?._id || user?.id) ||
+                      String(currentActiveStory?.user) === String(user?._id || user?.id)) && (
                       <button
-                        onClick={() => handleDeleteStoryClick(currentActiveStory?._id)}
-                        style={{ background: "none", border: "none", color: "rgba(255,255,255,0.8)", cursor: "pointer", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+                        onClick={(e) => handleDeleteStoryClick(currentActiveStory?._id, e)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onMouseUp={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
+                        disabled={isDeleting}
+                        style={{
+                          background: "rgba(220, 38, 38, 0.85)",
+                          backdropFilter: "blur(12px)",
+                          WebkitBackdropFilter: "blur(12px)",
+                          border: "1px solid rgba(255, 255, 255, 0.3)",
+                          color: "#ffffff",
+                          width: "34px",
+                          height: "34px",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          boxShadow: "0 4px 14px rgba(220, 38, 38, 0.5)",
+                          transition: "transform 0.15s ease, background 0.15s ease"
+                        }}
                         title="Delete Story"
                       >
-                        <Trash2 size={15} />
+                        <Trash2 size={16} />
                       </button>
                     )}
-                    <button style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} onClick={() => setActiveStoryGroup(null)}>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveStoryGroup(null);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
+                      style={{
+                        background: "rgba(0, 0, 0, 0.7)",
+                        backdropFilter: "blur(12px)",
+                        WebkitBackdropFilter: "blur(12px)",
+                        border: "1px solid rgba(255, 255, 255, 0.25)",
+                        color: "#ffffff",
+                        width: "34px",
+                        height: "34px",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        boxShadow: "0 4px 14px rgba(0, 0, 0, 0.5)",
+                        transition: "transform 0.15s ease, background 0.15s ease"
+                      }}
+                      title="Close Story Viewer"
+                    >
                       <X size={18} />
                     </button>
                   </div>
                 </div>
 
-                {/* Story Media Background & Text (Image or Video) - Immersive Full Bleed */}
-                <div style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0, zIndex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", background: currentActiveStory.mediaUrl ? "#000" : getThemeGradientClass() }}>
+                {/* Story Media Background & Text (Image or Video) - Immersive Full Bleed Edge-to-Edge */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%", zIndex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", background: currentActiveStory.mediaUrl ? "#000" : getThemeGradientClass(), overflow: "hidden" }}>
                   {currentActiveStory.mediaUrl && (
-                    <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 1 }}>
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%", zIndex: 1, overflow: "hidden" }}>
                       {isVideoUrl(currentActiveStory.mediaUrl) ? (
-                        <video src={currentActiveStory.mediaUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <video src={currentActiveStory.mediaUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }} />
                       ) : (
-                        <img src={currentActiveStory.mediaUrl} alt="Story Media" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <img src={currentActiveStory.mediaUrl} alt="Story Media" style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }} />
                       )}
                     </div>
                   )}
 
-                  {/* Story text and Custom templates overlay */}
-                  <div style={{ position: "relative", zIndex: 2, padding: "20px", background: currentActiveStory.mediaUrl ? "rgba(0,0,0,0.5)" : "transparent", borderRadius: "10px", width: "85%", textAlign: "center", display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
+                  {/* Story text overlay - Positioned dynamically at creator's dragged (X%, Y%) coordinates */}
+                  {(() => {
+                    const parsed = parseTextPos(currentActiveStory.text);
+                    if (!parsed.text || !parsed.text.trim()) return null;
 
-                    {/* Render standard text if not special template */}
-                    {!currentActiveStory.text.startsWith("[POLL]") && !currentActiveStory.text.startsWith("[QUESTION]") && !currentActiveStory.text.startsWith("[AI_INSIGHT]") && (
-                      <p style={{ fontSize: "1.05rem", fontWeight: "600", color: "#fff", margin: 0, lineHeight: "1.5", whiteSpace: "pre-wrap", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
-                        {currentActiveStory.text}
-                      </p>
-                    )}
+                    return (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: `${parsed.x}%`,
+                          top: `${parsed.y}%`,
+                          transform: "translate(-50%, -50%)",
+                          zIndex: 10,
+                          padding: "10px 14px",
+                          background: "transparent",
+                          backdropFilter: "none",
+                          WebkitBackdropFilter: "none",
+                          borderRadius: 0,
+                          border: "none",
+                          width: "88%",
+                          maxWidth: "360px",
+                          textAlign: "center",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "12px",
+                          alignItems: "center"
+                        }}
+                      >
+                        {/* Render standard text if not special template */}
+                        {!parsed.text.startsWith("[POLL]") && !parsed.text.startsWith("[QUESTION]") && !parsed.text.startsWith("[AI_INSIGHT]") && (
+                          <p style={{ fontSize: "1.08rem", fontWeight: "700", color: "#ffffff", margin: 0, lineHeight: "1.45", whiteSpace: "pre-wrap", textShadow: "0 2px 10px rgba(0, 0, 0, 0.95), 0 1px 4px rgba(0, 0, 0, 0.95)" }}>
+                            {parsed.text}
+                          </p>
+                        )}
 
                     {/* Template: Poll Story */}
                     {currentActiveStory.text.startsWith("[POLL]") && (() => {
@@ -1193,33 +1574,154 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                         </div>
                       );
                     })()}
-
-                  </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Interactive Story comments drawer / likes panel - bottom absolute overlay */}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, padding: "16px 14px", background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0) 100%)", borderTop: "none" }}>
+                <div
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onMouseUp={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 10,
+                    padding: "16px 14px",
+                    background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0) 100%)",
+                    borderTop: "none",
+                    opacity: isPaused ? 0 : 1,
+                    pointerEvents: isPaused ? "none" : "auto",
+                    transition: "opacity 0.2s ease-in-out"
+                  }}
+                >
                   {showStoryComments ? (
-                    // Dynamic comments view
-                    <div style={{ background: "rgba(10,10,18,0.95)", borderRadius: "12px", padding: "10px", maxHeight: "150px", overflowY: "auto", marginBottom: "10px", border: "1px solid rgba(255,255,255,0.08)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                        <span style={{ fontSize: "0.72rem", color: "#fff", fontWeight: "700" }}>Comments ({currentActiveStory.comments?.length || 0})</span>
-                        <button onClick={() => setShowStoryComments(false)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "0.72rem", cursor: "pointer" }}>Close</button>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                        {(currentActiveStory.comments || []).map(c => (
-                          <div key={c._id} style={{ fontSize: "0.75rem", color: "#fff" }}>
-                            <strong style={{ color: "#a5b4fc" }}>@{c.username}: </strong>{c.text}
+                    // Dynamic comments view (Privacy Filtered: Owner sees all replies, viewer sees only their own reply)
+                    (() => {
+                      const isOwner = (
+                        activeStoryGroup.username?.toLowerCase() === user?.username?.toLowerCase() ||
+                        String(activeStoryGroup.userId) === String(user?._id || user?.id) ||
+                        String(currentActiveStory?.user) === String(user?._id || user?.id)
+                      );
+
+                      const allComments = currentActiveStory.comments || [];
+                      const visibleComments = allComments.filter(c => {
+                        if (isOwner) return true;
+                        const cUserId = String(c.user?._id || c.user?.id || c.user || c.userId || "");
+                        const currentId = String(user?._id || user?.id || "");
+                        const cUsername = (c.username || c.user?.username || "").toLowerCase();
+                        const currentUsername = (user?.username || "").toLowerCase();
+                        return (cUserId && cUserId === currentId) || (cUsername && cUsername === currentUsername);
+                      });
+
+                      return (
+                        <div
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onMouseUp={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchEnd={(e) => e.stopPropagation()}
+                          style={{ background: "rgba(10,10,18,0.95)", borderRadius: "12px", padding: "10px", maxHeight: "150px", overflowY: "auto", marginBottom: "10px", border: "1px solid rgba(255,255,255,0.08)" }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                            <span style={{ fontSize: "0.72rem", color: "#fff", fontWeight: "700" }}>
+                              {isOwner ? `Story Replies (${allComments.length})` : `Your Reply (${visibleComments.length})`}
+                            </span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setShowStoryComments(false); }}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onMouseUp={(e) => e.stopPropagation()}
+                              onTouchStart={(e) => e.stopPropagation()}
+                              onTouchEnd={(e) => e.stopPropagation()}
+                              style={{ background: "none", border: "none", color: "#ef4444", fontSize: "0.72rem", cursor: "pointer" }}
+                            >
+                              Close
+                            </button>
                           </div>
-                        ))}
-                        {(currentActiveStory.comments || []).length === 0 && <span style={{ fontSize: "0.7rem", color: "var(--ce-premium-muted)" }}>No comments. Be first!</span>}
-                      </div>
-                    </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            {visibleComments.map((c, idx) => {
+                              const commentUser = c.user || {};
+                              const commentUsername = c.username || commentUser.username || "dev";
+                              const commentAvatar = c.avatar || commentUser.avatar;
+                              const commentUserId = commentUser._id || commentUser.id || c.user || c.userId;
+
+                              const handleProfileClick = (e) => {
+                                e.stopPropagation();
+                                setActiveStoryGroup(null);
+                                if (commentUserId) {
+                                  if (onUserClick) {
+                                    onUserClick(commentUserId);
+                                  } else {
+                                    navigate(`/dashboard/profile/${commentUserId}`);
+                                  }
+                                }
+                              };
+
+                              return (
+                                <div key={c._id || idx} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", color: "#fff", background: "rgba(255, 255, 255, 0.04)", padding: "6px 10px", borderRadius: "8px" }}>
+                                  {/* Profile Avatar with click-to-profile navigation */}
+                                  <div
+                                    onClick={handleProfileClick}
+                                    style={{ cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center" }}
+                                    title={`View @${commentUsername}'s profile`}
+                                  >
+                                    {commentAvatar ? (
+                                      <img
+                                        src={commentAvatar}
+                                        alt={commentUsername}
+                                        style={{ width: "22px", height: "22px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(124, 92, 255, 0.4)" }}
+                                      />
+                                    ) : (
+                                      <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: "linear-gradient(135deg, #7C5CFF 0%, #4F46E5 100%)", color: "#ffffff", fontSize: "0.68rem", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255, 255, 255, 0.2)" }}>
+                                        {commentUsername.charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Message Content with Clickable Username */}
+                                  <div style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    <span
+                                      onClick={handleProfileClick}
+                                      style={{ fontWeight: "700", color: "#a5b4fc", cursor: "pointer", marginRight: "6px" }}
+                                      title={`View @${commentUsername}'s profile`}
+                                    >
+                                      @{commentUsername}:
+                                    </span>
+                                    <span style={{ color: "#ffffff", wordBreak: "break-word" }}>{c.text}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {visibleComments.length === 0 && (
+                              <span style={{ fontSize: "0.7rem", color: "rgba(255, 255, 255, 0.5)" }}>
+                                {isOwner ? "No replies received yet." : "🔒 Story replies are private. Only the story creator can see all replies."}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()
                   ) : (
                     // Quick Actions view
-                    <div style={{ display: "flex", justifyContent: "space-around", marginBottom: "12px" }}>
+                    <div
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
+                      style={{ display: "flex", justifyContent: "space-around", marginBottom: "12px" }}
+                    >
                       <button
-                        onClick={() => handleToggleLikeStory(currentActiveStory._id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleLikeStory(currentActiveStory._id);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onMouseUp={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
                         style={{ background: "none", border: "none", color: "#fff", display: "flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", cursor: "pointer", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
                       >
                         <Heart size={16} fill={currentActiveStory.likes?.includes(user?.id || user?._id) ? "#ef4444" : "none"} color={currentActiveStory.likes?.includes(user?.id || user?._id) ? "#ef4444" : "#fff"} />
@@ -1227,7 +1729,14 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                       </button>
 
                       <button
-                        onClick={() => setShowStoryComments(true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowStoryComments(true);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onMouseUp={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
                         style={{ background: "none", border: "none", color: "#fff", display: "flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", cursor: "pointer", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
                       >
                         <MessageSquare size={16} />
@@ -1236,16 +1745,37 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
                     </div>
                   )}
 
-                  <form onSubmit={(e) => handleSendStoryComment(e, currentActiveStory._id)} className="comment-input-form-row">
+                  <form
+                    onSubmit={(e) => {
+                      e.stopPropagation();
+                      handleSendStoryComment(e, currentActiveStory._id);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                    className="comment-input-form-row"
+                  >
                     <input
                       type="text"
                       placeholder="Reply or comment..."
                       value={storyReply}
                       onChange={(e) => setStoryReply(e.target.value)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
                       className="comment-text-input"
                       style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff" }}
                     />
-                    <button type="submit" className="comment-send-submit-btn">
+                    <button
+                      type="submit"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
+                      className="comment-send-submit-btn"
+                    >
                       <Send size={12} />
                     </button>
                   </form>
@@ -1256,45 +1786,7 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
         )}
       </AnimatePresence>
 
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {storyToDelete && (
-          <Portal>
-            <div className="ce-modal-overlay" onClick={() => setStoryToDelete(null)} style={{ zIndex: 10010 }}>
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="ce-modal-card"
-                style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center" }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)", fontSize: "1.1rem", fontWeight: "700" }}>Delete Story?</h3>
-                <p style={{ margin: "0 0 20px 0", color: "var(--ce-premium-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
-                  Are you sure you want to delete this story slide? This cannot be undone.
-                </p>
-                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-                  <button
-                    type="button"
-                    onClick={() => setStoryToDelete(null)}
-                    style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "1px solid var(--ce-border)", background: "transparent", color: "var(--ce-text)", fontSize: "0.75rem", fontWeight: "600", cursor: "pointer" }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmDeleteStory}
-                    disabled={isDeleting}
-                    style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer" }}
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </Portal>
-        )}
-      </AnimatePresence>
+
 
       {/* Image Cropper Modal */}
       {cropSource && (
@@ -1323,11 +1815,11 @@ export default function StoriesSystem({ user, addToast, vertical = false }) {
       )}
 
       {/* Strict Validation Warning Modal */}
-      <WarningModal 
-        isOpen={warningModal.isOpen} 
-        title={warningModal.title} 
-        message={warningModal.message} 
-        onClose={() => setWarningModal({ isOpen: false, title: "", message: "" })} 
+      <WarningModal
+        isOpen={warningModal.isOpen}
+        title={warningModal.title}
+        message={warningModal.message}
+        onClose={() => setWarningModal({ isOpen: false, title: "", message: "" })}
       />
     </div>
   );

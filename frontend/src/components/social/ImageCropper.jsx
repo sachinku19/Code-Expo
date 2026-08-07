@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { RotateCw, Check, X, Sliders, Sun, Contrast, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspect = 1.2 }) {
+export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspect = 16 / 9 }) {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [brightness, setBrightness] = useState(100);
@@ -11,7 +11,15 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
   const [activeTab, setActiveTab] = useState("crop"); // "crop" or "adjust"
   
   // Dynamic resizable crop box state
-  const [boxWidth, setBoxWidth] = useState(250);
+  const [boxWidth, setBoxWidth] = useState(aspect < 1 ? 180 : 250);
+
+  useEffect(() => {
+    if (aspect < 1) {
+      setBoxWidth(180);
+    } else {
+      setBoxWidth(250);
+    }
+  }, [aspect]);
   
   const containerRef = useRef(null);
   const imgRef = useRef(null);
@@ -264,7 +272,7 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
           style={{
             position: "relative",
             width: "100%",
-            height: "260px",
+            height: aspect < 1 ? "380px" : "280px",
             background: "#08080c",
             overflow: "hidden",
             borderRadius: "8px",

@@ -31,6 +31,8 @@ const {
   getPostById,
   toggleLikePost,
   addComment,
+  toggleLikeComment,
+  deleteComment,
   deletePost
 } = require("../controllers/postController");
 const {
@@ -48,35 +50,31 @@ const router = express.Router();
 const optional_auth = async (req, res, next) => {
   try {
     if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-      const token = req.headers.authorization.split(" ")[1];
-      if (token && token !== "null" && token !== "undefined") {
-        const decoded = require("jsonwebtoken").verify(token, process.env.JWT_SECRET);
-        const User = require("../models/User");
-        req.user = await User.findById(decoded.id).select("-password");
-      }
+      await auth_protect(req, res, next);
+    } else {
+      next();
     }
-  } catch (error) {
-    // Fail silently to support public usage
+  } catch (e) {
+    next();
   }
-  next();
 };
 
-// Follow actions
+// Social Connections
 router.post("/follow/:id", auth_protect, toggleFollowUser);
-router.delete("/follower/:id", auth_protect, removeFollower);
+router.delete("/followers/:id", auth_protect, removeFollower);
 router.get("/followers/:id", optional_auth, getFollowers);
 router.get("/following/:id", optional_auth, getFollowing);
 
-// Room interactions
-router.post("/like/:id", auth_protect, toggleLikeRoom);
-router.post("/bookmark/:id", auth_protect, toggleBookmarkRoom);
-router.get("/room-stats/:id", auth_protect, getRoomSocialStats);
-router.get("/trending-rooms", auth_protect, getTrendingRooms);
+// Feed & Rooms
+router.get("/feed", optional_auth, getSocialFeed);
+router.get("/rooms/trending", optional_auth, getTrendingRooms);
 router.get("/rooms/liked", auth_protect, getLikedRooms);
 router.get("/rooms/bookmarked", auth_protect, getBookmarkedRooms);
+router.get("/rooms/:id/stats", optional_auth, getRoomSocialStats);
+router.post("/rooms/:id/like", auth_protect, toggleLikeRoom);
+router.post("/rooms/:id/bookmark", auth_protect, toggleBookmarkRoom);
 
-// Social Feed & Suggestions
-router.get("/feed", auth_protect, getSocialFeed);
+// Recommendations & Network
 router.get("/suggestions", auth_protect, getDeveloperSuggestions);
 router.get("/leaderboard", auth_protect, getLeaderboard);
 
@@ -97,6 +95,8 @@ router.get("/posts/:id", optional_auth, getPostById);
 router.delete("/posts/:id", auth_protect, deletePost);
 router.post("/posts/:id/like", auth_protect, toggleLikePost);
 router.post("/posts/:id/comment", auth_protect, addComment);
+router.post("/posts/:id/comments/:commentId/like", auth_protect, toggleLikeComment);
+router.delete("/posts/:id/comments/:commentId", auth_protect, deleteComment);
 
 // Stories
 router.post("/stories", auth_protect, upload.single("media"), createStory);

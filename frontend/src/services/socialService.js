@@ -137,8 +137,18 @@ export const toggleLikePost = async (postId) => {
   return response.data;
 };
 
-export const addCommentPost = async (postId, text) => {
-  const response = await API.post(`/posts/${postId}/comment`, { text }, getHeaders());
+export const addCommentPost = async (postId, text, commentId = null) => {
+  const response = await API.post(`/posts/${postId}/comment`, { text, commentId, parentCommentId: commentId }, getHeaders());
+  return response.data;
+};
+
+export const toggleLikeCommentPost = async (postId, commentId) => {
+  const response = await API.post(`/posts/${postId}/comments/${commentId}/like`, {}, getHeaders());
+  return response.data;
+};
+
+export const deleteCommentPost = async (postId, commentId) => {
+  const response = await API.delete(`/posts/${postId}/comments/${commentId}`, getHeaders());
   return response.data;
 };
 

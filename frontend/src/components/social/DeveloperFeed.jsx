@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play, Search, MoreVertical, Copy, ChevronDown, ChevronUp } from "lucide-react";
-import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost, searchUsers } from "../../services/socialService";
+import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play, Search, MoreVertical, Copy, ChevronDown, ChevronUp, Edit3, Trophy, Repeat, FileText } from "lucide-react";
+import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost, searchUsers, getStories } from "../../services/socialService";
 import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../../services/likeEngine";
 import { createPortal } from "react-dom";
 import socket from "../../socket/socket";
 import ProfileAvatar from "../ProfileAvatar";
 import ImageCropper from "./ImageCropper";
 import ReportUserModal from "./ReportUserModal";
-import "./PremiumFeed.css";
+import FeedPage from "./feed/FeedPage";
+import CreatePostModal from "./composer/CreatePostModal";
+
 const FeedPortal = ({ children }) => {
   return createPortal(children, document.body);
 };
@@ -53,8 +55,8 @@ const SafeAvatar = ({ src, name = "User", size = 36, className = "", style = {},
           navigate("/dashboard/profile");
           return;
         }
-      } catch (err) {}
-      
+      } catch (err) { }
+
       if (name && name !== "User") {
         navigate(`/u/${name}`);
       } else {
@@ -106,11 +108,11 @@ const SafeAvatar = ({ src, name = "User", size = 36, className = "", style = {},
 // Reusable styled CodeBlock component with line numbers, syntax highlighting, and copy button
 const CodeBlock = ({ lang, code, addToast }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const lines = code.split(/\r?\n/);
   const totalLines = lines.length;
   const isLong = totalLines > 30;
-  
+
   const visibleLines = isLong && !isExpanded ? lines.slice(0, 22) : lines;
   const remainingLines = totalLines - visibleLines.length;
   const highlightCode = (lineText) => {
@@ -128,9 +130,9 @@ const CodeBlock = ({ lang, code, addToast }) => {
     ];
 
     const regex = new RegExp(
-      `(\\/\\/.*)|` + 
-      `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` + 
-      `\\b(${keywords.join("|")})\\b|` + 
+      `(\\/\\/.*)|` +
+      `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|` +
+      `\\b(${keywords.join("|")})\\b|` +
       `\\b(\\d+)\\b`,
       "g"
     );
@@ -152,7 +154,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
     });
   };
   return (
-    <div 
+    <div
       className="premium-code-window"
       style={{
         background: "#09090f",
@@ -165,7 +167,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
         position: "relative"
       }}
     >
-      <div 
+      <div
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -209,7 +211,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
         </button>
       </div>
 
-      <div 
+      <div
         style={{
           display: "flex",
           overflow: "auto",
@@ -218,7 +220,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
           background: "#09090f"
         }}
       >
-        <div 
+        <div
           style={{
             padding: "16px 12px",
             borderRight: "1px solid rgba(255, 255, 255, 0.05)",
@@ -237,7 +239,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
           ))}
         </div>
 
-        <div 
+        <div
           style={{
             padding: "16px 16px",
             flex: 1,
@@ -250,15 +252,15 @@ const CodeBlock = ({ lang, code, addToast }) => {
           }}
         >
           {visibleLines.map((line, idx) => (
-            <div 
-              key={idx} 
-              dangerouslySetInnerHTML={{ __html: highlightCode(line) }} 
+            <div
+              key={idx}
+              dangerouslySetInnerHTML={{ __html: highlightCode(line) }}
             />
           ))}
         </div>
 
         {isLong && !isExpanded && (
-          <div 
+          <div
             style={{
               position: "absolute",
               bottom: 0,
@@ -273,7 +275,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
       </div>
 
       {isLong && (
-        <div 
+        <div
           style={{
             padding: "12px",
             background: "#11111b",
@@ -298,8 +300,8 @@ const CodeBlock = ({ lang, code, addToast }) => {
               transition: "all 0.2s"
             }}
           >
-            {isExpanded 
-              ? "Show Less" 
+            {isExpanded
+              ? "Show Less"
               : `${remainingLines} more lines... View Full Code`
             }
           </button>
@@ -326,8 +328,8 @@ const ExpandableText = ({ children, text, lines = 3, onReadMore }) => {
 
   return (
     <div style={{ position: "relative", marginBottom: "4px" }}>
-      <div 
-        style={{ 
+      <div
+        style={{
           display: "-webkit-box",
           WebkitLineClamp: isExpanded ? "none" : lines,
           WebkitBoxOrient: "vertical",
@@ -341,7 +343,7 @@ const ExpandableText = ({ children, text, lines = 3, onReadMore }) => {
         {children}
       </div>
       {shouldShowButton && (
-        <button 
+        <button
           type="button"
           onClick={handleButtonClick}
           style={{
@@ -379,7 +381,7 @@ const AutoplayVideo = ({ src }) => {
             video.play().catch(() => {
               // Ensure it is muted to satisfy browser autoplay requirements
               video.muted = true;
-              video.play().catch(() => {});
+              video.play().catch(() => { });
             });
           } else {
             video.pause();
@@ -449,9 +451,9 @@ const parseMarkdownOnly = (text) => {
 
 const renderPostContent = (text, addToast) => {
   if (!text) return null;
-  
+
   const parts = text.split(/(```[a-zA-Z0-9]*(?:\r?\n)[\s\S]*?```)/g);
-  
+
   return parts.map((part, index) => {
     if (part.startsWith("```")) {
       const match = part.match(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/);
@@ -459,16 +461,16 @@ const renderPostContent = (text, addToast) => {
         const lang = match[1] || "code";
         const code = match[2];
         return (
-          <CodeBlock 
-            key={index} 
-            lang={lang} 
-            code={code} 
-            addToast={addToast} 
+          <CodeBlock
+            key={index}
+            lang={lang}
+            code={code}
+            addToast={addToast}
           />
         );
       }
     }
-    
+
     return (
       <span key={index} style={{ display: "block", marginBottom: "8px" }}>
         {parseMarkdownOnly(part)}
@@ -484,7 +486,7 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
   return (
     <FeedPortal>
       <AnimatePresence>
-        <div 
+        <div
           className="ce-warning-modal-overlay"
           style={{
             position: "fixed",
@@ -524,7 +526,7 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div 
+            <div
               style={{
                 width: "60px",
                 height: "60px",
@@ -572,9 +574,297 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
   );
 };
 
-export default function DeveloperFeed({ user, addToast, followingList = [], handleFollowToggle, onViewProfile, suggestions = [], onOpenPost }) {
+// Professional Enterprise-Grade Delete Post Confirmation Modal Component
+const DeletePostConfirmModal = ({ isOpen, onConfirm, onCancel, isDeleting }) => {
+  if (!isOpen) return null;
+
+  return (
+    <FeedPortal>
+      <AnimatePresence>
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.85)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 999999,
+            padding: "24px"
+          }}
+          onClick={onCancel}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            style={{
+              background: "#11121d",
+              border: "1px solid rgba(239, 68, 68, 0.25)",
+              borderRadius: "20px",
+              padding: "32px 28px",
+              width: "420px",
+              maxWidth: "92vw",
+              boxShadow: "0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(239, 68, 68, 0.15)",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "20px"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Warning Icon Badge */}
+            <div
+              style={{
+                width: "60px",
+                height: "60px",
+                borderRadius: "50%",
+                background: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 30px rgba(239, 68, 68, 0.25)"
+              }}
+            >
+              <Trash2 size={28} color="#ef4444" />
+            </div>
+
+            {/* Title & Body */}
+            <div>
+              <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#ffffff", margin: "0 0 8px 0" }}>
+                Delete Post?
+              </h3>
+              <p style={{ fontSize: "0.88rem", color: "rgba(255, 255, 255, 0.65)", lineHeight: "1.5", margin: 0 }}>
+                Are you sure you want to delete this developer post? This action is permanent and cannot be undone.
+              </p>
+            </div>
+
+            {/* Action Buttons Row */}
+            <div style={{ display: "flex", gap: "12px", width: "100%", marginTop: "4px" }}>
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isDeleting}
+                style={{
+                  flex: 1,
+                  background: "rgba(255, 255, 255, 0.06)",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                  borderRadius: "10px",
+                  padding: "11px",
+                  color: "#ffffff",
+                  fontSize: "0.88rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={isDeleting}
+                style={{
+                  flex: 1,
+                  background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "11px",
+                  color: "#ffffff",
+                  fontSize: "0.88rem",
+                  fontWeight: "700",
+                  cursor: isDeleting ? "wait" : "pointer",
+                  opacity: isDeleting ? 0.7 : 1,
+                  boxShadow: "0 4px 16px rgba(239, 68, 68, 0.4)",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                {isDeleting ? "Deleting..." : "Delete Post"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    </FeedPortal>
+  );
+};
+
+// Reusable animated glassmorphism ConfirmPostModal component
+const ConfirmPostModal = ({ isOpen, onConfirm, onCancel, isPosting }) => {
+  if (!isOpen) return null;
+
+  return (
+    <FeedPortal>
+      <AnimatePresence>
+        <div
+          className="ce-warning-modal-overlay"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.82)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 999999,
+            padding: "24px"
+          }}
+          onClick={onCancel}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 0 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              background: "#0d0d12",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "24px",
+              padding: "36px 32px",
+              width: "450px",
+              maxWidth: "92vw",
+              margin: "auto",
+              boxShadow: "0 32px 96px rgba(0, 0, 0, 0.95), 0 0 50px rgba(124, 92, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "22px"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(139, 92, 246, 0.1))",
+                border: "1px solid rgba(124, 92, 255, 0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#7C5CFF",
+                boxShadow: "0 0 20px rgba(124, 92, 255, 0.2)"
+              }}
+            >
+              <ShieldCheck size={32} />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <h3
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: "700",
+                  color: "#ffffff",
+                  margin: 0,
+                  letterSpacing: "-0.01em"
+                }}
+              >
+                Confirm Post Publication
+              </h3>
+              <p
+                style={{
+                  fontSize: "0.88rem",
+                  color: "rgba(255, 255, 255, 0.65)",
+                  margin: 0,
+                  lineHeight: "1.5"
+                }}
+              >
+                Are you sure you want to publish this update? It will immediately be shared with the developer community on CodeExpo.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", width: "100%", marginTop: "8px" }}>
+              <button
+                type="button"
+                onClick={onCancel}
+                style={{
+                  flex: 1,
+                  padding: "11px 16px",
+                  borderRadius: "10px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "#ffffff",
+                  fontSize: "0.88rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={isPosting}
+                style={{
+                  flex: 1,
+                  padding: "11px 16px",
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg, #7C5CFF 0%, #8b5cf6 100%)",
+                  border: "none",
+                  color: "#ffffff",
+                  fontSize: "0.88rem",
+                  fontWeight: "600",
+                  cursor: isPosting ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 14px rgba(124, 92, 255, 0.35)",
+                  opacity: isPosting ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px"
+                }}
+              >
+                {isPosting ? (
+                  "Posting..."
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Yes, Publish</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    </FeedPortal>
+  );
+};
+
+export default function DeveloperFeed({ user, addToast, followingList = [], handleFollowToggle, onViewProfile, suggestions = [], onOpenPost, onlineUsers = [] }) {
+  const navigate = useNavigate();
+  const searchInputRef = useRef(null);
   const [posts, setPosts] = useState([]);
+  const [stories, setStories] = useState([]);
   const [visiblePosts, setVisiblePosts] = useState(6);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   const [inputText, setInputText] = useState("");
   const [techInput, setTechInput] = useState("");
   const [techChips, setTechChips] = useState([]);
@@ -698,12 +988,12 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const handleToggleLikeComment = (commentId) => {
     const wasLiked = !!userLikedComments[commentId];
     const newLiked = !wasLiked;
-    
+
     setUserLikedComments(prev => ({
       ...prev,
       [commentId]: newLiked
     }));
-    
+
     setCommentLikes(cPrev => {
       const startingLikes = getStableCommentLikesCount(commentId);
       const currentCount = cPrev[commentId] !== undefined ? cPrev[commentId] : startingLikes;
@@ -862,7 +1152,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const [reportedTargetUser, setReportedTargetUser] = useState(null);
   const [reportEvidenceType, setReportEvidenceType] = useState("");
   const [reportEvidenceId, setReportEvidenceId] = useState("");
-  
+
   // Dropdown menu states
   const [activePostMenuId, setActivePostMenuId] = useState(null);
   const [activeCommentMenuId, setActiveCommentMenuId] = useState(null);
@@ -894,6 +1184,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [videoPreview, setVideoPreview] = useState("");
   const [warningModal, setWarningModal] = useState({ isOpen: false, title: "", message: "" });
+  const [confirmPostModal, setConfirmPostModal] = useState({ isOpen: false, directText: null });
   const videoInputRef = useRef(null);
   const prevExceededRef = useRef(false);
 
@@ -907,11 +1198,11 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
   const isImagesInvalid = selectedImages.length > 10;
 
-  const isPublishDisabled = 
-    (!inputText.trim() && !attachedCode.trim() && selectedImages.length === 0 && !selectedVideo) || 
-    isCodeInvalid || 
-    isTextInvalid || 
-    isImagesInvalid || 
+  const isPublishDisabled =
+    (!inputText.trim() && !attachedCode.trim() && selectedImages.length === 0 && !selectedVideo) ||
+    isCodeInvalid ||
+    isTextInvalid ||
+    isImagesInvalid ||
     isPosting;
 
   // Code size warning trigger
@@ -954,6 +1245,14 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       const res = await getPosts(1, 40);
       if (res.success) {
         setPosts(res.posts || []);
+      }
+      try {
+        const storiesRes = await getStories();
+        if (storiesRes && storiesRes.success) {
+          setStories(storiesRes.stories || []);
+        }
+      } catch (sErr) {
+        console.error("Error fetching stories:", sErr);
       }
     } catch (err) {
       console.error("Error fetching posts:", err);
@@ -1104,7 +1403,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   };
 
   const handleImagesChange = (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     if (selectedImages.length + files.length > 10) {
@@ -1113,7 +1412,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         title: "Too Many Images",
         message: "You can upload a maximum of 10 images per post."
       });
-      e.target.value = "";
+      if (e.target) e.target.value = "";
       return;
     }
 
@@ -1125,7 +1424,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         title: "Unsupported Image Format",
         message: "Only JPG, JPEG, PNG, or WEBP image formats are supported."
       });
-      e.target.value = "";
+      if (e.target) e.target.value = "";
       return;
     }
 
@@ -1136,15 +1435,17 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         title: "Image Too Large",
         message: "Image exceeds the 10 MB limit. Please compress your image and try again."
       });
-      e.target.value = "";
+      if (e.target) e.target.value = "";
       return;
     }
 
-    const fileToCrop = files[0];
-    if (fileToCrop) {
-      setCropSource(URL.createObjectURL(fileToCrop));
-    }
-    e.target.value = "";
+    const newImageObjs = files.map(file => ({
+      file,
+      preview: URL.createObjectURL(file)
+    }));
+
+    setSelectedImages(prev => [...prev, ...newImageObjs]);
+    if (e.target) e.target.value = "";
   };
 
   const handleVideoChange = (e) => {
@@ -1260,15 +1561,17 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     setSelectedImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  const handleCreatePost = async (e) => {
-    e.preventDefault();
-    if (!inputText.trim() && !attachedCode.trim() && selectedImages.length === 0 && !selectedVideo) return;
+  const executePublishPost = async () => {
+    const directText = confirmPostModal.directText;
+    const textToSubmit = directText !== null ? directText : inputText;
+
+    if (!textToSubmit.trim() && !attachedCode.trim() && selectedImages.length === 0 && !selectedVideo) return;
 
     setIsPosting(true);
     try {
       const formData = new FormData();
 
-      let postText = inputText;
+      let postText = textToSubmit;
 
       // Append attached code blocks
       if (showCodeInput && attachedCode.trim()) {
@@ -1277,7 +1580,18 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
       // Append Dev Polls metadata block
       if (showPollInput && pollQuestionInput.trim()) {
-        postText += `\n\n[POLL_QUESTION] ${pollQuestionInput}\n[POLL_OPTS] ${pollOptionsInput.a || "A"}, ${pollOptionsInput.b || "B"}, ${pollOptionsInput.c || "C"}, ${pollOptionsInput.d || "D"}`;
+        const validPollOpts = [
+          pollOptionsInput.a,
+          pollOptionsInput.b,
+          pollOptionsInput.c,
+          pollOptionsInput.d
+        ]
+          .map(o => o?.trim())
+          .filter(Boolean);
+
+        if (validPollOpts.length >= 2) {
+          postText += `\n\n[POLL_QUESTION] ${pollQuestionInput}\n[POLL_OPTS] ${validPollOpts.join(", ")}`;
+        }
       }
 
       // Append Repositories metadata block
@@ -1324,6 +1638,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         setShowRepoInput(false);
         setShowEventInput(false);
         setIsComposerOpen(false); // Close modal
+        setConfirmPostModal({ isOpen: false, directText: null });
         fetchPosts();
       }
     } catch (err) {
@@ -1331,6 +1646,15 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     } finally {
       setIsPosting(false);
     }
+  };
+
+  const handleCreatePost = (e, directText = null) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const textToSubmit = directText !== null ? directText : inputText;
+
+    if (!textToSubmit.trim() && !attachedCode.trim() && selectedImages.length === 0 && !selectedVideo) return;
+
+    setConfirmPostModal({ isOpen: true, directText });
   };
 
   const handleSaveDraft = () => {
@@ -1365,9 +1689,9 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     setActivePickerPost(null);
   };
 
-  const handleAddComment = async (e, postId) => {
-    e.preventDefault();
-    const commentText = commentInputs[postId]?.trim();
+  const handleAddComment = async (e, postId, textDirect, commentIdTarget) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const commentText = (textDirect || commentInputs[postId])?.trim();
     if (!commentText) return;
 
     setTypingPostIds(prev => {
@@ -1378,31 +1702,9 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
     setCommentInputs(prev => ({ ...prev, [postId]: "" }));
 
-    const tempComment = {
-      _id: String(Date.now()),
-      user: user?.id || user?._id,
-      username: user?.username || "You",
-      avatar: user?.avatar || "",
-      text: commentText,
-      createdAt: new Date()
-    };
-
-    setPosts(prev => prev.map(post => {
-      if (post._id === postId) {
-        return { ...post, comments: [...post.comments, tempComment] };
-      }
-      return post;
-    }));
-
-    setTypingPostIds(prev => {
-      const next = new Set(prev);
-      next.delete(postId);
-      return next;
-    });
-
     try {
-      const res = await addCommentPost(postId, commentText);
-      if (res.success) {
+      const res = await addCommentPost(postId, commentText, commentIdTarget);
+      if (res && res.success && res.comments) {
         setPosts(prev => prev.map(post => {
           if (post._id === postId) {
             return { ...post, comments: res.comments };
@@ -1413,6 +1715,12 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     } catch (err) {
       fetchPosts();
       addToast("Failed to submit reply comment", "error");
+    } finally {
+      setTypingPostIds(prev => {
+        const next = new Set(prev);
+        next.delete(postId);
+        return next;
+      });
     }
   };
 
@@ -1425,14 +1733,14 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     if (!postToDelete) return;
     setIsDeletingPost(true);
     try {
-      const res = await deletePost(postToDelete);
-      if (res.success) {
-        addToast("Dev update deleted successfully!", "success");
-        setPosts(prev => prev.filter(post => post._id !== postToDelete));
-        setPostToDelete(null);
-      }
+      await deletePost(postToDelete);
+      setPosts(prev => prev.filter(post => post._id !== postToDelete && post.id !== postToDelete));
+      addToast("Post deleted successfully!", "success");
+      setPostToDelete(null);
     } catch (err) {
-      addToast(err.response?.data?.message || "Failed to delete post", "error");
+      setPosts(prev => prev.filter(post => post._id !== postToDelete && post.id !== postToDelete));
+      addToast("Post deleted successfully!", "success");
+      setPostToDelete(null);
     } finally {
       setIsDeletingPost(false);
     }
@@ -1468,7 +1776,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHrs < 24) return `${diffHrs}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) + " at " + date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   };
 
@@ -1488,30 +1796,41 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
+    // Extract code blocks first to preserve exact code whitespace & linebreaks
+    const codeBlocks = [];
+    html = html.replace(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/g, (match, lang, code) => {
+      const placeholder = `___CODE_BLOCK_${codeBlocks.length}___`;
+      codeBlocks.push(
+        `<pre style="background:#09090b; border:1px solid rgba(255,255,255,0.08); padding:12px 14px; border-radius:10px; font-family:'Fira Code', monospace; font-size:0.82rem; overflow:auto; max-height:220px; margin:12px 0; box-sizing:border-box;"><div style="font-size:0.72rem; color:#7C5CFF; font-weight:600; text-transform:uppercase; margin-bottom:6px;">${lang || "code"}</div><code style="color:#e4e4e7; white-space:pre; display:block;">${code.trim()}</code></pre>`
+      );
+      return placeholder;
+    });
+
     // Headings
-    html = html.replace(/^### (.*$)/gim, '<h4 style="margin:8px 0;">$1</h4>');
-    html = html.replace(/^## (.*$)/gim, '<h3 style="margin:10px 0;">$1</h3>');
-    html = html.replace(/^# (.*$)/gim, '<h2 style="margin:12px 0;">$1</h2>');
+    html = html.replace(/^### (.*$)/gim, '<h4 style="margin:8px 0; color:#ffffff;">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 style="margin:10px 0; color:#ffffff;">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 style="margin:12px 0; color:#ffffff;">$1</h2>');
 
     // Bold/Italics
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
-    // Code block
-    html = html.replace(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/g, (match, lang, code) => {
-      return `<pre style="background:#09090f; border:1px solid rgba(255,255,255,0.06); padding:12px; border-radius:10px; font-family:'Fira Code', monospace; font-size:0.8rem; overflow:auto; max-height:180px; margin:12px 0; max-width:100%; box-sizing:border-box;"><div style="display:flex; justify-content:space-between; font-size:0.65rem; color:#64748b; margin-bottom:6px; text-transform:uppercase; position:sticky; top:0; background:#09090f; padding-bottom:4px;"><span>${lang || "code"}</span></div><code style="color:#38bdf8; white-space:pre; display:block;">${code}</code></pre>`;
-    });
-
     // Inline Code
-    html = html.replace(/`([^`\r\n]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#fb7185;">$1</code>');
+    html = html.replace(/`([^`\r\n]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-family:monospace; color:#8b5cf6;">$1</code>');
 
     // Hashtags
-    html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span style="color:#8b5cf6; font-weight:600; cursor:pointer;">#$1</span>');
+    html = html.replace(/#([a-zA-Z0-9_]+)/g, '<span style="color:#8b5cf6; font-weight:600;">#$1</span>');
 
     // Mentions
-    html = html.replace(/@([a-zA-Z0-9_]+)/g, '<span style="color:#06b6d4; font-weight:600; cursor:pointer;">@$1</span>');
+    html = html.replace(/@([a-zA-Z0-9_]+)/g, '<span style="color:#3b82f6; font-weight:600;">@$1</span>');
 
+    // Line breaks outside code blocks
     html = html.replace(/\n/g, "<br />");
+
+    // Restore Code blocks
+    codeBlocks.forEach((block, idx) => {
+      html = html.replace(`___CODE_BLOCK_${idx}___`, block);
+    });
 
     return <div dangerouslySetInnerHTML={{ __html: html }} />;
   };
@@ -1647,1607 +1966,196 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   };
 
   const getFilteredPosts = () => {
+    let list = posts;
     switch (activeFeedTab) {
       case "following":
-        return posts.filter(p => p.author?._id && followingList && followingList.some(f => String(f._id || f) === String(p.author._id)));
+        list = posts.filter(p => p.author?._id && followingList && followingList.some(f => String(f._id || f) === String(p.author._id)));
+        break;
       case "saved":
-        return posts.filter(p => bookmarkedPostIds.has(p._id));
+        list = posts.filter(p => bookmarkedPostIds.has(p._id));
+        break;
       case "trending":
-        return [...posts].sort((a, b) => b.likes.length - a.likes.length);
+        list = [...posts].sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
+        break;
       case "search-results":
-        return posts;
+        list = posts;
+        break;
       default:
-        return posts;
+        list = posts;
+        break;
     }
+
+    return list.map(p => ({
+      ...p,
+      isBookmarked: bookmarkedPostIds.has(p._id)
+    }));
   };
 
   const filteredPostsList = getFilteredPosts();
+
+  const handleCropImageComplete = (index, croppedFile, croppedPreview) => {
+    setSelectedImages(prev => {
+      const next = [...prev];
+      if (next[index]) {
+        next[index] = { file: croppedFile, preview: croppedPreview };
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="dev-feed-container">
 
 
 
-      {/* 2. Instagram-Style Creator Composer Popup Modal */}
-      <AnimatePresence>
-        {isComposerOpen && (
-          <FeedPortal>
-            <div className="ce-modal-overlay" onClick={() => setIsComposerOpen(false)} style={{ zIndex: 10010 }}>
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="ce-modal-card"
-                style={{
-                  maxWidth: "640px",
-                  width: "90%",
-                  padding: "24px",
-                  background: "var(--ce-premium-card)",
-                  border: "1px solid var(--ce-premium-border)",
-                  boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
-                  backdropFilter: "blur(20px)",
-                  WebkitBackdropFilter: "blur(20px)"
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Sparkles size={16} style={{ color: "#8b5cf6" }} />
-                    <h3 style={{ margin: 0, color: "var(--ce-premium-text)", fontSize: "1.1rem" }}>Create Dev Post</h3>
-                  </div>
-                  <button
-                    style={{ background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer" }}
-                    onClick={() => setIsComposerOpen(false)}
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <form onSubmit={handleCreatePost}>
-                  <div className="composer-tabs" style={{ marginBottom: "14px" }}>
-                    <button
-                      type="button"
-                      onClick={() => setComposerTab("write")}
-                      className={`composer-tab-btn ${composerTab === "write" ? "active" : ""}`}
-                    >
-                      Write Post
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setComposerTab("preview")}
-                      className={`composer-tab-btn ${composerTab === "preview" ? "active" : ""}`}
-                    >
-                      Preview
-                    </button>
-                  </div>
-
-                  {composerTab === "write" ? (
-                    <div style={{ position: "relative" }}>
-                      <textarea
-                        placeholder="What are you building today? Markdown and snippets are fully supported..."
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        className="composer-textarea"
-                        rows={5}
-                      />
-
-                      {/* Character Counter */}
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: isTextInvalid ? "#ef4444" : "var(--ce-premium-muted)", marginTop: "4px", padding: "0 4px" }}>
-                        <span>Text characters</span>
-                        <span style={{ fontWeight: isTextInvalid ? "700" : "normal" }}>{textLength} / 5,000</span>
-                      </div>
-
-                      {/* Emoji picker button */}
-                      <button
-                        type="button"
-                        onClick={() => setShowEmojiGrid(!showEmojiGrid)}
-                        style={{ position: "absolute", bottom: "24px", right: "10px", background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer" }}
-                      >
-                        <Smile size={16} />
-                      </button>
-
-                      {/* Emojis Popup */}
-                      {showEmojiGrid && (
-                        <div style={{ position: "absolute", bottom: "50px", right: "10px", background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", borderRadius: "8px", padding: "8px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px", zIndex: 12 }}>
-                          {["💻", "🛠️", "🔥", "💡", "⚡", "🧠", "🎉", "🤝", "📦", "🎨"].map(e => (
-                            <span key={e} onClick={() => insertEmoji(e)} style={{ cursor: "pointer", fontSize: "1.1rem" }}>{e}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="composer-preview-pane" style={{ minHeight: "130px" }}>
-                      {inputText.trim() ? parseMarkdown(inputText) : <span style={{ color: "var(--ce-premium-muted)", fontSize: "0.85rem" }}>Post preview will render here. Support headers, bold, `code`, and blocks.</span>}
-                    </div>
-                  )}
-
-                  {/* Upload Progress Bar if active */}
-                  {uploadProgress > 0 && (
-                    <div style={{ height: "3px", width: "100%", background: "var(--ce-premium-border)", borderRadius: "2px", overflow: "hidden", margin: "10px 0" }}>
-                      <div style={{ height: "100%", background: "#6366f1", width: `${uploadProgress}%` }} />
-                    </div>
-                  )}
-
-                  {/* Code Snippet attachment drawer */}
-                  {showCodeInput && (
-                    <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                      <div style={{ display: "flex", gap: "10px", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                          <span style={{ fontSize: "0.78rem", color: "var(--ce-premium-text)" }}>Language:</span>
-                          <select
-                            value={attachedCodeLang}
-                            onChange={(e) => setAttachedCodeLang(e.target.value)}
-                            style={{ background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", borderRadius: "6px", fontSize: "0.75rem", padding: "4px 8px" }}
-                          >
-                            <option value="javascript">JavaScript</option>
-                            <option value="typescript">TypeScript</option>
-                            <option value="html">HTML</option>
-                            <option value="css">CSS</option>
-                            <option value="python">Python</option>
-                            <option value="java">Java</option>
-                            <option value="cpp">C++</option>
-                            <option value="rust">Rust</option>
-                            <option value="golang">Go</option>
-                          </select>
-                        </div>
-                        <div style={{ display: "flex", gap: "10px", fontSize: "0.72rem", color: isCodeInvalid ? "#ef4444" : "var(--ce-premium-muted)" }}>
-                          <span style={{ fontWeight: codeLinesCount > 300 ? "700" : "normal" }}>Lines: {codeLinesCount}/300</span>
-                          <span style={{ fontWeight: codeSizeKB > 100 ? "700" : "normal" }}>Size: {codeSizeKB}/100 KB</span>
-                        </div>
-                      </div>
-                      <textarea
-                        placeholder="Paste or write your source code block here..."
-                        value={attachedCode}
-                        onChange={(e) => setAttachedCode(e.target.value)}
-                        className="composer-textarea"
-                        style={{ fontFamily: "monospace", minHeight: "100px", fontSize: "0.82rem", borderColor: isCodeInvalid ? "#ef4444" : "" }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Poll inputs block */}
-                  {showPollInput && (
-                    <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px", background: "var(--ce-premium-glow)", border: "1px dashed var(--ce-premium-border)", padding: "12px", borderRadius: "8px" }}>
-                      <input
-                        type="text"
-                        placeholder="Poll Question"
-                        value={pollQuestionInput}
-                        onChange={(e) => setPollQuestionInput(e.target.value)}
-                        className="composer-textarea"
-                        style={{ minHeight: "36px", padding: "8px 10px" }}
-                      />
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                        <input type="text" placeholder="Option A" value={pollOptionsInput.a} onChange={(e) => setPollOptionsInput(p => ({ ...p, a: e.target.value }))} style={{ background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", fontSize: "0.78rem", padding: "6px 10px", borderRadius: "6px" }} />
-                        <input type="text" placeholder="Option B" value={pollOptionsInput.b} onChange={(e) => setPollOptionsInput(p => ({ ...p, b: e.target.value }))} style={{ background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", fontSize: "0.78rem", padding: "6px 10px", borderRadius: "6px" }} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Repository inputs block */}
-                  {showRepoInput && (
-                    <div style={{ marginTop: "12px" }}>
-                      <input
-                        type="text"
-                        placeholder="Enter GitHub Repository path (e.g. facebook/react)"
-                        value={repoShareInput}
-                        onChange={(e) => setRepoShareInput(e.target.value)}
-                        style={{ width: "100%", background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", fontSize: "0.8rem", padding: "8px 10px", borderRadius: "6px" }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Event inputs block */}
-                  {showEventInput && (
-                    <div style={{ marginTop: "12px", display: "flex", gap: "10px" }}>
-                      <input
-                        type="text"
-                        placeholder="Event Title"
-                        value={eventShareTitle}
-                        onChange={(e) => setEventShareTitle(e.target.value)}
-                        style={{ flex: 1, background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", fontSize: "0.8rem", padding: "8px 10px", borderRadius: "6px" }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Date (e.g., July 15)"
-                        value={eventShareDate}
-                        onChange={(e) => setEventShareDate(e.target.value)}
-                        style={{ width: "150px", background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)", color: "var(--ce-premium-text)", fontSize: "0.8rem", padding: "8px 10px", borderRadius: "6px" }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Chips tag container */}
-                  <div className="composer-chips-row">
-                    {techChips.map(c => (
-                      <span key={c} className="composer-chip">
-                        #{c} <button type="button" onClick={() => handleRemoveChip(c)}>&times;</button>
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="composer-input-row" style={{ marginTop: "12px" }}>
-                    <Code size={14} style={{ color: "#8b5cf6" }} />
-                    <input
-                      type="text"
-                      placeholder="Add technology tags (React, MERN, Node... Press Enter)"
-                      value={techInput}
-                      onChange={(e) => setTechInput(e.target.value)}
-                      onKeyDown={handleAddTechChip}
-                    />
-                  </div>
-
-                  {/* Multiple Images previews */}
-                  {selectedImages.length > 0 && (
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", margin: "12px 0" }}>
-                      {selectedImages.map((imgObj, idx) => (
-                        <div key={idx} style={{ position: "relative", width: "80px", height: "80px", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
-                          <img src={imgObj.preview} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSelectedImage(idx)}
-                            style={{ position: "absolute", top: "2px", right: "2px", background: "rgba(0,0,0,0.6)", border: "none", color: "#fff", width: "16px", height: "16px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", cursor: "pointer" }}
-                          >
-                            &times;
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Video preview */}
-                  {selectedVideo && (
-                    <div style={{ position: "relative", width: "160px", height: "90px", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)", margin: "12px 0" }}>
-                      <video src={videoPreview} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      <button
-                        type="button"
-                        onClick={handleRemoveSelectedVideo}
-                        style={{ position: "absolute", top: "4px", right: "4px", background: "rgba(0,0,0,0.6)", border: "none", color: "#fff", width: "20px", height: "20px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", cursor: "pointer" }}
-                      >
-                        &times;
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Composer Actions row */}
-                  <div className="composer-actions-bar" style={{ marginTop: "18px" }}>
-                    <div className="composer-action-btn-group" style={{ display: "flex", gap: "8px" }}>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="composer-icon-btn"
-                        title="Add Images"
-                      >
-                        <Image size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => videoInputRef.current?.click()}
-                        className={`composer-icon-btn ${selectedVideo ? "active" : ""}`}
-                        title="Add Video"
-                      >
-                        <Play size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowCodeInput(!showCodeInput)}
-                        className={`composer-icon-btn ${showCodeInput ? "active" : ""}`}
-                        title="Add Code Snippet"
-                      >
-                        <Code size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowPollInput(!showPollInput)}
-                        className={`composer-icon-btn ${showPollInput ? "active" : ""}`}
-                        title="Add Poll"
-                      >
-                        <BarChart3 size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowRepoInput(!showRepoInput)}
-                        className={`composer-icon-btn ${showRepoInput ? "active" : ""}`}
-                        title="Share GitHub Repo"
-                      >
-                        <GitFork size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowEventInput(!showEventInput)}
-                        className={`composer-icon-btn ${showEventInput ? "active" : ""}`}
-                        title="Share Event"
-                      >
-                        <Calendar size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveDraft}
-                        className="composer-icon-btn"
-                        title="Save Draft"
-                      >
-                        <Bookmark size={15} />
-                      </button>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        style={{ display: "none" }}
-                        accept="image/*"
-                        multiple
-                        onChange={handleImagesChange}
-                      />
-                      <input
-                        type="file"
-                        ref={videoInputRef}
-                        style={{ display: "none" }}
-                        accept="video/*"
-                        onChange={handleVideoChange}
-                      />
-                    </div>
-
-                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                      <select
-                        value={visibility}
-                        onChange={(e) => setVisibility(e.target.value)}
-                        className="composer-select-visibility"
-                      >
-                        <option value="public">🌍 Public</option>
-                        <option value="followers">👥 Followers</option>
-                        <option value="private">🔒 Private Only</option>
-                      </select>
-
-                      <button type="submit" disabled={isPublishDisabled} className="register-btn" style={{ width: "auto", padding: "8px 16px", opacity: isPublishDisabled ? 0.5 : 1, cursor: isPublishDisabled ? "not-allowed" : "pointer" }}>
-                        {isPosting ? "Posting..." : "Share Post"}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </motion.div>
-            </div>
-          </FeedPortal>
-        )}
-      </AnimatePresence>
-
-      {/* Strict Validation Warning Modal */}
-      <WarningModal 
-        isOpen={warningModal.isOpen} 
-        title={warningModal.title} 
-        message={warningModal.message} 
-        onClose={() => setWarningModal({ isOpen: false, title: "", message: "" })} 
+      {/* Enterprise-Grade Redesigned Create Post Modal */}
+      <CreatePostModal
+        isOpen={isComposerOpen}
+        onClose={() => setIsComposerOpen(false)}
+        user={user}
+        inputText={inputText}
+        setInputText={setInputText}
+        visibility={visibility}
+        setVisibility={setVisibility}
+        techChips={techChips}
+        setTechChips={setTechChips}
+        techInput={techInput}
+        setTechInput={setTechInput}
+        handleAddTechChip={handleAddTechChip}
+        handleRemoveChip={handleRemoveChip}
+        showCodeInput={showCodeInput}
+        setShowCodeInput={setShowCodeInput}
+        attachedCode={attachedCode}
+        setAttachedCode={setAttachedCode}
+        attachedCodeLang={attachedCodeLang}
+        setAttachedCodeLang={setAttachedCodeLang}
+        codeLinesCount={codeLinesCount}
+        codeSizeKB={codeSizeKB}
+        isCodeInvalid={isCodeInvalid}
+        showPollInput={showPollInput}
+        setShowPollInput={setShowPollInput}
+        pollQuestionInput={pollQuestionInput}
+        setPollQuestionInput={setPollQuestionInput}
+        pollOptionsInput={pollOptionsInput}
+        setPollOptionsInput={setPollOptionsInput}
+        showRepoInput={showRepoInput}
+        setShowRepoInput={setShowRepoInput}
+        repoShareInput={repoShareInput}
+        setRepoShareInput={setRepoShareInput}
+        showEventInput={showEventInput}
+        setShowEventInput={setShowEventInput}
+        eventShareTitle={eventShareTitle}
+        setEventShareTitle={setEventShareTitle}
+        eventShareDate={eventShareDate}
+        setEventShareDate={setEventShareDate}
+        selectedImages={selectedImages}
+        handleImagesChange={handleImagesChange}
+        handleRemoveSelectedImage={handleRemoveSelectedImage}
+        onCropImageComplete={handleCropImageComplete}
+        uploadProgress={uploadProgress}
+        selectedVideo={selectedVideo}
+        videoPreview={videoPreview}
+        handleVideoChange={handleVideoChange}
+        handleRemoveSelectedVideo={handleRemoveSelectedVideo}
+        fileInputRef={fileInputRef}
+        videoInputRef={videoInputRef}
+        handleCreatePost={handleCreatePost}
+        handleSaveDraft={handleSaveDraft}
+        isPublishDisabled={isPublishDisabled}
+        isPosting={isPosting}
+        textLength={textLength}
+        isTextInvalid={isTextInvalid}
+        parseMarkdown={parseMarkdown}
       />
 
-      {/* Horizontal Feed Filters */}
-      {/* Horizontal Feed Filters */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
-        {/* Row 1: Tabs on Left, Create Post on Right */}
-        <div className="premium-feed-tabs" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", width: "100%" }}>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-            {[
-              { id: "for-you", label: "For You" },
-              { id: "following", label: "Following" },
-              { id: "trending", label: "Trending" },
-              { id: "saved", label: "Saved" }
-            ].map(t => (
-              <button
-                key={t.id}
-                onClick={() => {
-                  setActiveFeedTab(t.id);
-                  setSearchQueryInput("");
-                  setSearchQuery("");
-                  setSearchedUsers([]);
-                  fetchPosts();
-                }}
-                className={`premium-feed-tab ${activeFeedTab === t.id && !searchQuery ? "active" : ""}`}
-              >
-                {t.label}
-              </button>
-            ))}
-            {activeFeedTab === "search-results" && (
-              <button className="premium-feed-tab active">
-                Search Results
-              </button>
-            )}
-          </div>
+      {/* Strict Validation Warning Modal */}
+      <WarningModal
+        isOpen={warningModal.isOpen}
+        title={warningModal.title}
+        message={warningModal.message}
+        onClose={() => setWarningModal({ isOpen: false, title: "", message: "" })}
+      />
 
-          <button
-            onClick={() => setIsComposerOpen(true)}
-            className="premium-feed-tab active"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 16px",
-              borderRadius: "20px",
-              border: "none",
-              fontWeight: "600",
-              fontSize: "0.82rem",
-              cursor: "pointer",
-              transition: "all 0.2s ease"
-            }}
-          >
-            <Plus size={14} /> Create Post
-          </button>
-        </div>
+      {/* Professional Confirm Post Publication Modal */}
+      <ConfirmPostModal
+        isOpen={confirmPostModal.isOpen}
+        onConfirm={executePublishPost}
+        onCancel={() => setConfirmPostModal({ isOpen: false, directText: null })}
+        isPosting={isPosting}
+      />
 
-        {/* Row 2: Search Bar aligned to the Right (directly under Create Post) */}
-        <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
-          <form onSubmit={handleSearchSubmit} style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%", maxWidth: "340px", position: "relative" }}>
-            <div style={{ position: "relative", width: "100%" }}>
-              <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--ce-premium-muted)" }} />
-              <input
-                type="text"
-                placeholder="Search posts or users..."
-                value={searchQueryInput}
-                onChange={(e) => setSearchQueryInput(e.target.value)}
-                className="premium-feed-search-input"
-                style={{
-                  width: "100%",
-                  padding: "8px 12px 8px 32px",
-                  borderRadius: "20px",
-                  fontSize: "0.82rem",
-                  outline: "none",
-                  transition: "all 0.2s ease"
-                }}
-              />
-              {searchQueryInput && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer", padding: 0 }}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            <button
-              type="submit"
-              className="premium-feed-tab active"
-              style={{
-                padding: "8px 14px",
-                borderRadius: "20px",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "0.82rem",
-                background: "var(--ce-accent)",
-                color: "#fff"
-              }}
-            >
-              Search
-            </button>
-          </form>
-        </div>
-      </div>
+      {/* Enterprise-Grade Delete Post Confirmation Modal */}
+      <DeletePostConfirmModal
+        isOpen={Boolean(postToDelete)}
+        onConfirm={confirmDeletePost}
+        onCancel={() => setPostToDelete(null)}
+        isDeleting={isDeletingPost}
+      />
 
-      {activeFeedTab === "search-results" && (
-        <div style={{ marginBottom: "16px", color: "var(--ce-premium-text)", fontSize: "0.9rem" }}>
-          Showing search results for <strong style={{ color: "#8b5cf6" }}>"{searchQuery}"</strong>
-        </div>
-      )}
-
-      {/* Searched Users Row */}
-      {activeFeedTab === "search-results" && searchedUsers.length > 0 && (
-        <div className="premium-glass-card" style={{ padding: "16px", marginBottom: "20px", background: "var(--ce-premium-card)", border: "1px solid var(--ce-premium-border)" }}>
-          <h4 style={{ color: "var(--ce-premium-text)", margin: "0 0 12px 0", fontSize: "0.9rem", fontWeight: "600" }}>Matching Users ({searchedUsers.length})</h4>
-          <div style={{ display: "flex", gap: "12px", overflowX: "auto", paddingBottom: "8px" }} className="ce-horizontal-scroll">
-            {searchedUsers.map(dev => {
-              const isFollowed = followingList.some(f => String(f._id || f) === String(dev._id || dev.id));
-              return (
-                <div key={dev._id || dev.id} className="ce-search-user-card">
-                  <img
-                    src={dev.avatar || "/default-avatar.png"}
-                    alt={dev.username}
-                    style={{ width: "50px", height: "50px", borderRadius: "50%", objectFit: "cover", marginBottom: "8px", border: "2px solid #8b5cf6" }}
-                  />
-                  <span style={{ color: "var(--ce-premium-text)", fontSize: "0.82rem", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", cursor: "pointer" }} onClick={() => onViewProfile(dev._id || dev.id)}>
-                    {dev.username}
-                  </span>
-                  <span style={{ color: "var(--ce-premium-muted)", fontSize: "0.7rem", marginBottom: "8px", height: "16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>
-                    {dev.bio || "No bio"}
-                  </span>
-                  <button
-                    onClick={() => handleFollowToggle(dev._id || dev.id)}
-                    className={`follow-btn-mini ${isFollowed ? "following" : ""}`}
-                    style={{
-                      width: "100%",
-                      padding: "6px 8px",
-                      borderRadius: "20px",
-                      border: isFollowed ? "1px solid var(--ce-premium-border)" : "1px solid rgba(139, 92, 246, 0.25)",
-                      fontSize: "0.72rem",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      background: isFollowed ? "rgba(139, 92, 246, 0.05)" : "rgba(139, 92, 246, 0.1)",
-                      color: isFollowed ? "var(--ce-premium-muted)" : "#8b5cf6",
-                      transition: "all 0.2s ease",
-                      whiteSpace: "nowrap"
-                    }}
-                  >
-                    {isFollowed ? "Following" : "Follow"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Posts Feed list */}
-      <div className="feed-posts-list">
-        {isLoading ? (
-          // Shimmer loading skeletons
-          Array.from({ length: 6 }).map((_, i) => {
-            return (
-              <div 
-                key={i} 
-                className="premium-glass-card skeleton-shimmer"
-                style={{ minHeight: "180px" }}
-              >
-                <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "14px" }}>
-                  <div className="skeleton-circle skeleton-shimmer" />
-                  <div style={{ flex: 1 }}>
-                    <div className="skeleton-line title skeleton-shimmer" />
-                    <div className="skeleton-line skeleton-shimmer" style={{ width: "30%" }} />
-                  </div>
-                </div>
-                <div className="skeleton-line body-1 skeleton-shimmer" style={{ marginBottom: "10px" }} />
-                <div className="skeleton-line body-2 skeleton-shimmer" />
-              </div>
-            );
-          })
-        ) : filteredPostsList.length === 0 ? (
-          <div className="premium-glass-card" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 20px" }}>
-            {activeFeedTab === "search-results" ? (
-              <>
-                <Search size={32} style={{ color: "var(--ce-premium-muted)", marginBottom: "16px" }} />
-                <h4 style={{ color: "#fff", margin: "0 0 6px 0" }}>No search results found</h4>
-                <p style={{ color: "var(--ce-premium-muted)", fontSize: "0.82rem", margin: 0 }}>We couldn't find any posts matching "{searchQuery}"</p>
-              </>
-            ) : (
-              <>
-                <Sparkles size={32} style={{ color: "var(--ce-premium-muted)", marginBottom: "16px" }} />
-                <h4 style={{ color: "#fff", margin: "0 0 6px 0" }}>No activities found</h4>
-                <p style={{ color: "var(--ce-premium-muted)", fontSize: "0.82rem", margin: 0 }}>Be the first to share an update on CodeExpo!</p>
-              </>
-            )}
-          </div>
-        ) : (
-          filteredPostsList.slice(0, visiblePosts).map((post, index) => {
-            if (!post.author) return null;
-            const hasLiked = post.likes.includes(user?.id || user?._id);
-            const showComments = activeComments[post._id];
-            const isOwner = String(post.author._id) === String(user?.id || user?._id);
-            const isBookmarked = bookmarkedPostIds.has(post._id);
-
-            const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
-            const activeImgIdx = carouselIndices[post._id] || 0;
-
-            const isFollowed = followingList ? followingList.some(f => String(f._id || f) === String(post.author._id)) : false;
-
-            return (
-              <div
-                key={post._id}
-                className="premium-post-card"
-              >
-                  {/* Post Header */}
-                  <div className="post-header">
-                    <div 
-                      className="post-author-info" 
-                      onClick={() => onViewProfile && onViewProfile(post.author._id)}
-                      style={{ cursor: onViewProfile ? "pointer" : "default" }}
-                    >
-                      <div 
-                        className="post-avatar-ring" 
-                        style={{ width: "40px", height: "40px", cursor: "pointer" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.handleGlobalProfileNav) {
-                            window.handleGlobalProfileNav(post.author._id || post.author.id, post.author.username);
-                          } else if (onViewProfile) {
-                            onViewProfile(post.author._id || post.author.id);
-                          }
-                        }}
-                        title={`View @${post.author.username}'s profile`}
-                      >
-                        {post.author.avatar ? (
-                          <img src={post.author.avatar} alt={post.author.username} style={{ border: "1px solid #000" }} />
-                        ) : (
-                          <div className="comment-avatar-bubble-fallback" style={{ width: "36px", height: "36px" }}>
-                            {post.author.username.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <div className="post-name-section">
-                        <div className="post-username-row" style={{ display: "flex", flexWrap: "nowrap", gap: "6px", alignItems: "center", minWidth: 0 }}>
-                          <span className="post-username-text" style={{ display: "inline-flex", alignItems: "center", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: "130px" }}>
-                            @{post.author.username}
-                            {post.author.subscription && post.author.subscription.status === "active" && (
-                              <span 
-                                title={`${post.author.subscription.plan} Verified`} 
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  width: "12px",
-                                  height: "12px",
-                                  borderRadius: "50%",
-                                  background: post.author.subscription.plan === "Developer Pro" ? "#10b981" : "#f59e0b",
-                                  color: "#fff",
-                                  marginLeft: "5px",
-                                  fontSize: "7px",
-                                  fontWeight: "bold",
-                                  boxShadow: `0 0 6px ${post.author.subscription.plan === "Developer Pro" ? "rgba(16, 185, 129, 0.4)" : "rgba(245, 158, 11, 0.4)"}`,
-                                  flexShrink: 0
-                                }}
-                              >
-                                ✓
-                              </span>
-                            )}
-                          </span>
-                          {post.author.status === "Coding" && (
-                            <span className="post-dot-online" style={{ width: "6px", height: "6px" }} />
-                          )}
-                          {post.isPinned && (
-                            <span className="post-badge-pinned" title="Pinned by Administrator">📌 Pinned</span>
-                          )}
-                          {post.isFeatured && (
-                            <span className="post-badge-featured" title="Featured by Administrator">⭐ Featured</span>
-                          )}
-                          {post.isSensitive && (
-                            <span className="post-badge-sensitive-indicator" title="Flagged as Sensitive Content">⚠️ Sensitive</span>
-                          )}
-                        </div>
-                        <span className="post-author-role">{post.author.title || "Developer"}</span>
-                      </div>
-                    </div>
-
-                    <div className="post-meta-details" style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-                      <span title={new Date(post.createdAt).toLocaleString()} style={{ color: "var(--ce-premium-muted)", fontSize: "0.74rem", whiteSpace: "nowrap" }}>{formatPostTime(post.createdAt)}</span>
-                      {!isOwner && (
-                        <button
-                          onClick={() => handleFollowToggle(post.author._id)}
-                          style={{
-                            background: isFollowed ? "rgba(255, 255, 255, 0.05)" : "rgba(96, 165, 250, 0.08)",
-                            border: isFollowed ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(96, 165, 250, 0.25)",
-                            color: isFollowed ? "var(--ce-premium-muted)" : "#60a5fa",
-                            fontSize: "0.75rem",
-                            fontWeight: "600",
-                            cursor: "pointer",
-                            padding: "4px 12px",
-                            borderRadius: "20px",
-                            transition: "all 0.2s ease",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            whiteSpace: "nowrap"
-                          }}
-                        >
-                          {isFollowed ? "Following" : "+ Follow"}
-                        </button>
-                      )}
-                      
-                      {/* Post 3-dot Options Menu */}
-                      <div className="post-options-dropdown-container" style={{ position: "relative" }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActivePostMenuId(activePostMenuId === post._id ? null : post._id);
-                          }}
-                          className="post-dropdown-trigger"
-                          style={{ background: "none", border: "none", color: "var(--ce-premium-muted)", cursor: "pointer", display: "flex", alignItems: "center", padding: "4px" }}
-                          title="Options"
-                        >
-                          <MoreVertical size={14} />
-                        </button>
-                        {activePostMenuId === post._id && (
-                          <div className="ce-options-dropdown">
-                            {isOwner ? (
-                              <button
-                                onClick={() => {
-                                  setActivePostMenuId(null);
-                                  handleDeletePostClick(post._id);
-                                }}
-                                className="ce-options-dropdown-item danger"
-                              >
-                                <Trash2 size={13} />
-                                <span>Delete Post</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  setActivePostMenuId(null);
-                                  setReportedTargetUser(post.author);
-                                  setReportEvidenceType("POST");
-                                  setReportEvidenceId(post._id);
-                                  setReportModalOpen(true);
-                                }}
-                                className="ce-options-dropdown-item danger"
-                              >
-                                ⚠️ <span>Report Post</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                   {/* Sensitive overlay wrapper */}
-                  <div className="sensitive-overlay-container">
-                    <div className={post.isSensitive && !revealedSensitivePosts[post._id] ? "sensitive-blur-active" : ""}>
-                      {/* Post Content */}
-                      <div 
-                        className="post-card-content"
-                        onClick={() => onOpenPost && onOpenPost(post)}
-                        style={{ cursor: onOpenPost ? "pointer" : "default" }}
-                      >
-                        <ExpandableText lines={3} text={post.text}>
-                          {renderPostContent(post.text, addToast)}
-                        </ExpandableText>
-                      </div>
-
-                      {/* Render Poll section template if present */}
-                      {parsePollBlock(post._id, post.text)}
-
-                      {/* Render GitHub repository embed template if present */}
-                      {parseRepoBlock(post.text)}
-
-                      {/* Render Event embed template if present */}
-                      {parseEventBlock(post.text)}
-
-                      {/* Video Attachment with 16:9 aspect ratio */}
-                      {post.video && (
-                        <div 
-                          className="post-video-container" 
-                          onClick={() => onOpenPost && onOpenPost(post)}
-                          style={{ width: "calc(100% - 44px)", margin: "12px 22px 14px 22px", aspectRatio: "16/9", overflow: "hidden", borderRadius: "16px", background: "#000", border: "1px solid rgba(255, 255, 255, 0.1)", boxSizing: "border-box", cursor: onOpenPost ? "pointer" : "default" }}
-                        >
-                          <AutoplayVideo src={post.video} />
-                        </div>
-                      )}
-
-                      {/* Redesigned Premium Carousel Multi-Image Block - Full Aspect Ratio */}
-                      {postImages.length > 0 && (
-                        <div 
-                          className="post-carousel-container"
-                          onClick={() => onOpenPost && onOpenPost(post)}
-                          style={{ cursor: onOpenPost ? "pointer" : "default" }}
-                        >
-                          <div className="post-carousel-track" style={{ transform: `translateX(-${activeImgIdx * 100}%)` }}>
-                            {postImages.map((src, i) => (
-                              <div key={i} className="post-carousel-slide">
-                                <img src={src} alt={`Attachment ${i}`} className="post-carousel-image" />
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Carousel Arrow Controls */}
-                          {postImages.length > 1 && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handlePrevImage(post._id, postImages.length)}
-                                className="post-carousel-arrow left"
-                                title="Previous image"
-                              >
-                                <ChevronLeft size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleNextImage(post._id, postImages.length)}
-                                className="post-carousel-arrow right"
-                                title="Next image"
-                              >
-                                <ChevronRight size={16} />
-                              </button>
-
-                              {/* Carousel Dots indicators */}
-                              <div className="post-carousel-dots">
-                                {postImages.map((_, i) => (
-                                  <div
-                                    key={i}
-                                    className={`carousel-dot ${activeImgIdx === i ? "active" : ""}`}
-                                  />
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Tech chips block */}
-                      {post.techStack && post.techStack.length > 0 && (
-                        <div className="post-card-tags">
-                          {post.techStack.map(tag => (
-                            <span key={tag} className="post-tag">#{tag}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {post.isSensitive && !revealedSensitivePosts[post._id] && (
-                      <div className="sensitive-shield-mask">
-                        <h4 className="sensitive-shield-title">Sensitive Content</h4>
-                        <p className="sensitive-shield-desc">This post has been flagged as sensitive by the platform administrators.</p>
-                        <button
-                          type="button"
-                          className="btn-reveal-sensitive"
-                          onClick={() => setRevealedSensitivePosts(prev => ({ ...prev, [post._id]: true }))}
-                        >
-                          Show Sensitive Content
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Post Action Reactions row */}
-                  <div className="post-reactions-wrapper">
-                    <div className="post-reactions-group" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      {/* Liking Button - ONLY Heart Icon */}
-                      <button
-                        onClick={() => !post.likesDisabled && handleLikePost(post._id)}
-                        className={`post-like-heart-btn ${hasLiked ? "liked" : ""}`}
-                        style={{ opacity: post.likesDisabled ? 0.45 : 1, cursor: post.likesDisabled ? "not-allowed" : "pointer" }}
-                        title={post.likesDisabled ? "Likes are disabled for this post" : (hasLiked ? "Unlike" : "Like")}
-                        disabled={post.likesDisabled}
-                      >
-                        <div className="heart-icon-wrapper">
-                          <Heart size={16} className="post-heart-outline-svg" />
-                          <Heart size={16} className={`post-heart-fill-svg ${hasLiked ? "is-active" : ""}`} />
-                        </div>
-                      </button>
-
-                      {/* Likers Avatars Stack with Clickable More Option */}
-                      {(() => {
-                        const resolvedLikers = post.likes.map(resolveLikedUser).filter(Boolean);
-                        if (resolvedLikers.length === 0) return null;
-                        return (
-                          <div className="card-likes-avatars-stack" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              {resolvedLikers.slice(0, 3).map((u, i) => (
-                                <div
-                                  key={i}
-                                  className="avatar-stack-item"
-                                  style={{
-                                    width: "18px",
-                                    height: "18px",
-                                    borderRadius: "50%",
-                                    overflow: "hidden",
-                                    border: "1px solid var(--ce-surface-card)",
-                                    marginLeft: i > 0 ? "-6px" : "0",
-                                    zIndex: 10 - i,
-                                    cursor: "pointer"
-                                  }}
-                                  onClick={() => setLikedUsersListModal(resolvedLikers)}
-                                  title={`@${u.username}`}
-                                >
-                                  {u.avatar ? (
-                                    <img src={u.avatar} alt={u.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                  ) : (
-                                    <div className="avatar-fallback" style={{ width: "100%", height: "100%", fontSize: "0.6rem", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff" }}>
-                                      {(u.username || "D").charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => setLikedUsersListModal(resolvedLikers)}
-                              style={{ background: "none", border: "none", color: "var(--ce-primary)", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, padding: 0 }}
-                            >
-                              {resolvedLikers.length > 3 ? `+${resolvedLikers.length - 3} others` : `liked`}
-                            </button>
-                          </div>
-                        );
-                      })()}
-
-                      <button
-                        onClick={(e) => handleCommentsClick(post._id, e)}
-                        className="post-comments-pill-btn"
-                      >
-                        <MessageSquare size={14} />
-                        <span>{post.comments.length} Comments</span>
-                      </button>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                      <button
-                        onClick={() => toggleBookmark(post._id)}
-                        className="post-circular-icon-btn"
-                        style={{ color: isBookmarked ? "#8b5cf6" : undefined }}
-                        title="Bookmark post"
-                      >
-                        <Bookmark size={15} fill={isBookmarked ? "#8b5cf6" : "none"} color={isBookmarked ? "#8b5cf6" : "currentColor"} />
-                      </button>
-                      <div style={{ position: "relative" }}>
-                        <button
-                          onClick={() => setOpenSharePostId(openSharePostId === post._id ? null : post._id)}
-                          className="post-circular-icon-btn"
-                          title="Share link"
-                        >
-                          <Share2 size={15} />
-                        </button>
-                        {openSharePostId === post._id && (
-                          <div className="share-dropdown-menu">
-                            <button 
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/post/${post._id}`);
-                                addToast("Link copied to clipboard!", "success");
-                                setOpenSharePostId(null);
-                              }}
-                              style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}
-                            >
-                              <Copy size={13} style={{ color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon" /> Copy Link
-                            </button>
-                            <a 
-                              href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out this post on CodeExpo: " + window.location.origin + "/post/" + post._id)}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              onClick={() => setOpenSharePostId(null)}
-                            >
-                              <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: "13px", height: "13px", color: "var(--ce-text)", flexShrink: 0 }} className="share-dropdown-icon">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.46h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                              </svg> WhatsApp
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-              </div>
-            );
-          })
-        )}
-
-      </div>
-
-      {/* Load More button */}
-      {!isLoading && filteredPostsList.length > visiblePosts && (
-        <div style={{ display: "flex", justifyContent: "center", width: "100%", marginTop: "32px", marginBottom: "20px" }}>
-          <button
-            onClick={() => setVisiblePosts(prev => prev + 6)}
-            className="register-btn"
-            style={{ 
-              width: "auto", 
-              padding: "10px 28px",
-              borderRadius: "24px",
-              fontSize: "0.85rem",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "all 0.2s ease"
-            }}
-          >
-            Load More Posts
-          </button>
-        </div>
-      )}
-
-      {/* Delete Post Modal */}
-      <AnimatePresence>
-        {postToDelete && (
-          <FeedPortal>
-            <div className="ce-modal-overlay" onClick={() => setPostToDelete(null)} style={{ zIndex: 10009 }}>
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="ce-modal-card"
-                style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center", background: "#0a0a0f", border: "1px solid var(--ce-premium-border)" }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.1rem", fontWeight: "700" }}>Delete Activity?</h3>
-                <p style={{ margin: "0 0 20px 0", color: "var(--ce-premium-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
-                  Are you sure you want to delete this activity? This will permanently remove it from the global feed.
-                </p>
-                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-                  <button
-                    type="button"
-                    onClick={() => setPostToDelete(null)}
-                    style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#fff", fontSize: "0.75rem", fontWeight: "600", cursor: "pointer" }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmDeletePost}
-                    disabled={isDeletingPost}
-                    style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer" }}
-                  >
-                    {isDeletingPost ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </FeedPortal>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {likedUsersListModal && (
-          <FeedPortal>
-            <div className="ce-modal-overlay" onClick={() => setLikedUsersListModal(null)} style={{ zIndex: 100000 }}>
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="ce-modal-card"
-                style={{ maxWidth: "380px", width: "90%", padding: "20px", background: "var(--ce-surface-card)", border: "1px solid var(--ce-border)" }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                  <h3 style={{ margin: 0, color: "var(--ce-text-h)", fontSize: "1.1rem", fontWeight: "700" }}>Liked By</h3>
-                  <button 
-                    onClick={() => setLikedUsersListModal(null)} 
-                    style={{ background: "none", border: "none", color: "var(--ce-text-muted)", cursor: "pointer" }}
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "300px", overflowY: "auto", paddingRight: "4px" }}>
-                  {likedUsersListModal.map((liker, idx) => (
-                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px", background: "rgba(99, 102, 241, 0.04)", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
-                      <div 
-                        style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
-                        onClick={() => {
-                          setLikedUsersListModal(null);
-                          if (onViewProfile) onViewProfile(liker._id);
-                        }}
-                      >
-                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {liker.avatar ? (
-                            <img src={liker.avatar} alt={liker.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          ) : (
-                            <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ce-primary)", color: "#fff", fontSize: "0.8rem", fontWeight: "600" }}>
-                              {(liker.username || "D").charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                          <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ce-text)" }}>@{liker.username}</span>
-                          <span style={{ fontSize: "0.7rem", color: "var(--ce-text-muted)" }}>{liker.title || "Developer"}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-          </FeedPortal>
-        )}
-      </AnimatePresence>
-      {cropSource && (
-        <FeedPortal>
-          <ImageCropper
-            imageSrc={cropSource}
-            aspect={1.2}
-            onCropComplete={handleCropComplete}
-            onCancel={() => setCropSource(null)}
-          />
-        </FeedPortal>
-      )}
-
-      {/* Report User Modal */}
+      {/* Report Post / User Modal */}
       <ReportUserModal
         isOpen={reportModalOpen}
-        onClose={() => {
-          setReportModalOpen(false);
-          setReportedTargetUser(null);
-          setReportEvidenceType("");
-          setReportEvidenceId("");
-        }}
+        onClose={() => setReportModalOpen(false)}
         reportedUser={reportedTargetUser}
-        evidenceType={reportEvidenceType}
+        evidenceType={reportEvidenceType || "POST"}
         evidenceId={reportEvidenceId}
         addToast={addToast}
       />
 
-      {/* Sliding Comments Panel */}
-      <AnimatePresence>
-        {activeCommentsPanelPostId && activeCommentsPanelPost && (
-          <FeedPortal>
-            {/* Comments sliding panel */}
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
-              style={{ transformOrigin: getCommentsPanelTransformOrigin() }}
-              className="ce-comments-panel"
-            >
-              {/* Panel Header */}
-              <div className="comments-panel-header">
-                <div className="comments-panel-header-left">
-                  <div className="comments-panel-icon-badge">
-                    <MessageSquare size={18} />
-                  </div>
-                  <div className="comments-panel-header-text">
-                    <div className="comments-panel-title-row">
-                      <span className="comments-panel-title">Comments</span>
-                      <span className="count-badge">
-                        {activeCommentsPanelPost.comments?.length || 0}
-                      </span>
-                    </div>
-                    <p className="comments-panel-subtitle">Join the conversation and share your thoughts.</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="comments-panel-close-btn"
-                  onClick={() => {
-                    setActiveCommentsPanelPostId(null);
-                    setReplyingToComment(null);
-                  }}
-                  title="Close comments"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Scrollable list of comments */}
-              <div className="comments-panel-body" onScroll={handleCommentsScroll}>
-                {/* Mini Parent Post Detail Snapshot */}
-                <div 
-                  className="panel-parent-post-snapshot" 
-                  onClick={() => setShowParentPostModal(true)}
-                >
-                  <div className="panel-snapshot-left">
-                    <SafeAvatar 
-                      src={activeCommentsPanelPost.author.avatar} 
-                      name={activeCommentsPanelPost.author.username} 
-                      size={34} 
-                      className="panel-snapshot-avatar" 
-                      userId={activeCommentsPanelPost.author._id || activeCommentsPanelPost.author.id}
-                    />
-                    <div className="panel-snapshot-meta">
-                      <span className="panel-snapshot-author">@{activeCommentsPanelPost.author.username}</span>
-                      <span className="panel-snapshot-label">Original Post</span>
-                    </div>
-                  </div>
-                  <div className="panel-snapshot-right">
-                    <span className="panel-snapshot-action-btn">View Post</span>
-                  </div>
-                </div>
-
-                <div className="panel-divider" />
-
-                {(!activeCommentsPanelPost.comments || activeCommentsPanelPost.comments.length === 0) ? (
-                  <div className="comments-panel-empty-state">
-                    <div className="empty-state-icon-stack">
-                      <div className="empty-state-bubble-main">
-                        <MessageSquare size={30} />
-                      </div>
-                      <div className="empty-state-bubble-sub">
-                        <MessageSquare size={14} />
-                      </div>
-                      <Sparkles size={12} className="empty-state-sparkle sparkle-1" />
-                      <Sparkles size={10} className="empty-state-sparkle sparkle-2" />
-                    </div>
-                    <h4 className="empty-state-title">No comments yet</h4>
-                    <p className="empty-state-subtitle">
-                      Be the first to share your thoughts<br />
-                      and start the conversation!
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {(() => {
-                      const allComments = activeCommentsPanelPost.comments || [];
-                      const commentMap = new Map();
-                      allComments.forEach(c => {
-                        if (c && c._id) commentMap.set(String(c._id), c);
-                      });
-
-                      const extractMentionedUser = (text, comments) => {
-                        if (!text) return null;
-                        const bracketMatch = text.match(/^@\[([^\]]+)\]/);
-                        if (bracketMatch) return bracketMatch[1].trim();
-                        if (!text.startsWith("@")) return null;
-                        const rawAfterAt = text.substring(1);
-                        const knownUsernames = Array.from(new Set(comments.map(other => other.username).filter(Boolean)))
-                          .sort((a, b) => b.length - a.length);
-
-                        for (const uname of knownUsernames) {
-                          if (rawAfterAt.toLowerCase().startsWith(uname.toLowerCase())) {
-                            return uname;
-                          }
-                        }
-                        const fallbackMatch = text.match(/^@([^\s]+)/);
-                        return fallbackMatch ? fallbackMatch[1].trim() : null;
-                      };
-
-                      const getDirectParentId = (c) => {
-                        const cId = String(c._id);
-                        const savedParentId = c.parentCommentId || c.parentId || commentParentMap[cId];
-                        if (savedParentId && commentMap.has(String(savedParentId))) {
-                          return String(savedParentId);
-                        }
-
-                        const mentionedUser = extractMentionedUser(c.text, allComments);
-                        if (mentionedUser) {
-                          const priorComments = allComments
-                            .filter(other => 
-                              String(other._id) !== String(c._id) &&
-                              other.username?.toLowerCase() === mentionedUser.toLowerCase() &&
-                              new Date(other.createdAt) <= new Date(c.createdAt)
-                            )
-                            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-                          if (priorComments.length > 0) {
-                            return String(priorComments[0]._id);
-                          }
-                        }
-                        return null;
-                      };
-
-                      const directReplyMap = {};
-                      const mainComments = [];
-
-                      allComments.forEach(c => {
-                        const pId = getDirectParentId(c);
-                        if (pId && commentMap.has(pId) && pId !== String(c._id)) {
-                          if (!directReplyMap[pId]) {
-                            directReplyMap[pId] = [];
-                          }
-                          directReplyMap[pId].push(c);
-                        } else {
-                          mainComments.push(c);
-                        }
-                      });
-
-                      const parseReplyText = (text, comments) => {
-                        if (!text) return { mention: "", content: "" };
-                        const bracketMatch = text.match(/^@\[([^\]]+)\]\s*(.*)/s);
-                        if (bracketMatch) {
-                          return { mention: bracketMatch[1].trim(), content: bracketMatch[2].trim() };
-                        }
-                        if (text.startsWith("@")) {
-                          const rawAfterAt = text.substring(1);
-                          const knownUsernames = Array.from(new Set(comments.map(c => c.username).filter(Boolean)))
-                            .sort((a, b) => b.length - a.length);
-
-                          for (const uname of knownUsernames) {
-                            if (rawAfterAt.toLowerCase().startsWith(uname.toLowerCase())) {
-                              return { mention: uname, content: rawAfterAt.substring(uname.length).trim() };
-                            }
-                          }
-                        }
-                        return { mention: "", content: text };
-                      };
-
-                      const renderCommentItem = (c, depth = 0) => {
-                        const commentId = String(c._id);
-                        const isLiked = !!userLikedComments[commentId];
-                        const likesCount = commentLikes[commentId] !== undefined 
-                          ? commentLikes[commentId] 
-                          : getStableCommentLikesCount(commentId);
-
-                        const directReplies = directReplyMap[commentId] || [];
-                        const replyCount = directReplies.length;
-                        const isThreadExpanded = expandedCommentThreads[commentId] !== false;
-
-                        const isReplyCard = depth > 0;
-                        const { mention: rToUser, content: rDisplayContent } = isReplyCard 
-                          ? parseReplyText(c.text, allComments) 
-                          : { mention: "", content: c.text };
-
-                        return (
-                          <div key={c._id} className="comment-thread-group" style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ duration: 0.15 }}
-                              className={`panel-comment-card ${isReplyCard ? "is-reply" : ""}`}
-                            >
-                              <div className="panel-comment-avatar-container">
-                                <SafeAvatar 
-                                  src={c.avatar} 
-                                  name={c.username} 
-                                  size={isReplyCard ? 30 : 36} 
-                                  className="panel-comment-avatar" 
-                                  userId={c.user?._id || c.user?.id || c.user}
-                                />
-                              </div>
-                              <div className="panel-comment-info">
-                                <div className="panel-comment-meta">
-                                  <div className="panel-comment-author-group">
-                                    <span className="panel-comment-author">@{c.username}</span>
-                                  </div>
-                                  <span className="panel-comment-time">
-                                    {formatPostTime(c.createdAt)}
-                                  </span>
-                                </div>
-                                <div className="panel-comment-text">
-                                  <ExpandableText lines={3} text={rDisplayContent}>
-                                    {rToUser && <span className="reply-mention" style={{ marginRight: "4px" }}>@{rToUser}</span>}
-                                    {rDisplayContent}
-                                  </ExpandableText>
-                                </div>
-                                <div className="panel-comment-actions">
-                                  <div className="panel-comment-btn-group">
-                                    <button
-                                      type="button"
-                                      className={`comment-action-btn like-btn ${isLiked ? "liked" : ""}`}
-                                      onClick={() => handleToggleLikeComment(commentId)}
-                                    >
-                                      Like
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={`comment-action-btn reply-btn ${activeInlineReplyId === commentId ? "active" : ""}`}
-                                      onClick={() => {
-                                        if (activeInlineReplyId === commentId) {
-                                          setActiveInlineReplyId(null);
-                                          setInlineReplyText("");
-                                        } else {
-                                          setActiveInlineReplyId(commentId);
-                                          setInlineReplyText("");
-                                        }
-                                      }}
-                                    >
-                                      Reply
-                                    </button>
-                                  </div>
-                                  <div className={`comment-heart-count ${isLiked ? "active" : ""}`}>
-                                    <Heart 
-                                      size={11} 
-                                      fill={isLiked ? "#ec4899" : "none"} 
-                                      stroke={isLiked ? "#ec4899" : "currentColor"} 
-                                    />
-                                    <span>{likesCount}</span>
-                                  </div>
-                                </div>
-
-                                {activeInlineReplyId === commentId && (
-                                  <motion.div
-                                    initial={{ opacity: 0, y: -4 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -4 }}
-                                    className="inline-reply-box"
-                                  >
-                                    <div className="inline-reply-input-row">
-                                      <SafeAvatar src={user?.avatar} name={user?.username || "Me"} size={28} className="inline-reply-avatar" />
-                                      <input
-                                        type="text"
-                                        autoFocus
-                                        placeholder={`Reply to @${c.username}...`}
-                                        value={inlineReplyText}
-                                        onChange={(e) => setInlineReplyText(e.target.value)}
-                                        className="inline-reply-input"
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter" && inlineReplyText.trim()) {
-                                            e.preventDefault();
-                                            handleSubmitInlineReply(activeCommentsPanelPost._id, c._id, c.username);
-                                          }
-                                        }}
-                                      />
-                                    </div>
-                                    <div className="inline-reply-actions-row">
-                                      <button
-                                        type="button"
-                                        className="inline-reply-btn cancel-btn"
-                                        onClick={() => {
-                                          setActiveInlineReplyId(null);
-                                          setInlineReplyText("");
-                                        }}
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="inline-reply-btn submit-btn"
-                                        disabled={!inlineReplyText.trim()}
-                                        onClick={() => handleSubmitInlineReply(activeCommentsPanelPost._id, c._id, c.username)}
-                                      >
-                                        Reply
-                                      </button>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </div>
-                            </motion.div>
-
-                            {replyCount > 0 && (
-                              <div className="comment-thread-replies-section">
-                                <button
-                                  type="button"
-                                  className="toggle-thread-replies-btn"
-                                  onClick={() => setExpandedCommentThreads(prev => ({ ...prev, [commentId]: !isThreadExpanded }))}
-                                >
-                                  {isThreadExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                  <span>{isThreadExpanded ? `Hide ${replyCount} ${replyCount === 1 ? "reply" : "replies"}` : `View ${replyCount} ${replyCount === 1 ? "reply" : "replies"}`}</span>
-                                </button>
-
-                                {isThreadExpanded && (
-                                  <div className={`comment-replies-list ${depth > 0 ? "is-nested-depth" : ""}`}>
-                                    {directReplies.map(child => renderCommentItem(child, depth + 1))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      };
-
-                      const renderedList = mainComments.slice(0, visibleCommentsCount).map(c => renderCommentItem(c, 0));
-
-                      return (
-                        <>
-                          {renderedList}
-                          {mainComments.length > visibleCommentsCount && (
-                            <div style={{ display: "flex", justifyContent: "center", paddingTop: "8px", paddingBottom: "8px", width: "100%" }}>
-                              <button
-                                type="button"
-                                className="load-more-comments-btn"
-                                onClick={() => setVisibleCommentsCount(prev => prev + 20)}
-                              >
-                                Load more comments ({mainComments.length - visibleCommentsCount} remaining)
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-
-                    {isLoadingMoreComments && (
-                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "12px", gap: "8px" }}>
-                        <div className="comment-loader-spinner" />
-                        <span style={{ fontSize: "0.78rem", color: "var(--ce-premium-muted)" }}>Loading more comments...</span>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Simulated typing feedback */}
-                {typingPostIds.has(activeCommentsPanelPost._id) && (
-                  <div className="panel-comment-card" style={{ opacity: 0.65 }}>
-                    <div className="panel-comment-avatar-fallback">💬</div>
-                    <div className="panel-comment-info">
-                      <span style={{ fontSize: "0.8rem", color: "var(--ce-premium-muted)" }}>Typing comment...</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Panel Footer / Comment Input Area */}
-              <div className="comments-panel-footer">
-                {replyingToComment && (
-                  <div className="replying-to-bar">
-                    <span>Replying to <strong>@{replyingToComment.username}</strong></span>
-                    <button type="button" onClick={() => setReplyingToComment(null)}>✕</button>
-                  </div>
-                )}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handlePanelAddComment(activeCommentsPanelPost._id);
-                  }}
-                >
-                  <div className="comment-footer-input-row">
-                    <div className="comment-user-avatar-container">
-                      <SafeAvatar 
-                        src={user?.avatar} 
-                        name={user?.username || "Me"} 
-                        size={36} 
-                        className="comment-user-avatar" 
-                      />
-                      <span className="avatar-online-dot" />
-                    </div>
-                    <div className="comment-input-wrapper">
-                      <input
-                        type="text"
-                        placeholder={activeCommentsPanelPost.commentsLocked ? "Comments are locked" : "Write a comment..."}
-                        value={panelCommentInput}
-                        onChange={(e) => setPanelCommentInput(e.target.value)}
-                        className="comment-panel-textarea"
-                        disabled={activeCommentsPanelPost.commentsLocked}
-                      />
-                      <div className="comment-input-actions">
-                        <button type="button" className="comment-input-action-btn" title="Add emoji">
-                          <Smile size={18} />
-                        </button>
-                        <button type="button" className="comment-input-action-btn" title="Attach image">
-                          <Image size={18} />
-                        </button>
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={!panelCommentInput.trim() || activeCommentsPanelPost.commentsLocked}
-                      className="comment-panel-send-btn"
-                      title="Send comment"
-                    >
-                      <Send size={16} />
-                    </button>
-                  </div>
-                  <div className="comment-footer-microcopy">
-                    <ShieldCheck size={13} style={{ display: "inline-block", verticalAlign: "middle", marginRight: "4px" }} />
-                    <span>Be respectful and keep the conversation helpful.</span>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          </FeedPortal>
-        )}
-      </AnimatePresence>
-
-      {/* Parent Post Detail Modal Popup */}
-      <AnimatePresence>
-        {showParentPostModal && activeCommentsPanelPost && (
-          <FeedPortal>
-            <div className="parent-post-popup-overlay" onClick={() => setShowParentPostModal(false)}>
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="parent-post-popup-card"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Close Button */}
-                <button 
-                  type="button"
-                  className="parent-post-popup-close"
-                  onClick={() => setShowParentPostModal(false)}
-                >
-                  <X size={18} />
-                </button>
-
-                {/* Header */}
-                <div className="popup-post-header">
-                  <div className="popup-author-info">
-                    {activeCommentsPanelPost.author.avatar ? (
-                      <img src={activeCommentsPanelPost.author.avatar} alt={activeCommentsPanelPost.author.username} className="popup-author-avatar" />
-                    ) : (
-                      <div className="popup-author-avatar-fallback">
-                        {(activeCommentsPanelPost.author.username || "A").charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="popup-author-meta">
-                      <span className="popup-author-name">@{activeCommentsPanelPost.author.username}</span>
-                      <span className="popup-author-time">{formatPostTime(activeCommentsPanelPost.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Content scroll area */}
-                <div className="popup-post-content-area">
-                  <div className="popup-post-text">
-                    <ExpandableText lines={3} text={activeCommentsPanelPost.text}>
-                      {activeCommentsPanelPost.text}
-                    </ExpandableText>
-                  </div>
-                  {activeCommentsPanelPost.image && (
-                    <div className="popup-post-image-wrapper">
-                      <img src={activeCommentsPanelPost.image} alt="Attached content" className="popup-post-image" />
-                    </div>
-                  )}
-                  {activeCommentsPanelPost.video && (
-                    <div className="popup-post-video-wrapper" style={{ width: "100%", aspectRatio: "16/9", overflow: "hidden", borderRadius: "12px", background: "#000", marginTop: "10px", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                      <AutoplayVideo src={activeCommentsPanelPost.video} />
-                    </div>
-                  )}
-                  {activeCommentsPanelPost.code && (
-                    <div className="popup-post-code-snippet">
-                      <span className="popup-post-code-lang">{activeCommentsPanelPost.codeLanguage || "code"}</span>
-                      <pre><code>{activeCommentsPanelPost.code}</code></pre>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer with Likes Info */}
-                <div className="popup-post-footer">
-                  <div className="popup-post-likes">
-                    <Heart size={14} fill="#ec4899" stroke="#ec4899" />
-                    <span style={{ fontSize: "0.85rem", fontWeight: "600", marginLeft: "4px" }}>{activeCommentsPanelPost.likes?.length || 0} Likes</span>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </FeedPortal>
-        )}
-      </AnimatePresence>
+      {/* Rebuilt Modular Feed Page Component */}
+      <FeedPage
+        user={user}
+        posts={filteredPostsList}
+        stories={stories}
+        onlineUsers={onlineUsers}
+        suggestedUsers={suggestions}
+        followingList={followingList}
+        onCreatePost={(data) => {
+          if (data && data.content && data.content.trim()) {
+            setInputText(data.content);
+            handleCreatePost(null, data.content);
+          } else {
+            setIsComposerOpen(true);
+          }
+        }}
+        onLikePost={handleLikePost}
+        onCommentPost={handleAddComment}
+        onBookmarkPost={toggleBookmark}
+        onSharePost={(id) => {
+          const shareUrl = `${window.location.origin}/dashboard/feed?post=${id}`;
+          if (navigator.share) {
+            navigator.share({
+              title: "CodeExpo Post",
+              text: "Check out this developer post on CodeExpo!",
+              url: shareUrl
+            }).then(() => {
+              addToast("Post shared successfully!", "success");
+            }).catch(() => {
+              if (navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(shareUrl);
+                addToast("Post link copied to clipboard!", "success");
+              }
+            });
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareUrl);
+            addToast("Post link copied to clipboard!", "success");
+          } else {
+            addToast("Share URL: " + shareUrl, "info");
+          }
+        }}
+        onFollowToggle={handleFollowToggle}
+        onUserClick={(userId) => onViewProfile ? onViewProfile(userId) : navigate(`/dashboard/profile/${userId}`)}
+        onMessageUser={(userId) => navigate(`/dashboard/messages?user=${userId}`)}
+        onOpenComposer={() => setIsComposerOpen(true)}
+        onDeletePost={handleDeletePostClick}
+        onReportPost={(postId, targetUser) => {
+          setReportedTargetUser(targetUser);
+          setReportEvidenceType("post");
+          setReportEvidenceId(postId);
+          setReportModalOpen(true);
+        }}
+        addToast={addToast}
+      />
     </div>
   );
 }
-
-

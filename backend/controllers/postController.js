@@ -294,32 +294,108 @@ const toggleLikePost = async (req, res) => {
   }
 };
 
+const findNodeRecursively = (items, targetId) => {
+  if (!items || !Array.isArray(items)) return null;
+  for (const item of items) {
+    if (String(item._id) === String(targetId)) return item;
+    if (item.replies && item.replies.length > 0) {
+      const found = findNodeRecursively(item.replies, targetId);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+const countAllCommentsServer = (comments) => {
+  if (!comments || !Array.isArray(comments)) return 0;
+  let count = 0;
+  for (const c of comments) {
+    count += 1;
+    if (c.replies && Array.isArray(c.replies)) {
+      count += countAllCommentsServer(c.replies);
+    }
+  }
+  return count;
+};
+
+const deleteNodeRecursively = (items, targetId, userId, isPostOwner, isAdmin) => {
+  if (!items || !Array.isArray(items)) return false;
+  const index = items.findIndex(item => String(item._id) === String(targetId));
+  if (index !== -1) {
+    const itemObj = items[index];
+    const isAuthor = String(itemObj.user) === String(userId);
+    if (!isPostOwner && !isAuthor && !isAdmin) {
+      const err = new Error("Unauthorized to delete this message");
+      err.status = 403;
+      throw err;
+    }
+    items.splice(index, 1);
+    return true;
+  }
+  for (const item of items) {
+    if (item.replies && item.replies.length > 0) {
+      const deleted = deleteNodeRecursively(item.replies, targetId, userId, isPostOwner, isAdmin);
+      if (deleted) return true;
+    }
+  }
+  return false;
+};
+
 const addComment = async (req, res) => {
   try {
     const postId = req.params.id;
-    const { text } = req.body;
+    const { text, commentId, parentCommentId } = req.body;
+    const targetParentId = parentCommentId || commentId;
     const userId = req.user._id;
 
     if (!text) {
       return res.status(400).json({ success: false, message: "Comment content is required" });
     }
 
-    const comment = {
-      user: userId,
-      username: req.user.username,
-      avatar: req.user.avatar || "",
-      text,
-      createdAt: new Date()
-    };
-
-    const [updatedPost] = await Promise.all([
-      Post.findByIdAndUpdate(postId, { $push: { comments: comment } }, { returnDocument: 'after', select: "comments author" }).lean(),
-      User.findByIdAndUpdate(userId, { $inc: { contributionScore: 1 } })
-    ]);
-
-    if (!updatedPost) {
+    const post = await Post.findById(postId);
+    if (!post) {
       return res.status(404).json({ success: false, message: "Post not found" });
     }
+
+    if (targetParentId) {
+      const targetNode = findNodeRecursively(post.comments, targetParentId);
+      if (targetNode) {
+        targetNode.replies = targetNode.replies || [];
+        targetNode.replies.push({
+          user: userId,
+          username: req.user.username,
+          avatar: req.user.avatar || "",
+          text,
+          likes: [],
+          replies: [],
+          createdAt: new Date()
+        });
+      } else {
+        post.comments.push({
+          user: userId,
+          username: req.user.username,
+          avatar: req.user.avatar || "",
+          text,
+          likes: [],
+          replies: [],
+          createdAt: new Date()
+        });
+      }
+    } else {
+      post.comments.push({
+        user: userId,
+        username: req.user.username,
+        avatar: req.user.avatar || "",
+        text,
+        likes: [],
+        replies: [],
+        createdAt: new Date()
+      });
+    }
+
+    post.markModified("comments");
+    await post.save();
+    await User.findByIdAndUpdate(userId, { $inc: { contributionScore: 1 } });
 
     // Emit real-time socket event
     try {
@@ -327,21 +403,71 @@ const addComment = async (req, res) => {
       if (socketHandler.io) {
         socketHandler.io.emit("post:commented", {
           postId,
-          comments: updatedPost.comments,
-          commentsCount: updatedPost.comments.length
+          comments: post.comments,
+          commentsCount: countAllCommentsServer(post.comments)
         });
 
-        // Send notification to the post author if commented by another user
-        if (String(updatedPost.author) !== String(userId)) {
+        if (String(post.author) !== String(userId)) {
           const { createAndSendNotification } = require("./notificationControllers");
-          await createAndSendNotification(updatedPost.author, userId, "COMMENT", "SOCIAL", null, socketHandler.io, postId);
+          await createAndSendNotification(post.author, userId, "COMMENT", "SOCIAL", null, socketHandler.io, postId);
         }
       }
     } catch (e) {
       console.error("Failed to emit post:commented or send notification:", e.message);
     }
 
-    res.status(200).json({ success: true, comments: updatedPost.comments });
+    res.status(200).json({ success: true, comments: post.comments });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const toggleLikeComment = async (req, res) => {
+  try {
+    const { id: postId, commentId } = req.params;
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post not found" });
+    }
+
+    const targetComment = findNodeRecursively(post.comments, commentId);
+
+    if (!targetComment) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+
+    targetComment.likes = targetComment.likes || [];
+    const isLiked = targetComment.likes.some(id => String(id) === String(userId));
+    if (isLiked) {
+      targetComment.likes = targetComment.likes.filter(id => String(id) !== String(userId));
+    } else {
+      targetComment.likes.push(userId);
+    }
+
+    post.markModified("comments");
+    await post.save();
+
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("post:commented", {
+          postId,
+          comments: post.comments,
+          commentsCount: countAllCommentsServer(post.comments)
+        });
+      }
+    } catch (e) {
+      console.error("Failed to emit comment like event:", e.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      comments: post.comments,
+      isLiked: !isLiked,
+      likesCount: targetComment.likes.length
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -415,11 +541,83 @@ const getPostById = async (req, res) => {
   }
 };
 
+const deleteComment = async (req, res) => {
+  try {
+    const { id: postId, commentId } = req.params;
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post not found" });
+    }
+
+    const isPostOwner = String(post.author) === String(userId);
+
+    const commentIndex = post.comments.findIndex(c => String(c._id) === String(commentId));
+
+    if (commentIndex !== -1) {
+      const commentObj = post.comments[commentIndex];
+      const isCommentAuthor = String(commentObj.user) === String(userId);
+
+      if (!isPostOwner && !isCommentAuthor && req.user.role !== "admin") {
+        return res.status(403).json({ success: false, message: "Unauthorized to delete this comment" });
+      }
+
+      post.comments.splice(commentIndex, 1);
+    } else {
+      let replyFound = false;
+      for (const c of post.comments) {
+        if (c.replies) {
+          const replyIndex = c.replies.findIndex(r => String(r._id) === String(commentId));
+          if (replyIndex !== -1) {
+            const replyObj = c.replies[replyIndex];
+            const isReplyAuthor = String(replyObj.user) === String(userId);
+
+            if (!isPostOwner && !isReplyAuthor && req.user.role !== "admin") {
+              return res.status(403).json({ success: false, message: "Unauthorized to delete this reply" });
+            }
+
+            c.replies.splice(replyIndex, 1);
+            replyFound = true;
+            break;
+          }
+        }
+      }
+
+      if (!replyFound) {
+        return res.status(404).json({ success: false, message: "Comment or reply not found" });
+      }
+    }
+
+    post.markModified("comments");
+    await post.save();
+
+    try {
+      const socketHandler = require("../sockets/socketHandler");
+      if (socketHandler.io) {
+        socketHandler.io.emit("post:commented", {
+          postId,
+          comments: post.comments,
+          commentsCount: countAllCommentsServer(post.comments)
+        });
+      }
+    } catch (e) {
+      console.error("Failed to emit comment deletion socket event:", e.message);
+    }
+
+    res.status(200).json({ success: true, message: "Comment deleted successfully", comments: post.comments });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createPost,
   getPosts,
   getPostById,
   toggleLikePost,
   addComment,
+  toggleLikeComment,
+  deleteComment,
   deletePost
 };
