@@ -6196,7 +6196,7 @@ function Dashboard() {
           {/* ROOM REQUESTS & MY ROOMS SECTION */}
           {activeSection === "room-requests" && (() => {
             const ownedRooms = historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id);
-            
+
             // Filtering for My Created Rooms tab
             const filteredOwnedRooms = ownedRooms.filter(room => {
               if (!room) return false;
@@ -6205,9 +6205,9 @@ function Dashboard() {
               const roomId = (room.roomId || "").toLowerCase();
               const lang = (room.language || "").toLowerCase();
               const matchesSearch = title.includes(term) || roomId.includes(term) || lang.includes(term);
-              
+
               if (!matchesSearch) return false;
-              
+
               if (roomRequestsFilter === "pending") {
                 const roomReqs = joinRequests.filter(req => req.roomId === room.roomId);
                 return roomReqs.length > 0;
@@ -6227,202 +6227,283 @@ function Dashboard() {
                 style={{ width: "100%", height: "100%" }}
               >
                 <div className="room-requests-section-container" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                  
-                   {/* Top Section Banner & Action Header */}
-                  <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "8px" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <GitPullRequest size={18} className="brand-logo" style={{ color: "var(--ce-primary)" }} />
-                        <h3 className="section-title">Room Requests & Workspaces</h3>
-                      </div>
-                      <p style={{ fontSize: "0.78rem", color: "var(--ce-text-muted)", margin: 0 }}>
-                        View and manage all your created workspaces, incoming join approvals, and sent requests.
-                      </p>
-                    </div>
-                    <button
-                      className="ce-btn-primary"
-                      onClick={() => {
-                        setFormData({ title: "", language: "javascript", isPrivate: false });
-                        setShowQuickCreateModal(true);
-                      }}
-                      style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", borderRadius: "8px", fontWeight: "600", fontSize: "0.82rem", background: "var(--ce-primary)", color: "#fff", border: "none", cursor: "pointer" }}
-                    >
-                      <Plus size={14} /> Create Workspace
-                    </button>
-                  </div>
 
-                  {/* Top Stats Cards Grid */}
-                  <div className="ce-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-                    <div className="compact-stat-card" style={{
-                      background: activeTheme === "light"
-                        ? "linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(99, 102, 241, 0.01) 100%)"
-                        : "linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0.01) 100%)",
-                      border: "1px solid rgba(99, 102, 241, 0.15)",
-                      borderRadius: "14px",
-                      padding: "16px 20px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "14px",
-                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                      transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-3px)";
-                      e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.4)";
-                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(99, 102, 241, 0.12)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.15)";
-                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15)";
-                    }}
-                    >
-                      <div style={{
-                        width: "44px",
-                        height: "44px",
-                        borderRadius: "12px",
-                        background: "rgba(99, 102, 241, 0.12)",
-                        color: "rgb(99, 102, 241)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 12px rgba(99, 102, 241, 0.2)"
-                      }}>
-                        <FolderGit size={20} />
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                        <span style={{ fontSize: "0.74rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "0.6px" }}>My Workspaces</span>
-                        <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "#6366f1", textShadow: "0 0 10px rgba(99, 102, 241, 0.3)" }}>{ownedRooms.length}</span>
-                      </div>
-                    </div>
 
-                    <div className="compact-stat-card" style={{
-                      background: activeTheme === "light"
-                        ? "linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, rgba(245, 158, 11, 0.01) 100%)"
-                        : "linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(245, 158, 11, 0.01) 100%)",
-                      border: "1px solid rgba(245, 158, 11, 0.15)",
-                      borderRadius: "14px",
-                      padding: "16px 20px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "14px",
-                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                      transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-3px)";
-                      e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.4)";
-                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(245, 158, 11, 0.12)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.15)";
-                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15)";
-                    }}
-                    >
-                      <div style={{
-                        width: "44px",
-                        height: "44px",
-                        borderRadius: "12px",
-                        background: "rgba(245, 158, 11, 0.12)",
-                        color: "rgb(245, 158, 11)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 12px rgba(245, 158, 11, 0.2)"
-                      }}>
-                        <ShieldAlert size={20} />
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                        <span style={{ fontSize: "0.74rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "0.6px" }}>Pending Access Requests</span>
-                        <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "#f59e0b", textShadow: "0 0 10px rgba(245, 158, 11, 0.3)" }}>{joinRequests.length}</span>
-                      </div>
-                    </div>
+                  {/* Injecting Clothesline CSS styles block dynamically */}
+                  <style>{`
+                    .ce-clothesline-container {
+                      position: relative;
+                      width: 100%;
+                      padding: 16px 0 16px 0;
+                      margin-bottom: 20px;
+                      display: flex;
+                      justify-content: center;
+                      align-items: center;
+                      background: radial-gradient(ellipse at 50% -30%, rgba(124, 58, 237, 0.05) 0%, transparent 80%);
+                    }
 
-                    <div className="compact-stat-card" style={{
-                      background: activeTheme === "light"
-                        ? "linear-gradient(135deg, rgba(139, 92, 246, 0.04) 0%, rgba(139, 92, 246, 0.01) 100%)"
-                        : "linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(139, 92, 246, 0.01) 100%)",
-                      border: "1px solid rgba(139, 92, 246, 0.15)",
-                      borderRadius: "14px",
-                      padding: "16px 20px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "14px",
-                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                      transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-3px)";
-                      e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.4)";
-                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(139, 92, 246, 0.12)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.15)";
-                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15)";
-                    }}
-                    >
-                      <div style={{
-                        width: "44px",
-                        height: "44px",
-                        borderRadius: "12px",
-                        background: "rgba(139, 92, 246, 0.12)",
-                        color: "rgb(139, 92, 246)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 12px rgba(139, 92, 246, 0.2)"
-                      }}>
-                        <Lock size={20} />
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                        <span style={{ fontSize: "0.74rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "0.6px" }}>Private Rooms</span>
-                        <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "#8b5cf6", textShadow: "0 0 10px rgba(139, 92, 246, 0.3)" }}>{ownedRooms.filter(r => r.isPrivate).length}</span>
-                      </div>
-                    </div>
+                    .ce-clothesline-rope {
+                      position: absolute;
+                      top: 12px;
+                      left: 2%;
+                      width: 96%;
+                      height: 4px;
+                      background: linear-gradient(to right, #8c6046 0%, #a67c52 30%, #8c6046 50%, #a67c52 70%, #70442c 100%);
+                      border-radius: 4px;
+                      box-shadow: 
+                        0 6px 12px rgba(0, 0, 0, 0.45),
+                        0 20px 30px rgba(0, 0, 0, 0.15);
+                      z-index: 1;
+                    }
 
-                    <div className="compact-stat-card" style={{
-                      background: activeTheme === "light"
-                        ? "linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(16, 185, 129, 0.01) 100%)"
-                        : "linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(16, 185, 129, 0.01) 100%)",
-                      border: "1px solid rgba(16, 185, 129, 0.15)",
-                      borderRadius: "14px",
-                      padding: "16px 20px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "14px",
-                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                      transition: "transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-3px)";
-                      e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.4)";
-                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(16, 185, 129, 0.12)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.15)";
-                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15)";
-                    }}
-                    >
-                      <div style={{
-                        width: "44px",
-                        height: "44px",
-                        borderRadius: "12px",
-                        background: "rgba(16, 185, 129, 0.12)",
-                        color: "rgb(16, 185, 129)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 12px rgba(16, 185, 129, 0.2)"
-                      }}>
-                        <Radio size={20} />
+                    .ce-stats-grid-clothesline {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                      gap: 28px;
+                      width: 100%;
+                      z-index: 2;
+                      position: relative;
+                    }
+
+                    .ce-hanging-card {
+                      position: relative;
+                      display: flex;
+                      flex-direction: column;
+                      align-items: center;
+                      padding: 24px 20px;
+                      border-radius: 6px;
+                      color: #ffffff;
+                      box-shadow: 
+                        0 16px 36px rgba(0, 0, 0, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                        inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+                      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+                      cursor: default;
+                      margin-top: 14px;
+                    }
+
+                    .ce-clothespin {
+                      position: absolute;
+                      top: -24px;
+                      left: 50%;
+                      transform: translateX(-50%);
+                      width: 12px;
+                      height: 32px;
+                      background: linear-gradient(to right, #cf9e6e, #b88656, #a17042);
+                      border-radius: 2px;
+                      box-shadow: 
+                        2px 4px 6px rgba(0, 0, 0, 0.35),
+                        inset 1px 1px 0 rgba(255, 255, 255, 0.25);
+                      z-index: 3;
+                    }
+
+                    .ce-clothespin::after {
+                      content: '';
+                      position: absolute;
+                      top: 10px;
+                      left: -1px;
+                      width: 14px;
+                      height: 4px;
+                      background: #718096;
+                      border-radius: 1px;
+                      box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+                    }
+
+                    .ce-hanging-card.card-1:hover {
+                      transform: rotate(2deg) scale(1.03);
+                      box-shadow: 0 24px 48px rgba(99, 102, 241, 0.25);
+                    }
+                    .ce-hanging-card.card-2:hover {
+                      transform: rotate(-2deg) scale(1.03);
+                      box-shadow: 0 24px 48px rgba(245, 158, 11, 0.25);
+                    }
+                    .ce-hanging-card.card-3:hover {
+                      transform: rotate(2deg) scale(1.03);
+                      box-shadow: 0 24px 48px rgba(168, 85, 247, 0.25);
+                    }
+                    .ce-hanging-card.card-4:hover {
+                      transform: rotate(-2deg) scale(1.03);
+                      box-shadow: 0 24px 48px rgba(16, 185, 129, 0.25);
+                    }
+
+                    .ce-hanging-card.card-1 {
+                      background: linear-gradient(135deg, #3730a3 0%, #1e1b4b 100%);
+                      border: 1px solid rgba(99, 102, 241, 0.35);
+                      transform: rotate(-1.5deg);
+                    }
+
+                    .ce-hanging-card.card-2 {
+                      background: linear-gradient(135deg, #854d0e 0%, #451a03 100%);
+                      border: 1px solid rgba(245, 158, 11, 0.35);
+                      transform: rotate(1deg);
+                    }
+
+                    .ce-hanging-card.card-3 {
+                      background: linear-gradient(135deg, #581c87 0%, #2e1065 100%);
+                      border: 1px solid rgba(168, 85, 247, 0.35);
+                      transform: rotate(-1deg);
+                    }
+
+                    .ce-hanging-card.card-4 {
+                      background: linear-gradient(135deg, #065f46 0%, #022c22 100%);
+                      border: 1px solid rgba(16, 185, 129, 0.35);
+                      transform: rotate(1.5deg);
+                    }
+
+                    .ce-card-icon-container {
+                      width: 44px;
+                      height: 44px;
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      margin-bottom: 12px;
+                      background: rgba(255, 255, 255, 0.08);
+                      border: 1px solid rgba(255, 255, 255, 0.15);
+                      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+                    }
+
+                    .card-1 .ce-card-icon-container {
+                      background: rgba(99, 102, 241, 0.2);
+                      color: #a5b4fc;
+                      border-color: rgba(99, 102, 241, 0.35);
+                      box-shadow: 0 0 14px rgba(99, 102, 241, 0.3);
+                    }
+
+                    .card-2 .ce-card-icon-container {
+                      background: rgba(245, 158, 11, 0.2);
+                      color: #fbbf24;
+                      border-color: rgba(245, 158, 11, 0.35);
+                      box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+                    }
+
+                    .card-3 .ce-card-icon-container {
+                      background: rgba(168, 85, 247, 0.2);
+                      color: #c084fc;
+                      border-color: rgba(168, 85, 247, 0.35);
+                      box-shadow: 0 0 14px rgba(168, 85, 247, 0.3);
+                    }
+
+                    .card-4 .ce-card-icon-container {
+                      background: rgba(16, 185, 129, 0.2);
+                      color: #34d399;
+                      border-color: rgba(16, 185, 129, 0.35);
+                      box-shadow: 0 0 14px rgba(16, 185, 129, 0.3);
+                    }
+
+                    .ce-card-title {
+                      font-size: 0.68rem;
+                      font-weight: 800;
+                      text-transform: uppercase;
+                      color: rgba(255, 255, 255, 0.75);
+                      letter-spacing: 1px;
+                      margin-bottom: 8px;
+                      text-align: center;
+                    }
+
+                    .ce-card-value {
+                      font-size: 2.4rem;
+                      font-weight: 900;
+                      line-height: 1;
+                      margin-bottom: 8px;
+                      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+                    }
+
+                    .card-1 .ce-card-value { color: #a5b4fc; }
+                    .card-2 .ce-card-value { color: #fde047; }
+                    .card-3 .ce-card-value { color: #e9d5ff; }
+                    .card-4 .ce-card-value { color: #a7f3d0; }
+
+                    .ce-card-subtitle {
+                      font-size: 0.72rem;
+                      color: rgba(255, 255, 255, 0.5);
+                      text-align: center;
+                      line-height: 1.3;
+                    }
+
+                    /* Light theme overrides for clothesline stats */
+                    .home-page.light-theme .ce-hanging-card.card-1 {
+                      background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+                      border-color: rgba(99, 102, 241, 0.2);
+                      color: #1e1b4b;
+                    }
+                    .home-page.light-theme .ce-hanging-card.card-2 {
+                      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                      border-color: rgba(245, 158, 11, 0.2);
+                      color: #451a03;
+                    }
+                    .home-page.light-theme .ce-hanging-card.card-3 {
+                      background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+                      border-color: rgba(168, 85, 247, 0.2);
+                      color: #2e1065;
+                    }
+                    .home-page.light-theme .ce-hanging-card.card-4 {
+                      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+                      border-color: rgba(16, 185, 129, 0.2);
+                      color: #022c22;
+                    }
+
+                    .home-page.light-theme .ce-card-title {
+                      color: rgba(0, 0, 0, 0.6);
+                    }
+                    .home-page.light-theme .ce-card-subtitle {
+                      color: rgba(0, 0, 0, 0.55);
+                    }
+                    .home-page.light-theme .card-1 .ce-card-value { color: #3730a3; }
+                    .home-page.light-theme .card-2 .ce-card-value { color: #854d0e; }
+                    .home-page.light-theme .card-3 .ce-card-value { color: #581c87; }
+                    .home-page.light-theme .card-4 .ce-card-value { color: #065f46; }
+                  `}</style>
+
+                  {/* Clothesline stats container */}
+                  <div className="ce-clothesline-container">
+                    <div className="ce-clothesline-rope"></div>
+                    <div className="ce-stats-grid-clothesline">
+
+                      {/* Card 1: My Workspaces */}
+                      <div className="ce-hanging-card card-1">
+                        <div className="ce-clothespin"></div>
+                        <div className="ce-card-icon-container">
+                          <FolderGit size={18} />
+                        </div>
+                        <span className="ce-card-title">My Workspaces</span>
+                        <span className="ce-card-value">{ownedRooms.length}</span>
+                        <span className="ce-card-subtitle">Total workspaces created by you</span>
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                        <span style={{ fontSize: "0.74rem", fontWeight: "700", textTransform: "uppercase", color: "var(--ce-text-muted)", letterSpacing: "0.6px" }}>Live Active Rooms</span>
-                        <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "#10b981", textShadow: "0 0 10px rgba(16, 185, 129, 0.3)" }}>{ownedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}</span>
+
+                      {/* Card 2: Pending Access Requests */}
+                      <div className="ce-hanging-card card-2">
+                        <div className="ce-clothespin"></div>
+                        <div className="ce-card-icon-container">
+                          <ShieldAlert size={18} />
+                        </div>
+                        <span className="ce-card-title">Pending Access Requests</span>
+                        <span className="ce-card-value">{joinRequests.length}</span>
+                        <span className="ce-card-subtitle">Requests waiting for your approval</span>
                       </div>
+
+                      {/* Card 3: Private Rooms */}
+                      <div className="ce-hanging-card card-3">
+                        <div className="ce-clothespin"></div>
+                        <div className="ce-card-icon-container">
+                          <Lock size={18} />
+                        </div>
+                        <span className="ce-card-title">Private Rooms</span>
+                        <span className="ce-card-value">{ownedRooms.filter(r => r.isPrivate).length}</span>
+                        <span className="ce-card-subtitle">Private rooms created by you</span>
+                      </div>
+
+                      {/* Card 4: Live Active Rooms */}
+                      <div className="ce-hanging-card card-4">
+                        <div className="ce-clothespin"></div>
+                        <div className="ce-card-icon-container">
+                          <Radio size={18} />
+                        </div>
+                        <span className="ce-card-title">Live Active Rooms</span>
+                        <span className="ce-card-value">{ownedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}</span>
+                        <span className="ce-card-subtitle">Rooms currently live and active</span>
+                      </div>
+
                     </div>
                   </div>
 
@@ -6516,7 +6597,7 @@ function Dashboard() {
                   {/* TAB CONTENT: MY CREATED ROOMS */}
                   {roomRequestsTab === "myrooms" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                      
+
                       {/* Filter Quick Pills */}
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                         <span style={{ fontSize: "0.78rem", fontWeight: "600", color: "var(--ce-text-muted)", marginRight: "4px" }}>Filter:</span>
@@ -6834,7 +6915,7 @@ function Dashboard() {
 
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                        
+
                         {/* Go Back Link if viewing room requests for a specific room */}
                         {manageRequestsRoomId && (
                           <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "4px", marginBottom: "10px" }}>
@@ -6929,7 +7010,7 @@ function Dashboard() {
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                            
+
                             {/* Search and Sort Toolbar */}
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
@@ -6972,7 +7053,7 @@ function Dashboard() {
 
                             {/* Split Layout: Left List vs Right Detail Panel */}
                             <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "24px" }} className="manage-requests-split-layout">
-                              
+
                               {/* Left Column: Requests Cards List */}
                               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                                 {filteredRequests.slice(0, manageRequestLimit).map(req => {

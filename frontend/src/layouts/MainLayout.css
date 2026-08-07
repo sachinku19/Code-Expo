@@ -1176,11 +1176,11 @@ body {
 }
 
 .ce-sidebar.collapsed {
-  width: 80px;
+  width: 68px;
 }
 
 .ce-sidebar.expanded {
-  width: 260px;
+  width: 220px;
 }
 
 .sidebar-header-pin {
@@ -1425,11 +1425,11 @@ body {
 }
 
 .ce-main-content.sidebar-collapsed {
-  margin-left: 80px;
+  margin-left: 68px;
 }
 
 .ce-main-content.sidebar-expanded {
-  margin-left: 260px;
+  margin-left: 220px;
 }
 
 /* RESPONSIVE LAYOUT STYLING */
@@ -1606,11 +1606,11 @@ body {
 
   .ce-main-content.sidebar-expanded,
   .ce-main-content.sidebar-collapsed {
-    margin-left: 72px;
+    margin-left: 64px;
   }
 
   .ce-sidebar.expanded {
-    width: 72px;
+    width: 64px;
   }
 
   .ce-sidebar .btn-label,
