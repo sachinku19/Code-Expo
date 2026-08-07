@@ -2110,6 +2110,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         onlineUsers={onlineUsers}
         suggestedUsers={suggestions}
         followingList={followingList}
+        isLoading={isLoading}
         onCreatePost={(data) => {
           if (data && data.content && data.content.trim()) {
             setInputText(data.content);

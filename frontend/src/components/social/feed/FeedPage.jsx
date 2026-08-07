@@ -6,6 +6,29 @@ import PostCard from "./FeedContent/PostCard";
 import RightSidebar from "./RightSidebar/RightSidebar";
 import "./FeedLayout.css";
 
+export const PostCardSkeleton = () => (
+  <div className="rebuilt-post-card ce-skeleton-card">
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+      <div className="ce-skeleton-shimmer" style={{ width: "38px", height: "38px", borderRadius: "50%", flexShrink: 0 }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+        <div className="ce-skeleton-shimmer" style={{ width: "120px", height: "12px", borderRadius: "4px" }} />
+        <div className="ce-skeleton-shimmer" style={{ width: "70px", height: "10px", borderRadius: "4px" }} />
+      </div>
+    </div>
+    <div className="ce-skeleton-shimmer" style={{ width: "100%", height: "200px", borderRadius: "10px", marginBottom: "10px" }} />
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px" }}>
+      <div className="ce-skeleton-shimmer" style={{ width: "95%", height: "12px", borderRadius: "4px" }} />
+      <div className="ce-skeleton-shimmer" style={{ width: "80%", height: "12px", borderRadius: "4px" }} />
+      <div className="ce-skeleton-shimmer" style={{ width: "60%", height: "12px", borderRadius: "4px" }} />
+    </div>
+    <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
+      <div className="ce-skeleton-shimmer" style={{ width: "50px", height: "24px", borderRadius: "12px" }} />
+      <div className="ce-skeleton-shimmer" style={{ width: "50px", height: "24px", borderRadius: "12px" }} />
+      <div className="ce-skeleton-shimmer" style={{ width: "50px", height: "24px", borderRadius: "12px" }} />
+    </div>
+  </div>
+);
+
 export const FeedPage = ({
   user,
   posts = [],
@@ -13,6 +36,7 @@ export const FeedPage = ({
   onlineUsers = [],
   suggestedUsers = [],
   followingList = [],
+  isLoading = false,
   onCreatePost,
   onLikePost,
   onCommentPost,
@@ -107,26 +131,34 @@ export const FeedPage = ({
           )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-            {filteredPosts.map((post) => (
-              <PostCard
-                key={post._id}
-                post={post}
-                user={user}
-                followingList={followingList}
-                onLike={onLikePost}
-                onComment={onCommentPost}
-                onBookmark={onBookmarkPost}
-                onShare={onSharePost}
-                onFollowToggle={onFollowToggle}
-                onUserClick={onUserClick}
-                onMessageUser={onMessageUser}
-                onDeletePost={onDeletePost}
-                onReportPost={onReportPost}
-                addToast={addToast}
-              />
-            ))}
+            {isLoading ? (
+              <>
+                <PostCardSkeleton />
+                <PostCardSkeleton />
+                <PostCardSkeleton />
+              </>
+            ) : (
+              filteredPosts.map((post) => (
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  user={user}
+                  followingList={followingList}
+                  onLike={onLikePost}
+                  onComment={onCommentPost}
+                  onBookmark={onBookmarkPost}
+                  onShare={onSharePost}
+                  onFollowToggle={onFollowToggle}
+                  onUserClick={onUserClick}
+                  onMessageUser={onMessageUser}
+                  onDeletePost={onDeletePost}
+                  onReportPost={onReportPost}
+                  addToast={addToast}
+                />
+              ))
+            )}
 
-            {filteredPosts.length === 0 && (
+            {!isLoading && filteredPosts.length === 0 && (
               <div
                 style={{
                   textAlign: "center",

@@ -1123,49 +1123,46 @@ body {
   overflow: hidden;
 }
 
-/* GLOBAL COLLAPSIBLE SIDEBAR */
+/* GLOBAL FLOATING COLLAPSIBLE SIDEBAR */
 .ce-sidebar {
   background-color: #0b0b0f !important;
-  /* Solid default fallback to avoid messy overlap */
-  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 5px !important;
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 56px;
-  bottom: 0;
-  left: 0;
+  top: 68px;
+  bottom: 12px;
+  left: 12px;
+  height: calc(100vh - 80px);
   z-index: 150;
-  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
   overflow: hidden;
-  box-shadow: 12px 0 45px rgba(0, 0, 0, 0.45) !important;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.65), 0 0 25px rgba(124, 92, 255, 0.12) !important;
   will-change: width;
 }
 
 .light .ce-sidebar {
   background-color: #ffffff !important;
-  /* Solid default fallback to avoid messy overlap */
-  border-right: 1px solid rgba(15, 23, 42, 0.08) !important;
-  box-shadow: 6px 0 35px rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.1) !important;
 }
 
 @supports (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px)) {
   .ce-sidebar {
-    background-color: rgba(11, 11, 15, 0.85) !important;
-    /* Beautiful glassmorphism with strong readability */
+    background-color: rgba(11, 11, 15, 0.88) !important;
     backdrop-filter: blur(28px) saturate(190%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
   }
 
   .ce-sidebar.expanded {
     background-color: #0b0b0f !important;
-    /* Fully opaque on expand to prevent back-content overlap text bleed */
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
 
   .light .ce-sidebar {
-    background-color: rgba(255, 255, 255, 0.88) !important;
-    /* Beautiful glassmorphism with strong readability */
+    background-color: rgba(255, 255, 255, 0.92) !important;
   }
 
   .light .ce-sidebar.expanded {
@@ -1425,11 +1422,11 @@ body {
 }
 
 .ce-main-content.sidebar-collapsed {
-  margin-left: 68px;
+  margin-left: 88px;
 }
 
 .ce-main-content.sidebar-expanded {
-  margin-left: 220px;
+  margin-left: 240px;
 }
 
 /* RESPONSIVE LAYOUT STYLING */

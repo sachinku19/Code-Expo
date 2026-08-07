@@ -226,6 +226,24 @@ export const InstaImageCarousel = ({ images, height = "340px" }) => {
   );
 };
 
+const renderMentionText = (rawText) => {
+  if (!rawText || typeof rawText !== "string") return rawText || "";
+  const mentionRegex = /(@\[[^\]]+\]|@\/\[[^\]]+\]|@\/\w+|@\w+)/g;
+  const parts = rawText.split(mentionRegex);
+
+  return parts.map((part, i) => {
+    if (mentionRegex.test(part)) {
+      let cleanName = part.replace(/@\/?\[(.*?)\]/, "@$1").replace(/@\//, "@");
+      return (
+        <span key={i} style={{ color: "#3b82f6", fontWeight: "600", marginRight: "3px" }}>
+          {cleanName}
+        </span>
+      );
+    }
+    return part;
+  });
+};
+
 export const CommentTreeItem = ({
   comment,
   user,
@@ -242,13 +260,15 @@ export const CommentTreeItem = ({
   const initialIsLiked = initialLikes.some((id) => String(id._id || id || id?.id) === currentUserId);
   const [localIsLiked, setLocalIsLiked] = useState(initialIsLiked);
   const [localLikesCount, setLocalLikesCount] = useState(initialLikes.length || comment.likesCount || 0);
+  const likesCountProp = Array.isArray(comment.likes) ? comment.likes.length : (comment.likesCount || 0);
+  const likesSerialized = Array.isArray(comment.likes) ? comment.likes.map(id => String(id._id || id || id?.id)).join(",") : "";
 
   useEffect(() => {
     const likesArr = Array.isArray(comment.likes) ? comment.likes : [];
     const isLikedNow = likesArr.some((id) => String(id._id || id || id?.id) === currentUserId);
     setLocalIsLiked(isLikedNow);
     setLocalLikesCount(likesArr.length || comment.likesCount || 0);
-  }, [comment.likes, currentUserId]);
+  }, [comment._id, likesCountProp, likesSerialized, currentUserId]);
 
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyText, setReplyText] = useState("");
@@ -307,16 +327,7 @@ export const CommentTreeItem = ({
 
         {/* Comment Body Text */}
         <div style={{ color: "rgba(255, 255, 255, 0.9)", fontSize: "0.85rem", lineHeight: "1.45", wordBreak: "break-word" }}>
-          {typeof (comment.text || comment.content) === "string" && (comment.text || comment.content).startsWith("@") ? (
-            <>
-              <span style={{ color: "#3b82f6", fontWeight: "600", marginRight: "4px" }}>
-                {(comment.text || comment.content).split(" ")[0]}
-              </span>
-              {(comment.text || comment.content).split(" ").slice(1).join(" ")}
-            </>
-          ) : (
-            comment.text || comment.content
-          )}
+          {renderMentionText(comment.text || comment.content)}
         </div>
 
         {/* Action Row: ThumbsUp Like + Reply Button (No Dislike Button) */}
@@ -701,34 +712,47 @@ export const PostCard = ({
 
   const commentsList = post.comments || [];
 
-  // Parse likers list dynamically syncing user avatars
+  // Parse likers list dynamically syncing user avatars with unique IDs
   const rawLikes = Array.isArray(post.likes) ? post.likes : [];
-  const likersList = rawLikes.map(item => {
-    if (typeof item === "object" && item !== null) {
-      return {
-        id: item._id || item.id,
-        username: item.username || item.name || "dev",
-        avatar: item.avatar
-      };
-    }
-    return {
-      id: item,
-      username: String(item) === currentUserId ? user?.username || "you" : "developer",
-      avatar: String(item) === currentUserId ? user?.avatar : null
-    };
-  });
+  const likersMap = new Map();
 
-  if (isLiked && !likersList.some(l => String(l.id) === currentUserId)) {
-    likersList.unshift({
+  if (isLiked && currentUserId) {
+    likersMap.set(currentUserId, {
       id: currentUserId,
       username: user?.username || "you",
       avatar: user?.avatar
     });
   }
 
+  rawLikes.forEach((item, idx) => {
+    if (!item) return;
+    if (typeof item === "object" && item !== null) {
+      const id = String(item._id || item.id || idx);
+      if (!likersMap.has(id)) {
+        likersMap.set(id, {
+          id,
+          username: item.username || item.name || `dev_${id.slice(-3)}`,
+          avatar: item.avatar
+        });
+      }
+    } else {
+      const id = String(item);
+      if (!likersMap.has(id)) {
+        const isSelf = id === currentUserId;
+        likersMap.set(id, {
+          id,
+          username: isSelf ? (user?.username || "you") : `dev_${id.slice(-4)}`,
+          avatar: isSelf ? user?.avatar : null
+        });
+      }
+    }
+  });
+
+  const likersList = Array.from(likersMap.values());
+
   const renderLikedByText = () => {
     if (likesCount === 0) return null;
-    const firstLiker = likersList[0]?.username || "developer";
+    const firstLiker = likersList[0]?.username || (isLiked ? user?.username : "developer");
     const secondLiker = likersList[1]?.username;
 
     if (likesCount === 1) {

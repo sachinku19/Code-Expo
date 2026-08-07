@@ -11,6 +11,18 @@
   --feed-radius-xs: 6px;
 }
 
+.light,
+body.light,
+.light-mode,
+[data-theme="light"] {
+  --feed-bg: #f8fafc;
+  --feed-card-bg: #ffffff;
+  --feed-card-border: #e2e8f0;
+  --feed-primary: #6366f1;
+  --feed-text: #0f172a;
+  --feed-text-secondary: #64748b;
+}
+
 /* Base Feed Layout Container */
 .rebuilt-feed-root {
   background-color: var(--feed-bg);
@@ -573,4 +585,168 @@
   .rebuilt-right-column {
     display: none;
   }
+}
+
+/* Glassmorphic Shimmer Loader Animations */
+@keyframes ce-shimmer-glow {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.ce-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: ce-shimmer-glow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ce-skeleton-card {
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   LIGHT MODE (.light) HIGH-CONTRAST & PREMIUM AESTHETIC OVERRIDES FOR FEED
+   ========================================================================== */
+
+.light .rebuilt-feed-root,
+body.light .rebuilt-feed-root {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Base Cards & Premium Cards in Light Mode */
+.light .feed-premium-card,
+.light .rebuilt-post-card,
+.light .create-post-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04) !important;
+}
+
+.light .feed-premium-card:hover,
+.light .rebuilt-post-card:hover,
+.light .create-post-card:hover {
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.08) !important;
+}
+
+/* Post Content & Author Info in Light Mode */
+.light .post-author-name,
+.light .right-card-title,
+.light .stories-header-title,
+.light .post-title-text,
+.light .feed-premium-card span,
+.light .feed-premium-card div,
+.light .feed-premium-card p,
+.light .rebuilt-right-column span,
+.light .rebuilt-left-column span {
+  color: #0f172a !important;
+}
+
+.light .post-author-title,
+.light .post-time-stamp,
+.light .story-user-name {
+  color: #64748b !important;
+}
+
+.light .post-text-body {
+  color: #334155 !important;
+}
+
+/* Inputs & Search Boxes in Light Mode */
+.light .create-post-input,
+.light .feed-search-input-box,
+.light .post-comment-input-box {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.light .create-post-input,
+.light .feed-search-input-box input,
+.light .post-comment-input-box input {
+  color: #0f172a !important;
+}
+
+.light .create-post-input::placeholder,
+.light .feed-search-input-box input::placeholder,
+.light .post-comment-input-box input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Action Buttons & Option Chips in Light Mode */
+.light .create-option-btn,
+.light .post-action-btn {
+  color: #475569 !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.light .create-option-btn:hover,
+.light .post-action-btn:hover {
+  background: #f1f5f9 !important;
+  color: #4f46e5 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Tabs in Light Mode */
+.light .feed-tab-btn {
+  color: #64748b !important;
+}
+
+.light .feed-tab-btn.active {
+  color: #4f46e5 !important;
+  background: rgba(99, 102, 241, 0.12) !important;
+}
+
+/* Right Sidebar Items in Light Mode */
+.light .online-user-name,
+.light .suggested-user-name {
+  color: #0f172a !important;
+}
+
+.light .suggested-user-headline {
+  color: #64748b !important;
+}
+
+.light .tag-chip {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #4f46e5 !important;
+}
+
+.light .tag-chip:hover {
+  background: rgba(99, 102, 241, 0.12) !important;
+  border-color: #6366f1 !important;
+}
+
+/* Popup Modals in Light Mode */
+.light .ce-modal-overlay {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+.light .ce-modal-card,
+.light .rebuilt-post-modal-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18) !important;
+}
+
+/* Shimmer Skeleton Loaders in Light Mode */
+.light .ce-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.6) 0%,
+    rgba(241, 245, 249, 0.95) 50%,
+    rgba(226, 232, 240, 0.6) 100%
+  ) !important;
+  background-size: 200% 100% !important;
 }

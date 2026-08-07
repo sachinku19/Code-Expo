@@ -68,10 +68,12 @@ router.get("/following/:id", optional_auth, getFollowing);
 // Feed & Rooms
 router.get("/feed", optional_auth, getSocialFeed);
 router.get("/rooms/trending", optional_auth, getTrendingRooms);
+router.get("/trending-rooms", optional_auth, getTrendingRooms);
 router.get("/rooms/liked", auth_protect, getLikedRooms);
 router.get("/rooms/bookmarked", auth_protect, getBookmarkedRooms);
 router.get("/rooms/:id/stats", optional_auth, getRoomSocialStats);
 router.post("/rooms/:id/like", auth_protect, toggleLikeRoom);
+router.post("/like/:id", auth_protect, toggleLikeRoom);
 router.post("/rooms/:id/bookmark", auth_protect, toggleBookmarkRoom);
 
 // Recommendations & Network

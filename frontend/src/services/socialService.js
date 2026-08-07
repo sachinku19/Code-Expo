@@ -34,12 +34,12 @@ export const getFollowing = async (userId) => {
 };
 
 export const toggleLikeRoom = async (roomId) => {
-  const response = await API.post(`/like/${roomId}`, {}, getHeaders());
+  const response = await API.post(`/rooms/${roomId}/like`, {}, getHeaders());
   return response.data;
 };
 
 export const toggleBookmarkRoom = async (roomId) => {
-  const response = await API.post(`/bookmark/${roomId}`, {}, getHeaders());
+  const response = await API.post(`/rooms/${roomId}/bookmark`, {}, getHeaders());
   return response.data;
 };
 

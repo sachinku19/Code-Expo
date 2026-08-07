@@ -12804,6 +12804,62 @@ function Dashboard() {
         )}
 
         {selectedPostModal && (() => {
+          const addReplyToTreeRecursively = (tree, targetId, newReply) => {
+            return tree.map((node) => {
+              if (String(node._id || node.id) === String(targetId)) {
+                return {
+                  ...node,
+                  replies: [...(node.replies || []), newReply]
+                };
+              }
+              if (node.replies && node.replies.length > 0) {
+                return {
+                  ...node,
+                  replies: addReplyToTreeRecursively(node.replies, targetId, newReply)
+                };
+              }
+              return node;
+            });
+          };
+
+          const deleteCommentFromTreeRecursively = (tree, targetId) => {
+            return tree
+              .filter((node) => String(node._id || node.id) !== String(targetId))
+              .map((node) => {
+                if (node.replies && node.replies.length > 0) {
+                  return {
+                    ...node,
+                    replies: deleteCommentFromTreeRecursively(node.replies, targetId)
+                  };
+                }
+                return node;
+              });
+          };
+
+          const toggleLikeCommentInTreeRecursively = (tree, targetId, userId) => {
+            return tree.map((node) => {
+              if (String(node._id || node.id) === String(targetId)) {
+                const likes = Array.isArray(node.likes) ? node.likes : [];
+                const hasLiked = likes.some(id => String(id._id || id || id?.id) === String(userId));
+                const updatedLikes = hasLiked
+                  ? likes.filter(id => String(id._id || id || id?.id) !== String(userId))
+                  : [...likes, userId];
+                return {
+                  ...node,
+                  likes: updatedLikes,
+                  likesCount: updatedLikes.length
+                };
+              }
+              if (node.replies && node.replies.length > 0) {
+                return {
+                  ...node,
+                  replies: toggleLikeCommentInTreeRecursively(node.replies, targetId, userId)
+                };
+              }
+              return node;
+            });
+          };
+
           const postImages = selectedPostModal.images && selectedPostModal.images.length > 0 ? selectedPostModal.images : (selectedPostModal.image ? [selectedPostModal.image] : []);
           const hasImage = postImages.length > 0;
           const hasVideo = !!selectedPostModal.video;
@@ -12980,6 +13036,14 @@ function Dashboard() {
                               user={user}
                               isPostOwner={String(selectedPostModal.author?._id || selectedPostModal.author?.id || selectedPostModal.author) === String(user?.id || user?._id)}
                               onLikeComment={async (commentId) => {
+                                const currentUserId = user?.id || user?._id;
+                                setSelectedPostModal(prev => {
+                                  if (!prev) return null;
+                                  return {
+                                    ...prev,
+                                    comments: toggleLikeCommentInTreeRecursively(prev.comments || [], commentId, currentUserId)
+                                  };
+                                });
                                 try {
                                   const res = await toggleLikeCommentPost(selectedPostModal._id, commentId);
                                   if (res && res.success && res.comments) {
@@ -12990,6 +13054,26 @@ function Dashboard() {
                                 }
                               }}
                               onReplyComment={async (commentId, replyText) => {
+                                const tempReplyId = "temp_" + Date.now();
+                                const optimisticReply = {
+                                  _id: tempReplyId,
+                                  user: {
+                                    _id: user?.id || user?._id,
+                                    username: user?.username || "you",
+                                    avatar: user?.avatar
+                                  },
+                                  text: replyText,
+                                  likes: [],
+                                  createdAt: new Date().toISOString(),
+                                  replies: []
+                                };
+                                setSelectedPostModal(prev => {
+                                  if (!prev) return null;
+                                  return {
+                                    ...prev,
+                                    comments: addReplyToTreeRecursively(prev.comments || [], commentId, optimisticReply)
+                                  };
+                                });
                                 try {
                                   const res = await addCommentPost(selectedPostModal._id, replyText, commentId);
                                   if (res && res.success && res.comments) {
@@ -13000,11 +13084,18 @@ function Dashboard() {
                                 }
                               }}
                               onDeleteComment={async (commentId) => {
+                                setSelectedPostModal(prev => {
+                                  if (!prev) return null;
+                                  return {
+                                    ...prev,
+                                    comments: deleteCommentFromTreeRecursively(prev.comments || [], commentId)
+                                  };
+                                });
+                                addToast("Comment deleted", "success");
                                 try {
                                   const res = await deleteCommentPost(selectedPostModal._id, commentId);
                                   if (res && res.success && res.comments) {
                                     setSelectedPostModal(prev => prev ? { ...prev, comments: res.comments } : null);
-                                    addToast("Comment deleted", "success");
                                   }
                                 } catch (err) {
                                   console.error("Failed to delete comment:", err);

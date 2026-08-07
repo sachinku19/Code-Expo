@@ -24,7 +24,7 @@ export const FeedControls = ({ activeTab, onSelectTab, searchQuery, onSearchChan
       </div>
 
       <div className="feed-search-input-box">
-        <Search size={14} color="rgba(255, 255, 255, 0.45)" />
+        <Search size={14} style={{ color: "var(--feed-text-secondary)" }} />
         <input
           type="text"
           placeholder="Search feed..."
