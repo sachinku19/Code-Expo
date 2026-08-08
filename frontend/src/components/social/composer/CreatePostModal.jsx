@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import ImageCropper from "../ImageCropper";
+import { optimizeCloudinaryUrl } from "../../../utils/imageOptimizer";
 import "./CreatePostModal.css";
 
 const FeedPortal = ({ children }) => {
@@ -51,7 +52,7 @@ const SafeAvatar = ({ src, name = "Dev", size = 40 }) => {
     >
       {src && !error ? (
         <img
-          src={src}
+          src={optimizeCloudinaryUrl(src, { quality: "best", width: size * 2, height: size * 2, crop: "fill" })}
           alt={name}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           onError={() => setError(true)}
@@ -503,7 +504,7 @@ export const CreatePostModal = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setCropState({ idx, imageSrc: imgObj.preview });
+                                    setCropState({ idx, imageSrc: imgObj.preview, file: imgObj.file });
                                   }}
                                   style={{
                                     background: "rgba(10, 10, 18, 0.85)",
@@ -558,6 +559,7 @@ export const CreatePostModal = ({
                       <FeedPortal>
                         <ImageCropper
                           imageSrc={cropState.imageSrc}
+                          file={cropState.file}
                           aspect={16 / 9}
                           onCropComplete={(croppedFile, croppedPreview) => {
                             if (onCropImageComplete) {

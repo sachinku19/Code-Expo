@@ -5,6 +5,7 @@ import { uploadAvatar, deleteAvatar } from "../services/userService";
 import socket from "../socket/socket";
 import { Camera, Trash2, Sliders, Maximize2, Loader, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { optimizeCloudinaryUrl } from "../utils/imageOptimizer";
 import "./ProfileAvatar.css";
 
 
@@ -134,8 +135,8 @@ export default function ProfileAvatar() {
 
     try {
       const canvas = document.createElement("canvas");
-      canvas.width = 250;
-      canvas.height = 250;
+      canvas.width = 500;
+      canvas.height = 500;
       const ctx = canvas.getContext("2d");
 
       const containerSize = 300;
@@ -151,9 +152,9 @@ export default function ProfileAvatar() {
       const cropW = cropSize / (zoom * scale);
       const cropH = cropSize / (zoom * scale);
 
-      ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropSize, cropSize);
+      ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, 500, 500);
 
-      // Compress canvas content to Blob (JPEG 85% quality for maximum browser compatibility)
+      // Compress canvas content to Blob (JPEG 95% quality for maximum browser compatibility)
       canvas.toBlob(
         async (blob) => {
           if (!blob) {
@@ -238,7 +239,7 @@ export default function ProfileAvatar() {
         )}
 
         {user?.avatar ? (
-          <img src={user.avatar} alt="Avatar" className="avatar-image" />
+          <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 160, height: 160, crop: "fill" })} alt="Avatar" className="avatar-image" />
         ) : (
           <div className="avatar-placeholder">{initial}</div>
         )}

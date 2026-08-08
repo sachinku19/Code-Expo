@@ -1947,3 +1947,39 @@
 html {
   scrollbar-gutter: stable;
 }
+
+/* Premium expand grid button styling */
+.premium-expand-btn-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.premium-expand-grid-btn {
+  background: rgba(124, 92, 255, 0.1);
+  color: #8b5cf6;
+  border: 1px solid rgba(124, 92, 255, 0.25);
+  border-radius: 12px;
+  padding: 10px 24px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(124, 92, 255, 0.08);
+}
+
+.premium-expand-grid-btn:hover {
+  background: rgba(124, 92, 255, 0.2);
+  color: #a78bfa;
+  border-color: rgba(124, 92, 255, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 92, 255, 0.18);
+}
+
+.premium-expand-grid-btn:active {
+  transform: translateY(0);
+}

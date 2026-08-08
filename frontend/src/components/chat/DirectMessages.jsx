@@ -28,6 +28,7 @@ import {
   Shield, Edit2
 } from "lucide-react";
 import { useCall } from "../../context/CallContext";
+import { optimizeCloudinaryUrl, getCloudinarySrcSet } from "../../utils/imageOptimizer";
 import "./DirectMessages.css";
 import ReportUserModal from "../social/ReportUserModal";
 
@@ -176,7 +177,7 @@ function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, siz
 
   return (
     <img
-      src={src}
+      src={optimizeCloudinaryUrl(src, { quality: "best", width: size * 2, height: size * 2, crop: "fill" })}
       alt={displayName}
       className={className}
       onError={() => setImgError(true)}
@@ -2092,7 +2093,9 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                       <div className="message-attachment-container">
                                         <div className="message-attachment">
                                           <img
-                                            src={msg.fileUrl}
+                                            src={optimizeCloudinaryUrl(msg.fileUrl, { quality: "best" })}
+                                            srcSet={getCloudinarySrcSet(msg.fileUrl, { quality: "best" })}
+                                            sizes="(max-width: 600px) 100vw, 400px"
                                             alt={msg.fileName || "Image attachment"}
                                             className="dm-message-image"
                                             onClick={() => window.open(msg.fileUrl, "_blank")}

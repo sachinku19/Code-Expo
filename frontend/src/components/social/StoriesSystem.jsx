@@ -5,6 +5,7 @@ import { Plus, X, Sparkles, Trash2, Send, Flame, Zap, Heart, MessageSquare, Imag
 import { createStory, getStories, deleteStory, toggleLikeStory, addCommentStory } from "../../services/socialService";
 import { createPortal } from "react-dom";
 import ImageCropper from "./ImageCropper";
+import { optimizeCloudinaryUrl, getCloudinarySrcSet } from "../../utils/imageOptimizer";
 import "./PremiumFeed.css";
 
 const Portal = ({ children }) => {
@@ -390,7 +391,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
         e.target.value = "";
         return;
       }
-      setCropSource(URL.createObjectURL(file));
+      setCropSource(file);
     }
   };
 
@@ -671,7 +672,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
             </svg>
             <div className="premium-story-inner">
               {user?.avatar ? (
-                <img src={user.avatar} alt="You" />
+                <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 120, height: 120, crop: "fill" })} alt="You" />
               ) : (
                 <div className="story-avatar-fallback">
                   {user?.username?.charAt(0).toUpperCase()}
@@ -747,7 +748,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                   </svg>
                   <div className="premium-story-inner">
                     {group.avatar ? (
-                      <img src={group.avatar} alt={group.username} />
+                      <img src={optimizeCloudinaryUrl(group.avatar, { quality: "best", width: 120, height: 120, crop: "fill" })} alt={group.username} />
                     ) : (
                       <div className="story-avatar-fallback">
                         {group.username.charAt(0).toUpperCase()}
@@ -1026,7 +1027,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                       {/* Live Header */}
                       <div style={{ position: "absolute", top: "16px", left: "8px", right: "8px", zIndex: 10, display: "flex", alignItems: "center", gap: "6px" }}>
                         {user?.avatar ? (
-                          <img src={user.avatar} alt="avatar" style={{ width: "20px", height: "20px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)" }} />
+                          <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 40, height: 40, crop: "fill" })} alt="avatar" style={{ width: "20px", height: "20px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)" }} />
                         ) : (
                           <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "#6366f1", color: "#fff", fontSize: "0.65rem", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             {user?.username?.charAt(0).toUpperCase() || "U"}
@@ -1362,7 +1363,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                     title={`View @${activeStoryGroup.username}'s profile`}
                   >
                     {activeStoryGroup.avatar ? (
-                      <img src={activeStoryGroup.avatar} alt={activeStoryGroup.username} className="comment-avatar-bubble" style={{ border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0 }} />
+                      <img src={optimizeCloudinaryUrl(activeStoryGroup.avatar, { quality: "best", width: 80, height: 80, crop: "fill" })} alt={activeStoryGroup.username} className="comment-avatar-bubble" style={{ border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0 }} />
                     ) : (
                       <div className="comment-avatar-bubble-fallback" style={{ flexShrink: 0 }}>
                         {activeStoryGroup.username.charAt(0).toUpperCase()}
@@ -1451,7 +1452,13 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                       {isVideoUrl(currentActiveStory.mediaUrl) ? (
                         <video src={currentActiveStory.mediaUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }} />
                       ) : (
-                        <img src={currentActiveStory.mediaUrl} alt="Story Media" style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }} />
+                        <img
+                          src={optimizeCloudinaryUrl(currentActiveStory.mediaUrl, { quality: "best" })}
+                          srcSet={getCloudinarySrcSet(currentActiveStory.mediaUrl, { quality: "best" })}
+                          sizes="(max-width: 600px) 100vw, 800px"
+                          alt="Story Media"
+                          style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }}
+                        />
                       )}
                     </div>
                   )}
@@ -1679,7 +1686,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                                   >
                                     {commentAvatar ? (
                                       <img
-                                        src={commentAvatar}
+                                        src={optimizeCloudinaryUrl(commentAvatar, { quality: "best", width: 44, height: 44, crop: "fill" })}
                                         alt={commentUsername}
                                         style={{ width: "22px", height: "22px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(124, 92, 255, 0.4)" }}
                                       />
@@ -1801,7 +1808,8 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
       {cropSource && (
         <Portal>
           <ImageCropper
-            imageSrc={cropSource}
+            imageSrc={URL.createObjectURL(cropSource)}
+            file={cropSource}
             aspect={9 / 16}
             onCropComplete={(croppedFile, croppedPreview) => {
               if (croppedFile.size > 5 * 1024 * 1024) {

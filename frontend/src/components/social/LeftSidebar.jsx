@@ -1,4 +1,5 @@
 import { User, Bookmark, Flame, Zap, Compass, FolderKanban, MessageSquare, Bell, Star } from "lucide-react";
+import { optimizeCloudinaryUrl } from "../../utils/imageOptimizer";
 import "./PremiumFeed.css";
 
 export default function LeftSidebar({ user, activeSection, setActiveTab, setTab }) {
@@ -15,7 +16,7 @@ export default function LeftSidebar({ user, activeSection, setActiveTab, setTab 
         <div className="premium-profile-content">
           <div className="premium-profile-avatar-container">
             {user?.avatar ? (
-              <img src={user.avatar} alt={user.username} />
+              <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 120, height: 120, crop: "fill" })} alt={user.username} />
             ) : (
               <div className="story-avatar-fallback" style={{ fontSize: "1.8rem" }}>
                 {user?.username?.charAt(0).toUpperCase()}

@@ -4082,7 +4082,7 @@
   max-width: 90vw;
   padding: 34px 28px 28px 28px;
   text-align: center;
-  border-radius: 24px;
+  border-radius: 4px;
   background: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.2), 0 0 35px rgba(99, 102, 241, 0.12) !important;
@@ -4138,7 +4138,7 @@
   flex: 1 !important;
   height: 44px !important;
   padding: 0 20px !important;
-  border-radius: 12px !important;
+  border-radius: 4px !important;
   background: #f3f4f6 !important;
   border: 1px solid #e5e7eb !important;
   color: #374151 !important;
@@ -4163,7 +4163,7 @@
   flex: 1 !important;
   height: 44px !important;
   padding: 0 20px !important;
-  border-radius: 12px !important;
+  border-radius: 4px !important;
   background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
   border: none !important;
   color: #ffffff !important;
@@ -7715,14 +7715,14 @@
 .achievement-card-detailed {
   display: flex;
   flex-direction: column;
-  background: rgba(38, 38, 38, 0.35);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: var(--ce-card-shadow);
-  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  background: linear-gradient(135deg, rgba(20, 20, 32, 0.7) 0%, rgba(10, 10, 15, 0.85) 100%) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 24px 20px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
   position: relative;
   overflow: hidden;
   cursor: pointer;
@@ -7730,8 +7730,13 @@
 }
 
 .light .achievement-card-detailed {
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(245, 245, 250, 0.85) 100%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.achievement-card-detailed.unlocked {
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 .achievement-card-detailed.unlocked::before {
@@ -7740,47 +7745,54 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 3px;
-  background: var(--ach-accent);
+  height: 4px;
+  background: var(--ach-accent) !important;
+  box-shadow: 0 1px 8px var(--ach-accent) !important;
 }
 
 .achievement-card-detailed:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-5px) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
 .light .achievement-card-detailed:hover {
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
 .achievement-card-detailed.unlocked:hover {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 14px rgba(255, 255, 255, 0.05);
+  border-color: var(--ach-accent) !important;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.55), 0 0 20px rgba(255, 255, 255, 0.03) !important;
 }
 
 .achievement-card-detailed.locked {
-  opacity: 0.72;
+  opacity: 0.8 !important;
+  background: linear-gradient(135deg, rgba(15, 15, 20, 0.5) 0%, rgba(8, 8, 12, 0.7) 100%) !important;
 }
 
 .achievement-xp-badge {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  font-size: 0.68rem;
-  font-weight: 850;
-  color: #fff;
-  padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.2px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  top: 16px;
+  right: 16px;
+  font-size: 0.68rem !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  padding: 4px 10px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  background: var(--ach-accent) !important;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.2) !important;
   z-index: 10;
 }
 
 .achievement-card-detailed.locked .achievement-xp-badge {
-  color: var(--ce-text-muted);
-  box-shadow: none;
-  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--ce-text-muted) !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
 }
 
 .achievement-card-main {
@@ -7790,14 +7802,14 @@
 }
 
 .achievement-category-pill {
-  font-size: 0.62rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  width: fit-content;
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-bottom: 2px;
+  font-size: 0.62rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.8px !important;
+  width: fit-content !important;
+  padding: 2px 8px !important;
+  border-radius: 3px !important;
+  margin-bottom: 4px !important;
 }
 
 .achievement-category-pill.milestones {
@@ -7826,18 +7838,23 @@
 }
 
 .achievement-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 8px !important;
+  display: grid !important;
+  place-items: center !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .light .achievement-icon-wrapper {
-  border-color: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+.achievement-card-detailed.unlocked .achievement-icon-wrapper {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.05) !important;
 }
 
 .achievement-card-detailed:hover .achievement-icon-wrapper {
@@ -7864,14 +7881,14 @@
 }
 
 .status-pill {
-  font-size: 0.65rem;
-  font-weight: 850;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  width: fit-content;
-  margin-top: 4px;
+  font-size: 0.65rem !important;
+  font-weight: 900 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  width: fit-content !important;
+  margin-top: 6px !important;
 }
 
 .status-pill.unlocked {
@@ -7907,21 +7924,22 @@
 }
 
 .achievement-progress-bar-track {
-  flex: 1;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 99px;
-  overflow: hidden;
+  flex: 1 !important;
+  height: 6px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: 3px !important;
+  overflow: hidden !important;
 }
 
 .light .achievement-progress-bar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.05) !important;
 }
 
 .achievement-progress-bar-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100% !important;
+  border-radius: 3px !important;
+  box-shadow: 0 0 8px var(--ach-accent) !important;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .achievement-progress-text {
@@ -11473,7 +11491,7 @@ tier-badge.master {
   backdrop-filter: blur(16px) saturate(120%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 16px !important;
+  border-radius: 10px !important;
   padding: 24px !important;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37),
     inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
@@ -11531,7 +11549,7 @@ tier-badge.master {
 .form-field input,
 .form-field select {
   height: 42px !important;
-  border-radius: 10px !important;
+  border-radius: 6px !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   background-color: rgba(0, 0, 0, 0.25) !important;
   color: #f3f4f6 !important;
@@ -11553,20 +11571,20 @@ tier-badge.master {
 
 .form-submit-btn {
   height: 42px !important;
-  border-radius: 10px !important;
-  background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%) !important;
+  border-radius: 6px !important;
+  background: #7C5CFF !important;
   color: #ffffff !important;
   font-size: 0.85rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(124, 92, 255, 0.25) !important;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .form-submit-btn:hover {
-  background: linear-gradient(135deg, #b967ff 0%, #4f8ff7 100%) !important;
+  background: #6c4be0 !important;
   transform: translateY(-2px) !important;
-  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.45) !important;
+  box-shadow: 0 8px 25px rgba(124, 92, 255, 0.4) !important;
 }
 
 .form-submit-btn:active {
@@ -11574,16 +11592,16 @@ tier-badge.master {
 }
 
 .form-submit-btn.secondary {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #e5e7eb !important;
-  box-shadow: none !important;
+  background: #3b82f6 !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.25) !important;
 }
 
 .form-submit-btn.secondary:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: #2563eb !important;
   transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4) !important;
 }
 
 /* Light mode overrides for actions sidebar and form cards */
@@ -14376,4 +14394,361 @@ select option {
 
 .light .dna-progress-track {
   background: rgba(0, 0, 0, 0.05);
+}
+
+/* Premium expand grid button styling */
+.premium-expand-btn-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.premium-expand-grid-btn {
+  background: rgba(124, 92, 255, 0.1);
+  color: #8b5cf6;
+  border: 1px solid rgba(124, 92, 255, 0.25);
+  border-radius: 12px;
+  padding: 10px 24px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(124, 92, 255, 0.08);
+}
+
+.premium-expand-grid-btn:hover {
+  background: rgba(124, 92, 255, 0.2);
+  color: #a78bfa;
+  border-color: rgba(124, 92, 255, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 92, 255, 0.18);
+}
+
+.premium-expand-grid-btn:active {
+  transform: translateY(0);
+}
+
+/* =========================================================
+   REDESIGNED STATS HANGING LAMPS & EXPLORER CUSTOM STYLES
+   ========================================================= */
+
+@keyframes ce-lamp-sway {
+  0% { transform: rotate(-1.5deg); transform-origin: top center; }
+  50% { transform: rotate(1.5deg); transform-origin: top center; }
+  100% { transform: rotate(-1.5deg); transform-origin: top center; }
+}
+
+.ce-hanging-lamp-card-wrapper {
+  animation: ce-lamp-sway 4s ease-in-out infinite alternate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.ce-hanging-lamp-card-wrapper:nth-child(even) {
+  animation-delay: -2s;
+}
+
+.ce-hanging-lamp-card-wrapper:nth-child(3n) {
+  animation-delay: -1s;
+}
+
+.ce-hanging-lamp-card {
+  width: 220px;
+  background: rgba(15, 15, 25, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.ce-hanging-lamp-card::before {
+  display: none;
+}
+
+.ce-hanging-lamp-card:hover {
+  transform: translateY(2px);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+}
+
+.ce-hanging-lamp-card.green-lamp:hover {
+  box-shadow: none;
+}
+
+.ce-hanging-lamp-card.yellow-lamp:hover {
+  box-shadow: none;
+}
+
+.ce-hanging-lamp-card.purple-lamp:hover {
+  box-shadow: none;
+}
+
+/* Light theme overrides for hanging lamps */
+.light .ce-lamp-support-stick {
+  background: linear-gradient(to right, #4a5568, #cbd5e1, #cbd5e1, #cbd5e1, #4a5568) !important;
+  box-shadow: none !important;
+}
+
+.light .ce-lamp-rope {
+  background: linear-gradient(to bottom, #718096, #cbd5e1, #475569) !important;
+  box-shadow: none !important;
+}
+
+.light .ce-lamp-cap {
+  background: #718096 !important;
+  border-color: rgba(0,0,0,0.06) !important;
+  box-shadow: none !important;
+}
+
+.light .ce-hanging-lamp-card {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: none !important;
+}
+
+.light .ce-hanging-lamp-card.green-lamp:hover {
+  box-shadow: none !important;
+}
+
+.light .ce-hanging-lamp-card.yellow-lamp:hover {
+  box-shadow: none !important;
+}
+
+.light .ce-hanging-lamp-card.purple-lamp:hover {
+  box-shadow: none !important;
+}
+
+.light .ce-hanging-lamp-card::before {
+  display: none !important;
+}
+
+/* Pulsing Live Dot Animation */
+@keyframes ce-pulse-dot {
+  0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(124, 92, 255, 0.45); }
+  70% { transform: scale(1.2); opacity: 0.8; box-shadow: 0 0 0 6px rgba(124, 92, 255, 0); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
+}
+
+.live-indicator-dot {
+  width: 10px;
+  height: 10px;
+  background: #7C5CFF;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px #7C5CFF;
+  animation: ce-pulse-dot 2s infinite ease-in-out;
+}
+
+/* Search input premium styling */
+.section-search-container {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 6px 14px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.section-search-container:focus-within {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: #7C5CFF !important;
+  box-shadow: 0 0 12px rgba(124, 92, 255, 0.15);
+}
+
+.light .section-search-container {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.light .section-search-container:focus-within {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: #7C5CFF !important;
+  box-shadow: 0 0 12px rgba(124, 92, 255, 0.08);
+}
+
+/* Premium Empty Workspace Card */
+.ce-empty-workspace-card {
+  background: rgba(15, 15, 25, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  padding: 64px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 720px;
+  margin: 20px auto 0 auto;
+}
+
+.light .ce-empty-workspace-card {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Radar / Sonar Wave Animation */
+@keyframes ce-radar-expand {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.ce-radar-container {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ce-radar-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(124, 92, 255, 0.25);
+  border-radius: 50%;
+  animation: ce-radar-expand 3s infinite linear;
+}
+
+.ce-radar-ring.ring-2 {
+  animation-delay: 1s;
+}
+
+.ce-radar-ring.ring-3 {
+  animation-delay: 2s;
+}
+
+.ce-radar-center {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  background: rgba(124, 92, 255, 0.1);
+  border: 1.5px solid rgba(124, 92, 255, 0.45);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.ce-radar-icon {
+  color: #7C5CFF;
+  animation: ce-pulse-dot 2.5s infinite ease-in-out;
+}
+
+.ce-empty-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ce-text-h, #ffffff);
+  margin: 0 0 10px 0;
+}
+
+.ce-empty-subtitle {
+  font-size: 0.85rem;
+  color: var(--ce-text-muted, rgba(255, 255, 255, 0.5));
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 0 28px 0;
+}
+
+/* Premium Button Styling */
+.ce-premium-create-room-btn {
+  background: linear-gradient(135deg, #7C5CFF 0%, #6366f1 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 28px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ce-premium-create-room-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 92, 255, 0.2);
+}
+
+.ce-premium-create-room-btn:active {
+  transform: translateY(0);
+}
+
+/* Premium active room card explorer enhancements */
+.rooms-grid-explore {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 24px;
+}
+
+.active-room-card {
+  background: rgba(15, 15, 25, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.light .active-room-card {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05) !important;
+}
+
+.active-room-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(124, 92, 255, 0.4) !important;
+  box-shadow: 0 12px 40px rgba(124, 92, 255, 0.12) !important;
+}
+
+.light .active-room-card:hover {
+  border-color: rgba(124, 92, 255, 0.3) !important;
+  box-shadow: 0 12px 40px rgba(124, 92, 255, 0.08) !important;
+}
+
+/* Lang Icon Square Badge premium style */
+.room-lang-icon-square {
+  border-radius: 8px !important;
+  padding: 4px 10px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+}
+
+@media (max-width: 600px) {
+  .ce-lamp-support-stick {
+    display: none !important;
+  }
+  .ce-lamp-rope {
+    display: none !important;
+  }
+  .ce-lamp-cap {
+    display: none !important;
+  }
+  .ce-hanging-lamp-card-wrapper {
+    animation: none !important;
+    width: 100%;
+  }
+  .ce-hanging-lamp-card {
+    width: 100%;
+    border-radius: 14px;
+    padding: 16px;
+  }
 }

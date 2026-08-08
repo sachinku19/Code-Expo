@@ -1547,13 +1547,55 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     const commentText = (textDirect || commentInputs[postId])?.trim();
     if (!commentText) return;
 
+    // Create optimistic comment object for instant local update
+    const tempCommentId = "temp-" + Date.now();
+    const optimisticComment = {
+      _id: tempCommentId,
+      text: commentText,
+      user: {
+        _id: user?._id || user?.id,
+        username: user?.username || "you",
+        avatar: user?.avatar
+      },
+      likes: [],
+      likesCount: 0,
+      createdAt: new Date().toISOString(),
+      replies: []
+    };
+
+    // Update posts state optimistically
+    setPosts(prev => prev.map(post => {
+      if (post._id === postId) {
+        const currentComments = post.comments || [];
+        if (!commentIdTarget) {
+          // Top-level comment
+          return { ...post, comments: [...currentComments, optimisticComment] };
+        } else {
+          // Nested reply
+          const addReplyToTreeRecursively = (tree) => {
+            return tree.map(c => {
+              if (String(c._id) === String(commentIdTarget)) {
+                return { ...c, replies: [...(c.replies || []), optimisticComment] };
+              }
+              if (c.replies && c.replies.length > 0) {
+                return { ...c, replies: addReplyToTreeRecursively(c.replies) };
+              }
+              return c;
+            });
+          };
+          return { ...post, comments: addReplyToTreeRecursively(currentComments) };
+        }
+      }
+      return post;
+    }));
+
+    setCommentInputs(prev => ({ ...prev, [postId]: "" }));
+
     setTypingPostIds(prev => {
       const next = new Set(prev);
       next.add(postId);
       return next;
     });
-
-    setCommentInputs(prev => ({ ...prev, [postId]: "" }));
 
     try {
       const res = await addCommentPost(postId, commentText, commentIdTarget);
@@ -1566,6 +1608,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         }));
       }
     } catch (err) {
+      // Rollback by reloading actual feed from server
       fetchPosts();
       addToast("Failed to submit reply comment", "error");
     } finally {

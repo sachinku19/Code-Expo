@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { RotateCw, Check, X, Sliders, Sun, Contrast, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspect = 16 / 9 }) {
+export default function ImageCropper({ imageSrc, file, onCropComplete, onCancel, aspect = 16 / 9 }) {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [brightness, setBrightness] = useState(100);
@@ -150,7 +150,18 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
     if (!canvas || !img) return;
 
     const ctx = canvas.getContext("2d");
-    const cropWidth = 720;
+
+    const naturalWidth = img.naturalWidth || img.width || 1920;
+    const displayWidth = img.clientWidth || img.width || 300;
+
+    // Calculate crop width dynamically based on zoom and container sizing to retain natural pixel detail
+    let cropWidth = (boxWidth * naturalWidth) / (displayWidth * zoom);
+    
+    // Fallbacks to guarantee high-DPI sharpness and prevent memory limit crashes
+    const minWidth = Math.min(1200, naturalWidth);
+    const maxWidth = Math.max(3840, naturalWidth);
+    cropWidth = Math.min(Math.max(cropWidth, minWidth), maxWidth);
+
     const cropHeight = cropWidth / aspect;
     canvas.width = cropWidth;
     canvas.height = cropHeight;
@@ -171,7 +182,6 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
     const scaleRatio = canvas.width / boxWidth;
 
     // Get display sizes of image
-    const displayWidth = img.clientWidth || img.width || 300;
     const displayHeight = img.clientHeight || img.height || 200;
 
     const drawWidth = displayWidth * zoom * scaleRatio;
@@ -190,13 +200,20 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
 
     ctx.restore();
 
+    // Preserve original file format where possible (e.g. transparent PNGs)
+    let mimeType = file?.type || "image/jpeg";
+    if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mimeType)) {
+      mimeType = "image/jpeg";
+    }
+    const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+
     canvas.toBlob((blob) => {
       if (blob) {
-        const croppedFile = new File([blob], "cropped_image.jpg", { type: "image/jpeg" });
+        const croppedFile = new File([blob], `cropped_image.${extension}`, { type: mimeType });
         const croppedUrl = URL.createObjectURL(blob);
         onCropComplete(croppedFile, croppedUrl);
       }
-    }, "image/jpeg", 0.92);
+    }, mimeType, mimeType === "image/png" ? undefined : 0.95);
   };
 
   // Dimensions of crop boundary guide box

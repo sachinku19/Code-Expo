@@ -23,8 +23,10 @@ import {
   Bookmark,
   ExternalLink,
   Briefcase,
-  Lock
+  Lock,
+  Laptop
 } from "lucide-react";
+import { optimizeCloudinaryUrl } from "../utils/imageOptimizer";
 import MainLayout from "../layouts/MainLayout";
 import "./PublicProfile.css";
 
@@ -160,7 +162,7 @@ const PublicProfile = () => {
         <div className="pub-hero-card">
           <div
             className="pub-cover-banner"
-            style={{ background: profileUser.coverBanner ? `url(${profileUser.coverBanner}) center/cover` : undefined }}
+            style={{ background: profileUser.coverBanner ? `url(${optimizeCloudinaryUrl(profileUser.coverBanner, { quality: "best", width: 1200 })}) center/cover` : undefined }}
           >
             <div className="pub-banner-overlay" />
           </div>
@@ -168,7 +170,7 @@ const PublicProfile = () => {
           <div className="pub-hero-content">
             <div className="pub-avatar-container">
               {profileUser.avatar ? (
-                <img src={profileUser.avatar} alt={displayName} className="pub-avatar-img" />
+                <img src={optimizeCloudinaryUrl(profileUser.avatar, { quality: "best", width: 160, height: 160, crop: "fill" })} alt={displayName} className="pub-avatar-img" />
               ) : (
                 <div className="pub-avatar-fallback" style={{ backgroundColor: getAvatarColor(profileUser.username) }}>
                   {(profileUser.username || "D").charAt(0).toUpperCase()}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Flame, UserPlus, UserCheck, MessageSquare } from "lucide-react";
+import { optimizeCloudinaryUrl } from "../../../../utils/imageOptimizer";
 
 const SafeAvatar = ({ src, name = "Dev", size = 32 }) => {
   const [error, setError] = useState(false);
@@ -17,7 +18,7 @@ const SafeAvatar = ({ src, name = "Dev", size = 32 }) => {
     >
       {src && !error ? (
         <img
-          src={src}
+          src={optimizeCloudinaryUrl(src, { quality: "best", width: size * 2, height: size * 2, crop: "fill" })}
           alt={name}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           onError={() => setError(true)}

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Logo from "../components/shared/Logo";
+import { optimizeCloudinaryUrl, getCloudinarySrcSet } from "../utils/imageOptimizer";
 import "../components/social/PremiumFeed.css";
 
 const ExpandableText = ({ children, text, lines = 3 }) => {
@@ -356,7 +357,9 @@ export default function PublicPostView() {
           {hasImage && (
             <div style={{ flex: "1 1 60%", background: "#000", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", minHeight: "450px" }}>
               <img
-                src={postImages[activeImageIdx]}
+                src={optimizeCloudinaryUrl(postImages[activeImageIdx], { quality: "best" })}
+                srcSet={getCloudinarySrcSet(postImages[activeImageIdx], { quality: "best" })}
+                sizes="(max-width: 1200px) 100vw, 1600px"
                 alt={`Media attachment ${activeImageIdx}`}
                 style={{ width: "100%", height: "100%", maxHeight: "700px", objectFit: "contain", display: "block" }}
               />
@@ -392,7 +395,7 @@ export default function PublicPostView() {
             <div style={{ padding: "18px 20px", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", display: "flex", alignItems: "center", gap: "12px" }}>
               <div style={{ width: "42px", height: "42px", borderRadius: "50%", overflow: "hidden", background: "rgba(99,102,241,0.15)", border: "1.5 solid #6366f1", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {post.author?.avatar ? (
-                  <img src={post.author.avatar} alt={post.author.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={optimizeCloudinaryUrl(post.author.avatar, { quality: "best", width: 84, height: 84, crop: "fill" })} alt={post.author.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <span style={{ color: "#8b5cf6", fontWeight: "700", fontSize: "1.1rem" }}>
                     {(post.author?.username || "D").charAt(0).toUpperCase()}
@@ -414,7 +417,7 @@ export default function PublicPostView() {
                 <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
                   <div style={{ width: "32px", height: "32px", borderRadius: "50%", overflow: "hidden", background: "rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {post.author?.avatar ? (
-                      <img src={post.author.avatar} alt="Author" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={optimizeCloudinaryUrl(post.author.avatar, { quality: "best", width: 64, height: 64, crop: "fill" })} alt="Author" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                       <span style={{ color: "#94a3b8", fontWeight: "600", fontSize: "0.85rem" }}>
                         {(post.author?.username || "D").charAt(0).toUpperCase()}
@@ -441,7 +444,7 @@ export default function PublicPostView() {
                     <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                       <div style={{ width: "28px", height: "28px", borderRadius: "50%", overflow: "hidden", background: "rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {c.avatar ? (
-                          <img src={c.avatar} alt={c.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <img src={optimizeCloudinaryUrl(c.avatar, { quality: "best", width: 56, height: 56, crop: "fill" })} alt={c.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                           <span style={{ color: "#94a3b8", fontWeight: "600", fontSize: "0.75rem" }}>
                             {(c.username || "D").charAt(0).toUpperCase()}

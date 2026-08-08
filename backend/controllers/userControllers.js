@@ -33,7 +33,7 @@ const uploadAvatar = async (req, res) => {
       req.file.buffer,
       req.file.originalname,
       "codeexpo_avatars",
-      { req, width: 250, height: 250, crop: "fill" }
+      { req }
     );
 
     // Save in DB
@@ -189,7 +189,7 @@ const uploadCoverBanner = async (req, res) => {
       req.file.buffer,
       req.file.originalname,
       "codeexpo_banners",
-      { req, width: 1200, height: 400, crop: "fill" }
+      { req }
     );
 
     user.coverBanner = mediaObj.url;

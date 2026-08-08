@@ -65,6 +65,7 @@ import {
 import { CommentTreeItem, InstaImageCarousel } from "../components/social/feed/FeedContent/PostCard";
 import { updateUserProfile, getActiveAnnouncements, getActiveAds, uploadCoverBanner, deleteCoverBanner } from "../services/userService";
 import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../services/likeEngine";
+import { optimizeCloudinaryUrl } from "../utils/imageOptimizer";
 
 const ExpandableText = ({ children, text, lines = 3 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -6268,281 +6269,127 @@ function Dashboard() {
                 <div className="room-requests-section-container" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
 
 
-                  {/* Injecting Clothesline CSS styles block dynamically */}
-                  <style>{`
-                    .ce-clothesline-container {
-                      position: relative;
-                      width: 100%;
-                      padding: 16px 0 16px 0;
-                      margin-bottom: 20px;
-                      display: flex;
-                      justify-content: center;
-                      align-items: center;
-                      background: radial-gradient(ellipse at 50% -30%, rgba(124, 58, 237, 0.05) 0%, transparent 80%);
-                    }
+                  {/* Stats Header for Rooms - Redesigned as Hanging Lamps (No shadows/glows) */}
+                  <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "20px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "40px", flexWrap: "wrap", zIndex: 10 }}>
+                    {/* The horizontal stick support */}
+                    <div className="ce-lamp-support-stick" style={{
+                      position: "absolute",
+                      top: "10px",
+                      left: "5%",
+                      width: "90%",
+                      height: "6px",
+                      background: "linear-gradient(to right, #2d3748, #4a5568, #718096, #4a5568, #2d3748)",
+                      borderRadius: "3px",
+                      boxShadow: "none",
+                      zIndex: 1
+                    }} />
 
-                    .ce-clothesline-rope {
-                      position: absolute;
-                      top: 12px;
-                      left: 2%;
-                      width: 96%;
-                      height: 4px;
-                      background: linear-gradient(to right, #8c6046 0%, #a67c52 30%, #8c6046 50%, #a67c52 70%, #70442c 100%);
-                      border-radius: 4px;
-                      box-shadow: 
-                        0 6px 12px rgba(0, 0, 0, 0.45),
-                        0 20px 30px rgba(0, 0, 0, 0.15);
-                      z-index: 1;
-                    }
-
-                    .ce-stats-grid-clothesline {
-                      display: grid;
-                      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-                      gap: 28px;
-                      width: 100%;
-                      z-index: 2;
-                      position: relative;
-                    }
-
-                    .ce-hanging-card {
-                      position: relative;
-                      display: flex;
-                      flex-direction: column;
-                      align-items: center;
-                      padding: 24px 20px;
-                      border-radius: 6px;
-                      color: #ffffff;
-                      box-shadow: 
-                        0 16px 36px rgba(0, 0, 0, 0.4),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.15),
-                        inset 0 -3px 0 rgba(0, 0, 0, 0.25);
-                      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
-                      cursor: default;
-                      margin-top: 14px;
-                    }
-
-                    .ce-clothespin {
-                      position: absolute;
-                      top: -24px;
-                      left: 50%;
-                      transform: translateX(-50%);
-                      width: 12px;
-                      height: 32px;
-                      background: linear-gradient(to right, #cf9e6e, #b88656, #a17042);
-                      border-radius: 2px;
-                      box-shadow: 
-                        2px 4px 6px rgba(0, 0, 0, 0.35),
-                        inset 1px 1px 0 rgba(255, 255, 255, 0.25);
-                      z-index: 3;
-                    }
-
-                    .ce-clothespin::after {
-                      content: '';
-                      position: absolute;
-                      top: 10px;
-                      left: -1px;
-                      width: 14px;
-                      height: 4px;
-                      background: #718096;
-                      border-radius: 1px;
-                      box-shadow: 0 1px 2px rgba(0,0,0,0.4);
-                    }
-
-                    .ce-hanging-card.card-1:hover {
-                      transform: rotate(2deg) scale(1.03);
-                      box-shadow: 0 24px 48px rgba(99, 102, 241, 0.25);
-                    }
-                    .ce-hanging-card.card-2:hover {
-                      transform: rotate(-2deg) scale(1.03);
-                      box-shadow: 0 24px 48px rgba(245, 158, 11, 0.25);
-                    }
-                    .ce-hanging-card.card-3:hover {
-                      transform: rotate(2deg) scale(1.03);
-                      box-shadow: 0 24px 48px rgba(168, 85, 247, 0.25);
-                    }
-                    .ce-hanging-card.card-4:hover {
-                      transform: rotate(-2deg) scale(1.03);
-                      box-shadow: 0 24px 48px rgba(16, 185, 129, 0.25);
-                    }
-
-                    .ce-hanging-card.card-1 {
-                      background: linear-gradient(135deg, #3730a3 0%, #1e1b4b 100%);
-                      border: 1px solid rgba(99, 102, 241, 0.35);
-                      transform: rotate(-1.5deg);
-                    }
-
-                    .ce-hanging-card.card-2 {
-                      background: linear-gradient(135deg, #854d0e 0%, #451a03 100%);
-                      border: 1px solid rgba(245, 158, 11, 0.35);
-                      transform: rotate(1deg);
-                    }
-
-                    .ce-hanging-card.card-3 {
-                      background: linear-gradient(135deg, #581c87 0%, #2e1065 100%);
-                      border: 1px solid rgba(168, 85, 247, 0.35);
-                      transform: rotate(-1deg);
-                    }
-
-                    .ce-hanging-card.card-4 {
-                      background: linear-gradient(135deg, #065f46 0%, #022c22 100%);
-                      border: 1px solid rgba(16, 185, 129, 0.35);
-                      transform: rotate(1.5deg);
-                    }
-
-                    .ce-card-icon-container {
-                      width: 44px;
-                      height: 44px;
-                      border-radius: 50%;
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      margin-bottom: 12px;
-                      background: rgba(255, 255, 255, 0.08);
-                      border: 1px solid rgba(255, 255, 255, 0.15);
-                      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-                    }
-
-                    .card-1 .ce-card-icon-container {
-                      background: rgba(99, 102, 241, 0.2);
-                      color: #a5b4fc;
-                      border-color: rgba(99, 102, 241, 0.35);
-                      box-shadow: 0 0 14px rgba(99, 102, 241, 0.3);
-                    }
-
-                    .card-2 .ce-card-icon-container {
-                      background: rgba(245, 158, 11, 0.2);
-                      color: #fbbf24;
-                      border-color: rgba(245, 158, 11, 0.35);
-                      box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
-                    }
-
-                    .card-3 .ce-card-icon-container {
-                      background: rgba(168, 85, 247, 0.2);
-                      color: #c084fc;
-                      border-color: rgba(168, 85, 247, 0.35);
-                      box-shadow: 0 0 14px rgba(168, 85, 247, 0.3);
-                    }
-
-                    .card-4 .ce-card-icon-container {
-                      background: rgba(16, 185, 129, 0.2);
-                      color: #34d399;
-                      border-color: rgba(16, 185, 129, 0.35);
-                      box-shadow: 0 0 14px rgba(16, 185, 129, 0.3);
-                    }
-
-                    .ce-card-title {
-                      font-size: 0.68rem;
-                      font-weight: 800;
-                      text-transform: uppercase;
-                      color: rgba(255, 255, 255, 0.75);
-                      letter-spacing: 1px;
-                      margin-bottom: 8px;
-                      text-align: center;
-                    }
-
-                    .ce-card-value {
-                      font-size: 2.4rem;
-                      font-weight: 900;
-                      line-height: 1;
-                      margin-bottom: 8px;
-                      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-                    }
-
-                    .card-1 .ce-card-value { color: #a5b4fc; }
-                    .card-2 .ce-card-value { color: #fde047; }
-                    .card-3 .ce-card-value { color: #e9d5ff; }
-                    .card-4 .ce-card-value { color: #a7f3d0; }
-
-                    .ce-card-subtitle {
-                      font-size: 0.72rem;
-                      color: rgba(255, 255, 255, 0.5);
-                      text-align: center;
-                      line-height: 1.3;
-                    }
-
-                    /* Light theme overrides for clothesline stats */
-                    .home-page.light-theme .ce-hanging-card.card-1 {
-                      background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-                      border-color: rgba(99, 102, 241, 0.2);
-                      color: #1e1b4b;
-                    }
-                    .home-page.light-theme .ce-hanging-card.card-2 {
-                      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-                      border-color: rgba(245, 158, 11, 0.2);
-                      color: #451a03;
-                    }
-                    .home-page.light-theme .ce-hanging-card.card-3 {
-                      background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-                      border-color: rgba(168, 85, 247, 0.2);
-                      color: #2e1065;
-                    }
-                    .home-page.light-theme .ce-hanging-card.card-4 {
-                      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-                      border-color: rgba(16, 185, 129, 0.2);
-                      color: #022c22;
-                    }
-
-                    .home-page.light-theme .ce-card-title {
-                      color: rgba(0, 0, 0, 0.6);
-                    }
-                    .home-page.light-theme .ce-card-subtitle {
-                      color: rgba(0, 0, 0, 0.55);
-                    }
-                    .home-page.light-theme .card-1 .ce-card-value { color: #3730a3; }
-                    .home-page.light-theme .card-2 .ce-card-value { color: #854d0e; }
-                    .home-page.light-theme .card-3 .ce-card-value { color: #581c87; }
-                    .home-page.light-theme .card-4 .ce-card-value { color: #065f46; }
-                  `}</style>
-
-                  {/* Clothesline stats container */}
-                  <div className="ce-clothesline-container">
-                    <div className="ce-clothesline-rope"></div>
-                    <div className="ce-stats-grid-clothesline">
-
-                      {/* Card 1: My Workspaces */}
-                      <div className="ce-hanging-card card-1">
-                        <div className="ce-clothespin"></div>
-                        <div className="ce-card-icon-container">
+                    {/* Lamp 1: My Workspaces */}
+                    <div className="ce-hanging-lamp-card-wrapper">
+                      <div className="ce-lamp-rope" style={{
+                        width: "3px",
+                        height: "40px",
+                        background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                        boxShadow: "none"
+                      }} />
+                      <div className="ce-lamp-cap" style={{
+                        width: "20px",
+                        height: "8px",
+                        background: "#4a5568",
+                        borderRadius: "4px 4px 0 0",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        boxShadow: "none",
+                        marginBottom: "-1px"
+                      }} />
+                      <div className="ce-hanging-lamp-card purple-lamp">
+                        <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
                           <FolderGit size={18} />
                         </div>
-                        <span className="ce-card-title">My Workspaces</span>
-                        <span className="ce-card-value">{ownedRooms.length}</span>
-                        <span className="ce-card-subtitle">Total workspaces created by you</span>
+                        <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>My Workspaces</span>
+                        <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#a78bfa", marginTop: "4px", zIndex: 1 }}>{ownedRooms.length}</span>
+                        <span className="stat-card-subtitle" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", marginTop: "6px", textAlign: "center", opacity: 0.85, zIndex: 1 }}>Total workspaces created by you</span>
                       </div>
+                    </div>
 
-                      {/* Card 2: Pending Access Requests */}
-                      <div className="ce-hanging-card card-2">
-                        <div className="ce-clothespin"></div>
-                        <div className="ce-card-icon-container">
+                    {/* Lamp 2: Pending Access Requests */}
+                    <div className="ce-hanging-lamp-card-wrapper">
+                      <div className="ce-lamp-rope" style={{
+                        width: "3px",
+                        height: "40px",
+                        background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                        boxShadow: "none"
+                      }} />
+                      <div className="ce-lamp-cap" style={{
+                        width: "20px",
+                        height: "8px",
+                        background: "#4a5568",
+                        borderRadius: "4px 4px 0 0",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        boxShadow: "none",
+                        marginBottom: "-1px"
+                      }} />
+                      <div className="ce-hanging-lamp-card yellow-lamp">
+                        <div className="stat-card-icon-wrapper amber-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
                           <ShieldAlert size={18} />
                         </div>
-                        <span className="ce-card-title">Pending Access Requests</span>
-                        <span className="ce-card-value">{joinRequests.length}</span>
-                        <span className="ce-card-subtitle">Requests waiting for your approval</span>
+                        <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Pending Requests</span>
+                        <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#fbbf24", marginTop: "4px", zIndex: 1 }}>{joinRequests.length}</span>
+                        <span className="stat-card-subtitle" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", marginTop: "6px", textAlign: "center", opacity: 0.85, zIndex: 1 }}>Requests waiting for your approval</span>
                       </div>
+                    </div>
 
-                      {/* Card 3: Private Rooms */}
-                      <div className="ce-hanging-card card-3">
-                        <div className="ce-clothespin"></div>
-                        <div className="ce-card-icon-container">
+                    {/* Lamp 3: Private Rooms */}
+                    <div className="ce-hanging-lamp-card-wrapper">
+                      <div className="ce-lamp-rope" style={{
+                        width: "3px",
+                        height: "40px",
+                        background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                        boxShadow: "none"
+                      }} />
+                      <div className="ce-lamp-cap" style={{
+                        width: "20px",
+                        height: "8px",
+                        background: "#4a5568",
+                        borderRadius: "4px 4px 0 0",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        boxShadow: "none",
+                        marginBottom: "-1px"
+                      }} />
+                      <div className="ce-hanging-lamp-card purple-lamp" style={{ borderColor: "rgba(168, 85, 247, 0.25)" }}>
+                        <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
                           <Lock size={18} />
                         </div>
-                        <span className="ce-card-title">Private Rooms</span>
-                        <span className="ce-card-value">{ownedRooms.filter(r => r.isPrivate).length}</span>
-                        <span className="ce-card-subtitle">Private rooms created by you</span>
+                        <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Private Rooms</span>
+                        <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#c084fc", marginTop: "4px", zIndex: 1 }}>{ownedRooms.filter(r => r.isPrivate).length}</span>
+                        <span className="stat-card-subtitle" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", marginTop: "6px", textAlign: "center", opacity: 0.85, zIndex: 1 }}>Private rooms created by you</span>
                       </div>
+                    </div>
 
-                      {/* Card 4: Live Active Rooms */}
-                      <div className="ce-hanging-card card-4">
-                        <div className="ce-clothespin"></div>
-                        <div className="ce-card-icon-container">
+                    {/* Lamp 4: Live Active Rooms */}
+                    <div className="ce-hanging-lamp-card-wrapper">
+                      <div className="ce-lamp-rope" style={{
+                        width: "3px",
+                        height: "40px",
+                        background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                        boxShadow: "none"
+                      }} />
+                      <div className="ce-lamp-cap" style={{
+                        width: "20px",
+                        height: "8px",
+                        background: "#4a5568",
+                        borderRadius: "4px 4px 0 0",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        boxShadow: "none",
+                        marginBottom: "-1px"
+                      }} />
+                      <div className="ce-hanging-lamp-card green-lamp">
+                        <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
                           <Radio size={18} />
                         </div>
-                        <span className="ce-card-title">Live Active Rooms</span>
-                        <span className="ce-card-value">{ownedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}</span>
-                        <span className="ce-card-subtitle">Rooms currently live and active</span>
+                        <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Live Active Rooms</span>
+                        <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#34d399", marginTop: "4px", zIndex: 1 }}>{ownedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}</span>
+                        <span className="stat-card-subtitle" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", marginTop: "6px", textAlign: "center", opacity: 0.85, zIndex: 1 }}>Rooms currently live and active</span>
                       </div>
-
                     </div>
                   </div>
 
@@ -7411,34 +7258,117 @@ function Dashboard() {
               style={{ width: "100%", height: "100%" }}
             >
               <div className="liverooms-section-container">
-                {/* Stats Header for Live Rooms */}
-                <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
-                  <div className="compact-stat-card">
-                    <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                      <Activity size={18} />
-                    </div>
-                    <div className="stat-card-info">
-                      <span className="stat-card-label">Active Live Rooms</span>
-                      <span className="stat-card-val">{liveRooms.length}</span>
+                {/* Stats Header for Live Rooms - Redesigned as Hanging Lamps (No shadows/glows) */}
+                <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "20px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "50px", flexWrap: "wrap", zIndex: 10 }}>
+
+                  {/* The horizontal wooden/metallic stick support */}
+                  <div className="ce-lamp-support-stick" style={{
+                    position: "absolute",
+                    top: "10px",
+                    left: "10%",
+                    width: "80%",
+                    height: "6px",
+                    background: "linear-gradient(to right, #2d3748, #4a5568, #718096, #4a5568, #2d3748)",
+                    borderRadius: "3px",
+                    boxShadow: "none",
+                    zIndex: 1
+                  }} />
+
+                  {/* Lamp 1: Active Live Rooms */}
+                  <div className="ce-hanging-lamp-card-wrapper">
+                    {/* The rope */}
+                    <div className="ce-lamp-rope" style={{
+                      width: "3px",
+                      height: "40px",
+                      background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                      boxShadow: "none"
+                    }} />
+                    {/* The metal fixture/cap at the top of the lamp */}
+                    <div className="ce-lamp-cap" style={{
+                      width: "20px",
+                      height: "8px",
+                      background: "#4a5568",
+                      borderRadius: "4px 4px 0 0",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      boxShadow: "none",
+                      marginBottom: "-1px"
+                    }} />
+                    {/* The card body (lamp itself) */}
+                    <div className="ce-hanging-lamp-card green-lamp">
+                      <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
+                        <Activity size={18} />
+                      </div>
+                      <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Active Rooms</span>
+                      <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#34d399", marginTop: "4px", zIndex: 1 }}>{liveRooms.length}</span>
                     </div>
                   </div>
-                  <div className="compact-stat-card">
-                    <div className="stat-card-icon-wrapper green-theme-wrapper">
-                      <Users size={18} />
-                    </div>
-                    <div className="stat-card-info">
-                      <span className="stat-card-label">Active Developers Online</span>
-                      <span className="stat-card-val">
+
+                  {/* Lamp 2: Active Developers Online */}
+                  <div className="ce-hanging-lamp-card-wrapper">
+                    {/* The rope */}
+                    <div className="ce-lamp-rope" style={{
+                      width: "3px",
+                      height: "40px",
+                      background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                      boxShadow: "none"
+                    }} />
+                    {/* The metal fixture/cap at the top of the lamp */}
+                    <div className="ce-lamp-cap" style={{
+                      width: "20px",
+                      height: "8px",
+                      background: "#4a5568",
+                      borderRadius: "4px 4px 0 0",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      boxShadow: "none",
+                      marginBottom: "-1px"
+                    }} />
+                    {/* The card body (lamp itself) */}
+                    <div className="ce-hanging-lamp-card yellow-lamp">
+                      <div className="stat-card-icon-wrapper amber-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
+                        <Users size={18} />
+                      </div>
+                      <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Active Developers</span>
+                      <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#fbbf24", marginTop: "4px", zIndex: 1 }}>
                         {liveRooms.reduce((acc, r) => acc + (r.activeUsersCount || 0), 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Lamp 3: Total Rooms Created */}
+                  <div className="ce-hanging-lamp-card-wrapper">
+                    {/* The rope */}
+                    <div className="ce-lamp-rope" style={{
+                      width: "3px",
+                      height: "40px",
+                      background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                      boxShadow: "none"
+                    }} />
+                    {/* The metal fixture/cap at the top of the lamp */}
+                    <div className="ce-lamp-cap" style={{
+                      width: "20px",
+                      height: "8px",
+                      background: "#4a5568",
+                      borderRadius: "4px 4px 0 0",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      boxShadow: "none",
+                      marginBottom: "-1px"
+                    }} />
+                    {/* The card body (lamp itself) */}
+                    <div className="ce-hanging-lamp-card purple-lamp">
+                      <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
+                        <FolderGit size={18} />
+                      </div>
+                      <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Total Rooms Created</span>
+                      <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#a78bfa", marginTop: "4px", zIndex: 1 }}>
+                        {historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+                <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "0px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="live-indicator-dot" />
-                    <h3 className="section-title">Global Live Coding Workspaces</h3>
+                    <h3 className="section-title" style={{ color: "#10b981", fontSize: "1.1rem", fontWeight: "600", margin: "0 0 -4px" }}>Live Workspace</h3>
                   </div>
                   <div className="section-search-container">
                     <Search size={13} className="section-search-icon" />
@@ -7453,19 +7383,28 @@ function Dashboard() {
                 </div>
 
                 {liveRooms.length === 0 ? (
-                  <div className="empty-state-card" style={{ padding: "48px 24px" }}>
-                    <Activity size={32} className="empty-state-icon" style={{ color: "var(--ce-success)", marginBottom: "16px" }} />
-                    <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)" }}>No active workspaces</h3>
-                    <p style={{ margin: "0 0 16px 0", color: "var(--ce-text-muted)", fontSize: "0.82rem" }}>Nobody is hosting a live room. Launch yours to go live!</p>
+                  <div className="ce-empty-workspace-card">
+                    <div className="ce-radar-container">
+                      <div className="ce-radar-ring ring-1" />
+                      <div className="ce-radar-ring ring-2" />
+                      <div className="ce-radar-ring ring-3" />
+                      <div className="ce-radar-center">
+                        <Terminal size={28} className="ce-radar-icon" />
+                      </div>
+                    </div>
+
+                    <h3 className="ce-empty-title">No Active Workspaces Found</h3>
+
+
                     <button
-                      className="room-enter-btn-action"
-                      style={{ margin: "0 auto" }}
+                      className="ce-premium-create-room-btn"
                       onClick={() => {
                         setFormData({ title: "", language: "javascript", isPrivate: false });
                         setShowQuickCreateModal(true);
                       }}
                     >
-                      <Plus size={14} /> Create Room
+                      <Plus size={16} />
+                      <span>Launch Your Room</span>
                     </button>
                   </div>
                 ) : (() => {
@@ -8143,23 +8082,75 @@ function Dashboard() {
               className="leaderboard-section-container"
             >
               {/* Leaderboard Stats Cards */}
-              <div className="ce-stats-grid" style={{ marginBottom: "24px" }}>
-                <div className="compact-stat-card">
-                  <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                    <Users size={18} />
-                  </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-label">Platform Developers</span>
-                    <span className="stat-card-val">{leaderboardData.length}</span>
+              <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "20px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "50px", flexWrap: "wrap", zIndex: 10 }}>
+                {/* The horizontal wooden/metallic stick support */}
+                <div className="ce-lamp-support-stick" style={{
+                  position: "absolute",
+                  top: "10px",
+                  left: "10%",
+                  width: "80%",
+                  height: "6px",
+                  background: "linear-gradient(to right, #2d3748, #4a5568, #718096, #4a5568, #2d3748)",
+                  borderRadius: "3px",
+                  boxShadow: "none",
+                  zIndex: 1
+                }} />
+
+                {/* Lamp 1: Platform Developers */}
+                <div className="ce-hanging-lamp-card-wrapper">
+                  {/* The rope */}
+                  <div className="ce-lamp-rope" style={{
+                    width: "3px",
+                    height: "40px",
+                    background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                    boxShadow: "none"
+                  }} />
+                  {/* The metal fixture/cap at the top of the lamp */}
+                  <div className="ce-lamp-cap" style={{
+                    width: "20px",
+                    height: "8px",
+                    background: "#4a5568",
+                    borderRadius: "4px 4px 0 0",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "none",
+                    marginBottom: "-1px"
+                  }} />
+                  {/* The card body (lamp itself) */}
+                  <div className="ce-hanging-lamp-card green-lamp">
+                    <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
+                      <Users size={18} />
+                    </div>
+                    <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Platform Developers</span>
+                    <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#34d399", marginTop: "4px", zIndex: 1 }}>{leaderboardData.length}</span>
                   </div>
                 </div>
-                <div className="compact-stat-card">
-                  <div className="stat-card-icon-wrapper rank-icon-wrapper rank-junior" style={{ background: "var(--ce-primary-glow)", color: "var(--ce-primary)" }}>
-                    <Trophy size={18} />
-                  </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-label">Your Global Rank</span>
-                    <span className="stat-card-val">
+
+                {/* Lamp 2: Your Global Rank */}
+                <div className="ce-hanging-lamp-card-wrapper">
+                  {/* The rope */}
+                  <div className="ce-lamp-rope" style={{
+                    width: "3px",
+                    height: "40px",
+                    background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                    boxShadow: "none"
+                  }} />
+                  {/* The metal fixture/cap at the top of the lamp */}
+                  <div className="ce-lamp-cap" style={{
+                    width: "20px",
+                    height: "8px",
+                    background: "#4a5568",
+                    borderRadius: "4px 4px 0 0",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "none",
+                    marginBottom: "-1px"
+                  }} />
+                  {/* The card body (lamp itself) */}
+                  <div className="ce-hanging-lamp-card yellow-lamp">
+                    <div className="stat-card-icon-wrapper amber-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
+                      <Trophy size={18} />
+                    </div>
+                    <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Your Global Rank</span>
+                    <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#fbbf24", marginTop: "4px", zIndex: 1 }}>
                       {(() => {
                         const myIndex = leaderboardData.findIndex(item => String(item.userId) === String(user?.id || user?._id));
                         return myIndex !== -1 ? `#${myIndex + 1}` : "N/A";
@@ -8167,13 +8158,33 @@ function Dashboard() {
                     </span>
                   </div>
                 </div>
-                <div className="compact-stat-card">
-                  <div className="stat-card-icon-wrapper purple-theme-wrapper">
-                    <Flame size={18} style={{ color: "#ff7b00" }} />
-                  </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-label">Highest Score</span>
-                    <span className="stat-card-val">
+
+                {/* Lamp 3: Highest Score */}
+                <div className="ce-hanging-lamp-card-wrapper">
+                  {/* The rope */}
+                  <div className="ce-lamp-rope" style={{
+                    width: "3px",
+                    height: "40px",
+                    background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
+                    boxShadow: "none"
+                  }} />
+                  {/* The metal fixture/cap at the top of the lamp */}
+                  <div className="ce-lamp-cap" style={{
+                    width: "20px",
+                    height: "8px",
+                    background: "#4a5568",
+                    borderRadius: "4px 4px 0 0",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "none",
+                    marginBottom: "-1px"
+                  }} />
+                  {/* The card body (lamp itself) */}
+                  <div className="ce-hanging-lamp-card purple-lamp">
+                    <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
+                      <Flame size={18} style={{ color: "#ff7b00" }} />
+                    </div>
+                    <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Highest Score</span>
+                    <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#a78bfa", marginTop: "4px", zIndex: 1 }}>
                       {leaderboardData[0] ? `${leaderboardData[0].xp} XP` : "0 XP"}
                     </span>
                   </div>
@@ -10102,7 +10113,7 @@ function Dashboard() {
                         className="profile-cover-banner"
                         style={{
                           background: (viewingUserProfile ? viewingUserProfile.coverBanner : user?.coverBanner)
-                            ? `url(${viewingUserProfile ? viewingUserProfile.coverBanner : user.coverBanner}) center/cover no-repeat`
+                            ? `url(${optimizeCloudinaryUrl(viewingUserProfile ? viewingUserProfile.coverBanner : user.coverBanner, { quality: "best", width: 1200 })}) center/cover no-repeat`
                             : "linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(6, 182, 212, 0.4) 100%)",
                           height: "100px",
                           width: "100%",
@@ -10142,9 +10153,43 @@ function Dashboard() {
                             <span>Return to My Profile</span>
                           </button>
                         ) : (
-                          <div className="banner-edit-overlay" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.2s ease", color: "#fff", fontSize: "0.7rem", fontWeight: "600" }}>
-                            Change Banner
-                          </div>
+                          <>
+                            <div className="banner-edit-overlay" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.2s ease", color: "#fff", fontSize: "0.7rem", fontWeight: "600" }}>
+                              Change Banner
+                            </div>
+                            {user?.coverBanner && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCoverBannerDelete();
+                                }}
+                                style={{
+                                  position: "absolute",
+                                  top: "10px",
+                                  right: "10px",
+                                  background: "rgba(239, 68, 68, 0.9)",
+                                  color: "#ffffff",
+                                  border: "none",
+                                  borderRadius: "50%",
+                                  width: "28px",
+                                  height: "28px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  cursor: "pointer",
+                                  zIndex: 11,
+                                  boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                                  transition: "all 0.2s ease"
+                                }}
+                                title="Delete cover banner"
+                                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1.0)"}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </>
                         )}
                         <style>{`
                     .profile-cover-banner:hover .banner-edit-overlay {
@@ -10179,7 +10224,7 @@ function Dashboard() {
                               style={{ width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: viewingUserProfile.avatar ? "transparent" : getAvatarColor(viewingUserProfile.username), fontSize: "1.8rem", color: "#fff", fontWeight: "600", border: "4px solid var(--ce-surface-card)", cursor: "pointer" }}
                             >
                               {viewingUserProfile.avatar ? (
-                                <img src={viewingUserProfile.avatar} alt={viewingUserProfile.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                <img src={optimizeCloudinaryUrl(viewingUserProfile.avatar, { quality: "best", width: 160, height: 160, crop: "fill" })} alt={viewingUserProfile.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                               ) : (
                                 (viewingUserProfile.username || "D").charAt(0).toUpperCase()
                               )}
@@ -12253,7 +12298,7 @@ function Dashboard() {
         {/* Kick Confirmation Modal */}
         {kickModalOpen && createPortal(
           <div className="ce-modal-overlay" onClick={() => setKickModalOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 999999, background: "rgba(0, 0, 0, 0.78)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-            <div className="ce-modal-card confirm-modal-card warning-glow" onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "420px", maxWidth: "90vw", padding: "32px 24px", borderRadius: "24px", background: "var(--ce-surface, #12121a)", border: "1px solid var(--ce-border, rgba(255,255,255,0.12))", boxShadow: "0 25px 70px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", margin: "auto" }}>
+            <div className="ce-modal-card confirm-modal-card warning-glow" onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "420px", maxWidth: "90vw", padding: "32px 24px", borderRadius: "4px", background: "var(--ce-surface, #12121a)", border: "1px solid var(--ce-border, rgba(255,255,255,0.12))", boxShadow: "0 25px 70px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", margin: "auto" }}>
               <div className="modal-icon-circle error" style={{ width: "64px", height: "64px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(239, 68, 68, 0.15)", border: "2px solid rgba(239, 68, 68, 0.4)", color: "#ef4444", marginBottom: "16px", boxShadow: "0 0 25px rgba(239, 68, 68, 0.3)" }}>
                 <UserMinus size={30} />
               </div>
@@ -12266,7 +12311,7 @@ function Dashboard() {
                   className="ce-btn-secondary"
                   type="button"
                   onClick={() => setKickModalOpen(false)}
-                  style={{ flex: 1, padding: "12px", fontWeight: "700", borderRadius: "12px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e4e4e7", cursor: "pointer", fontSize: "0.9rem" }}
+                  style={{ flex: 1, padding: "12px", fontWeight: "700", borderRadius: "4px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e4e4e7", cursor: "pointer", fontSize: "0.9rem" }}
                 >
                   Cancel
                 </button>
@@ -12274,7 +12319,7 @@ function Dashboard() {
                   className="ce-btn-danger"
                   type="button"
                   onClick={confirmKickUser}
-                  style={{ flex: 1, padding: "12px", fontWeight: "700", borderRadius: "12px", background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", color: "#ffffff", border: "none", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 20px rgba(239,68,68,0.4)" }}
+                  style={{ flex: 1, padding: "12px", fontWeight: "700", borderRadius: "4px", background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", color: "#ffffff", border: "none", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 20px rgba(239,68,68,0.4)" }}
                 >
                   Remove User
                 </button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Heart, MessageSquare, Share2, Bookmark, CheckCircle2, Send, Trash2, UserPlus, UserCheck, MessageCircle, BarChart3, Repeat, MoreVertical, Flame, Flag, ChevronLeft, ChevronRight, ThumbsUp, ChevronDown, ChevronUp } from "lucide-react";
 import { toggleLikeCommentPost, deleteCommentPost } from "../../../../services/socialService";
+import { optimizeCloudinaryUrl, getCloudinarySrcSet } from "../../../../utils/imageOptimizer";
 
 const AVATAR_GRADIENTS = [
   "linear-gradient(135deg, #7C5CFF 0%, #6366f1 100%)",
@@ -40,7 +41,7 @@ const SafeAvatar = ({ src, name = "Dev", size = 38, onClick }) => {
     >
       {src && !error ? (
         <img
-          src={src}
+          src={optimizeCloudinaryUrl(src, { quality: "best", width: size * 2, height: size * 2, crop: "fill" })}
           alt={cleanName}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           onError={() => setError(true)}
@@ -73,9 +74,17 @@ export const InstaImageCarousel = ({ images, height = "340px" }) => {
   if (!images || images.length === 0) return null;
 
   if (images.length === 1) {
+    const imgUrl = getImgUrl(images[0]);
     return (
       <div className="post-media-box" style={{ width: "100%", height, borderRadius: "10px", overflow: "hidden" }}>
-        <img src={getImgUrl(images[0])} alt="Post media" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px" }} />
+        <img
+          src={optimizeCloudinaryUrl(imgUrl, { quality: "best" })}
+          srcSet={getCloudinarySrcSet(imgUrl, { quality: "best" })}
+          sizes="(max-width: 600px) 100vw, 800px"
+          alt="Post media"
+          loading="lazy"
+          style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px" }}
+        />
       </div>
     );
   }
@@ -113,16 +122,21 @@ export const InstaImageCarousel = ({ images, height = "340px" }) => {
           transition: "transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
         }}
       >
-        {images.map((img, i) => (
-          <div key={i} style={{ minWidth: "100%", width: "100%", height: "100%", flexShrink: 0 }}>
-            <img
-              src={getImgUrl(img)}
-              alt={`Post photo ${i + 1}`}
-              loading="lazy"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          </div>
-        ))}
+        {images.map((img, i) => {
+          const imgUrl = getImgUrl(img);
+          return (
+            <div key={i} style={{ minWidth: "100%", width: "100%", height: "100%", flexShrink: 0 }}>
+              <img
+                src={optimizeCloudinaryUrl(imgUrl, { quality: "best" })}
+                srcSet={getCloudinarySrcSet(imgUrl, { quality: "best" })}
+                sizes="(max-width: 600px) 100vw, 800px"
+                alt={`Post photo ${i + 1}`}
+                loading="lazy"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {/* Top-Right Instagram Style Badge Count (e.g. 1/4) */}
