@@ -582,111 +582,48 @@ const DeletePostConfirmModal = ({ isOpen, onConfirm, onCancel, isDeleting }) => 
     <FeedPortal>
       <AnimatePresence>
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.85)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 999999,
-            padding: "24px"
-          }}
+          className="ce-confirm-modal-overlay"
           onClick={onCancel}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.92 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            style={{
-              background: "#11121d",
-              border: "1px solid rgba(239, 68, 68, 0.25)",
-              borderRadius: "20px",
-              padding: "32px 28px",
-              width: "420px",
-              maxWidth: "92vw",
-              boxShadow: "0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(239, 68, 68, 0.15)",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "20px"
-            }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="ce-confirm-modal-card delete-card"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Warning Icon Badge */}
-            <div
-              style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "50%",
-                background: "rgba(239, 68, 68, 0.12)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 0 30px rgba(239, 68, 68, 0.25)"
-              }}
-            >
-              <Trash2 size={28} color="#ef4444" />
+            <div className="ce-confirm-modal-badge delete-badge">
+              <Trash2 size={26} color="#ef4444" />
             </div>
 
             {/* Title & Body */}
             <div>
-              <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#ffffff", margin: "0 0 8px 0" }}>
+              <h3 className="ce-confirm-modal-title">
                 Delete Post?
               </h3>
-              <p style={{ fontSize: "0.88rem", color: "rgba(255, 255, 255, 0.65)", lineHeight: "1.5", margin: 0 }}>
+              <p className="ce-confirm-modal-text">
                 Are you sure you want to delete this developer post? This action is permanent and cannot be undone.
               </p>
             </div>
 
             {/* Action Buttons Row */}
-            <div style={{ display: "flex", gap: "12px", width: "100%", marginTop: "4px" }}>
+            <div style={{ display: "flex", gap: "10px", width: "100%", marginTop: "4px" }}>
               <button
                 type="button"
+                className="ce-confirm-btn-cancel"
                 onClick={onCancel}
                 disabled={isDeleting}
-                style={{
-                  flex: 1,
-                  background: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
-                  borderRadius: "10px",
-                  padding: "11px",
-                  color: "#ffffff",
-                  fontSize: "0.88rem",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease"
-                }}
               >
                 Cancel
               </button>
 
               <button
                 type="button"
+                className="ce-confirm-btn-delete"
                 onClick={onConfirm}
                 disabled={isDeleting}
-                style={{
-                  flex: 1,
-                  background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-                  border: "none",
-                  borderRadius: "10px",
-                  padding: "11px",
-                  color: "#ffffff",
-                  fontSize: "0.88rem",
-                  fontWeight: "700",
-                  cursor: isDeleting ? "wait" : "pointer",
-                  opacity: isDeleting ? 0.7 : 1,
-                  boxShadow: "0 4px 16px rgba(239, 68, 68, 0.4)",
-                  transition: "all 0.2s ease"
-                }}
               >
                 {isDeleting ? "Deleting..." : "Delete Post"}
               </button>
@@ -698,7 +635,7 @@ const DeletePostConfirmModal = ({ isOpen, onConfirm, onCancel, isDeleting }) => 
   );
 };
 
-// Reusable animated glassmorphism ConfirmPostModal component
+// Reusable animated ConfirmPostModal component
 const ConfirmPostModal = ({ isOpen, onConfirm, onCancel, isPosting }) => {
   if (!isOpen) return null;
 
@@ -706,134 +643,50 @@ const ConfirmPostModal = ({ isOpen, onConfirm, onCancel, isPosting }) => {
     <FeedPortal>
       <AnimatePresence>
         <div
-          className="ce-warning-modal-overlay"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.82)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 999999,
-            padding: "24px"
-          }}
+          className="ce-confirm-modal-overlay"
           onClick={onCancel}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 0 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            style={{
-              background: "#0d0d12",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: "24px",
-              padding: "36px 32px",
-              width: "450px",
-              maxWidth: "92vw",
-              margin: "auto",
-              boxShadow: "0 32px 96px rgba(0, 0, 0, 0.95), 0 0 50px rgba(124, 92, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "22px"
-            }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="ce-confirm-modal-card"
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                width: "64px",
-                height: "64px",
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(139, 92, 246, 0.1))",
-                border: "1px solid rgba(124, 92, 255, 0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#7C5CFF",
-                boxShadow: "0 0 20px rgba(124, 92, 255, 0.2)"
-              }}
-            >
-              <ShieldCheck size={32} />
+            <div className="ce-confirm-modal-badge">
+              <ShieldCheck size={28} />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <h3
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: "700",
-                  color: "#ffffff",
-                  margin: 0,
-                  letterSpacing: "-0.01em"
-                }}
-              >
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <h3 className="ce-confirm-modal-title">
                 Confirm Post Publication
               </h3>
-              <p
-                style={{
-                  fontSize: "0.88rem",
-                  color: "rgba(255, 255, 255, 0.65)",
-                  margin: 0,
-                  lineHeight: "1.5"
-                }}
-              >
+              <p className="ce-confirm-modal-text">
                 Are you sure you want to publish this update? It will immediately be shared with the developer community on CodeExpo.
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: "12px", width: "100%", marginTop: "8px" }}>
+            <div style={{ display: "flex", gap: "10px", width: "100%", marginTop: "4px" }}>
               <button
                 type="button"
+                className="ce-confirm-btn-cancel"
                 onClick={onCancel}
-                style={{
-                  flex: 1,
-                  padding: "11px 16px",
-                  borderRadius: "10px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  color: "#ffffff",
-                  fontSize: "0.88rem",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease"
-                }}
               >
                 Cancel
               </button>
 
               <button
                 type="button"
+                className="ce-confirm-btn-submit"
                 onClick={onConfirm}
                 disabled={isPosting}
-                style={{
-                  flex: 1,
-                  padding: "11px 16px",
-                  borderRadius: "10px",
-                  background: "linear-gradient(135deg, #7C5CFF 0%, #8b5cf6 100%)",
-                  border: "none",
-                  color: "#ffffff",
-                  fontSize: "0.88rem",
-                  fontWeight: "600",
-                  cursor: isPosting ? "not-allowed" : "pointer",
-                  boxShadow: "0 4px 14px rgba(124, 92, 255, 0.35)",
-                  opacity: isPosting ? 0.6 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px"
-                }}
               >
                 {isPosting ? (
                   "Posting..."
                 ) : (
                   <>
-                    <Sparkles size={16} />
+                    <Sparkles size={15} />
                     <span>Yes, Publish</span>
                   </>
                 )}

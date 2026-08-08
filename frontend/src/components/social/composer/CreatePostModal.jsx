@@ -632,11 +632,11 @@ export const CreatePostModal = ({
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
                         <SafeAvatar src={user?.avatar} name={user?.username} size={38} />
                         <div>
-                          <div style={{ fontSize: "0.9rem", fontWeight: "700", color: "#ffffff", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <div className="preview-author-name" style={{ fontSize: "0.9rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
                             @{user?.username || "developer"}
                             <CheckCircle2 size={13} color="#3b82f6" />
                           </div>
-                          <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.5)" }}>{user?.role || "Developer"} &bull; Just now</div>
+                          <div className="preview-author-meta" style={{ fontSize: "0.76rem" }}>{user?.role || "Developer"} &bull; Just now</div>
                         </div>
                       </div>
 
@@ -645,7 +645,7 @@ export const CreatePostModal = ({
                         {inputText.trim() ? (
                           parseMarkdown ? parseMarkdown(inputText) : inputText
                         ) : (
-                          <span style={{ color: "rgba(255,255,255,0.4)", fontStyle: "italic" }}>
+                          <span className="preview-placeholder-text" style={{ fontStyle: "italic" }}>
                             No post text written yet. Switch back to Write mode to compose your post.
                           </span>
                         )}

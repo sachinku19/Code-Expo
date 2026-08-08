@@ -10537,6 +10537,16 @@ tier-badge.master {
   color: var(--ce-text) !important;
 }
 
+.light .comment-username {
+  color: var(--ce-text) !important;
+}
+
+.light .comment-input-box {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
 .light .comment-bubble {
   background: rgba(0, 0, 0, 0.02) !important;
   border: 1px solid var(--ce-border) !important;

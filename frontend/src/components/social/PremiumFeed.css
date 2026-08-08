@@ -2340,6 +2340,249 @@ html {
   color: #ef4444 !important;
 }
 
+/* Story System Light Mode Support */
+.light .ce-modal-card,
+.light-mode .ce-modal-card,
+.light-theme .ce-modal-card,
+body.light .ce-modal-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12), 0 0 35px rgba(99, 102, 241, 0.12) !important;
+  color: #0f172a !important;
+}
+
+.light .story-viewer-overlay,
+.light-mode .story-viewer-overlay,
+.light-theme .story-viewer-overlay,
+body.light .story-viewer-overlay {
+  background: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.light .story-viewer-nav-btn,
+.light-mode .story-viewer-nav-btn,
+.light-theme .story-viewer-nav-btn,
+body.light .story-viewer-nav-btn {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
+}
+
+.light .story-viewer-nav-btn:hover,
+.light-mode .story-viewer-nav-btn:hover,
+.light-theme .story-viewer-nav-btn:hover,
+body.light .story-viewer-nav-btn:hover {
+  background: #ffffff !important;
+  transform: translateY(-50%) scale(1.08) !important;
+}
+
+.light .ce-tiny-confirm-overlay,
+.light-mode .ce-tiny-confirm-overlay,
+.light-theme .ce-tiny-confirm-overlay,
+body.light .ce-tiny-confirm-overlay {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+.light .ce-tiny-confirm-card,
+.light-mode .ce-tiny-confirm-card,
+.light-theme .ce-tiny-confirm-card,
+body.light .ce-tiny-confirm-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12), 0 0 25px rgba(239, 68, 68, 0.12) !important;
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   Square Confirmation Modal System (Confirm Post & Delete Post)
+   ========================================================================== */
+.ce-confirm-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999999 !important;
+  padding: 24px;
+}
+
+.ce-confirm-modal-card {
+  background: #0f1018;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px; /* Square Box Shape */
+  padding: 26px 24px;
+  width: 400px;
+  max-width: 92vw;
+  margin: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 35px rgba(124, 92, 255, 0.15);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #ffffff;
+  box-sizing: border-box;
+}
+
+.ce-confirm-modal-card.delete-card {
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 35px rgba(239, 68, 68, 0.15);
+}
+
+.ce-confirm-modal-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px; /* Square Icon Badge */
+  background: rgba(124, 92, 255, 0.15);
+  border: 1px solid rgba(124, 92, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7C5CFF;
+}
+
+.ce-confirm-modal-badge.delete-badge {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.ce-confirm-modal-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.ce-confirm-modal-text {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ce-confirm-btn-cancel {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 6px; /* Square Button */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.ce-confirm-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.ce-confirm-btn-submit {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 6px; /* Square Button */
+  background: linear-gradient(135deg, #7C5CFF 0%, #8b5cf6 100%);
+  border: none;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 92, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+}
+
+.ce-confirm-btn-submit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.ce-confirm-btn-delete {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 6px; /* Square Button */
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  transition: all 0.18s ease;
+}
+
+.ce-confirm-btn-delete:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+/* Light Mode Overrides for Confirmation Modal */
+.light .ce-confirm-modal-overlay,
+.light-mode .ce-confirm-modal-overlay,
+.light-theme .ce-confirm-modal-overlay,
+body.light .ce-confirm-modal-overlay {
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.light .ce-confirm-modal-card,
+.light-mode .ce-confirm-modal-card,
+.light-theme .ce-confirm-modal-card,
+body.light .ce-confirm-modal-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12), 0 0 30px rgba(124, 92, 255, 0.1) !important;
+  color: #0f172a !important;
+}
+
+.light .ce-confirm-modal-title,
+.light-mode .ce-confirm-modal-title,
+.light-theme .ce-confirm-modal-title,
+body.light .ce-confirm-modal-title {
+  color: #0f172a !important;
+}
+
+.light .ce-confirm-modal-text,
+.light-mode .ce-confirm-modal-text,
+.light-theme .ce-confirm-modal-text,
+body.light .ce-confirm-modal-text {
+  color: #64748b !important;
+}
+
+.light .ce-confirm-btn-cancel,
+.light-mode .ce-confirm-btn-cancel,
+.light-theme .ce-confirm-btn-cancel,
+body.light .ce-confirm-btn-cancel {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.light .ce-confirm-btn-cancel:hover,
+.light-mode .ce-confirm-btn-cancel:hover,
+.light-theme .ce-confirm-btn-cancel:hover,
+body.light .ce-confirm-btn-cancel:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
 /* Instagram style profile post grid */
 .insta-posts-grid {
   display: grid;

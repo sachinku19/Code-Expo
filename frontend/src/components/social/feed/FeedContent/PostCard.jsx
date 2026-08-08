@@ -1,10 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Heart, MessageSquare, Share2, Bookmark, CheckCircle2, Send, Trash2, UserPlus, UserCheck, MessageCircle, BarChart3, Repeat, MoreVertical, Flame, Flag, ChevronLeft, ChevronRight, ThumbsUp, ChevronDown, ChevronUp } from "lucide-react";
 import { toggleLikeCommentPost, deleteCommentPost } from "../../../../services/socialService";
 
+const AVATAR_GRADIENTS = [
+  "linear-gradient(135deg, #7C5CFF 0%, #6366f1 100%)",
+  "linear-gradient(135deg, #ec4899 0%, #d946ef 100%)",
+  "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+  "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+  "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+  "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+];
+
+const getAvatarGradient = (str = "") => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % AVATAR_GRADIENTS.length;
+  return AVATAR_GRADIENTS[index];
+};
+
 const SafeAvatar = ({ src, name = "Dev", size = 38, onClick }) => {
   const [error, setError] = useState(false);
-  const initial = (name || "D").trim().charAt(0).toUpperCase();
+  const cleanName = (name || "Developer").trim();
+  const initial = cleanName.charAt(0).toUpperCase();
+  const gradient = getAvatarGradient(cleanName);
 
   return (
     <div
@@ -21,7 +41,7 @@ const SafeAvatar = ({ src, name = "Dev", size = 38, onClick }) => {
       {src && !error ? (
         <img
           src={src}
-          alt={name}
+          alt={cleanName}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           onError={() => setError(true)}
         />
@@ -33,10 +53,10 @@ const SafeAvatar = ({ src, name = "Dev", size = 38, onClick }) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "linear-gradient(135deg, #7C5CFF, #8b5cf6)",
+            background: gradient,
             color: "#ffffff",
             fontWeight: "700",
-            fontSize: `${size * 0.4}px`
+            fontSize: `${size * 0.42}px`
           }}
         >
           {initial}
@@ -309,7 +329,7 @@ export const CommentTreeItem = ({
             style={{
               width: "2px",
               flex: 1,
-              background: "rgba(255, 255, 255, 0.12)",
+              background: "var(--ce-border, rgba(255, 255, 255, 0.12))",
               marginTop: "4px",
               borderRadius: "1px"
             }}
@@ -321,12 +341,12 @@ export const CommentTreeItem = ({
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Comment Header: Username + Time */}
         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", marginBottom: "2px" }}>
-          <strong style={{ color: "#ffffff", fontWeight: "600" }}>@{commentUsername}</strong>
-          <span style={{ color: "rgba(255, 255, 255, 0.4)", fontSize: "0.72rem" }}>{timeAgo}</span>
+          <strong style={{ color: "var(--ce-text, #ffffff)", fontWeight: "600" }}>@{commentUsername}</strong>
+          <span style={{ color: "var(--ce-text-muted, rgba(255, 255, 255, 0.4))", fontSize: "0.72rem" }}>{timeAgo}</span>
         </div>
 
         {/* Comment Body Text */}
-        <div style={{ color: "rgba(255, 255, 255, 0.9)", fontSize: "0.85rem", lineHeight: "1.45", wordBreak: "break-word" }}>
+        <div style={{ color: "var(--ce-text, rgba(255, 255, 255, 0.9))", fontSize: "0.85rem", lineHeight: "1.45", wordBreak: "break-word" }}>
           {renderMentionText(comment.text || comment.content)}
         </div>
 
@@ -338,7 +358,7 @@ export const CommentTreeItem = ({
             style={{
               background: "none",
               border: "none",
-              color: localIsLiked ? "#3b82f6" : "rgba(255, 255, 255, 0.6)",
+              color: localIsLiked ? "#3b82f6" : "var(--ce-text-muted, rgba(255, 255, 255, 0.6))",
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
@@ -365,7 +385,7 @@ export const CommentTreeItem = ({
             style={{
               background: "none",
               border: "none",
-              color: "rgba(255, 255, 255, 0.6)",
+              color: "var(--ce-text-muted, rgba(255, 255, 255, 0.6))",
               cursor: "pointer",
               padding: 0,
               fontWeight: "600",
@@ -385,7 +405,7 @@ export const CommentTreeItem = ({
               style={{
                 background: "none",
                 border: "none",
-                color: "rgba(239, 68, 68, 0.65)",
+                color: "rgba(239, 68, 68, 0.8)",
                 cursor: "pointer",
                 padding: 0,
                 fontWeight: "600",
@@ -412,11 +432,11 @@ export const CommentTreeItem = ({
               onChange={(e) => setReplyText(e.target.value)}
               style={{
                 flex: 1,
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.12)",
+                background: "var(--ce-surface, rgba(255, 255, 255, 0.05))",
+                border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.12))",
                 borderRadius: "16px",
                 padding: "4px 12px",
-                color: "#ffffff",
+                color: "var(--ce-text, #ffffff)",
                 fontSize: "0.78rem",
                 outline: "none"
               }}
@@ -425,7 +445,7 @@ export const CommentTreeItem = ({
               type="submit"
               disabled={!replyText.trim()}
               style={{
-                background: replyText.trim() ? "#7C5CFF" : "rgba(255, 255, 255, 0.1)",
+                background: replyText.trim() ? "#7C5CFF" : "var(--ce-hover, rgba(255, 255, 255, 0.1))",
                 border: "none",
                 color: "#ffffff",
                 borderRadius: "14px",
@@ -476,7 +496,7 @@ export const CommentTreeItem = ({
                 top: "-6px",
                 bottom: "22px",
                 width: "2px",
-                background: "rgba(255, 255, 255, 0.15)",
+                background: "var(--ce-border, rgba(255, 255, 255, 0.15))",
                 borderRadius: "1px"
               }}
             />
@@ -491,8 +511,8 @@ export const CommentTreeItem = ({
                     top: "14px",
                     width: "12px",
                     height: "12px",
-                    borderLeft: "2px solid rgba(255, 255, 255, 0.15)",
-                    borderBottom: "2px solid rgba(255, 255, 255, 0.15)",
+                    borderLeft: "2px solid var(--ce-border, rgba(255, 255, 255, 0.15))",
+                    borderBottom: "2px solid var(--ce-border, rgba(255, 255, 255, 0.15))",
                     borderBottomLeftRadius: "10px",
                     pointerEvents: "none"
                   }}
@@ -518,8 +538,8 @@ export const CommentTreeItem = ({
                   top: "-4px",
                   width: "12px",
                   height: "18px",
-                  borderLeft: "2px solid rgba(255, 255, 255, 0.15)",
-                  borderBottom: "2px solid rgba(255, 255, 255, 0.15)",
+                  borderLeft: "2px solid var(--ce-border, rgba(255, 255, 255, 0.15))",
+                  borderBottom: "2px solid var(--ce-border, rgba(255, 255, 255, 0.15))",
                   borderBottomLeftRadius: "10px",
                   pointerEvents: "none"
                 }}
@@ -528,10 +548,10 @@ export const CommentTreeItem = ({
                 type="button"
                 onClick={() => setShowReplies(false)}
                 style={{
-                  background: "rgba(255, 255, 255, 0.08)",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                  background: "var(--ce-hover, rgba(255, 255, 255, 0.08))",
+                  border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.12))",
                   borderRadius: "20px",
-                  color: "#ffffff",
+                  color: "var(--ce-text, #ffffff)",
                   cursor: "pointer",
                   padding: "5px 14px",
                   fontSize: "0.78rem",
@@ -696,6 +716,25 @@ export const PostCard = ({
   const [showComments, setShowComments] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const optionsMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!showOptionsMenu) return;
+    const handleClickOutside = (e) => {
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(e.target)) {
+        setShowOptionsMenu(false);
+      }
+    };
+    const handleScroll = () => {
+      setShowOptionsMenu(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, { capture: true });
+    };
+  }, [showOptionsMenu]);
 
   const author = post.author || post.user || {};
   const authorId = String(author._id || author.id || author);
@@ -711,6 +750,30 @@ export const PostCard = ({
   const isBookmarked = post.isBookmarked;
 
   const commentsList = post.comments || [];
+
+  // Build a lookup map of known populated users in this component context
+  const knownUsersMap = new Map();
+  if (user) {
+    const uid = String(user._id || user.id || "");
+    if (uid) knownUsersMap.set(uid, { username: user.username, avatar: user.avatar });
+  }
+  if (author && typeof author === "object") {
+    const aid = String(author._id || author.id || author || "");
+    if (aid) knownUsersMap.set(aid, { username: author.username || author.name, avatar: author.avatar });
+  }
+  followingList.forEach(f => {
+    if (f && typeof f === "object") {
+      const fid = String(f._id || f.id || "");
+      if (fid) knownUsersMap.set(fid, { username: f.username || f.name, avatar: f.avatar });
+    }
+  });
+  commentsList.forEach(c => {
+    const cu = c?.user || c;
+    if (cu && typeof cu === "object") {
+      const cid = String(cu._id || cu.id || "");
+      if (cid) knownUsersMap.set(cid, { username: cu.username || cu.name, avatar: cu.avatar });
+    }
+  });
 
   // Parse likers list dynamically syncing user avatars with unique IDs
   const rawLikes = Array.isArray(post.likes) ? post.likes : [];
@@ -729,20 +792,34 @@ export const PostCard = ({
     if (typeof item === "object" && item !== null) {
       const id = String(item._id || item.id || idx);
       if (!likersMap.has(id)) {
+        const matched = knownUsersMap.get(id);
         likersMap.set(id, {
           id,
-          username: item.username || item.name || `dev_${id.slice(-3)}`,
-          avatar: item.avatar
+          username: item.username || item.name || matched?.username || `dev_${id.slice(-3)}`,
+          avatar: item.avatar || matched?.avatar
         });
       }
     } else {
       const id = String(item);
       if (!likersMap.has(id)) {
         const isSelf = id === currentUserId;
+        const matched = knownUsersMap.get(id);
+        
+        let fallbackUsername = matched?.username;
+        if (!fallbackUsername) {
+          if (isSelf) {
+            fallbackUsername = user?.username || "you";
+          } else {
+            const SAMPLE_NAMES = ["alex_coder", "sam_dev", "jordan_tech", "taylor_build", "morgan_code"];
+            const charCodeSum = id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+            fallbackUsername = SAMPLE_NAMES[charCodeSum % SAMPLE_NAMES.length];
+          }
+        }
+
         likersMap.set(id, {
           id,
-          username: isSelf ? (user?.username || "you") : `dev_${id.slice(-4)}`,
-          avatar: isSelf ? user?.avatar : null
+          username: fallbackUsername,
+          avatar: isSelf ? user?.avatar : matched?.avatar
         });
       }
     }
@@ -875,7 +952,7 @@ export const PostCard = ({
             </button>
           )}
 
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+          <div ref={optionsMenuRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
             <button
               type="button"
               onClick={(e) => {
@@ -883,9 +960,9 @@ export const PostCard = ({
                 setShowOptionsMenu(!showOptionsMenu);
               }}
               style={{
-                background: showOptionsMenu ? "rgba(255, 255, 255, 0.1)" : "transparent",
+                background: showOptionsMenu ? "var(--ce-hover, rgba(255, 255, 255, 0.1))" : "transparent",
                 border: "none",
-                color: "rgba(255, 255, 255, 0.6)",
+                color: "var(--ce-text-muted, rgba(255, 255, 255, 0.6))",
                 cursor: "pointer",
                 width: "30px",
                 height: "30px",
@@ -903,30 +980,25 @@ export const PostCard = ({
             </button>
 
             {showOptionsMenu && (
-              <>
-                <div
-                  style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
-                  onClick={() => setShowOptionsMenu(false)}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    right: 0,
-                    marginTop: "6px",
-                    background: "#161724",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    borderRadius: "10px",
-                    padding: "6px",
-                    boxShadow: "0 10px 28px rgba(0, 0, 0, 0.65)",
-                    zIndex: 50,
-                    minWidth: "160px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "2px"
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: "6px",
+                  background: "var(--ce-surface-card, #161724)",
+                  border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.12))",
+                  borderRadius: "10px",
+                  padding: "6px",
+                  boxShadow: "0 10px 28px rgba(0, 0, 0, 0.2)",
+                  zIndex: 50,
+                  minWidth: "160px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px"
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
                   {isOwner ? (
                     <button
                       type="button"
@@ -985,7 +1057,6 @@ export const PostCard = ({
                     </button>
                   )}
                 </div>
-              </>
             )}
           </div>
         </div>
@@ -1132,10 +1203,10 @@ export const PostCard = ({
           <button
             className="post-action-btn"
             onClick={() => onLike && onLike(post._id)}
-            style={{ color: isLiked ? "#ef4444" : "rgba(255, 255, 255, 0.7)" }}
+            style={{ color: isLiked ? "#ef4444" : "var(--ce-text-muted, rgba(255, 255, 255, 0.7))" }}
           >
             <Heart size={18} fill={isLiked ? "#ef4444" : "none"} color={isLiked ? "#ef4444" : "currentColor"} />
-            <span style={{ color: isLiked ? "#ef4444" : "rgba(255,255,255,0.75)", fontWeight: "600" }}>
+            <span style={{ color: isLiked ? "#ef4444" : "inherit", fontWeight: "600" }}>
               {likesCount > 0 ? (likesCount >= 1000 ? (likesCount / 1000).toFixed(1) + "K" : likesCount) : "0"}
             </span>
           </button>
@@ -1160,7 +1231,7 @@ export const PostCard = ({
         <button
           className="post-action-btn"
           onClick={() => onBookmark && onBookmark(post._id)}
-          style={{ color: isBookmarked ? "#7C5CFF" : "rgba(255, 255, 255, 0.7)" }}
+          style={{ color: isBookmarked ? "#7C5CFF" : "var(--ce-text-muted, rgba(255, 255, 255, 0.7))" }}
           title={isBookmarked ? "Remove Bookmark" : "Save Post"}
         >
           <Bookmark size={18} fill={isBookmarked ? "#7C5CFF" : "none"} color={isBookmarked ? "#7C5CFF" : "currentColor"} />
@@ -1169,14 +1240,14 @@ export const PostCard = ({
 
       {/* Social Proof Liked-By Row (Dynamic 1 to 3 Avatar Bubbles synced with user avatars) */}
       {likesCount > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.65)", marginTop: "4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", color: "var(--ce-text-muted, rgba(255, 255, 255, 0.65))", marginTop: "4px" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
             {likersList.slice(0, 3).map((liker, idx) => (
               <div
                 key={liker.id || idx}
                 style={{
                   marginLeft: idx === 0 ? "0" : "-6px",
-                  border: "1.5px solid #11121d",
+                  border: "1.5px solid var(--ce-surface, #11121d)",
                   borderRadius: "50%",
                   zIndex: 3 - idx,
                   overflow: "hidden",

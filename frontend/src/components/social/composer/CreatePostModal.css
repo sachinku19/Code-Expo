@@ -15,15 +15,15 @@
 }
 
 .ce-composer-card {
-  width: 960px;
-  max-width: 92vw;
-  height: 82vh;
-  max-height: 720px;
+  width: 820px;
+  max-width: 90vw;
+  height: 76vh;
+  max-height: 620px;
   margin: auto;
   background: #0d0d12;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 20px;
-  box-shadow: 0 32px 96px rgba(0, 0, 0, 0.92), 0 0 50px rgba(124, 92, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.85), 0 0 40px rgba(124, 92, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -34,7 +34,7 @@
 
 /* 1. Modal Header */
 .ce-composer-header {
-  padding: 16px 24px;
+  padding: 12px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
@@ -120,7 +120,7 @@
 /* 2. Main Body Layout (Grid 2 Columns) */
 .ce-composer-body {
   display: grid;
-  grid-template-columns: 1fr 270px;
+  grid-template-columns: 1fr 240px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -128,11 +128,11 @@
 }
 
 .ce-composer-main {
-  padding: 20px 24px;
+  padding: 14px 18px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
@@ -248,8 +248,8 @@
 
 .composer-textarea {
   width: 100%;
-  min-height: 180px;
-  max-height: 380px;
+  min-height: 130px;
+  max-height: 280px;
   background: transparent;
   border: none;
   outline: none;
@@ -763,7 +763,7 @@
 
 /* 3. Sticky Right Side Panel */
 .ce-composer-sidepanel {
-  padding: 20px;
+  padding: 14px;
   border-left: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.01);
   display: flex;
@@ -847,7 +847,7 @@
 
 /* 4. Bottom Footer Bar */
 .ce-composer-footer {
-  padding: 14px 24px;
+  padding: 10px 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.01);
   display: flex;
@@ -964,4 +964,541 @@
     width: 100%;
     justify-content: space-between;
   }
+}
+
+/* ==========================================================================
+   LIGHT MODE STYLES (Light Theme Overrides)
+   ========================================================================== */
+
+.light .ce-composer-overlay,
+.light-mode .ce-composer-overlay,
+.light-theme .ce-composer-overlay,
+body.light .ce-composer-overlay {
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.light .ce-composer-card,
+.light-mode .ce-composer-card,
+.light-theme .ce-composer-card,
+body.light .ce-composer-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.15), 0 0 30px rgba(124, 92, 255, 0.1) !important;
+  color: #0f172a !important;
+}
+
+.light .ce-composer-header,
+.light-mode .ce-composer-header,
+.light-theme .ce-composer-header,
+body.light .ce-composer-header {
+  border-bottom-color: #f1f5f9 !important;
+  background: #ffffff !important;
+}
+
+.light .composer-header-title,
+.light-mode .composer-header-title,
+.light-theme .composer-header-title,
+body.light .composer-header-title {
+  color: #0f172a !important;
+}
+
+.light .composer-header-subtitle,
+.light-mode .composer-header-subtitle,
+.light-theme .composer-header-subtitle,
+body.light .composer-header-subtitle {
+  color: #64748b !important;
+}
+
+.light .composer-shortcut-hint,
+.light-mode .composer-shortcut-hint,
+.light-theme .composer-shortcut-hint,
+body.light .composer-shortcut-hint {
+  color: #64748b !important;
+}
+
+.light .composer-shortcut-hint kbd,
+.light-mode .composer-shortcut-hint kbd,
+.light-theme .composer-shortcut-hint kbd,
+body.light .composer-shortcut-hint kbd {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.light .composer-close-btn,
+.light-mode .composer-close-btn,
+.light-theme .composer-close-btn,
+body.light .composer-close-btn {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+.light .composer-close-btn:hover,
+.light-mode .composer-close-btn:hover,
+.light-theme .composer-close-btn:hover,
+body.light .composer-close-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light .composer-author-name,
+.light-mode .composer-author-name,
+.light-theme .composer-author-name,
+body.light .composer-author-name {
+  color: #0f172a !important;
+}
+
+.light .composer-author-role,
+.light-mode .composer-author-role,
+.light-theme .composer-author-role,
+body.light .composer-author-role {
+  color: #64748b !important;
+}
+
+.light .composer-view-tabs,
+.light-mode .composer-view-tabs,
+.light-theme .composer-view-tabs,
+body.light .composer-view-tabs {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .view-tab-btn,
+.light-mode .view-tab-btn,
+.light-theme .view-tab-btn,
+body.light .view-tab-btn {
+  color: #64748b !important;
+}
+
+.light .view-tab-btn:hover,
+.light-mode .view-tab-btn:hover,
+.light-theme .view-tab-btn:hover,
+body.light .view-tab-btn:hover {
+  color: #0f172a !important;
+}
+
+.light .view-tab-btn.active,
+.light-mode .view-tab-btn.active,
+.light-theme .view-tab-btn.active,
+body.light .view-tab-btn.active {
+  background: #7C5CFF !important;
+  color: #ffffff !important;
+}
+
+.light .composer-textarea-box,
+.light-mode .composer-textarea-box,
+.light-theme .composer-textarea-box,
+body.light .composer-textarea-box {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .composer-textarea-box:focus-within,
+.light-mode .composer-textarea-box:focus-within,
+.light-theme .composer-textarea-box:focus-within,
+body.light .composer-textarea-box:focus-within {
+  background: #ffffff !important;
+  border-color: #7C5CFF !important;
+  box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.12) !important;
+}
+
+.light .composer-textarea,
+.light-mode .composer-textarea,
+.light-theme .composer-textarea,
+body.light .composer-textarea {
+  color: #0f172a !important;
+}
+
+.light .composer-textarea::placeholder,
+.light-mode .composer-textarea::placeholder,
+.light-theme .composer-textarea::placeholder,
+body.light .composer-textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light .composer-char-counter,
+.light-mode .composer-char-counter,
+.light-theme .composer-char-counter,
+body.light .composer-char-counter {
+  color: #64748b !important;
+}
+
+.light .composer-live-toolbar,
+.light-mode .composer-live-toolbar,
+.light-theme .composer-live-toolbar,
+body.light .composer-live-toolbar {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .toolbar-btn,
+.light-mode .toolbar-btn,
+.light-theme .toolbar-btn,
+body.light .toolbar-btn {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.light .toolbar-btn:hover,
+.light-mode .toolbar-btn:hover,
+.light-theme .toolbar-btn:hover,
+body.light .toolbar-btn:hover {
+  background: #f1f5f9 !important;
+  color: #7C5CFF !important;
+  border-color: #7C5CFF !important;
+}
+
+.light .toolbar-btn.active,
+.light-mode .toolbar-btn.active,
+.light-theme .toolbar-btn.active,
+body.light .toolbar-btn.active {
+  background: rgba(124, 92, 255, 0.12) !important;
+  border-color: #7C5CFF !important;
+  color: #7C5CFF !important;
+}
+
+.light .composer-emoji-popup,
+.light-mode .composer-emoji-popup,
+.light-theme .composer-emoji-popup,
+body.light .composer-emoji-popup {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15) !important;
+}
+
+.light .emoji-item:hover,
+.light-mode .emoji-item:hover,
+.light-theme .emoji-item:hover,
+body.light .emoji-item:hover {
+  background: #f1f5f9 !important;
+}
+
+.light .composer-dropzone,
+.light-mode .composer-dropzone,
+.light-theme .composer-dropzone,
+body.light .composer-dropzone {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light .dropzone-empty-hint,
+.light-mode .dropzone-empty-hint,
+.light-theme .dropzone-empty-hint,
+body.light .dropzone-empty-hint {
+  color: #64748b !important;
+}
+
+.light .image-preview-thumb,
+.light-mode .image-preview-thumb,
+.light-theme .image-preview-thumb,
+body.light .image-preview-thumb {
+  border-color: #e2e8f0 !important;
+}
+
+.light .add-more-images-btn,
+.light-mode .add-more-images-btn,
+.light-theme .add-more-images-btn,
+body.light .add-more-images-btn {
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+.light .add-more-images-btn:hover,
+.light-mode .add-more-images-btn:hover,
+.light-theme .add-more-images-btn:hover,
+body.light .add-more-images-btn:hover {
+  border-color: #7C5CFF !important;
+  color: #7C5CFF !important;
+}
+
+.light .composer-attachment-card,
+.light-mode .composer-attachment-card,
+.light-theme .composer-attachment-card,
+body.light .composer-attachment-card {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .attachment-title,
+.light-mode .attachment-title,
+.light-theme .attachment-title,
+body.light .attachment-title {
+  color: #0f172a !important;
+}
+
+.light .duration-pill,
+.light-mode .duration-pill,
+.light-theme .duration-pill,
+body.light .duration-pill {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+.light .duration-pill:hover,
+.light-mode .duration-pill:hover,
+.light-theme .duration-pill:hover,
+body.light .duration-pill:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.light .duration-pill.active,
+.light-mode .duration-pill.active,
+.light-theme .duration-pill.active,
+body.light .duration-pill.active {
+  background: rgba(124, 92, 255, 0.12) !important;
+  border-color: #7C5CFF !important;
+  color: #7C5CFF !important;
+}
+
+.light .composer-input-field,
+.light-mode .composer-input-field,
+.light-theme .composer-input-field,
+body.light .composer-input-field {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light .composer-input-field::placeholder,
+.light-mode .composer-input-field::placeholder,
+.light-theme .composer-input-field::placeholder,
+body.light .composer-input-field::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light .code-lang-select,
+.light-mode .code-lang-select,
+.light-theme .code-lang-select,
+body.light .code-lang-select {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light .code-chip-btn,
+.light-mode .code-chip-btn,
+.light-theme .code-chip-btn,
+body.light .code-chip-btn {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+.light .code-chip-btn:hover,
+.light-mode .code-chip-btn:hover,
+.light-theme .code-chip-btn:hover,
+body.light .code-chip-btn:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.light .composer-tech-stack-box,
+.light-mode .composer-tech-stack-box,
+.light-theme .composer-tech-stack-box,
+body.light .composer-tech-stack-box {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .tech-input-row,
+.light-mode .tech-input-row,
+.light-theme .tech-input-row,
+body.light .tech-input-row {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light .tech-input-row input,
+.light-mode .tech-input-row input,
+.light-theme .tech-input-row input,
+body.light .tech-input-row input {
+  color: #0f172a !important;
+}
+
+.light .suggestion-tag-btn,
+.light-mode .suggestion-tag-btn,
+.light-theme .suggestion-tag-btn,
+body.light .suggestion-tag-btn {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+.light .suggestion-tag-btn:hover,
+.light-mode .suggestion-tag-btn:hover,
+.light-theme .suggestion-tag-btn:hover,
+body.light .suggestion-tag-btn:hover {
+  background: rgba(124, 92, 255, 0.1) !important;
+  color: #7C5CFF !important;
+  border-color: #7C5CFF !important;
+}
+
+.light .ce-composer-sidepanel,
+.light-mode .ce-composer-sidepanel,
+.light-theme .ce-composer-sidepanel,
+body.light .ce-composer-sidepanel {
+  border-left-color: #f1f5f9 !important;
+  background: #f8fafc !important;
+}
+
+.light .sidepanel-card,
+.light-mode .sidepanel-card,
+.light-theme .sidepanel-card,
+body.light .sidepanel-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+.light .sidepanel-card-title,
+.light-mode .sidepanel-card-title,
+.light-theme .sidepanel-card-title,
+body.light .sidepanel-card-title {
+  color: #0f172a !important;
+}
+
+.light .stat-label,
+.light-mode .stat-label,
+.light-theme .stat-label,
+body.light .stat-label {
+  color: #64748b !important;
+}
+
+.light .stat-value,
+.light-mode .stat-value,
+.light-theme .stat-value,
+body.light .stat-value {
+  color: #0f172a !important;
+}
+
+.light .sidepanel-shortcuts-list code,
+.light-mode .sidepanel-shortcuts-list code,
+.light-theme .sidepanel-shortcuts-list code,
+body.light .sidepanel-shortcuts-list code {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+.light .sidepanel-tips-list,
+.light-mode .sidepanel-tips-list,
+.light-theme .sidepanel-tips-list,
+body.light .sidepanel-tips-list {
+  color: #475569 !important;
+}
+
+.light .ce-composer-footer,
+.light-mode .ce-composer-footer,
+.light-theme .ce-composer-footer,
+body.light .ce-composer-footer {
+  border-top-color: #f1f5f9 !important;
+  background: #ffffff !important;
+}
+
+.light .draft-status-badge,
+.light-mode .draft-status-badge,
+.light-theme .draft-status-badge,
+body.light .draft-status-badge {
+  color: #64748b !important;
+}
+
+.light .composer-visibility-select,
+.light-mode .composer-visibility-select,
+.light-theme .composer-visibility-select,
+body.light .composer-visibility-select {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light .footer-btn.discard,
+.light-mode .footer-btn.discard,
+.light-theme .footer-btn.discard,
+body.light .footer-btn.discard {
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+.light .footer-btn.discard:hover,
+.light-mode .footer-btn.discard:hover,
+.light-theme .footer-btn.discard:hover,
+body.light .footer-btn.discard:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.light .footer-btn.draft,
+.light-mode .footer-btn.draft,
+.light-theme .footer-btn.draft,
+body.light .footer-btn.draft {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light .footer-btn.draft:hover,
+.light-mode .footer-btn.draft:hover,
+.light-theme .footer-btn.draft:hover,
+body.light .footer-btn.draft:hover {
+  background: #e2e8f0 !important;
+}
+
+/* Live Preview Light Mode Overrides */
+.light .composer-live-preview-pane,
+.light-mode .composer-live-preview-pane,
+.light-theme .composer-live-preview-pane,
+body.light .composer-live-preview-pane {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .preview-card-wrapper,
+.light-mode .preview-card-wrapper,
+.light-theme .preview-card-wrapper,
+body.light .preview-card-wrapper {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05) !important;
+}
+
+.light .preview-author-name,
+.light-mode .preview-author-name,
+.light-theme .preview-author-name,
+body.light .preview-author-name {
+  color: #0f172a !important;
+}
+
+.light .preview-author-meta,
+.light-mode .preview-author-meta,
+.light-theme .preview-author-meta,
+body.light .preview-author-meta {
+  color: #64748b !important;
+}
+
+.light .preview-text-content,
+.light-mode .preview-text-content,
+.light-theme .preview-text-content,
+body.light .preview-text-content {
+  color: #0f172a !important;
+}
+
+.light .preview-placeholder-text,
+.light-mode .preview-placeholder-text,
+.light-theme .preview-placeholder-text,
+body.light .preview-placeholder-text {
+  color: #94a3b8 !important;
+}
+
+.light .preview-code-block,
+.light-mode .preview-code-block,
+.light-theme .preview-code-block,
+body.light .preview-code-block {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
 }

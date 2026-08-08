@@ -462,18 +462,25 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
     }
   };
 
-  const handleDeleteStoryClick = async (storyId, e) => {
+  const handleDeleteStoryClick = (storyId, e) => {
     if (e) e.stopPropagation();
-    if (!storyId || isDeleting) return;
+    if (!storyId) return;
+    setStoryToDelete(storyId);
+  };
+
+  const handleConfirmDeleteStory = async () => {
+    if (!storyToDelete || isDeleting) return;
 
     setIsDeleting(true);
     try {
-      await deleteStory(storyId);
+      await deleteStory(storyToDelete);
       addToast("Story deleted successfully!", "success");
+      setStoryToDelete(null);
       setActiveStoryGroup(null);
       fetchStories();
     } catch (err) {
       addToast("Story deleted!", "success");
+      setStoryToDelete(null);
       setActiveStoryGroup(null);
       fetchStories();
     } finally {
@@ -769,15 +776,16 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                 exit={{ scale: 0.95, opacity: 0 }}
                 className="ce-modal-card"
                 style={{
-                  maxWidth: "720px",
-                  width: "94%",
-                  padding: "26px",
-                  background: "rgba(13, 14, 22, 0.96)",
-                  backdropFilter: "blur(28px)",
-                  WebkitBackdropFilter: "blur(28px)",
-                  border: "1px solid rgba(255, 255, 255, 0.14)",
-                  borderRadius: "22px",
-                  boxShadow: "0 24px 64px rgba(0, 0, 0, 0.92), 0 0 45px rgba(99, 102, 241, 0.18)"
+                  maxWidth: "680px",
+                  width: "92%",
+                  padding: "22px",
+                  background: "var(--ce-surface-card, rgba(13, 14, 22, 0.96))",
+                  backdropFilter: "blur(24px)",
+                  WebkitBackdropFilter: "blur(24px)",
+                  border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.14))",
+                  borderRadius: "20px",
+                  boxShadow: "0 24px 64px rgba(0, 0, 0, 0.4), 0 0 45px rgba(99, 102, 241, 0.18)",
+                  color: "var(--ce-text, #ffffff)"
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -786,10 +794,10 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                     <div style={{ background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.3)", width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <PlusCircle size={16} style={{ color: "#818cf8" }} />
                     </div>
-                    <h3 style={{ margin: 0, color: "#ffffff", fontSize: "1.2rem", fontWeight: "700", letterSpacing: "-0.01em" }}>Share Developer Story</h3>
+                    <h3 style={{ margin: 0, color: "var(--ce-text, #ffffff)", fontSize: "1.15rem", fontWeight: "700", letterSpacing: "-0.01em" }}>Share Developer Story</h3>
                   </div>
                   <button
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", width: "30px", height: "30px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                    style={{ background: "var(--ce-hover, rgba(255,255,255,0.06))", border: "1px solid var(--ce-border, rgba(255,255,255,0.1))", color: "var(--ce-text-muted, rgba(255,255,255,0.7))", width: "30px", height: "30px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
                     onClick={() => setIsAdding(false)}
                   >
                     <X size={16} />
@@ -810,9 +818,9 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                           type="button"
                           onClick={() => setStoryType(item.id)}
                           style={{
-                            background: storyType === item.id ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" : "rgba(255,255,255,0.04)",
-                            border: storyType === item.id ? "1px solid #818cf8" : "1px solid rgba(255,255,255,0.1)",
-                            color: storyType === item.id ? "#ffffff" : "rgba(255,255,255,0.65)",
+                            background: storyType === item.id ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" : "var(--ce-surface, rgba(255,255,255,0.04))",
+                            border: storyType === item.id ? "1px solid #818cf8" : "1px solid var(--ce-border, rgba(255,255,255,0.1))",
+                            color: storyType === item.id ? "#ffffff" : "var(--ce-text-muted, rgba(255,255,255,0.65))",
                             padding: "8px 16px",
                             borderRadius: "10px",
                             fontSize: "0.78rem",
@@ -842,21 +850,21 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                             style={{
                               width: "100%",
                               minHeight: "110px",
-                              background: "rgba(20, 22, 34, 0.85)",
-                              border: "1px solid rgba(255, 255, 255, 0.16)",
+                              background: "var(--ce-surface, rgba(20, 22, 34, 0.85))",
+                              border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.16))",
                               borderRadius: "12px",
-                              color: "#ffffff",
+                              color: "var(--ce-text, #ffffff)",
                               fontSize: "0.92rem",
                               lineHeight: "1.5",
                               padding: "14px 14px 28px 14px",
                               outline: "none",
                               resize: "none",
                               boxSizing: "border-box",
-                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4)"
+                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.08)"
                             }}
                             required
                           />
-                          <span style={{ position: "absolute", bottom: "8px", right: "12px", fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>
+                          <span style={{ position: "absolute", bottom: "8px", right: "12px", fontSize: "0.68rem", color: "var(--ce-text-muted, rgba(255,255,255,0.4))", fontWeight: "600" }}>
                             {newStoryText.length} / 120
                           </span>
                         </div>
@@ -873,20 +881,20 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                               style={{
                                 width: "100%",
                                 minHeight: "85px",
-                                background: "rgba(20, 22, 34, 0.85)",
-                                border: "1px solid rgba(255, 255, 255, 0.16)",
+                                background: "var(--ce-surface, rgba(20, 22, 34, 0.85))",
+                                border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.16))",
                                 borderRadius: "12px",
-                                color: "#ffffff",
+                                color: "var(--ce-text, #ffffff)",
                                 fontSize: "0.9rem",
                                 lineHeight: "1.5",
                                 padding: "12px 14px 26px 14px",
                                 outline: "none",
                                 resize: "none",
                                 boxSizing: "border-box",
-                                boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4)"
+                                boxShadow: "inset 0 2px 4px rgba(0,0,0,0.08)"
                               }}
                             />
-                            <span style={{ position: "absolute", bottom: "8px", right: "12px", fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>
+                            <span style={{ position: "absolute", bottom: "8px", right: "12px", fontSize: "0.68rem", color: "var(--ce-text-muted, rgba(255,255,255,0.4))", fontWeight: "600" }}>
                               {newStoryText.length} / 120
                             </span>
                           </div>
@@ -897,7 +905,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                             style={{
                               background: "rgba(99, 102, 241, 0.12)",
                               border: "1px solid rgba(99, 102, 241, 0.3)",
-                              color: "#a5b4fc",
+                              color: "#818cf8",
                               padding: "10px 16px",
                               borderRadius: "10px",
                               fontSize: "0.82rem",
@@ -924,8 +932,8 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                       )}
 
                       {/* Theme selectors */}
-                      <div style={{ marginBottom: "20px", background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.7)", display: "block", marginBottom: "8px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      <div style={{ marginBottom: "20px", background: "var(--ce-surface, rgba(255,255,255,0.03))", padding: "12px", borderRadius: "12px", border: "1px solid var(--ce-border, rgba(255,255,255,0.06))" }}>
+                        <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted, rgba(255,255,255,0.7))", display: "block", marginBottom: "8px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                           Background Accent Theme
                         </span>
                         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -940,29 +948,30 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                               type="button"
                               onClick={() => setStoryTheme(t.id)}
                               style={{
-                                padding: "6px 12px",
+                                padding: "6px 14px",
                                 borderRadius: "8px",
                                 fontSize: "0.76rem",
                                 fontWeight: "600",
-                                border: storyTheme === t.id ? "1.5px solid #818cf8" : "1px solid rgba(255,255,255,0.1)",
-                                background: storyTheme === t.id ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.04)",
-                                color: storyTheme === t.id ? "#ffffff" : "rgba(255,255,255,0.6)",
+                                border: storyTheme === t.id ? "1.5px solid #6366f1" : "1px solid var(--ce-border, rgba(255,255,255,0.15))",
+                                background: storyTheme === t.id ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" : "var(--ce-surface, rgba(255,255,255,0.04))",
+                                color: storyTheme === t.id ? "#ffffff" : "var(--ce-text, #334155)",
+                                boxShadow: storyTheme === t.id ? "0 4px 14px rgba(99,102,241,0.35)" : "none",
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: "6px",
-                                transition: "all 0.2s"
+                                transition: "all 0.2s ease"
                               }}
                             >
-                              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: t.gradient, display: "inline-block", border: "1px solid rgba(255,255,255,0.3)" }} />
+                              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: t.gradient, display: "inline-block", border: "1px solid rgba(255,255,255,0.5)", flexShrink: 0 }} />
                               {t.label}
                             </button>
                           ))}
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                        <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", fontWeight: "500" }}>🕒 Expires in 24 hours</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid var(--ce-border, rgba(255,255,255,0.08))" }}>
+                        <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted, rgba(255,255,255,0.5))", fontWeight: "500" }}>🕒 Expires in 24 hours</span>
                         <button
                           type="submit"
                           disabled={isPosting}
@@ -1813,6 +1822,121 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
           />
         </Portal>
       )}
+
+      {/* Tiny Delete Confirmation Modal */}
+      <AnimatePresence>
+        {storyToDelete && (
+          <Portal>
+            <div
+              className="ce-tiny-confirm-overlay"
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0, 0, 0, 0.65)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 10000005
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setStoryToDelete(null);
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 8 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                className="ce-tiny-confirm-card"
+                style={{
+                  background: "var(--ce-surface-card, #12131c)",
+                  border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.14))",
+                  borderRadius: "18px",
+                  padding: "22px 24px",
+                  width: "330px",
+                  maxWidth: "88vw",
+                  boxShadow: "0 20px 48px rgba(0, 0, 0, 0.6), 0 0 30px rgba(239, 68, 68, 0.15)",
+                  textAlign: "center",
+                  color: "var(--ce-text, #ffffff)"
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "50%",
+                    background: "rgba(239, 68, 68, 0.12)",
+                    border: "1.5px solid rgba(239, 68, 68, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#ef4444",
+                    margin: "0 auto 14px auto"
+                  }}
+                >
+                  <Trash2 size={22} />
+                </div>
+
+                <h4 style={{ margin: "0 0 6px 0", fontSize: "1.08rem", fontWeight: "700", color: "var(--ce-text, #ffffff)", letterSpacing: "-0.01em" }}>
+                  Delete Story?
+                </h4>
+
+                <p style={{ margin: "0 0 20px 0", fontSize: "0.83rem", color: "var(--ce-text-muted, #94a3b8)", lineHeight: "1.45" }}>
+                  Are you sure you want to delete this story? This action cannot be undone.
+                </p>
+
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => setStoryToDelete(null)}
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: "10px",
+                      fontSize: "0.84rem",
+                      fontWeight: "600",
+                      background: "var(--ce-surface, rgba(255, 255, 255, 0.06))",
+                      border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.12))",
+                      color: "var(--ce-text, #334155)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease"
+                    }}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleConfirmDeleteStory}
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: "10px",
+                      fontSize: "0.84rem",
+                      fontWeight: "700",
+                      background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                      border: "none",
+                      color: "#ffffff",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(239, 68, 68, 0.35)",
+                      transition: "all 0.15s ease",
+                      opacity: isDeleting ? 0.6 : 1
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </Portal>
+        )}
+      </AnimatePresence>
 
       {/* Strict Validation Warning Modal */}
       <WarningModal

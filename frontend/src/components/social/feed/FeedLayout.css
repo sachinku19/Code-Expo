@@ -682,18 +682,31 @@ body.light .rebuilt-feed-root {
 }
 
 /* Action Buttons & Option Chips in Light Mode */
-.light .create-option-btn,
-.light .post-action-btn {
+.light .create-option-btn {
   color: #475569 !important;
   background: #f8fafc !important;
   border: 1px solid #e2e8f0 !important;
 }
 
-.light .create-option-btn:hover,
-.light .post-action-btn:hover {
+.light .create-option-btn:hover {
   background: #f1f5f9 !important;
   color: #4f46e5 !important;
   border-color: #cbd5e1 !important;
+}
+
+.light .post-action-btn {
+  color: #475569 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+}
+
+.light .post-action-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #4f46e5 !important;
+  border: none !important;
 }
 
 /* Tabs in Light Mode */

@@ -1580,7 +1580,7 @@ function Dashboard() {
       }
     };
     fetchAllPosts();
-  }, [selectedPostModal]);
+  }, []);
 
   const [modalActiveImageIdx, setModalActiveImageIdx] = useState(0);
   const [modalShareOpen, setModalShareOpen] = useState(false);
@@ -1595,7 +1595,8 @@ function Dashboard() {
     if (postToOpen._id) {
       const searchParams = new URLSearchParams(location.search);
       searchParams.set("post", postToOpen._id);
-      navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
+      const newUrl = `${location.pathname}?${searchParams.toString()}`;
+      window.history.replaceState(null, "", newUrl);
     }
   };
 
@@ -1610,7 +1611,7 @@ function Dashboard() {
       searchParams.delete("post");
       const newSearch = searchParams.toString();
       const targetUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
-      navigate(targetUrl, { replace: true });
+      window.history.replaceState(null, "", targetUrl);
     }
   };
 
@@ -5804,17 +5805,17 @@ function Dashboard() {
                                                     <div
                                                       key={mUser._id || mIdx}
                                                       style={{
-                                                        width: "22px",
-                                                        height: "22px",
+                                                        width: "16px",
+                                                        height: "16px",
                                                         borderRadius: "50%",
                                                         overflow: "hidden",
-                                                        border: "1.5px solid var(--ce-surface-card)",
+                                                        border: "1px solid var(--ce-surface-card)",
                                                         background: mUser.avatar ? "transparent" : getAvatarColor(username),
-                                                        marginLeft: mIdx === 0 ? 0 : "-8px",
+                                                        marginLeft: mIdx === 0 ? 0 : "-5px",
                                                         display: "flex",
                                                         alignItems: "center",
                                                         justifyContent: "center",
-                                                        fontSize: "0.62rem",
+                                                        fontSize: "0.5rem",
                                                         fontWeight: "700",
                                                         color: "#fff",
                                                         zIndex: 4 - mIdx
@@ -13312,42 +13313,56 @@ function Dashboard() {
         />
 
         {/* Profile Post Delete Confirmation Modal */}
-        <AnimatePresence>
-          {postToDeleteFromProfile && (
-            <div className="ce-modal-overlay" onClick={() => setPostToDeleteFromProfile(null)} style={{ zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="ce-modal-card"
-                style={{ maxWidth: "380px", width: "90%", padding: "20px", textAlign: "center", background: "#0a0a0f", border: "1px solid var(--ce-premium-border)" }}
-                onClick={(e) => e.stopPropagation()}
+        {createPortal(
+          <AnimatePresence>
+            {postToDeleteFromProfile && (
+              <div
+                className="ce-confirm-modal-overlay"
+                onClick={() => setPostToDeleteFromProfile(null)}
               >
-                <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "1.1rem", fontWeight: "700" }}>Delete Activity?</h3>
-                <p style={{ margin: "0 0 20px 0", color: "var(--ce-premium-muted)", fontSize: "0.82rem", lineHeight: "1.4" }}>
-                  Are you sure you want to delete this activity? This will permanently remove it from the global feed.
-                </p>
-                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-                  <button
-                    type="button"
-                    onClick={() => setPostToDeleteFromProfile(null)}
-                    style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#fff", fontSize: "0.75rem", fontWeight: "600", cursor: "pointer" }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmDeleteProfilePost}
-                    disabled={isDeletingProfilePost}
-                    style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer" }}
-                  >
-                    {isDeletingProfilePost ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="ce-confirm-modal-card delete-card"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="ce-confirm-modal-badge delete-badge">
+                    <Trash2 size={26} color="#ef4444" />
+                  </div>
+
+                  <div>
+                    <h3 className="ce-confirm-modal-title">Delete Activity?</h3>
+                    <p className="ce-confirm-modal-text">
+                      Are you sure you want to delete this activity? This will permanently remove it from the global feed.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "10px", width: "100%", marginTop: "4px" }}>
+                    <button
+                      type="button"
+                      className="ce-confirm-btn-cancel"
+                      onClick={() => setPostToDeleteFromProfile(null)}
+                      disabled={isDeletingProfilePost}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="ce-confirm-btn-delete"
+                      onClick={confirmDeleteProfilePost}
+                      disabled={isDeletingProfilePost}
+                    >
+                      {isDeletingProfilePost ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
         {/* High-Security Workspace Deletion Modal */}
         <SecurityDeleteRoomModal
