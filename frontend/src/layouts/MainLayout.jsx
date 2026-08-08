@@ -9,7 +9,8 @@ import {
   Hash, Copy, Check, Share2, UserPlus, Layers, ChevronDown, ChevronRight, Menu, X,
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
-  Gem, Sparkles, FolderKanban, NotebookPen, PanelRightOpen, PanelRightClose, Edit3, Lock, GitPullRequest
+  Gem, Sparkles, FolderKanban, NotebookPen, PanelRightOpen, PanelRightClose, Edit3, Lock, GitPullRequest,
+  Newspaper, Rss, Compass
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -40,6 +41,29 @@ const SquareCode = (props) => {
       <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
       <polyline points="10 9 7 12 10 15" />
       <polyline points="14 9 17 12 14 15" />
+    </svg>
+  );
+};
+
+const FeedIcon = (props) => {
+  const { className, size = 18, ...rest } = props;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...rest}
+    >
+      <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
+      <line x1="7" y1="8" x2="17" y2="8" />
+      <line x1="7" y1="12" x2="17" y2="12" />
+      <line x1="7" y1="16" x2="14" y2="16" />
     </svg>
   );
 };
@@ -856,10 +880,10 @@ export default function MainLayout({
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { id: "explore-rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard/rooms?subtab=explore" },
+    { id: "explore-rooms", label: "Explore Rooms", icon: Compass, path: "/dashboard/rooms?subtab=explore" },
     { id: "liverooms", label: "Live Rooms", icon: Radio, path: "/dashboard/live-rooms" },
     { id: "room-requests", label: "Room Requests", icon: GitPullRequest, path: "/dashboard/room-requests" },
-    { id: "feed", label: "Network Feed", icon: Activity, path: "/dashboard/feed" },
+    { id: "feed", label: "Network Feed", icon: Newspaper, path: "/dashboard/feed" },
     { id: "following", label: "Following", icon: UserCheck, path: "/dashboard/following" },
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard/messages" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard/notifications" },

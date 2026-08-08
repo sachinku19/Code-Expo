@@ -1479,8 +1479,9 @@ body.light .pin-btn.pinned {
   min-width: 0;
   background-color: var(--ce-bg);
   transition: margin-left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: margin-left;
-  scroll-behavior: smooth;
+  will-change: scroll-position, margin-left;
+  transform: translateZ(0);
+  scroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   /* Firefox */
