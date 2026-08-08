@@ -1842,8 +1842,12 @@ export default function MainLayout({
           onMouseLeave={() => setIsHovered(false)}
         >
           <div className="sidebar-header-new">
-            <button className={`pin-btn ${isPinned ? "pinned" : ""}`} onClick={handlePinToggle} title="Pin Sidebar">
-              <Pin size={12} />
+            <button
+              className={`pin-btn ${isPinned ? "pinned" : ""}`}
+              onClick={handlePinToggle}
+              title={isPinned ? "Unpin Sidebar" : "Pin Sidebar"}
+            >
+              <Pin size={14} className="pin-icon" />
             </button>
           </div>
 

@@ -2420,7 +2420,8 @@ body.light .ce-tiny-confirm-card {
 .ce-confirm-modal-card {
   background: #0f1018;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px; /* Square Box Shape */
+  border-radius: 10px;
+  /* Square Box Shape */
   padding: 26px 24px;
   width: 400px;
   max-width: 92vw;
@@ -2442,7 +2443,8 @@ body.light .ce-tiny-confirm-card {
 .ce-confirm-modal-badge {
   width: 48px;
   height: 48px;
-  border-radius: 8px; /* Square Icon Badge */
+  border-radius: 8px;
+  /* Square Icon Badge */
   background: rgba(124, 92, 255, 0.15);
   border: 1px solid rgba(124, 92, 255, 0.3);
   display: flex;
@@ -2475,7 +2477,8 @@ body.light .ce-tiny-confirm-card {
 .ce-confirm-btn-cancel {
   flex: 1;
   padding: 10px 14px;
-  border-radius: 6px; /* Square Button */
+  border-radius: 6px;
+  /* Square Button */
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
@@ -2493,7 +2496,8 @@ body.light .ce-tiny-confirm-card {
 .ce-confirm-btn-submit {
   flex: 1;
   padding: 10px 14px;
-  border-radius: 6px; /* Square Button */
+  border-radius: 6px;
+  /* Square Button */
   background: linear-gradient(135deg, #7C5CFF 0%, #8b5cf6 100%);
   border: none;
   color: #ffffff;
@@ -2516,7 +2520,8 @@ body.light .ce-tiny-confirm-card {
 .ce-confirm-btn-delete {
   flex: 1;
   padding: 10px 14px;
-  border-radius: 6px; /* Square Button */
+  border-radius: 6px;
+  /* Square Button */
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   border: none;
   color: #ffffff;

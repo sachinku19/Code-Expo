@@ -9,7 +9,7 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
   const [contrast, setContrast] = useState(100);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [activeTab, setActiveTab] = useState("crop"); // "crop" or "adjust"
-  
+
   // Dynamic resizable crop box state
   const [boxWidth, setBoxWidth] = useState(aspect < 1 ? 180 : 250);
 
@@ -20,7 +20,7 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
       setBoxWidth(250);
     }
   }, [aspect]);
-  
+
   const containerRef = useRef(null);
   const imgRef = useRef(null);
   const canvasRef = useRef(null);
@@ -49,13 +49,13 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
     isResizing.current = true;
     const container = containerRef.current;
     if (!container) return;
-    
+
     const rect = container.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    
+
     const startDist = Math.sqrt(Math.pow(clientX - centerX, 2) + Math.pow(clientY - centerY, 2)) || 1;
-    
+
     resizeStart.current = {
       centerX,
       centerY,
@@ -107,16 +107,16 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
       if (isResizing.current) {
         const { centerX, centerY, startDist, startWidth } = resizeStart.current;
         const currentDist = Math.sqrt(Math.pow(clientX - centerX, 2) + Math.pow(clientY - centerY, 2));
-        
+
         let newWidth = startWidth * (currentDist / startDist);
-        
+
         // Constrain box size within container bounds
         const containerWidth = containerRef.current ? containerRef.current.clientWidth : 400;
         const containerHeight = containerRef.current ? containerRef.current.clientHeight : 260;
-        
+
         const maxWidth = Math.min(containerWidth - 40, (containerHeight - 40) * aspect);
         const minWidth = 80;
-        
+
         newWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
         setBoxWidth(newWidth);
       } else if (isDragging.current) {
@@ -169,11 +169,11 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
 
     // Map screen coordinates to high-res canvas coordinates
     const scaleRatio = canvas.width / boxWidth;
-    
+
     // Get display sizes of image
     const displayWidth = img.clientWidth || img.width || 300;
     const displayHeight = img.clientHeight || img.height || 200;
-    
+
     const drawWidth = displayWidth * zoom * scaleRatio;
     const drawHeight = displayHeight * zoom * scaleRatio;
 
@@ -499,7 +499,7 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, aspec
           <button
             type="button"
             onClick={cropImage}
-            style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "var(--grad-premium)", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
+            style={{ flex: 1, padding: "8px 16px", borderRadius: "6px", border: "none", background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)", color: "#fff", fontSize: "0.75rem", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
           >
             <Check size={14} /> Crop & Apply
           </button>

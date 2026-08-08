@@ -140,11 +140,10 @@ body {
 /* TOP NAVBAR */
 .ce-topnav {
   height: 56px;
-  background-color: var(--ce-surface) !important;
-  /* Transparent glassmorphism style */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--ce-border);
+  background-color: rgba(10, 10, 15, 0.82) !important;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -154,21 +153,26 @@ body {
   left: 0;
   right: 0;
   z-index: 200000;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s ease;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35) !important;
+  transition: all 0.22s ease;
 }
 
-.light .ce-topnav {
-  background-color: rgba(255, 255, 255, 0.98) !important;
-  /* Safe solid/high-opacity default fallback */
+.light .ce-topnav,
+.light-mode .ce-topnav,
+.light-theme .ce-topnav,
+body.light .ce-topnav {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.03), 0 1px 3px -1px rgba(15, 23, 42, 0.04) !important;
 }
 
-@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
+@supports (backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px)) {
   .ce-topnav {
-    background-color: var(--ce-surface) !important;
-    /* Transparent glassmorphism style */
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background-color: rgba(10, 10, 15, 0.82) !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
   }
 }
 
@@ -1123,49 +1127,57 @@ body {
   overflow: hidden;
 }
 
-/* GLOBAL FLOATING COLLAPSIBLE SIDEBAR */
+/* GLOBAL SOLID 3D BOX SIDEBAR */
 .ce-sidebar {
   background-color: #0b0b0f !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 5px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-top: none !important;
+  border-radius: 0 0 10px 10px !important;
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 68px;
-  bottom: 12px;
-  left: 12px;
-  height: calc(100vh - 80px);
+  top: 56px !important;
+  bottom: 12px !important;
+  left: 12px !important;
+  height: calc(100vh - 68px) !important;
   z-index: 150;
   transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
   overflow: hidden;
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.65), 0 0 25px rgba(124, 92, 255, 0.12) !important;
+  box-shadow: 8px 10px 30px rgba(0, 0, 0, 0.85), 0 2px 8px rgba(0, 0, 0, 0.6), inset 1px 0px 0px rgba(255, 255, 255, 0.08) !important;
   will-change: width;
 }
 
-.light .ce-sidebar {
+.light .ce-sidebar,
+.light-mode .ce-sidebar,
+.light-theme .ce-sidebar,
+body.light .ce-sidebar {
   background-color: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   border: 1px solid rgba(15, 23, 42, 0.12) !important;
-  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.1) !important;
+  border-top: none !important;
+  box-shadow: 6px 8px 24px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.1) !important;
 }
 
 @supports (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px)) {
-  .ce-sidebar {
-    background-color: rgba(11, 11, 15, 0.88) !important;
-    backdrop-filter: blur(28px) saturate(190%) !important;
-    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
-  }
 
+  .ce-sidebar,
   .ce-sidebar.expanded {
     background-color: #0b0b0f !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
 
-  .light .ce-sidebar {
-    background-color: rgba(255, 255, 255, 0.92) !important;
-  }
-
-  .light .ce-sidebar.expanded {
+  .light .ce-sidebar,
+  .light-mode .ce-sidebar,
+  .light-theme .ce-sidebar,
+  body.light .ce-sidebar,
+  .light .ce-sidebar.expanded,
+  .light-mode .ce-sidebar.expanded,
+  .light-theme .ce-sidebar.expanded,
+  body.light .ce-sidebar.expanded {
     background-color: #ffffff !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -1188,23 +1200,89 @@ body {
   padding: 0 16px;
 }
 
-.pin-btn {
-  background: transparent;
-  border: none;
-  color: var(--ce-text-muted);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: var(--border-radius-sm);
+.sidebar-header-new {
+  height: 44px;
   display: flex;
   align-items: center;
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    color var(--transition-fast),
-    background-color var(--transition-fast);
+  justify-content: flex-end;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.light .sidebar-header-new,
+.light-mode .sidebar-header-new,
+.light-theme .sidebar-header-new,
+body.light .sidebar-header-new {
+  border-bottom-color: rgba(15, 23, 42, 0.06);
+}
+
+.pin-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--ce-text-muted, #8e9aa9);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pin-btn .pin-icon {
+  transform: rotate(-45deg);
+  transition: transform 0.25s ease, color 0.2s ease;
+}
+
+.pin-btn:hover {
+  background: rgba(124, 92, 255, 0.12);
+  border-color: rgba(124, 92, 255, 0.3);
+  color: #7C5CFF;
+}
+
+.pin-btn:hover .pin-icon {
+  transform: rotate(0deg);
+}
+
+.pin-btn.pinned {
+  background: rgba(124, 92, 255, 0.18);
+  border-color: rgba(124, 92, 255, 0.4);
+  color: #7C5CFF;
+  box-shadow: 0 0 12px rgba(124, 92, 255, 0.2);
+}
+
+.pin-btn.pinned .pin-icon {
+  transform: rotate(0deg);
+}
+
+/* Light mode overrides for pin button */
+.light .pin-btn,
+.light-mode .pin-btn,
+.light-theme .pin-btn,
+body.light .pin-btn {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+.light .pin-btn:hover,
+.light-mode .pin-btn:hover,
+.light-theme .pin-btn:hover,
+body.light .pin-btn:hover {
+  background: rgba(124, 92, 255, 0.1);
+  border-color: rgba(124, 92, 255, 0.3);
+  color: #7C5CFF;
+}
+
+.light .pin-btn.pinned,
+.light-mode .pin-btn.pinned,
+.light-theme .pin-btn.pinned,
+body.light .pin-btn.pinned {
+  background: rgba(124, 92, 255, 0.15);
+  border-color: rgba(124, 92, 255, 0.35);
+  color: #7C5CFF;
+  box-shadow: 0 0 10px rgba(124, 92, 255, 0.15);
 }
 
 .ce-sidebar.collapsed .pin-btn {
@@ -1212,12 +1290,6 @@ body {
   visibility: hidden;
   transform: scale(0.8);
   pointer-events: none;
-}
-
-.pin-btn:hover,
-.pin-btn.pinned {
-  color: var(--ce-primary);
-  background-color: var(--ce-hover);
 }
 
 .sidebar-nav-menu {

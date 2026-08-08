@@ -6,16 +6,22 @@
   width: calc(100% - 32px);
   max-width: 1240px;
   height: 72px;
-  background: rgba(9, 9, 11, 0.94); /* Safe dark high-opacity default fallback */
+  background: rgba(9, 9, 11, 0.92);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   z-index: 1000;
-  box-shadow: 
-    0 24px 60px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   transition: all 0.3s ease;
+}
+
+.light .navbar,
+.light-mode .navbar,
+.light-theme .navbar {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
 }
 
 @supports (backdrop-filter: blur(24px)) or (-webkit-backdrop-filter: blur(24px)) {
