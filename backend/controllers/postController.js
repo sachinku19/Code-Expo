@@ -62,8 +62,8 @@ const createPost = async (req, res) => {
       for (const file of req.files.images) {
         MediaService.validateFile(file, {
           maxSize: 10 * 1024 * 1024,
-          allowedExtensions: /jpeg|jpg|png|webp/,
-          allowedMimeTypes: /image\/jpeg|image\/png|image\/webp/
+          allowedExtensions: /jpeg|jpg|png|webp|avif/,
+          allowedMimeTypes: /image\/jpeg|image\/png|image\/webp|image\/avif/
         });
         const media = await MediaService.uploadMedia(
           file.buffer,

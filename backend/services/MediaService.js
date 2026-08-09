@@ -33,8 +33,8 @@ const getPublicIdFromUrl = (url) => {
  */
 const validateFile = (file, options = {}) => {
   if (!file) throw new Error("No file provided for validation.");
-  const allowedExtensions = options.allowedExtensions || /jpeg|jpg|png|webp|gif/;
-  const allowedMimeTypes = options.allowedMimeTypes || /image\/jpeg|image\/png|image\/webp|image\/gif/;
+  const allowedExtensions = options.allowedExtensions || /jpeg|jpg|png|webp|gif|avif/;
+  const allowedMimeTypes = options.allowedMimeTypes || /image\/jpeg|image\/png|image\/webp|image\/gif|image\/avif/;
   const maxLimit = options.maxSize || (10 * 1024 * 1024); // default 10MB
 
   const ext = path.extname(file.originalname).toLowerCase();

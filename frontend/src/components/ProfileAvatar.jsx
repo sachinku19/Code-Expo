@@ -32,9 +32,9 @@ export default function ProfileAvatar() {
     if (!file) return;
 
     // Validate type
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif"];
     if (!allowedTypes.includes(file.type)) {
-      toast.error("Only images (.jpg, .jpeg, .png, .webp) are allowed!");
+      toast.error("Only images (.jpg, .jpeg, .png, .webp, .avif) are allowed!");
       return;
     }
 
@@ -255,7 +255,7 @@ export default function ProfileAvatar() {
         ref={fileInputRef} 
         onChange={handleFileChange} 
         style={{ display: "none" }} 
-        accept="image/jpeg,image/jpg,image/png,image/webp" 
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/avif" 
       />
 
       {user?.avatar && !loading && (

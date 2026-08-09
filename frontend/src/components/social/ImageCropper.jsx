@@ -202,10 +202,10 @@ export default function ImageCropper({ imageSrc, file, onCropComplete, onCancel,
 
     // Preserve original file format where possible (e.g. transparent PNGs)
     let mimeType = file?.type || "image/jpeg";
-    if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mimeType)) {
+    if (!["image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif"].includes(mimeType)) {
       mimeType = "image/jpeg";
     }
-    const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+    const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : mimeType === "image/avif" ? "avif" : "jpg";
 
     canvas.toBlob((blob) => {
       if (blob) {

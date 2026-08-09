@@ -20,8 +20,8 @@ const createStory = async (req, res) => {
       try {
         MediaService.validateFile(req.file, {
           maxSize,
-          allowedExtensions: isVideo ? /mp4|webm|mov|avi|mkv/ : /jpeg|jpg|png|webp/,
-          allowedMimeTypes: isVideo ? /video\/mp4|video\/webm|video\/quicktime|video\/x-msvideo|video\/x-matroska/ : /image\/jpeg|image\/png|image\/webp/
+          allowedExtensions: isVideo ? /mp4|webm|mov|avi|mkv/ : /jpeg|jpg|png|webp|avif/,
+          allowedMimeTypes: isVideo ? /video\/mp4|video\/webm|video\/quicktime|video\/x-msvideo|video\/x-matroska/ : /image\/jpeg|image\/png|image\/webp|image\/avif/
         });
       } catch (err) {
         return res.status(400).json({ 

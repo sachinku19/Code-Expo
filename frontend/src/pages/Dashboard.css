@@ -14437,9 +14437,20 @@ select option {
    ========================================================= */
 
 @keyframes ce-lamp-sway {
-  0% { transform: rotate(-1.5deg); transform-origin: top center; }
-  50% { transform: rotate(1.5deg); transform-origin: top center; }
-  100% { transform: rotate(-1.5deg); transform-origin: top center; }
+  0% {
+    transform: rotate(-1.5deg);
+    transform-origin: top center;
+  }
+
+  50% {
+    transform: rotate(1.5deg);
+    transform-origin: top center;
+  }
+
+  100% {
+    transform: rotate(-1.5deg);
+    transform-origin: top center;
+  }
 }
 
 .ce-hanging-lamp-card-wrapper {
@@ -14511,7 +14522,7 @@ select option {
 
 .light .ce-lamp-cap {
   background: #718096 !important;
-  border-color: rgba(0,0,0,0.06) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
   box-shadow: none !important;
 }
 
@@ -14539,9 +14550,23 @@ select option {
 
 /* Pulsing Live Dot Animation */
 @keyframes ce-pulse-dot {
-  0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(124, 92, 255, 0.45); }
-  70% { transform: scale(1.2); opacity: 0.8; box-shadow: 0 0 0 6px rgba(124, 92, 255, 0); }
-  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(124, 92, 255, 0.45);
+  }
+
+  70% {
+    transform: scale(1.2);
+    opacity: 0.8;
+    box-shadow: 0 0 0 6px rgba(124, 92, 255, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(124, 92, 255, 0);
+  }
 }
 
 .live-indicator-dot {
@@ -14603,8 +14628,15 @@ select option {
 
 /* Radar / Sonar Wave Animation */
 @keyframes ce-radar-expand {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(2.2); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
 }
 
 .ce-radar-container {
@@ -14736,16 +14768,20 @@ select option {
   .ce-lamp-support-stick {
     display: none !important;
   }
+
   .ce-lamp-rope {
     display: none !important;
   }
+
   .ce-lamp-cap {
     display: none !important;
   }
+
   .ce-hanging-lamp-card-wrapper {
     animation: none !important;
     width: 100%;
   }
+
   .ce-hanging-lamp-card {
     width: 100%;
     border-radius: 14px;

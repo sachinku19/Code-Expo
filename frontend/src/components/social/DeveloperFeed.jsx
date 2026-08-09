@@ -1269,13 +1269,13 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       return;
     }
 
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif"];
     const hasInvalidFormat = files.some(file => !allowedTypes.includes(file.type));
     if (hasInvalidFormat) {
       setWarningModal({
         isOpen: true,
         title: "Unsupported Image Format",
-        message: "Only JPG, JPEG, PNG, or WEBP image formats are supported."
+        message: "Only JPG, JPEG, PNG, WEBP, or AVIF image formats are supported."
       });
       if (e.target) e.target.value = "";
       return;

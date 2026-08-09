@@ -26,7 +26,7 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 
 const imageFileFilter = (req, file, cb) => {
-  const allowedExtensions = /jpeg|jpg|png|webp/;
+  const allowedExtensions = /jpeg|jpg|png|webp|avif/;
   const ext = path.extname(file.originalname).toLowerCase();
   const isMimeValid = allowedExtensions.test(file.mimetype);
   const isExtValid = allowedExtensions.test(ext);
@@ -34,7 +34,7 @@ const imageFileFilter = (req, file, cb) => {
   if (isMimeValid && isExtValid) {
     return cb(null, true);
   }
-  cb(new Error("Upload rejected: Only image files (jpg, jpeg, png, webp) are allowed!"), false);
+  cb(new Error("Upload rejected: Only image files (jpg, jpeg, png, webp, avif) are allowed!"), false);
 };
 
 const uploadImage = multer({

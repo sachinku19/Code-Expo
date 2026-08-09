@@ -963,10 +963,11 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       "image/jpeg",
       "image/jpg",
       "image/png",
-      "image/webp"
+      "image/webp",
+      "image/avif"
     ];
     if (!allowedTypes.includes(file.type)) {
-      alert("Only images (PNG, JPG, JPEG, WEBP) are allowed!");
+      alert("Only images (PNG, JPG, JPEG, WEBP, AVIF) are allowed!");
       e.target.value = "";
       return;
     }
@@ -1092,9 +1093,9 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     const file = e.target.files[0];
     if (!file || !activeChat) return;
 
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif"];
     if (!allowedTypes.includes(file.type)) {
-      alert("Only image files (JPEG, JPG, PNG, WEBP) are allowed for group icon!");
+      alert("Only image files (JPEG, JPG, PNG, WEBP, AVIF) are allowed for group icon!");
       return;
     }
 
@@ -1386,7 +1387,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
   const handleSendImageClick = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.accept = "image/png, image/jpeg, image/jpg, image/webp";
+      fileInputRef.current.accept = "image/png, image/jpeg, image/jpg, image/webp, image/avif";
       fileInputRef.current.click();
     }
   };
@@ -1526,9 +1527,9 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
   const handleGroupAvatarSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif"];
     if (!allowedTypes.includes(file.type)) {
-      alert("Only image files (JPEG, JPG, PNG, WEBP) are allowed for group avatar!");
+      alert("Only image files (JPEG, JPG, PNG, WEBP, AVIF) are allowed for group avatar!");
       return;
     }
     setGroupAvatar(file);
@@ -2304,7 +2305,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileSelect}
-                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                    accept="image/png, image/jpeg, image/jpg, image/webp, image/avif"
                     style={{ display: "none" }}
                   />
 
@@ -2367,7 +2368,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                           type="file"
                           id="group-info-avatar-input"
                           style={{ display: "none" }}
-                          accept="image/png, image/jpeg, image/jpg, image/webp"
+                          accept="image/png, image/jpeg, image/jpg, image/webp, image/avif"
                           onChange={handleUpdateGroupAvatar}
                         />
                       )}
@@ -2780,7 +2781,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                   type="file"
                   id="group-avatar-input"
                   style={{ display: "none" }}
-                  accept="image/png, image/jpeg, image/jpg, image/webp"
+                  accept="image/png, image/jpeg, image/jpg, image/webp, image/avif"
                   onChange={handleGroupAvatarSelect}
                 />
               </div>

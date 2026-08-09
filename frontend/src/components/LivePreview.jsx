@@ -78,6 +78,7 @@ const getAssetDataUrl = (fileName, base64Content) => {
   else if (ext === "gif") mime = "image/gif";
   else if (ext === "svg") mime = "image/svg+xml";
   else if (ext === "webp") mime = "image/webp";
+  else if (ext === "avif") mime = "image/avif";
   
   if (base64Content.startsWith("data:")) return base64Content;
   return `data:${mime};base64,${base64Content}`;

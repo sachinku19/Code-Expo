@@ -4767,7 +4767,7 @@ const AdminDashboard = () => {
                       <div className="ad-upload-dropzone" style={{ border: "2px dashed var(--admin-border)", padding: "20px", borderRadius: "8px", textAlign: "center", cursor: "pointer", background: "rgba(0,0,0,0.1)", position: "relative" }}>
                         <input
                           type="file"
-                          accept="image/png, image/jpeg, image/jpg"
+                          accept="image/png, image/jpeg, image/jpg, image/webp, image/avif"
                           onChange={(e) => {
                             const file = e.target.files[0];
                             if (file) {
@@ -4782,7 +4782,7 @@ const AdminDashboard = () => {
                         />
                         <label htmlFor="ad-file-input" className="ad-file-label" style={{ cursor: "pointer" }}>
                           <span style={{ fontSize: "0.85rem", color: "var(--admin-text)" }}>
-                            {adImageFile ? `Selected: ${adImageFile.name}` : "Click to select banner image (PNG/JPG)"}
+                            {adImageFile ? `Selected: ${adImageFile.name}` : "Click to select banner image (PNG/JPG/WEBP/AVIF)"}
                           </span>
                         </label>
                       </div>
