@@ -89,6 +89,10 @@ body.light,
   border-color: rgba(124, 92, 255, 0.25);
 }
 
+.mobile-stories-wrapper {
+  display: none;
+}
+
 /* Left Sidebar - Vertical Stories */
 .rebuilt-left-column {
   display: flex;
@@ -511,6 +515,21 @@ body.light,
 
   .rebuilt-left-column {
     display: none;
+  }
+
+  .mobile-stories-wrapper {
+    display: block;
+    background: rgba(18, 18, 29, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.05));
+    border-radius: 12px;
+    padding: 12px 14px 4px 14px;
+    margin-bottom: 16px;
+  }
+  .light .mobile-stories-wrapper {
+    background: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 4px 12px rgba(31, 38, 135, 0.03);
   }
 }
 

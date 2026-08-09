@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import StoriesColumn from "./LeftSidebar/StoriesColumn";
+import StoriesSystem from "../StoriesSystem";
 import CreatePostCard from "./FeedContent/CreatePostCard";
 import FeedControls from "./FeedContent/FeedControls";
 import PostCard from "./FeedContent/PostCard";
@@ -102,6 +103,10 @@ export const FeedPage = ({
 
         {/* Center Column: Feed Content */}
         <main className="rebuilt-center-column">
+          <div className="mobile-stories-wrapper">
+            <StoriesSystem user={user} addToast={addToast} vertical={false} onUserClick={onUserClick} />
+          </div>
+
           <CreatePostCard
             user={user}
             onSubmitPost={onCreatePost}
