@@ -113,7 +113,7 @@ export default function MobileNetworkFeedShowcase() {
                 <Terminal size={16} />
               </div>
               <div className="mobile-feature-text">
-                <h4>Interactive Snippet Execution</h4>
+                <h3>Interactive Snippet Execution</h3>
                 <p>Run shared code snippets directly from the feed in an isolated sandbox.</p>
               </div>
             </div>
@@ -123,7 +123,7 @@ export default function MobileNetworkFeedShowcase() {
                 <Sparkles size={16} />
               </div>
               <div className="mobile-feature-text">
-                <h4>Rich Media & Visual Snaps</h4>
+                <h3>Rich Media & Visual Snaps</h3>
                 <p>Post high-fidelity setups, configurations, and deployment wins.</p>
               </div>
             </div>
@@ -133,7 +133,7 @@ export default function MobileNetworkFeedShowcase() {
                 <Code2 size={16} />
               </div>
               <div className="mobile-feature-text">
-                <h4>Smart Recommendations</h4>
+                <h3>Smart Recommendations</h3>
                 <p>Follow top builders and discover developers matching your stacks.</p>
               </div>
             </div>

@@ -32,7 +32,7 @@ export default function RoomCollaborationShowcase() {
                 <Video size={18} />
               </div>
               <div className="ce-collab-feature-text">
-                <h4>Low-Latency Video Rooms</h4>
+                <h3>Low-Latency Video Rooms</h3>
                 <p>Host high-definition voice and video calls with peer-to-peer screen sharing support.</p>
               </div>
             </div>
@@ -42,7 +42,7 @@ export default function RoomCollaborationShowcase() {
                 <MessageSquare size={18} />
               </div>
               <div className="ce-collab-feature-text">
-                <h4>Integrated Workspace Chat</h4>
+                <h3>Integrated Workspace Chat</h3>
                 <p>Send markdown code logs, share sandboxes, and drop files directly inside your active room.</p>
               </div>
             </div>

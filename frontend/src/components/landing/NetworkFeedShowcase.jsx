@@ -199,7 +199,7 @@ export default function NetworkFeedShowcase() {
                 <Terminal size={18} />
               </div>
               <div className="ce-feature-text">
-                <h4>Interactive Snippet Execution</h4>
+                <h3>Interactive Snippet Execution</h3>
                 <p>Run and test shared code snippets directly from the feed in a secure isolated compiler sandbox.</p>
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function NetworkFeedShowcase() {
                 <Sparkles size={18} />
               </div>
               <div className="ce-feature-text">
-                <h4>Rich Media & Visual Snaps</h4>
+                <h3>Rich Media & Visual Snaps</h3>
                 <p>Post high-fidelity snapshots of physical builds, dashboard setups, and daily coding accomplishments.</p>
               </div>
             </div>
@@ -219,7 +219,7 @@ export default function NetworkFeedShowcase() {
                 <Code2 size={18} />
               </div>
               <div className="ce-feature-text">
-                <h4>Smart Recommendations</h4>
+                <h3>Smart Recommendations</h3>
                 <p>Follow top builders and discover developers matching your technical stacks automatically.</p>
               </div>
             </div>

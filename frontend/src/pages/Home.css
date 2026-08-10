@@ -1182,7 +1182,7 @@
   font-weight: 800;
   letter-spacing: 0.5px;
   color: var(--text-muted);
-  opacity: 0.7;
+  opacity: 0.95;
   transition: opacity 0.2s ease;
 }
 
@@ -5882,7 +5882,8 @@ html.lenis body {
 }
 
 /* Pause horizontal rolling marquee on cursor hover for comfortable reading & clicking */
-.ce-dev-carousel-viewport:hover .ce-dev-marquee-track {
+.ce-dev-carousel-viewport:hover .ce-dev-marquee-track,
+.ce-dev-carousel-viewport:focus-within .ce-dev-marquee-track {
   animation-play-state: paused !important;
 }
 

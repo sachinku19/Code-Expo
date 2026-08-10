@@ -98,7 +98,7 @@ export default function MobileRoomCollaborationShowcase() {
                 <Video size={16} />
               </div>
               <div className="mobile-feature-text">
-                <h4>Low-Latency Video Rooms</h4>
+                <h3>Low-Latency Video Rooms</h3>
                 <p>HD voice and video calls with peer-to-peer screen sharing.</p>
               </div>
             </div>
@@ -108,7 +108,7 @@ export default function MobileRoomCollaborationShowcase() {
                 <MessageSquare size={16} />
               </div>
               <div className="mobile-feature-text">
-                <h4>Integrated Workspace Chat</h4>
+                <h3>Integrated Workspace Chat</h3>
                 <p>Share code logs, compile snaps, and send files inside the room.</p>
               </div>
             </div>

@@ -83,7 +83,7 @@ const MobileLandingPage = lazy(() => import("../components/mobile/MobileLandingP
 // ==========================================
 const HeroSection = React.memo(({ totalUser, dbStats, navigate, user }) => {
   return (
-    <section id="hero" className="ce-hero">
+    <section id="hero" className="ce-hero" aria-labelledby="hero-title">
       <div className="ce-container">
         <div className="ce-hero-badge">
           <span className="ce-hero-badge-pulse" />
@@ -92,7 +92,7 @@ const HeroSection = React.memo(({ totalUser, dbStats, navigate, user }) => {
           </span>
         </div>
 
-        <h1 className="ce-hero-title">
+        <h1 id="hero-title" className="ce-hero-title">
           Where developers collaborate, code, and share in real time.
         </h1>
 
@@ -366,13 +366,27 @@ const StoriesSection = React.memo(({ user }) => {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        setActiveStory(null);
+      }
+    };
+    if (activeStory) {
+      window.addEventListener("keydown", handleEscape);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [activeStory]);
+
   return (
     <>
-      <section ref={sectionRef} className="ce-section ce-dev-showcase-section">
+      <section ref={sectionRef} className="ce-section ce-dev-showcase-section" aria-labelledby="spotlight-heading">
         <div className="ce-container">
           <div className="ce-section-header ce-section-header-compact">
             <span className="ce-section-tag">COMMUNITY SPOTLIGHT</span>
-            <h2 className="ce-section-title">
+            <h2 id="spotlight-heading" className="ce-section-title">
               Built for <span className="ce-title-highlight">{stories.length > 0 ? `${stories.length}+` : "22+"} Active Developers</span> — Built for Every Niche.
             </h2>
             <p className="ce-section-subtitle">
@@ -430,10 +444,12 @@ const StoriesSection = React.memo(({ user }) => {
               <>
                 <div className="ce-dev-marquee-group">
                   {stories.map((dev) => (
-                    <div
+                    <button
                       key={`g1-${dev.id}`}
+                      type="button"
                       className="ce-dev-avatar-only"
                       onClick={() => handleOpenStory(dev)}
+                      aria-label={`Open developer story of ${dev.name}`}
                       style={{
                         cursor: "pointer",
                         position: "relative",
@@ -474,16 +490,19 @@ const StoriesSection = React.memo(({ user }) => {
                           boxShadow: "0 0 6px currentColor"
                         }}
                       />
-                    </div>
+                    </button>
                   ))}
                 </div>
 
                 <div className="ce-dev-marquee-group" aria-hidden="true">
                   {stories.map((dev) => (
-                    <div
+                    <button
                       key={`g2-${dev.id}`}
+                      type="button"
+                      tabIndex={-1}
                       className="ce-dev-avatar-only"
                       onClick={() => handleOpenStory(dev)}
+                      aria-label={`Open developer story of ${dev.name}`}
                       style={{
                         cursor: "pointer",
                         position: "relative",
@@ -524,7 +543,7 @@ const StoriesSection = React.memo(({ user }) => {
                           boxShadow: "0 0 6px currentColor"
                         }}
                       />
-                    </div>
+                    </button>
                   ))}
                 </div>
               </>
@@ -549,7 +568,7 @@ const StoriesSection = React.memo(({ user }) => {
                   <span className="ce-story-modal-handle">@{activeStory.user}</span>
                 </div>
               </div>
-              <button className="ce-story-modal-close" onClick={handleCloseStory}>
+              <button type="button" className="ce-story-modal-close" onClick={handleCloseStory} aria-label="Close developer story">
                 &times;
               </button>
             </div>
@@ -679,11 +698,11 @@ const WorkspaceSection = React.memo(() => {
   const activeFile = workspaceFiles[activeFileName];
 
   return (
-    <section id="editor-section" className="ce-section ce-editor-layered-section">
+    <section id="editor-section" className="ce-section ce-editor-layered-section" aria-labelledby="editor-heading">
       <div className="ce-container">
         <div className="ce-section-header">
           <span className="ce-section-tag">MULTI-FILE WORKSPACE</span>
-          <h2 className="ce-section-title">A complete local IDE, in your browser.</h2>
+          <h2 id="editor-heading" className="ce-section-title">A complete local IDE, in your browser.</h2>
           <p className="ce-section-subtitle">
             Manage folder directories, edit multiple files in tabs, set compilation entry points, and execute source
             code with stdin buffers.
@@ -951,11 +970,11 @@ WorkspaceSection.displayName = "WorkspaceSection";
 // ==========================================
 const BentoSection = React.memo(() => {
   return (
-    <section id="features" className="ce-section">
+    <section id="features" className="ce-section" aria-labelledby="features-heading">
       <div className="ce-container">
         <div className="ce-section-header">
           <span className="ce-section-tag">Value Proposition</span>
-          <h2 className="ce-section-title">Built for developer productivity.</h2>
+          <h2 id="features-heading" className="ce-section-title">Built for developer productivity.</h2>
           <p className="ce-section-subtitle">
             All the tools you need to pair program, debug, share knowledge, and build your digital footprint in one
             unified interface.
@@ -1177,11 +1196,11 @@ BentoSection.displayName = "BentoSection";
 // ==========================================
 const AnalyticsSection = React.memo(() => {
   return (
-    <section id="analytics" className="ce-section ce-analytics-section">
+    <section id="analytics" className="ce-section ce-analytics-section" aria-labelledby="analytics-heading">
       <div className="ce-container">
         <div className="ce-section-header">
           <span className="ce-section-tag">NETWORK ANALYTICS</span>
-          <h2 className="ce-section-title">Measure your footprint.</h2>
+          <h2 id="analytics-heading" className="ce-section-title">Measure your footprint.</h2>
           <p className="ce-section-subtitle">
             Track your profile growth, coding execution metrics, and language skills inside a beautiful visual
             statistics dashboard.
@@ -1517,11 +1536,11 @@ const EcosystemSection = React.memo(({ ecosystemTab, setEcosystemTab }) => {
   const [isVerseJoined, setIsVerseJoined] = useState(false);
 
   return (
-    <section id="ecosystem" className="ce-section ce-squarespace-showcase-section">
+    <section id="ecosystem" className="ce-section ce-squarespace-showcase-section" aria-labelledby="ecosystem-heading">
       <div className="ce-container">
         <div className="ce-section-header">
           <span className="ce-section-tag">GOOGLE PROPOSAL PLATFORM STACK</span>
-          <h2 className="ce-section-title">A unified workspace makes it real.</h2>
+          <h2 id="ecosystem-heading" className="ce-section-title">A unified workspace makes it real.</h2>
           <p className="ce-section-subtitle">
             Three revolutionary developer features integrated into one seamless engine. Manage sprint backlogs, pair
             program with Gemini AI, and collaborate inside global metaverse pods.
@@ -1804,11 +1823,11 @@ const PricingSection = React.memo(() => {
   const [billingPeriod, setBillingPeriod] = useState("monthly");
 
   return (
-    <section id="pricing" className="ce-section ce-pricing-section">
+    <section id="pricing" className="ce-section ce-pricing-section" aria-labelledby="pricing-heading">
       <div className="ce-container">
         <div className="ce-section-header">
           <span className="ce-section-tag">PREMIUM PLANS</span>
-          <h2 className="ce-section-title">Plans built to scale.</h2>
+          <h2 id="pricing-heading" className="ce-section-title">Plans built to scale.</h2>
           <p className="ce-section-subtitle">
             Get access to high-performance containers, persistent workspaces, unlimited calling, and context-aware AI
             partner suggestions.
@@ -1980,13 +1999,15 @@ const TestimonialsSection = React.memo(({ reviews }) => {
 
   const [reviewsIndex, setReviewsIndex] = useState(0);
 
+  const [isPaused, setIsPaused] = useState(false);
+
   useEffect(() => {
-    if (activeReviews.length === 0) return;
+    if (activeReviews.length === 0 || isPaused) return;
     const interval = setInterval(() => {
       setReviewsIndex((prev) => (prev + 1) % activeReviews.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, [activeReviews.length]);
+  }, [activeReviews.length, isPaused]);
 
   const handlePrev = () => {
     setReviewsIndex((prev) => (prev - 1 + activeReviews.length) % activeReviews.length);
@@ -1997,12 +2018,26 @@ const TestimonialsSection = React.memo(({ reviews }) => {
   };
 
   return (
-    <section id="testimonials" className="ce-section ce-testimonials-section" style={{ overflow: "hidden" }}>
+    <section
+      id="testimonials"
+      className="ce-section ce-testimonials-section"
+      style={{ overflow: "hidden" }}
+      aria-labelledby="testimonials-heading"
+      onFocus={() => setIsPaused(true)}
+      onBlur={() => setIsPaused(false)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          handlePrev();
+        } else if (e.key === "ArrowRight") {
+          handleNext();
+        }
+      }}
+    >
       <div className="ce-container ce-testimonials-container-split">
         {/* Left Column */}
         <div className="ce-testimonials-left">
           <span className="ce-section-tag">CLIENT VOICES</span>
-          <h2 className="ce-testimonials-title">
+          <h2 id="testimonials-heading" className="ce-testimonials-title">
             Trusted By <br />
             <span>Developers</span>
           </h2>
@@ -2012,10 +2047,10 @@ const TestimonialsSection = React.memo(({ reviews }) => {
           </p>
 
           <div className="ce-testimonials-nav">
-            <button className="ce-testimonials-nav-btn prev" onClick={handlePrev} aria-label="Previous testimonial">
+            <button type="button" className="ce-testimonials-nav-btn prev" onClick={handlePrev} aria-label="Previous testimonial" aria-controls="testimonials-slider-track">
               ←
             </button>
-            <button className="ce-testimonials-nav-btn next" onClick={handleNext} aria-label="Next testimonial">
+            <button type="button" className="ce-testimonials-nav-btn next" onClick={handleNext} aria-label="Next testimonial" aria-controls="testimonials-slider-track">
               →
             </button>
             <span className="ce-testimonials-counter">
@@ -2027,7 +2062,7 @@ const TestimonialsSection = React.memo(({ reviews }) => {
         {/* Right Column */}
         <div className="ce-testimonials-right">
           <div className="ce-testimonials-carousel">
-            <div className="ce-testimonials-slider-track">
+            <div className="ce-testimonials-slider-track" id="testimonials-slider-track">
               {activeReviews.map((review, idx) => {
                 const username = review?.user?.username || "Anonymous";
                 const avatar = review?.user?.avatar;
@@ -2040,13 +2075,20 @@ const TestimonialsSection = React.memo(({ reviews }) => {
                 } else if (idx === (reviewsIndex - 1 + activeReviews.length) % activeReviews.length) {
                   positionClass = "card-prev";
                 } else if (idx === (idx === reviewsIndex ? -1 : (reviewsIndex + 1) % activeReviews.length)) {
-                  positionClass = "card-next";
+                  positionClass = "card-prev";
                 } else if (idx === (reviewsIndex + 1) % activeReviews.length) {
                   positionClass = "card-next";
                 }
 
                 return (
-                  <div className={`ce-testimonial-card ${positionClass}`} key={review._id || idx}>
+                  <div
+                    id={`testimonial-panel-${idx}`}
+                    role="tabpanel"
+                    aria-labelledby={`testimonial-tab-${idx}`}
+                    className={`ce-testimonial-card ${positionClass}`}
+                    key={review._id || idx}
+                    aria-hidden={idx !== reviewsIndex ? "true" : "false"}
+                  >
                     <div className="ce-testimonial-card-inner">
                       <div className="ce-testimonial-stars">
                         {Array.from({ length: 5 }, (_, i) => (
@@ -2091,13 +2133,19 @@ const TestimonialsSection = React.memo(({ reviews }) => {
           </div>
 
           {/* Dots */}
-          <div className="ce-testimonials-dots">
+          <div className="ce-testimonials-dots" role="tablist" aria-label="Testimonial slides">
             {activeReviews.map((_, idx) => (
               <button
                 key={idx}
+                type="button"
+                id={`testimonial-tab-${idx}`}
+                aria-controls={`testimonial-panel-${idx}`}
                 className={`ce-testimonials-dot ${idx === reviewsIndex ? "active" : ""}`}
                 onClick={() => setReviewsIndex(idx)}
-                aria-label={`Go to slide ${idx + 1}`}
+                aria-label={`Go to testimonial ${idx + 1}`}
+                aria-selected={idx === reviewsIndex}
+                aria-current={idx === reviewsIndex ? "true" : "false"}
+                role="tab"
               />
             ))}
           </div>
@@ -2517,7 +2565,18 @@ function Home() {
         }`}
       >
         <div className="ce-container ce-navbar-container">
-          <div className="ce-nav-logo" onClick={() => navigate("/")}>
+          <div
+            className="ce-nav-logo"
+            onClick={() => navigate("/")}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                navigate("/");
+              }
+            }}
+            aria-label="CodeExpo homepage"
+          >
             <img src="/logo.png" alt="CodeExpo" fetchpriority="high" decoding="async" className="ce-nav-logo-img" />
             <span className="ce-nav-logo-text">CodeExpo</span>
           </div>
@@ -2615,20 +2674,21 @@ function Home() {
           </nav>
 
           <div className="ce-nav-actions">
-            <button className="ce-theme-btn" onClick={toggleTheme} aria-label="Toggle Theme">
+            <button type="button" className="ce-theme-btn" onClick={toggleTheme} aria-label="Toggle Theme">
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             {user ? (
-              <button className="ce-btn ce-btn-primary" onClick={() => navigate("/dashboard")}>
+              <button type="button" className="ce-btn ce-btn-primary" onClick={() => navigate("/dashboard")}>
                 Go to Dashboard
                 <ArrowRight size={15} />
               </button>
             ) : (
               <>
-                <button className="ce-btn ce-btn-secondary" onClick={() => navigate("/login")}>
+                <button type="button" className="ce-btn ce-btn-secondary" onClick={() => navigate("/login")}>
                   Sign In
                 </button>
                 <button
+                  type="button"
                   className="ce-btn ce-btn-primary"
                   onClick={() => navigate(user || localStorage.getItem("token") ? "/dashboard" : "/register")}
                 >
@@ -2728,10 +2788,10 @@ function Home() {
         <TestimonialsSection reviews={reviews} />
 
         {/* 9. Call to Action Panel */}
-        <section className="ce-section">
+        <section className="ce-section" aria-labelledby="cta-heading">
           <div className="ce-container">
             <div className="ce-cta">
-              <h2 className="ce-cta-title">Ready to write code together?</h2>
+              <h2 id="cta-heading" className="ce-cta-title">Ready to write code together?</h2>
               <p className="ce-cta-desc">
                 Spin up a secure multiplayer coding environment and connect with other developers instantly.
               </p>
