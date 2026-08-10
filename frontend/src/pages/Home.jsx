@@ -823,7 +823,11 @@ const WorkspaceSection = React.memo(() => {
                 <span>{activeFileName}</span>
               </div>
               <div className="editor-lang-badge">
+                <label htmlFor="language-select" className="sr-only">
+                  Programming language
+                </label>
                 <select
+                  id="language-select"
                   className="lang-select"
                   value={selectedLang.toUpperCase()}
                   onChange={(e) => setSelectedLang(e.target.value.toLowerCase())}
@@ -969,6 +973,10 @@ WorkspaceSection.displayName = "WorkspaceSection";
 // 4. BENTO FEATURES GRID (Memoized)
 // ==========================================
 const BentoSection = React.memo(() => {
+  const [cameraActive, setCameraActive] = React.useState(true);
+  const [micActive, setMicActive] = React.useState(true);
+  const [callActive, setCallActive] = React.useState(true);
+
   return (
     <section id="features" className="ce-section" aria-labelledby="features-heading">
       <div className="ce-container">
@@ -1013,24 +1021,29 @@ yDoc.getText('monaco')
             </p>
 
             <div className="ce-bento-preview ce-bento-call-preview">
-              <div className="ce-call-window">
+              <div className="ce-call-window" style={{ opacity: callActive ? 1 : 0.5 }}>
                 <div className="ce-call-participants">
                   {/* Participant 1 (Sachin) */}
-                  <div className="ce-call-feed">
+                  <div className={`ce-call-feed ${!cameraActive || !callActive ? "muted" : ""}`}>
                     <img
                       src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&h=80&q=80"
                       alt="Sachin Kumar"
                       loading="lazy"
                       decoding="async"
                       className="ce-call-feed-img"
+                      style={{ filter: !cameraActive || !callActive ? "brightness(0.3)" : "none" }}
                     />
                     <span className="ce-call-feed-name">Sachin</span>
-                    <div className="ce-call-audio-wave">
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                    </div>
+                    {callActive && micActive ? (
+                      <div className="ce-call-audio-wave">
+                        <span />
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    ) : (
+                      <MicOff size={10} className="ce-call-feed-mute" />
+                    )}
                   </div>
                   {/* Participant 2 (Aman) */}
                   <div className="ce-call-feed muted">
@@ -1040,6 +1053,7 @@ yDoc.getText('monaco')
                       loading="lazy"
                       decoding="async"
                       className="ce-call-feed-img"
+                      style={{ filter: !callActive ? "brightness(0.3)" : "none" }}
                     />
                     <span className="ce-call-feed-name">Aman</span>
                     <MicOff size={10} className="ce-call-feed-mute" />
@@ -1047,13 +1061,33 @@ yDoc.getText('monaco')
                 </div>
                 {/* Floating Controller overlay bar */}
                 <div className="ce-call-controls">
-                  <button className="ce-call-icon-btn active">
+                  <button
+                    type="button"
+                    className={`ce-call-icon-btn ${cameraActive && callActive ? "active" : ""}`}
+                    onClick={() => setCameraActive(!cameraActive)}
+                    aria-label={cameraActive ? "Turn camera off" : "Turn camera on"}
+                    aria-pressed={cameraActive}
+                    title={cameraActive ? "Turn camera off" : "Turn camera on"}
+                  >
                     <Video size={12} />
                   </button>
-                  <button className="ce-call-icon-btn active">
+                  <button
+                    type="button"
+                    className={`ce-call-icon-btn ${micActive && callActive ? "active" : ""}`}
+                    onClick={() => setMicActive(!micActive)}
+                    aria-label={micActive ? "Mute microphone" : "Unmute microphone"}
+                    aria-pressed={micActive}
+                    title={micActive ? "Mute microphone" : "Unmute microphone"}
+                  >
                     <Mic size={12} />
                   </button>
-                  <button className="ce-call-icon-btn end">
+                  <button
+                    type="button"
+                    className={`ce-call-icon-btn ${callActive ? "end" : "active"}`}
+                    onClick={() => setCallActive(!callActive)}
+                    aria-label={callActive ? "End call" : "Start call"}
+                    title={callActive ? "End call" : "Start call"}
+                  >
                     <PhoneOff size={12} />
                   </button>
                 </div>

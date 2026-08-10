@@ -28,6 +28,11 @@
   margin-bottom: 6px;
 }
 
+.light .mobile-collab-tag,
+.light-theme .mobile-collab-tag {
+  color: #1d4ed8;
+}
+
 .mobile-collab-title {
   font-family: 'Outfit', sans-serif;
   font-size: 20px;

@@ -118,6 +118,13 @@
   border: 0.5px solid rgba(139, 92, 246, 0.25);
 }
 
+.light .mobile-post-role-badge.developer,
+.light-theme .mobile-post-role-badge.developer {
+  background: rgba(109, 40, 217, 0.1);
+  color: #6d28d9;
+  border-color: rgba(109, 40, 217, 0.2);
+}
+
 .mobile-post-role-badge.checkmark {
   background: #3b82f6;
   color: #ffffff;

@@ -63,8 +63,11 @@ export default function NetworkFeedShowcase() {
                     <span className="ce-widget-handle">@sarah_sys</span>
                   </div>
                   <button 
+                    type="button"
                     className={`ce-widget-follow-btn ${followStates.sarah ? "active" : ""}`}
                     onClick={() => handleUserFollow("sarah")}
+                    aria-label={followStates.sarah ? "Unfollow Sarah Jenkins" : "Follow Sarah Jenkins"}
+                    aria-pressed={followStates.sarah}
                   >
                     {followStates.sarah ? <Check size={12} /> : <UserPlus size={12} />}
                   </button>
@@ -76,8 +79,11 @@ export default function NetworkFeedShowcase() {
                     <span className="ce-widget-handle">@aman_dev</span>
                   </div>
                   <button 
+                    type="button"
                     className={`ce-widget-follow-btn ${followStates.aman ? "active" : ""}`}
                     onClick={() => handleUserFollow("aman")}
+                    aria-label={followStates.aman ? "Unfollow Aman Sharma" : "Follow Aman Sharma"}
+                    aria-pressed={followStates.aman}
                   >
                     {followStates.aman ? <Check size={12} /> : <UserPlus size={12} />}
                   </button>
@@ -150,22 +156,25 @@ export default function NetworkFeedShowcase() {
 
               {/* Feed Actions Footer */}
               <div className="ce-post-actions-footer">
-                <button 
-                  className={`ce-post-action-btn like ${sachinLiked ? "liked" : ""} ${sachinLikeAnimating ? "animating" : ""}`}
+                <button
+                  type="button"
+                  className={`ce-post-action-btn ${sachinLiked ? "liked" : ""}`}
                   onClick={handleLikeClick}
+                  aria-label={sachinLiked ? "Unlike post" : "Like post"}
+                  aria-pressed={sachinLiked}
                 >
-                  <Heart size={16} fill={sachinLiked ? "#ef4444" : "none"} />
+                  <Heart size={16} className={sachinLikeAnimating ? "like-pulse" : ""} />
                   <span>{sachinLikeCount}</span>
                 </button>
-                <button className="ce-post-action-btn">
+                <button type="button" className="ce-post-action-btn" aria-label="View comments">
                   <MessageSquare size={16} />
                   <span>0</span>
                 </button>
-                <button className="ce-post-action-btn">
+                <button type="button" className="ce-post-action-btn" aria-label="Share post">
                   <Share2 size={16} />
                   <span>Share</span>
                 </button>
-                <button className="ce-post-action-btn bookmark-btn">
+                <button type="button" className="ce-post-action-btn bookmark-btn" aria-label="Bookmark post" aria-pressed="false">
                   <Bookmark size={16} />
                 </button>
               </div>

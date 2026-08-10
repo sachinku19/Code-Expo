@@ -87,6 +87,11 @@
   margin-bottom: 12px;
 }
 
+.light .ce-collab-tag,
+.light-theme .ce-collab-tag {
+  color: #1d4ed8;
+}
+
 .ce-collab-title {
   font-family: 'Outfit', sans-serif;
   font-size: 2.25rem;
@@ -246,6 +251,27 @@
 .lip-blue { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
 .lip-orange { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
 .lip-yellow { background: rgba(234, 179, 8, 0.1); color: #facc15; }
+
+.light .lip-purple,
+.light-theme .lip-purple {
+  color: #6d28d9;
+}
+.light .lip-green,
+.light-theme .lip-green {
+  color: #047857;
+}
+.light .lip-blue,
+.light-theme .lip-blue {
+  color: #1d4ed8;
+}
+.light .lip-orange,
+.light-theme .lip-orange {
+  color: #b45309;
+}
+.light .lip-yellow,
+.light-theme .lip-yellow {
+  color: #a16207;
+}
 
 /* Coordinates & Base Transforms for scattered stack */
 .card-video-sachin {

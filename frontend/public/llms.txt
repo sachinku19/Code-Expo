@@ -1,15 +1,9 @@
 # CodeExpo
 
-CodeExpo is a high-performance multiplayer coding platform that integrates real-time document synchronization, live audio/video rooms, shared whiteboards, and developer feeds directly inside one unified tab.
+CodeExpo is a real-time collaborative developer workspace for coding, collaboration, communication, and developer communities.
 
-## Public Pages
-- Home: https://codeexpo.dev/
-- Login: https://codeexpo.dev/login
-- Register: https://codeexpo.dev/register
+## Main Pages
 
-## Key Features
-- **Multiplayer Editor**: Edit folders and code files collaboratively with automatic CRDT synchronization.
-- **Video & Voice Rooms**: Connect with teams via voice/video calls and peer-to-peer screen sharing.
-- **Developer Social Feed**: Post snapshots, compile code snippets securely inside isolated sandboxes, and follow other builders.
-- **Shared Interactive Whiteboards**: Diagram ideas with direct peer updates on a joint canvas.
-- **AI Pair Programming**: Integrated contextual hints and coding assistance.
+- [CodeExpo Home](https://codeexpo.dev/)
+- [Login](https://codeexpo.dev/login)
+- [Register](https://codeexpo.dev/register)

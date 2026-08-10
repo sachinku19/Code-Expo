@@ -216,6 +216,20 @@
   border: 0.5px solid rgba(236, 72, 153, 0.25);
 }
 
+.light .ce-post-role-badge.developer,
+.light-theme .ce-post-role-badge.developer {
+  background: rgba(109, 40, 217, 0.1);
+  color: #6d28d9;
+  border-color: rgba(109, 40, 217, 0.2);
+}
+
+.light .ce-post-role-badge.designer,
+.light-theme .ce-post-role-badge.designer {
+  background: rgba(190, 24, 74, 0.1);
+  color: #be1848;
+  border-color: rgba(190, 24, 74, 0.2);
+}
+
 .ce-post-role-badge.checkmark {
   background: #3b82f6;
   color: #ffffff;
@@ -548,6 +562,11 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 12px;
+}
+
+.light .ce-info-tag,
+.light-theme .ce-info-tag {
+  color: #6d28d9;
 }
 
 .ce-info-title {
