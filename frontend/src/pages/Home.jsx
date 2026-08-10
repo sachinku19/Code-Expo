@@ -73,6 +73,8 @@ import {
   Layers
 } from "lucide-react";
 import "./Home.css";
+import NetworkFeedShowcase from "../components/landing/NetworkFeedShowcase";
+import RoomCollaborationShowcase from "../components/landing/RoomCollaborationShowcase";
 
 const MobileLandingPage = lazy(() => import("../components/mobile/MobileLandingPage"));
 
@@ -699,6 +701,49 @@ const WorkspaceSection = React.memo(() => {
 
         {/* Divided 3D Overlapping Card Stage */}
         <div className="ce-editor-layered-stage reveal-init reveal-3d-up">
+          {/* 3D Floating Ornaments */}
+          <div className="ce-workspace-shape ce-shape-sphere">
+            <svg width="70" height="70" viewBox="0 0 100 100">
+              <defs>
+                <radialGradient id="glass-grad" cx="30%" cy="30%" r="70%">
+                  <stop offset="0%" stopColor="rgba(255, 255, 255, 0.7)" />
+                  <stop offset="40%" stopColor="rgba(139, 92, 246, 0.3)" />
+                  <stop offset="85%" stopColor="rgba(99, 102, 241, 0.12)" />
+                  <stop offset="100%" stopColor="rgba(99, 102, 241, 0.02)" />
+                </radialGradient>
+                <linearGradient id="glass-spec" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="white" stopOpacity="0.4" />
+                  <stop offset="40%" stopColor="white" stopOpacity="0" />
+                  <stop offset="100%" stopColor="black" stopOpacity="0.25" />
+                </linearGradient>
+              </defs>
+              <circle cx="50" cy="50" r="45" fill="url(#glass-grad)" />
+              <circle cx="50" cy="50" r="45" fill="url(#glass-spec)" />
+            </svg>
+          </div>
+
+          <div className="ce-workspace-shape ce-shape-star">
+            <svg width="54" height="54" viewBox="0 0 24 24" fill="url(#star-gold-gradient)">
+              <defs>
+                <radialGradient id="star-gold-gradient" cx="30%" cy="30%" r="75%">
+                  <stop offset="0%" stopColor="#fef08a" />
+                  <stop offset="45%" stopColor="#eab308" />
+                  <stop offset="100%" stopColor="#854d0e" />
+                </radialGradient>
+              </defs>
+              <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.787 1.4 8.168L12 18.896l-7.334 3.857 1.4-8.168L.132 9.21l8.2-1.192L12 .587z" />
+            </svg>
+          </div>
+
+          {/* Glassmorphic Floating Tech Capsule */}
+          <div className="ce-workspace-tech-capsule">
+            <div className="ce-capsule-logo python">Py</div>
+            <div className="ce-capsule-logo node">JS</div>
+            <div className="ce-capsule-logo docker">Dk</div>
+            <div className="ce-capsule-logo rtc">WebRTC</div>
+            <div className="ce-capsule-logo yjs">Yjs</div>
+          </div>
+
           {/* CARD 1: LEFT CARD — FILE EXPLORER & DIRECTORY TREE */}
           <div className="ce-editor-layered-card explorer-card tilted-left">
             <div className="ce-layer-floating-pill blue">MULTI-FILE TREE</div>
@@ -2661,8 +2706,14 @@ function Home() {
         {/* 3. Multi-File Workspace Sandbox Section */}
         <WorkspaceSection />
 
+        {/* 3.5 Room Collaboration Hub (Meeting & Chat Showcase) */}
+        <RoomCollaborationShowcase />
+
         {/* 4. Bento Grid Features Section */}
         <BentoSection />
+
+        {/* 4.5 Live Workspace Feature Showcase & Network Feed */}
+        <NetworkFeedShowcase />
 
         {/* 5. Developer Network Analytics Section */}
         <AnalyticsSection />

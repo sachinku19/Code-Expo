@@ -117,6 +117,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
   const [isPaused, setIsPaused] = useState(false);
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
   const [isStoriesLoading, setIsStoriesLoading] = useState(true);
+  const [mediaLoaded, setMediaLoaded] = useState(true);
 
   useEffect(() => {
     setIsPaused(false);
@@ -307,7 +308,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
 
   // Story Auto-Advance Timer
   useEffect(() => {
-    if (!activeStoryGroup || storyToDelete || showStoryComments || isPaused) return;
+    if (!activeStoryGroup || storyToDelete || showStoryComments || isPaused || !mediaLoaded) return;
 
     const interval = setInterval(() => {
       setStoryProgress((prev) => {
@@ -321,7 +322,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
     }, 100);
 
     return () => clearInterval(interval);
-  }, [activeStoryGroup, activeStoryIndex, storyToDelete, showStoryComments, isPaused]);
+  }, [activeStoryGroup, activeStoryIndex, storyToDelete, showStoryComments, isPaused, mediaLoaded]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -584,7 +585,18 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
     return acc;
   }, {});
 
-  const storyGroups = Object.values(groupedStories);
+  // Sort story groups so that the current user's story is always first
+  const storyGroups = (() => {
+    const groups = Object.values(groupedStories);
+    if (user?.username) {
+      const selfGroupIdx = groups.findIndex(g => g.username === user.username);
+      if (selfGroupIdx > -1) {
+        const [selfGroup] = groups.splice(selfGroupIdx, 1);
+        groups.unshift(selfGroup);
+      }
+    }
+    return groups;
+  })();
 
   const isGroupUnread = (group) => {
     return group.stories.some(s => !readStories.has(s._id));
@@ -600,6 +612,20 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
   };
 
   const currentActiveStory = activeStoryGroup?.stories[activeStoryIndex];
+
+  // Sync loading status of current active story media
+  useEffect(() => {
+    if (activeStoryGroup && currentActiveStory) {
+      if (currentActiveStory.mediaUrl) {
+        setMediaLoaded(false);
+      } else {
+        setMediaLoaded(true);
+      }
+    } else {
+      setMediaLoaded(true);
+    }
+  }, [activeStoryGroup, activeStoryIndex, currentActiveStory?._id, currentActiveStory?.mediaUrl]);
+
   const isVideoUrl = (url) => {
     if (!url) return false;
     return url.match(/\.(mp4|webm|ogg|mov|avi)($|\?)/i) || url.includes("/video/upload/");
@@ -658,33 +684,109 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
       <div className={`premium-stories-bar ${vertical ? "vertical" : ""}`} ref={scrollContainerRef}>
 
         {/* Your Story trigger */}
-        <div className="premium-story-bubble self" onClick={() => setIsAdding(true)}>
-          <div className="premium-story-ring">
-            <svg className="story-ring-svg" viewBox="0 0 68 68">
-              <circle
-                cx="34"
-                cy="34"
-                r="32.5"
-                fill="none"
-                className="svg-ring-read"
-                strokeWidth="2.5"
-              />
-            </svg>
-            <div className="premium-story-inner">
-              {user?.avatar ? (
-                <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 120, height: 120, crop: "fill" })} alt="You" />
-              ) : (
-                <div className="story-avatar-fallback">
-                  {user?.username?.charAt(0).toUpperCase()}
+        {(() => {
+          const selfGroup = user?.username ? groupedStories[user.username] : null;
+          if (selfGroup) {
+            const numStories = selfGroup.stories.length;
+            const radius = 32.5;
+            const circumference = 2 * Math.PI * radius;
+            const gap = numStories > 1 ? 5 : 0;
+            const segmentLength = (circumference / numStories) - gap;
+            const strokeDasharray = `${segmentLength} ${circumference - segmentLength}`;
+            
+            return (
+              <div 
+                className="premium-story-bubble self" 
+                onClick={() => {
+                  setActiveStoryGroup(selfGroup);
+                  setActiveStoryIndex(0);
+                  markStoryAsRead(selfGroup.stories[0]?._id);
+                  setStoryProgress(0);
+                  setShowStoryComments(false);
+                  setPollVote(null);
+                  setQuestionAnswer("");
+                }}
+              >
+                <div className="premium-story-ring">
+                  <svg className="story-ring-svg" viewBox="0 0 68 68">
+                    {selfGroup.stories.map((story, idx) => {
+                      const isSlideRead = readStories.has(story._id);
+                      const startAngle = -90 + idx * (360 / numStories);
+                      return (
+                        <circle
+                          key={story._id}
+                          cx="34"
+                          cy="34"
+                          r={radius}
+                          fill="none"
+                          className={isSlideRead ? "svg-ring-read" : "svg-ring-unread"}
+                          strokeWidth="2.5"
+                          strokeDasharray={numStories > 1 ? strokeDasharray : "none"}
+                          strokeLinecap="round"
+                          style={{
+                            transform: `rotate(${startAngle}deg)`,
+                            transformOrigin: "50% 50%",
+                            transition: "all 0.3s ease"
+                          }}
+                        />
+                      );
+                    })}
+                  </svg>
+                  <div className="premium-story-inner">
+                    {user?.avatar ? (
+                      <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 120, height: 120, crop: "fill" })} alt="You" />
+                    ) : (
+                      <div className="story-avatar-fallback">
+                        {user?.username?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div 
+                    className="plus-badge"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAdding(true);
+                    }}
+                    title="Add to Story"
+                  >
+                    <Plus size={10} />
+                  </div>
                 </div>
-              )}
-            </div>
-            <div className="plus-badge">
-              <Plus size={10} />
-            </div>
-          </div>
-          <span className="premium-story-label">Your Story</span>
-        </div>
+                <span className="premium-story-label">Your Story</span>
+              </div>
+            );
+          } else {
+            return (
+              <div className="premium-story-bubble self" onClick={() => setIsAdding(true)}>
+                <div className="premium-story-ring">
+                  <svg className="story-ring-svg" viewBox="0 0 68 68">
+                    <circle
+                      cx="34"
+                      cy="34"
+                      r="32.5"
+                      fill="none"
+                      className="svg-ring-read"
+                      strokeWidth="2.5"
+                    />
+                  </svg>
+                  <div className="premium-story-inner">
+                    {user?.avatar ? (
+                      <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 120, height: 120, crop: "fill" })} alt="You" />
+                    ) : (
+                      <div className="story-avatar-fallback">
+                        {user?.username?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="plus-badge">
+                    <Plus size={10} />
+                  </div>
+                </div>
+                <span className="premium-story-label">Your Story</span>
+              </div>
+            );
+          }
+        })()}
 
         {/* Story Bubbles */}
         {isStoriesLoading ? (
@@ -696,6 +798,11 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
           ))
         ) : (
           storyGroups.map((group) => {
+            // Skip rendering the current user's story bubble in the loop since it is already rendered as the "Your Story" bubble
+            if (user?.username && group.username === user.username) {
+              return null;
+            }
+
             const unread = isGroupUnread(group);
             const hasLive = group.stories.some(s => s.text && s.text.includes("[AI_INSIGHT]"));
 
@@ -1245,6 +1352,42 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                   setIsPaused(false);
                 }}
               >
+                {/* Keyframe animation for story spinner */}
+                <style>{`
+                  @keyframes ce-story-loading-spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                `}</style>
+
+                {/* Immersive Loading Spinner */}
+                {!mediaLoaded && (
+                  <div style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(10, 10, 15, 0.7)",
+                    backdropFilter: "blur(6px)",
+                    WebkitBackdropFilter: "blur(6px)",
+                    zIndex: 8,
+                    pointerEvents: "none"
+                  }}>
+                    <div style={{
+                      width: "38px",
+                      height: "38px",
+                      borderRadius: "50%",
+                      border: "3px solid rgba(255, 255, 255, 0.1)",
+                      borderTopColor: "#6366f1",
+                      animation: "ce-story-loading-spin 0.8s linear infinite"
+                    }} />
+                  </div>
+                )}
+
                 {/* Visual Pause Overlay Indicator */}
                 {isPaused && (
                   <div style={{
@@ -1450,13 +1593,25 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                   {currentActiveStory.mediaUrl && (
                     <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%", zIndex: 1, overflow: "hidden" }}>
                       {isVideoUrl(currentActiveStory.mediaUrl) ? (
-                        <video src={currentActiveStory.mediaUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }} />
+                        <video 
+                          src={currentActiveStory.mediaUrl} 
+                          autoPlay 
+                          loop 
+                          muted 
+                          playsInline 
+                          onCanPlay={() => setMediaLoaded(true)}
+                          onLoadedData={() => setMediaLoaded(true)}
+                          onError={() => setMediaLoaded(true)}
+                          style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }} 
+                        />
                       ) : (
                         <img
                           src={optimizeCloudinaryUrl(currentActiveStory.mediaUrl, { quality: "best" })}
                           srcSet={getCloudinarySrcSet(currentActiveStory.mediaUrl, { quality: "best" })}
                           sizes="(max-width: 600px) 100vw, 800px"
                           alt="Story Media"
+                          onLoad={() => setMediaLoaded(true)}
+                          onError={() => setMediaLoaded(true)}
                           style={{ width: "100%", height: "100%", minWidth: "100%", minHeight: "100%", objectFit: "cover", objectPosition: "center", transform: "scale(1.05)", transformOrigin: "center", display: "block" }}
                         />
                       )}

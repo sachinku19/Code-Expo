@@ -2449,12 +2449,19 @@ function Dashboard() {
           .then(res => {
             if (res.success && res.user) {
               setPreselectedChatPartner(res.user);
+              // Cleanly remove preselection query parameters from URL to avoid sticky behavior
+              const cleanParams = new URLSearchParams(location.search);
+              cleanParams.delete("user");
+              cleanParams.delete("userId");
+              const cleanSearch = cleanParams.toString();
+              const newUrl = cleanSearch ? `${location.pathname}?${cleanSearch}` : location.pathname;
+              navigate(newUrl, { replace: true });
             }
           })
           .catch(err => console.error("Error preselecting chat partner from URL:", err));
       }
     }
-  }, [activeSection, location.search, preselectedChatPartner]);
+  }, [activeSection, location.search, preselectedChatPartner, navigate, location.pathname]);
 
   // Admin redirect logic
   useEffect(() => {

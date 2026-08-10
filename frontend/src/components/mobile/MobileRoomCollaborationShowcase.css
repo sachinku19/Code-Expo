@@ -1,0 +1,313 @@
+/* Mobile Room Collaboration (Meeting & Chat) Showcase Styles */
+.mobile-collab-section {
+  padding: 32px 0;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.mobile-collab-container {
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.mobile-collab-header {
+  text-align: left;
+}
+
+.mobile-collab-tag {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #3b82f6;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.mobile-collab-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.4px;
+}
+
+.light-theme .mobile-collab-title {
+  color: #0f172a;
+}
+
+.mobile-collab-title-glow {
+  background: linear-gradient(135deg, #3b82f6 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Card Mockup Grid */
+.mobile-collab-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mobile-scattered-card {
+  border-radius: 8px;
+  background: #0d0e12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.light-theme .mobile-scattered-card {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+.mobile-card-inner {
+  padding: 12px;
+}
+
+.mobile-card-lip {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.light-theme .mobile-card-lip {
+  border-top-color: rgba(15, 23, 42, 0.04);
+}
+
+.lip-purple { background: rgba(139, 92, 246, 0.08); color: #a78bfa; }
+.lip-orange { background: rgba(245, 158, 11, 0.08); color: #fbbf24; }
+
+/* Video card inner styling */
+.mobile-video-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-video-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.mobile-video-meta {
+  display: flex;
+  flex-direction: column;
+  margin-right: auto;
+}
+
+.mobile-video-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fafafa;
+}
+
+.light-theme .mobile-video-name {
+  color: #0f172a;
+}
+
+.mobile-video-role {
+  font-size: 9px;
+  color: #71717a;
+}
+
+/* Audio visualizer waves on mobile */
+.mobile-audio-waves {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.wave-bar {
+  width: 2px;
+  background: #8b5cf6;
+  border-radius: 1px;
+}
+
+.active-1 { height: 4px; animation: voiceWaveMobile 0.6s infinite alternate; }
+.active-2 { height: 10px; animation: voiceWaveMobile 0.8s infinite alternate 0.1s; }
+.active-3 { height: 6px; animation: voiceWaveMobile 0.5s infinite alternate 0.2s; }
+
+@keyframes voiceWaveMobile {
+  0% { transform: scaleY(0.4); }
+  100% { transform: scaleY(1.1); }
+}
+
+/* Chat card inner styling */
+.mobile-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.mobile-chat-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.mobile-chat-name {
+  font-size: 11px;
+  color: #fafafa;
+  display: block;
+}
+
+.light-theme .mobile-chat-name {
+  color: #0f172a;
+}
+
+.mobile-chat-time {
+  font-size: 8px;
+  color: #71717a;
+  margin-left: 4px;
+}
+
+.mobile-chat-body {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.light-theme .mobile-chat-body {
+  color: #475569;
+}
+
+/* Call controls styling card */
+.mobile-controls-row {
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-ctrl-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-ctrl-btn.active {
+  background: #3b82f6;
+  border-color: transparent;
+}
+
+.mobile-ctrl-btn.hangup {
+  background: #ef4444;
+  border-color: transparent;
+}
+
+.light-theme .mobile-ctrl-btn {
+  background: rgba(15, 23, 42, 0.02);
+  border-color: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+.light-theme .mobile-ctrl-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+/* Info Panel underneath card */
+.mobile-collab-info-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.mobile-collab-desc {
+  font-size: 13px;
+  color: #a1a1aa;
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+}
+
+.light-theme .mobile-collab-desc {
+  color: #475569;
+}
+
+.mobile-collab-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.mobile-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mobile-feature-icon-box {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-feature-icon-box.blue {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.mobile-feature-icon-box.green {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.mobile-feature-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-feature-text h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fafafa;
+  margin: 0;
+}
+
+.light-theme .mobile-feature-text h4 {
+  color: #0f172a;
+}
+
+.mobile-feature-text p {
+  font-size: 11px;
+  color: #71717a;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.light-theme .mobile-feature-text p {
+  color: #64748b;
+}

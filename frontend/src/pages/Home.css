@@ -612,9 +612,11 @@
   align-items: center;
   justify-content: center;
   gap: 20px;
-  perspective: 1200px;
-  margin-top: 40px;
-  padding: 40px 10px;
+  perspective: 1600px;
+  transform-style: preserve-3d;
+  margin-top: 50px;
+  padding: 60px 10px;
+  position: relative;
 }
 
 @media (max-width: 1024px) {
@@ -622,36 +624,41 @@
     flex-direction: column;
     perspective: none;
     gap: 32px;
+    padding: 20px 10px;
   }
 }
 
 .ce-editor-layered-card {
-  background: rgba(18, 18, 26, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(13, 14, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(24px);
   position: relative;
-  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.3s ease, 
+              box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.6s ease;
   user-select: none;
 }
 
 .light-theme .ce-editor-layered-card {
   background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(15, 23, 42, 0.1);
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.06);
 }
 
-/* Card 1 & 3: Tilted Side Cards */
+/* Card 1 & 3: Tilted Side Cards aligned to unified Y angle */
 .ce-editor-layered-card.explorer-card {
   width: 320px;
   min-height: 420px;
 }
 
 .ce-editor-layered-card.explorer-card.tilted-left {
-  transform: perspective(1200px) rotateY(14deg) rotateX(4deg) scale(0.92) translate3d(0, 0, -20px);
+  transform: perspective(1600px) rotateY(-23deg) rotateX(13deg) rotateZ(1.5deg) translate3d(-100px, 40px, -45px);
+  z-index: 5;
 }
 
 .ce-editor-layered-card.room-card {
@@ -660,7 +667,8 @@
 }
 
 .ce-editor-layered-card.room-card.tilted-right {
-  transform: perspective(1200px) rotateY(-14deg) rotateX(4deg) scale(0.92) translate3d(0, 0, -20px);
+  transform: perspective(1600px) rotateY(-23deg) rotateX(13deg) rotateZ(1.5deg) translate3d(100px, -45px, -20px);
+  z-index: 3;
 }
 
 /* Card 2: Center Editor Focus (Matching Image 2 center feature) */
@@ -668,19 +676,116 @@
   width: 460px;
   min-height: 460px;
   z-index: 10;
-  border-color: rgba(168, 85, 247, 0.4);
-  box-shadow: 0 30px 80px rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 30px 80px rgba(168, 85, 247, 0.15);
 }
 
 .ce-editor-layered-card.editor-card.center-focus {
-  transform: perspective(1200px) rotateY(0deg) scale(1.05) translate3d(0, -10px, 30px);
+  transform: perspective(1600px) rotateY(-23deg) rotateX(13deg) rotateZ(1.5deg) translate3d(0, 0, 60px);
 }
 
-.ce-editor-layered-card:hover {
-  transform: perspective(1200px) rotateY(0deg) scale(1.06) translate3d(0, -10px, 40px);
-  z-index: 12;
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.7);
+/* Synchronized Exploding spread on hover */
+.ce-editor-layered-stage:hover .ce-editor-layered-card.explorer-card {
+  transform: perspective(1600px) rotateY(-17deg) rotateX(9deg) rotateZ(0.5deg) translate3d(-200px, 90px, -10px);
+  opacity: 0.95;
+}
+
+.ce-editor-layered-stage:hover .ce-editor-layered-card.editor-card {
+  transform: perspective(1600px) rotateY(-17deg) rotateX(9deg) rotateZ(0.5deg) translate3d(0, -20px, 120px);
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 45px 100px rgba(168, 85, 247, 0.35);
+}
+
+.ce-editor-layered-stage:hover .ce-editor-layered-card.room-card {
+  transform: perspective(1600px) rotateY(-17deg) rotateX(9deg) rotateZ(0.5deg) translate3d(200px, -100px, 30px);
+  opacity: 0.95;
+}
+
+@media (max-width: 1024px) {
+  .ce-editor-layered-card.explorer-card.tilted-left,
+  .ce-editor-layered-card.room-card.tilted-right,
+  .ce-editor-layered-card.editor-card.center-focus,
+  .ce-editor-layered-stage:hover .ce-editor-layered-card.explorer-card,
+  .ce-editor-layered-stage:hover .ce-editor-layered-card.editor-card,
+  .ce-editor-layered-stage:hover .ce-editor-layered-card.room-card {
+    transform: none !important;
+    opacity: 1 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  }
+}
+
+/* 3D Floating Ornaments Styling */
+.ce-workspace-shape {
+  position: absolute;
+  pointer-events: none;
+  z-index: 15;
+  filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.45));
+}
+
+.ce-shape-sphere {
+  top: -20px;
+  left: 110px;
+  animation: floatWorkspaceSphere 6s ease-in-out infinite alternate;
+}
+
+.ce-shape-star {
+  top: 60px;
+  right: 120px;
+  animation: floatWorkspaceStar 8s ease-in-out infinite alternate;
+}
+
+@keyframes floatWorkspaceSphere {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-24px) rotate(15deg); }
+}
+
+@keyframes floatWorkspaceStar {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(28px) rotate(30deg); }
+}
+
+/* Floating Tech Stack Capsule Badge (Bottom Left) */
+.ce-workspace-tech-capsule {
+  position: absolute;
+  bottom: 30px;
+  left: 60px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  background: rgba(18, 18, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 30px;
+  padding: 6px 14px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  animation: floatWorkspaceSphere 7s ease-in-out infinite alternate-reverse;
+}
+
+.light-theme .ce-workspace-tech-capsule {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
+}
+
+.ce-capsule-logo {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 20px;
+  color: #ffffff;
+}
+
+.ce-capsule-logo.python { background: #3776ab; }
+.ce-capsule-logo.node { background: #339933; }
+.ce-capsule-logo.docker { background: #2496ed; }
+.ce-capsule-logo.rtc { background: #3b82f6; }
+.ce-capsule-logo.yjs { background: #8b5cf6; }
+
+@media (max-width: 1024px) {
+  .ce-workspace-shape,
+  .ce-workspace-tech-capsule {
+    display: none !important;
+  }
 }
 
 /* Floating Badges */

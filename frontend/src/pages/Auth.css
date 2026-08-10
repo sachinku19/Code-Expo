@@ -112,28 +112,25 @@
 /* Bubble Design System (Glassmorphic Cards) */
 .auth-bg-bubble {
   background: var(--auth-bubble-bg);
-  backdrop-filter: blur(14px) saturate(120%);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
-  border: 1px solid var(--auth-bubble-border);
-  border-radius: 18px;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0px;
   padding: 14px 18px;
-  box-shadow:
-    0 15px 35px rgba(10, 86, 212, 0.04),
-    0 5px 12px rgba(0, 0, 0, 0.01);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
   pointer-events: auto;
-  /* Hover scale reaction */
-  transition:
-    background-color 0.3s ease,
-    border 0.3s ease,
-    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.light .auth-bg-bubble {
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
 }
 
 .auth-bg-bubble:hover {
-  transform: scale(1.03) translateY(-2px);
-  box-shadow:
-    0 20px 40px rgba(10, 86, 212, 0.06),
-    0 8px 20px rgba(0, 0, 0, 0.02);
+  transform: scale(1.02) translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35), 0 0 20px rgba(99, 102, 241, 0.08);
 }
 
 /* Bubble 1: Collab Room Styles */
@@ -161,7 +158,7 @@
 .bubble-room-title {
   font-size: 0.775rem;
   font-weight: 700;
-  color: #0a56d4;
+  color: #8b5cf6;
   letter-spacing: -0.01em;
 }
 
@@ -230,7 +227,7 @@
 }
 
 .bubble-chat-author strong {
-  color: #f1521b;
+  color: #a855f7;
 }
 
 .bubble-chat-author span {
@@ -379,7 +376,7 @@
    ========================================================================== */
 .auth-form-panel {
   width: 100%;
-  max-width: 940px;
+  max-width: 1020px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -392,21 +389,25 @@
   flex-direction: row;
   width: 100%;
   height: 620px;
-  /* Standard fixed card height from design reference */
   background: var(--auth-card-bg);
-  border-radius: 36px;
-  box-shadow:
-    0 30px 60px rgba(0, 0, 0, 0.03),
-    0 10px 20px rgba(0, 0, 0, 0.02);
+  border-radius: 0px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.6);
   overflow: hidden;
   position: relative;
-  transition: background-color 0.3s ease;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.light .auth-card-split {
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 24px 64px -12px rgba(15, 23, 42, 0.08);
 }
 
 /* LEFT PANEL: Branding & Info (Blue Gradient) */
 .auth-info-column {
-  width: 44%;
-  background: linear-gradient(180deg, #0a56d4 0%, #1579ff 100%);
+  width: 55%;
+  background: linear-gradient(135deg, #090a10 0%, #131622 100%);
+  border-right: 1px solid rgba(0, 0, 0, 0.35);
   position: relative;
   color: #ffffff;
   padding: 44px;
@@ -416,63 +417,77 @@
   height: 100%;
 }
 
+.auth-info-mesh-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.16) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.12) 0%, transparent 45%);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 .auth-info-content {
   display: flex;
   flex-direction: column;
   height: 100%;
-  justify-content: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 10;
 }
 
-.auth-info-welcome {
-  font-size: 1.05rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.75);
-  margin-bottom: 16px;
-  letter-spacing: 0.02em;
-}
-
-/* Circular wrapper for Logo */
-.auth-info-logo-circle {
-  width: 72px;
-  height: 72px;
-  background: #ffffff;
-  border-radius: 50%;
+.auth-brand-logo-container {
   display: flex;
-  justify-content: center;
   align-items: center;
-  margin-bottom: 24px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  gap: 12px;
+  margin-top: 8px;
 }
 
-.auth-info-logo-img {
-  width: 44px;
-  height: 44px;
+.auth-brand-logo-img {
+  width: 32px;
+  height: 32px;
   object-fit: contain;
 }
 
-.auth-info-brand {
+.auth-brand-logo-text {
   font-family: 'Outfit', sans-serif;
-  font-size: 2.25rem;
+  font-size: 1.45rem;
   font-weight: 700;
   color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.auth-info-center-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-grow: 1;
+  margin-top: -24px;
+}
+
+.auth-info-headline {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #ffffff;
   margin: 0 0 16px 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .auth-info-desc {
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.6;
-  margin-top: 0;
-  margin-bottom: 40px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.55;
+  margin: 0;
 }
 
 .auth-info-footer {
-  font-size: 0.725rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.35);
-  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -502,9 +517,9 @@
 
 /* RIGHT PANEL: Form Inputs Column (White) */
 .auth-form-column {
-  width: 56%;
+  width: 45%;
   background: var(--auth-card-bg);
-  padding: 48px 52px;
+  padding: 48px 40px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -527,11 +542,11 @@
 
 .auth-form-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 1.85rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--auth-text-title);
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   transition: color 0.3s ease;
 }
 
@@ -567,29 +582,41 @@
 /* Underline style inputs */
 .form-input-underline {
   width: 100%;
-  padding: 10px 36px 10px 6px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid var(--auth-input-border);
+  padding: 11px 36px 11px 14px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--auth-input-border) !important;
   color: var(--auth-input-text);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
   font-family: inherit;
   line-height: 1.4;
-  border-radius: 4px 4px 0 0;
-  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.3s ease;
+  border-radius: 0px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .form-input-underline::placeholder {
-  color: #94a3b8;
+  color: var(--auth-bubble-text);
   font-weight: 400;
-  opacity: 0.85;
+  opacity: 0.65;
 }
 
 .form-input-underline:focus {
   outline: none;
-  border-bottom-color: #2563eb;
-  background: rgba(37, 99, 235, 0.03);
+  background: rgba(99, 102, 241, 0.02) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.light .form-input-underline {
+  background: rgba(15, 23, 42, 0.01);
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+.light .form-input-underline:focus {
+  background: rgba(99, 102, 241, 0.01) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 /* Fix browser autofill solid background override */
@@ -606,17 +633,16 @@
 /* Validation checkmark on right */
 .input-valid-tick {
   position: absolute;
-  right: 6px;
-  color: #2563eb;
+  right: 12px;
+  color: #10b981;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   pointer-events: none;
   animation: tick-fade-in 0.2s ease forwards;
 }
 
-/* Position adjustment for fields that have right-side eye icon */
 .input-valid-tick.with-icon {
-  right: 32px;
+  right: 40px;
 }
 
 @keyframes tick-fade-in {
@@ -631,13 +657,12 @@
   }
 }
 
-/* Eye Visibility Icon Toggle */
 .input-icon-right-toggle {
   position: absolute;
-  right: 0;
+  right: 14px;
   background: none;
   border: none;
-  color: #a0a0a0;
+  color: var(--auth-bubble-text);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -648,7 +673,11 @@
 }
 
 .input-icon-right-toggle:hover {
-  color: #0a56d4;
+  color: #6366f1;
+}
+
+input[name="password"] {
+  padding-right: 64px !important;
 }
 
 /* Forgot Password alignment link */
@@ -661,7 +690,7 @@
 .btn-link-forgot {
   background: none;
   border: none;
-  color: #0a56d4;
+  color: #8b5cf6;
   font-size: 0.775rem;
   font-weight: 600;
   cursor: pointer;
@@ -671,15 +700,15 @@
 }
 
 .btn-link-forgot:hover {
-  color: #1579ff;
+  color: #a855f7;
   text-decoration: underline;
 }
 
 /* Checkbox customizations */
 .remember-me-checkbox {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
   user-select: none;
 }
@@ -693,11 +722,10 @@
   height: 15px;
   border: 1.5px solid var(--auth-btn-outlined-border);
   background: transparent;
-  border-radius: 4px;
+  border-radius: 0px;
   position: relative;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
 .remember-me-checkbox input:checked+.checkbox-custom {
@@ -740,26 +768,34 @@
   display: flex;
   gap: 16px;
   margin-top: 8px;
+  width: 100%;
+}
+
+.auth-action-row button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Filled Capsule Button */
 .btn-capsule-filled {
-  padding: 11px 36px;
-  background: linear-gradient(135deg, #0a56d4 0%, #1579ff 100%);
+  padding: 11px 24px;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   border: none;
-  border-radius: 24px;
+  border-radius: 0px;
   color: #ffffff;
-  font-size: 0.925rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(10, 86, 212, 0.25);
-  transition: all 0.25s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-capsule-filled:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.05);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(10, 86, 212, 0.35);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
 }
 
 .btn-capsule-filled:active {
@@ -773,23 +809,21 @@
   box-shadow: none;
 }
 
-/* Outlined Capsule Button */
 .btn-capsule-outlined {
-  padding: 9px 36px;
-  /* Offset border thickness */
+  padding: 10px 24px;
   background: transparent;
-  border: 2px solid var(--auth-btn-outlined-border);
-  border-radius: 24px;
+  border: 1px solid var(--auth-btn-outlined-border);
+  border-radius: 0px;
   color: var(--auth-btn-outlined-text);
-  font-size: 0.925rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-capsule-outlined:hover {
-  border-color: #0a56d4;
-  color: #0a56d4;
+  border-color: #6366f1;
+  color: #6366f1;
   background: var(--auth-btn-outlined-hover-bg);
 }
 
@@ -829,9 +863,9 @@
 .social-btn-google-pill {
   width: 100%;
   background: var(--auth-google-bg);
-  border: 1.5px solid var(--auth-google-border);
-  padding: 10px;
-  border-radius: 24px;
+  border: 1px solid var(--auth-google-border);
+  padding: 11px;
+  border-radius: 0px;
   color: var(--auth-google-text);
   font-size: 0.875rem;
   font-weight: 600;
@@ -840,12 +874,12 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .social-btn-google-pill:hover {
-  border-color: #0a56d4;
-  color: #0a56d4;
+  border-color: #6366f1;
+  color: #6366f1;
   background: var(--auth-btn-outlined-hover-bg);
 }
 
@@ -981,48 +1015,108 @@
 
   .auth-info-column {
     width: 100%;
-    height: 200px;
-    padding: 32px 24px;
-    align-items: center;
+    height: auto;
+    padding: 32px 24px 20px 24px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .auth-info-content {
+    height: auto;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  .auth-brand-logo-container {
+    margin-top: 0;
+    justify-content: center;
+  }
+
+  .auth-info-center-group {
+    margin-top: 0;
+    flex-grow: 0;
     text-align: center;
   }
 
-  .auth-info-welcome,
+  .auth-info-headline {
+    font-size: 1.25rem;
+    margin: 0;
+    text-align: center;
+  }
+
   .auth-info-desc,
   .auth-info-footer {
     display: none;
-    /* Hide desktop specific texts to keep mobile compact */
-  }
-
-  .auth-info-logo-circle {
-    width: 52px;
-    height: 52px;
-    margin-bottom: 12px;
-  }
-
-  .auth-info-logo-img {
-    width: 32px;
-    height: 32px;
-  }
-
-  .auth-info-brand {
-    font-size: 1.75rem;
-    margin: 0;
-  }
-
-  .cloud-wave-separator {
-    display: none;
-    /* Hide vertical wave on mobile */
   }
 
   .auth-form-column {
     width: 100%;
-    padding: 36px 28px;
+    padding: 32px 24px;
     height: auto;
   }
 
   /* Hide background elements completely on mobile to prioritize form functionality */
   .auth-floating-background {
+    display: none;
+  }
+}
+
+/* Diary Spiral Binder Seam */
+.diary-spiral-binder {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 55%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: calc(100% - 32px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.diary-spiral-ring {
+  position: relative;
+  width: 18px;
+  height: 6px;
+  /* Silver Metallic Gradient */
+  background: linear-gradient(130deg, #f8fafc 0%, #cbd5e1 30%, #64748b 70%, #334155 100%);
+  border-radius: 3px;
+  box-shadow: 
+    0 2px 3px rgba(0, 0, 0, 0.4), 
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.4);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Punched Holes behind the ring */
+.diary-spiral-ring::before,
+.diary-spiral-ring::after {
+  content: '';
+  position: absolute;
+  top: 0.5px;
+  width: 3.5px;
+  height: 5px;
+  background: #090a0f;
+  border-radius: 50%;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.9);
+}
+
+/* Left Hole */
+.diary-spiral-ring::before {
+  left: -1px;
+}
+
+/* Right Hole */
+.diary-spiral-ring::after {
+  right: -1px;
+}
+
+/* Hide spiral binder on mobile screens since layout stacks vertically */
+@media (max-width: 900px) {
+  .diary-spiral-binder {
     display: none;
   }
 }

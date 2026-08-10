@@ -68,23 +68,27 @@ body.light .mobile-hero-badge,
   font-size: 28px;
   line-height: 1.25;
   font-weight: 800;
-  letter-spacing: -0.6px;
-  color: #fafafa;
-  margin-bottom: 14px;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #ffffff 50%, #c7d2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 16px;
 }
 
 :root[data-theme-mode="light"] .mobile-hero-title,
 body.light .mobile-hero-title,
 .mobile-landing-root.light-theme .mobile-hero-title {
-  color: #0f172a;
+  background: linear-gradient(135deg, #0f172a 50%, #4338ca 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Hero Subtitle */
 .mobile-hero-subtitle {
-  font-size: 15px;
+  font-size: 14.5px;
   line-height: 1.6;
-  color: #a1a1aa;
-  margin-bottom: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 28px;
   max-width: 440px;
 }
 
@@ -99,15 +103,15 @@ body.light .mobile-hero-subtitle,
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .mobile-hero-btn {
   width: 100%;
   min-height: 48px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -117,24 +121,28 @@ body.light .mobile-hero-subtitle,
 }
 
 .mobile-hero-btn.primary {
-  background: #3b82f6;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   color: #ffffff;
   border: none;
-  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+}
+
+.mobile-hero-btn.primary:hover {
+  filter: brightness(1.05);
 }
 
 .mobile-hero-btn.secondary {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
   color: #fafafa;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 :root[data-theme-mode="light"] .mobile-hero-btn.secondary,
 body.light .mobile-hero-btn.secondary,
 .mobile-landing-root.light-theme .mobile-hero-btn.secondary {
-  background: rgba(248, 250, 252, 0.9);
+  background: rgba(15, 23, 42, 0.02);
   color: #0f172a;
-  border-color: rgba(15, 23, 42, 0.1);
+  border-color: rgba(15, 23, 42, 0.08);
 }
 
 .mobile-hero-btn:active {

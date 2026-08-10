@@ -4,7 +4,9 @@ import MobileHero from "./MobileHero";
 import MobileStats from "./MobileStats";
 import MobileDevelopers from "./MobileDevelopers";
 import MobileWorkspace from "./MobileWorkspace";
+import MobileRoomCollaborationShowcase from "./MobileRoomCollaborationShowcase";
 import MobileFeatures from "./MobileFeatures";
+import MobileNetworkFeedShowcase from "./MobileNetworkFeedShowcase";
 import MobileAnalytics from "./MobileAnalytics";
 import MobilePricing from "./MobilePricing";
 import MobileTestimonials from "./MobileTestimonials";
@@ -32,8 +34,14 @@ export default function MobileLandingPage({ user, theme, toggleTheme, dbStats, t
         {/* 5. Floating Workspace (Multi-File Sandbox) */}
         <MobileWorkspace />
 
+        {/* 5.5 Room Collaboration Hub (Meeting & Chat Showcase) */}
+        <MobileRoomCollaborationShowcase />
+
         {/* 6. Features (CRDT Sync, Video Calls, Whiteboard, Feed) */}
         <MobileFeatures />
+
+        {/* 6.5 Network Feed and Feature Carousel */}
+        <MobileNetworkFeedShowcase />
 
         {/* 7. Analytics Dashboard */}
         <MobileAnalytics />

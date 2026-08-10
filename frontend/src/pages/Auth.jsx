@@ -8,6 +8,8 @@ import { ArrowLeft, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Auth.css";
 
+
+
 function Auth({ mode }) {
   const { user, setUser } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -255,7 +257,7 @@ function Auth({ mode }) {
     setRegisterError(null);
 
     if (!agreeTerms) {
-      setRegisterError("Please accept the terms & privacy policy to continue.");
+      setRegisterError("Please accept the terms & privacy policy.");
       return;
     }
 
@@ -331,145 +333,45 @@ function Auth({ mode }) {
         <span>Home</span>
       </button>
 
-      {/* Floating Theme Toggle Button */}
-      <button onClick={toggleTheme} className="btn-theme-toggle" aria-label="Toggle Theme">
-        {resolvedTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-      </button>
 
-      {/* Floating Immersive Background Elements */}
-      <div className="auth-floating-background">
-
-        {/* Bubble 1: Collab Room (Top Left) */}
-        <div
-          className="auth-parallax-wrapper"
-          style={{
-            transform: `translate(${mousePos.x * -25}px, ${mousePos.y * -25}px)`
-          }}
-        >
-          <div className="auth-bg-bubble bubble-room">
-            <div className="bubble-header">
-              <span className="bubble-room-dot"></span>
-              <span className="bubble-room-title">Python Live Room</span>
-            </div>
-            <p className="bubble-text">Debugging main.py</p>
-            <div className="bubble-avatars">
-              <span className="b-avatar color-1">A</span>
-              <span className="b-avatar color-2">S</span>
-              <span className="b-avatar color-3">K</span>
-              <span className="b-avatar-count">+2</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Bubble 2: Chat Feed message (Bottom Left) */}
-        <div
-          className="auth-parallax-wrapper"
-          style={{
-            transform: `translate(${mousePos.x * 20}px, ${mousePos.y * 20}px)`
-          }}
-        >
-          <div className="auth-bg-bubble bubble-chat">
-            <div className="bubble-chat-author">
-              <strong>Saurabh</strong>
-              <span>Collab chat</span>
-            </div>
-            <p className="bubble-chat-message">"Code runs perfectly! Let's deploy the project. ⚡"</p>
-          </div>
-        </div>
-
-        {/* Bubble 3: Code Feed Snippet (Top Right) */}
-        <div
-          className="auth-parallax-wrapper"
-          style={{
-            transform: `translate(${mousePos.x * -18}px, ${mousePos.y * -18}px)`
-          }}
-        >
-          <div className="auth-bg-bubble bubble-code">
-            <div className="bubble-code-header">
-              <span className="bubble-code-lang">JavaScript</span>
-              <span className="bubble-code-likes">❤️ 24</span>
-            </div>
-            <pre className="bubble-code-snippet">
-              {`const collab = () => {
-  return "CodeExpo";
-};`}
-            </pre>
-          </div>
-        </div>
-
-        {/* Bubble 4: AI Alert Status (Bottom Right) */}
-        <div
-          className="auth-parallax-wrapper"
-          style={{
-            transform: `translate(${mousePos.x * 15}px, ${mousePos.y * 15}px)`
-          }}
-        >
-          <div className="auth-bg-bubble bubble-ai">
-            <div className="bubble-ai-title">
-              <span className="ai-sparkle-icon">✦</span>
-              <span>AI Assistant</span>
-            </div>
-            <p className="bubble-text">Code reviewed! 0 bugs found.</p>
-          </div>
-        </div>
-
-      </div>
 
       {/* Centered Panel Wrapper */}
       <div className="auth-form-panel">
         {/* Double-Panel Split Layout Card */}
         <div className="auth-card-split">
 
-          {/* LEFT PANEL: Branding & Info (Blue Gradient) */}
+          {/* LEFT PANEL: Branding & Info (Deep Space Gradient & Mesh) */}
           <div className="auth-info-column">
+            <div className="auth-info-mesh-bg" />
             <div className="auth-info-content">
-              <span className="auth-info-welcome">Welcome to</span>
-
-              {/* White circle wrapping logo image */}
-              <div className="auth-info-logo-circle">
-                <img src="/logo.png" alt="CodeExpo Logo" className="auth-info-logo-img" />
+              {/* Brand Top Header */}
+              <div className="auth-brand-logo-container">
+                <img src="/logo.png" alt="CodeExpo Logo" className="auth-brand-logo-img" />
+                <span className="auth-brand-logo-text">CodeExpo</span>
               </div>
 
-              <h1 className="auth-info-brand">CodeExpo</h1>
+              {/* Tagline Center Section */}
+              <div className="auth-info-center-group">
+                <h2 className="auth-info-headline">The stage for collaborative coding.</h2>
+                <p className="auth-info-desc">
+                  Step into live sandboxes, showcase your snippets to the community, and build your developer presence in real-time.
+                </p>
+              </div>
 
-              <p className="auth-info-desc">
-                The ultimate workspace for collaborative coding, real-time code sharing, and building your developer presence.
-              </p>
-
+              {/* Footer Bottom Section */}
               <div className="auth-info-footer">
-                <span>CREATOR HERE</span>
-                <span className="auth-footer-divider">|</span>
-                <span>DESIGNER HERE</span>
+                <span>CodeExpo © 2026</span>
+                <span className="auth-footer-divider">•</span>
+                <span>Collaborative Sandbox</span>
               </div>
             </div>
+          </div>
 
-            {/* Custom SVG cloud separator on right boundary */}
-            <svg className="cloud-wave-separator" viewBox="0 0 100 620" preserveAspectRatio="none">
-              <path d="M0,0 
-                        C20,40 40,80 30,120 
-                        C20,160 50,200 40,240 
-                        C30,280 60,320 50,360 
-                        C40,400 50,450 30,500 
-                        C10,550 20,590 0,620 
-                        L100,620 L100,0 Z"
-                fill="rgba(255, 255, 255, 0.12)" />
-              <path d="M0,0 
-                        C15,45 35,75 25,125 
-                        C15,175 45,195 35,245 
-                        C25,295 55,315 45,365 
-                        C35,415 45,465 25,515 
-                        C5,565 15,585 0,620 
-                        L100,620 L100,0 Z"
-                fill="rgba(255, 255, 255, 0.25)" />
-              <path d="M0,0 
-                        C10,50 30,70 20,130 
-                        C10,190 40,190 30,250 
-                        C20,310 50,310 40,370 
-                        C30,430 40,480 20,530 
-                        C0,580 10,580 0,620 
-                        L100,620 L100,0 Z"
-                className="cloud-wave-front" />
-            </svg>
+          {/* Diary Spiral Binder Seam */}
+          <div className="diary-spiral-binder">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="diary-spiral-ring" />
+            ))}
           </div>
 
           {/* RIGHT PANEL: Form inputs (White background) */}
@@ -667,7 +569,7 @@ function Auth({ mode }) {
                   className="auth-form-motion-wrapper"
                 >
                   <div className="auth-brand-header">
-                    <h2 className="auth-form-title">Create your account</h2>
+                    <h2 className="auth-form-title">Create Your Account</h2>
                   </div>
 
                   {activeError && (
