@@ -109,6 +109,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
   const [newStoryText, setNewStoryText] = useState("");
   const [activeStoryGroup, setActiveStoryGroup] = useState(null); // When viewing a story
   const [activeStoryIndex, setActiveStoryIndex] = useState(0);
+  const currentActiveStory = activeStoryGroup?.stories[activeStoryIndex];
   const [storyProgress, setStoryProgress] = useState(0);
   const [storyToDelete, setStoryToDelete] = useState(null); // Custom delete confirmation modal
   const [isDeleting, setIsDeleting] = useState(false); // Spinner state for story deletion
@@ -122,7 +123,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
   useEffect(() => {
     setIsPaused(false);
     setShowOptionsDropdown(false);
-  }, [activeStoryIndex, activeStoryGroup]);
+  }, [activeStoryIndex, currentActiveStory?._id]);
 
   // Interactive Story additions
   const [storyTheme, setStoryTheme] = useState("dark-purple");
@@ -322,7 +323,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
     }, 100);
 
     return () => clearInterval(interval);
-  }, [activeStoryGroup, activeStoryIndex, storyToDelete, showStoryComments, isPaused, mediaLoaded]);
+  }, [activeStoryIndex, currentActiveStory?._id, storyToDelete, showStoryComments, isPaused, mediaLoaded]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -611,7 +612,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
     }
   };
 
-  const currentActiveStory = activeStoryGroup?.stories[activeStoryIndex];
+
 
   // Sync loading status of current active story media
   useEffect(() => {
@@ -624,7 +625,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
     } else {
       setMediaLoaded(true);
     }
-  }, [activeStoryGroup, activeStoryIndex, currentActiveStory?._id, currentActiveStory?.mediaUrl]);
+  }, [activeStoryIndex, currentActiveStory?._id, currentActiveStory?.mediaUrl]);
 
   const isVideoUrl = (url) => {
     if (!url) return false;
