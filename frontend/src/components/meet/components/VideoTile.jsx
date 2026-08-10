@@ -29,6 +29,8 @@ export function VideoTile({ member, stream, isSpeaking, isPinned, onPinToggle })
         className={`ce-meet-pin-btn ${isPinned ? "active" : ""}`}
         onClick={onPinToggle}
         title={isPinned ? "Unpin participant" : "Pin participant to main stage"}
+        aria-label={isPinned ? "Unpin participant" : "Pin participant to main stage"}
+        aria-pressed={isPinned}
       >
         {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
       </button>

@@ -191,6 +191,11 @@
   transition: all 0.2s ease;
 }
 
+.privacy-option-card:focus-within {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
 .privacy-option-card:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(99, 102, 241, 0.3);

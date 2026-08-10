@@ -216,6 +216,7 @@ export default function WorkspaceActionsDropdown({
         aria-haspopup="true"
         aria-expanded={isOpen}
         title="Workspace Actions & Options"
+        aria-label="Workspace Actions & Options"
       >
         <span className="actions-btn-text">Action</span>
         <ChevronDown size={12} className={`actions-arrow ${isOpen ? "open" : ""}`} />
@@ -239,6 +240,7 @@ export default function WorkspaceActionsDropdown({
               className="ce-actions-item"
               onClick={handleCopyId}
               role="menuitem"
+              aria-label="Copy Workspace ID"
             >
               {copiedId ? <Check size={14} className="item-icon success" /> : <Copy size={14} className="item-icon" />}
               <span className="item-label">Copy Workspace ID</span>
@@ -250,6 +252,7 @@ export default function WorkspaceActionsDropdown({
               className="ce-actions-item"
               onClick={handleShareWorkspace}
               role="menuitem"
+              aria-label="Share Workspace"
             >
               {copiedShare ? <Check size={14} className="item-icon success" /> : <Share2 size={14} className="item-icon" />}
               <span className="item-label">Share Workspace</span>
@@ -261,6 +264,7 @@ export default function WorkspaceActionsDropdown({
               className="ce-actions-item"
               onClick={handleExportProject}
               role="menuitem"
+              aria-label="Export Project"
             >
               <Download size={14} className="item-icon" />
               <span className="item-label">Export Project</span>
@@ -276,6 +280,7 @@ export default function WorkspaceActionsDropdown({
               className="ce-actions-item exit-item"
               onClick={handleExit}
               role="menuitem"
+              aria-label="Exit Workspace"
             >
               <LogOut size={14} className="item-icon exit-icon" />
               <span className="item-label">Exit Workspace</span>
@@ -292,6 +297,7 @@ export default function WorkspaceActionsDropdown({
                   className="ce-actions-item delete-item"
                   onClick={handleDelete}
                   role="menuitem"
+                  aria-label="Delete Workspace"
                 >
                   <Trash2 size={14} className="item-icon delete-icon" />
                   <span className="item-label">Delete Workspace</span>

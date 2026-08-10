@@ -61,7 +61,7 @@ export default function MobileNetworkFeedShowcase() {
 
           {/* Post Description */}
           <p className="mobile-post-body-text">
-            Modern processors are becoming the foundation of next-generation technology, powering everything from artificial intelligence and cloud computing to high-performance applications a... <span className="mobile-post-readmore">... Read more</span>
+            Modern processors are becoming the foundation of next-generation technology, powering everything from artificial intelligence and cloud computing to high-performance applications a... <button type="button" disabled className="mobile-post-readmore" style={{ background: "none", border: "none", color: "#60a5fa", padding: 0, fontSize: "inherit", fontFamily: "inherit", fontWeight: "bold", cursor: "default" }}>... Read more</button>
           </p>
 
           {/* Custom VR Microprocessor Image */}

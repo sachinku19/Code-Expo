@@ -1663,6 +1663,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             onClick={() => setTool("select")}
             data-tooltip="Select & Move (V)"
             type="button"
+            aria-label="Select and move tool"
+            aria-pressed={tool === "select"}
           >
             <MousePointer size={18} />
           </button>
@@ -1672,6 +1674,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             onClick={() => setTool("pen")}
             data-tooltip="Pencil (P)"
             type="button"
+            aria-label="Pencil draw tool"
+            aria-pressed={tool === "pen"}
           >
             <PenTool size={18} />
           </button>
@@ -1680,6 +1684,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             onClick={() => setTool("highlighter")}
             data-tooltip="Highlighter (H)"
             type="button"
+            aria-label="Highlighter tool"
+            aria-pressed={tool === "highlighter"}
           >
             <Highlighter size={18} />
           </button>
@@ -1688,6 +1694,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             onClick={() => setTool("eraser")}
             data-tooltip="Eraser (E)"
             type="button"
+            aria-label="Eraser tool"
+            aria-pressed={tool === "eraser"}
           >
             <Eraser size={18} />
           </button>
@@ -1699,6 +1707,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
               className={`wb-tool-btn ${["rectangle", "circle", "triangle", "diamond", "hexagon", "star", "line", "arrow"].includes(tool) ? "active" : ""}`}
               data-tooltip="Shapes"
               type="button"
+              aria-label="Draw shapes"
+              aria-pressed={["rectangle", "circle", "triangle", "diamond", "hexagon", "star", "line", "arrow"].includes(tool)}
             >
               {tool === "circle" && <Circle size={18} />}
               {tool === "rectangle" && <Square size={18} />}
@@ -1795,6 +1805,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             onClick={() => setTool("text")}
             data-tooltip="Text (T)"
             type="button"
+            aria-label="Text tool"
+            aria-pressed={tool === "text"}
           >
             <Type size={18} />
           </button>
@@ -1807,6 +1819,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
               className="wb-tool-btn color-preview-btn"
               data-tooltip="Stroke Color"
               type="button"
+              aria-label="Stroke color select"
             >
               <Palette size={18} />
               <span className="color-preview-dot" style={{ backgroundColor: color }} />
@@ -1825,6 +1838,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
                       if (tool === "eraser") setTool("pen");
                     }}
                     type="button"
+                    aria-label={`Select color ${sw}`}
+                    aria-pressed={color === sw}
                   />
                 ))}
               </div>
@@ -1837,6 +1852,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
               className="wb-tool-btn"
               data-tooltip="Brush Size"
               type="button"
+              aria-label="Brush size select"
             >
               <Sliders size={18} />
               <span className="size-preview-badge">{brushSize}</span>
@@ -1851,6 +1867,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
                     className={`wb-preset-btn ${brushSize === sz ? "active" : ""}`}
                     onClick={() => setBrushSize(sz)}
                     type="button"
+                    aria-label={`Select brush weight ${sz}px`}
+                    aria-pressed={brushSize === sz}
                   >
                     <span className="preset-circle" style={{ width: sz, height: sz }} />
                     <span className="preset-label">{sz}px</span>
@@ -1866,6 +1884,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
                   className="wb-slider"
                   value={brushSize}
                   onChange={(e) => setBrushSize(Number(e.target.value))}
+                  aria-label="Brush size slider"
                 />
               </div>
             </div>
@@ -1878,6 +1897,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             onClick={handleUndo}
             data-tooltip="Undo (Ctrl+Z)"
             type="button"
+            aria-label="Undo action"
           >
             <Undo2 size={18} />
           </button>
@@ -1887,6 +1907,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             onClick={handleRedo}
             data-tooltip="Redo (Ctrl+Y)"
             type="button"
+            aria-label="Redo action"
           >
             <Redo2 size={18} />
           </button>
@@ -1898,6 +1919,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             data-tooltip="Export Image (PNG)"
             type="button"
             style={{ color: "var(--wb-color-accent)" }}
+            aria-label="Export drawing as PNG"
           >
             <Download size={18} />
           </button>
@@ -1907,6 +1929,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             data-tooltip="Export Slides (PDF)"
             type="button"
             style={{ color: "#a855f7" }}
+            aria-label="Export drawing as PDF"
           >
             <FileText size={18} />
           </button>
@@ -1916,6 +1939,7 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
             data-tooltip="Clear Board"
             style={{ color: "#ef4444" }}
             type="button"
+            aria-label="Clear drawing board"
           >
             <Trash2 size={18} />
           </button>
@@ -1924,14 +1948,14 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
 
       {/* 8. Bottom Left Zoom Controls */}
       <div className="whiteboard-zoom-panel wb-glass-panel">
-        <button className="wb-zoom-btn" onClick={() => handleZoom(0.85)} data-tooltip="Zoom Out" type="button">
+        <button className="wb-zoom-btn" onClick={() => handleZoom(0.85)} data-tooltip="Zoom Out" type="button" aria-label="Zoom out">
           <ZoomOut size={16} />
         </button>
         <span className="wb-zoom-val">{Math.round(zoom * 100)}%</span>
-        <button className="wb-zoom-btn" onClick={() => handleZoom(1.15)} data-tooltip="Zoom In" type="button">
+        <button className="wb-zoom-btn" onClick={() => handleZoom(1.15)} data-tooltip="Zoom In" type="button" aria-label="Zoom in">
           <ZoomIn size={16} />
         </button>
-        <button className="wb-zoom-fit" onClick={resetZoom} type="button">
+        <button className="wb-zoom-fit" onClick={resetZoom} type="button" aria-label="Reset zoom to fit screen">
           Fit Screen
         </button>
         <div className="wb-tool-divider" />
@@ -1947,6 +1971,8 @@ function Whiteboard({ roomId, activeUsers = [], currentUser = {}, room = {} }) {
           data-tooltip={`Grid Style: ${gridType.toUpperCase()}`}
           style={{ color: gridType !== "none" ? "#2dd4bf" : "" }}
           type="button"
+          aria-label={`Toggle grid style, current: ${gridType}`}
+          aria-pressed={gridType !== "none"}
         >
           <Grid size={16} />
         </button>

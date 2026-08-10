@@ -830,6 +830,7 @@ const ContributionHeatmap = ({ rawHeatmap, selectedYear, onYearChange, available
             value={selectedYear}
             onChange={(e) => onYearChange(e.target.value)}
             className="heatmap-year-select"
+            aria-label="Select year for contribution heatmap"
           >
             <option value="last12">Current</option>
             {availableYears.map(yr => (
@@ -6277,16 +6278,16 @@ function Dashboard() {
 
 
                   {/* Stats Header for Rooms - Redesigned as Hanging Lamps (No shadows/glows) */}
-                  <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "20px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "40px", flexWrap: "wrap", zIndex: 10 }}>
+                  <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "6px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "40px", flexWrap: "wrap", zIndex: 10 }}>
                     {/* The horizontal stick support */}
                     <div className="ce-lamp-support-stick" style={{
                       position: "absolute",
-                      top: "10px",
-                      left: "5%",
-                      width: "90%",
+                      top: "0px",
+                      left: "0%",
+                      width: "100%",
                       height: "6px",
                       background: "linear-gradient(to right, #2d3748, #4a5568, #718096, #4a5568, #2d3748)",
-                      borderRadius: "3px",
+                      borderRadius: "0px",
                       boxShadow: "none",
                       zIndex: 1
                     }} />
@@ -6918,6 +6919,7 @@ function Dashboard() {
                                       setManageRequestLimit(10);
                                     }}
                                     className="section-search-input"
+                                    aria-label="Search users by username"
                                   />
                                 </div>
                                 <select
@@ -6933,6 +6935,7 @@ function Dashboard() {
                                     outline: "none",
                                     cursor: "pointer"
                                   }}
+                                  aria-label="Sort join requests list"
                                 >
                                   <option value="newest">Newest First</option>
                                   <option value="oldest">Oldest First</option>
@@ -7266,17 +7269,17 @@ function Dashboard() {
             >
               <div className="liverooms-section-container">
                 {/* Stats Header for Live Rooms - Redesigned as Hanging Lamps (No shadows/glows) */}
-                <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "20px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "50px", flexWrap: "wrap", zIndex: 10 }}>
+                <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "6px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "50px", flexWrap: "wrap", zIndex: 10 }}>
 
                   {/* The horizontal wooden/metallic stick support */}
                   <div className="ce-lamp-support-stick" style={{
                     position: "absolute",
-                    top: "10px",
-                    left: "10%",
-                    width: "80%",
+                    top: "0px",
+                    left: "0%",
+                    width: "100%",
                     height: "6px",
                     background: "linear-gradient(to right, #2d3748, #4a5568, #718096, #4a5568, #2d3748)",
-                    borderRadius: "3px",
+                    borderRadius: "0px",
                     boxShadow: "none",
                     zIndex: 1
                   }} />
@@ -8089,16 +8092,16 @@ function Dashboard() {
               className="leaderboard-section-container"
             >
               {/* Leaderboard Stats Cards */}
-              <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "20px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "50px", flexWrap: "wrap", zIndex: 10 }}>
+              <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "6px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "50px", flexWrap: "wrap", zIndex: 10 }}>
                 {/* The horizontal wooden/metallic stick support */}
                 <div className="ce-lamp-support-stick" style={{
                   position: "absolute",
-                  top: "10px",
-                  left: "10%",
-                  width: "80%",
+                  top: "0px",
+                  left: "0%",
+                  width: "100%",
                   height: "6px",
                   background: "linear-gradient(to right, #2d3748, #4a5568, #718096, #4a5568, #2d3748)",
-                  borderRadius: "3px",
+                  borderRadius: "0px",
                   boxShadow: "none",
                   zIndex: 1
                 }} />
@@ -8793,8 +8796,9 @@ function Dashboard() {
                       </div>
                       <form onSubmit={handleCreateRoom} className="compact-form">
                         <div className="form-field">
-                          <label>Workspace Title</label>
+                          <label htmlFor="create-room-title-1">Workspace Title</label>
                           <input
+                            id="create-room-title-1"
                             type="text"
                             placeholder="e.g. DSA Practice Prep"
                             value={formData.title}
@@ -8805,8 +8809,9 @@ function Dashboard() {
                         </div>
 
                         <div className="form-field">
-                          <label>Language</label>
+                          <label htmlFor="create-room-lang-1">Language</label>
                           <select
+                            id="create-room-lang-1"
                             value={formData.language}
                             onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                             disabled={isCreatingRoom}
@@ -8820,8 +8825,9 @@ function Dashboard() {
                         </div>
 
                         <div className="form-field">
-                          <label>Privacy Type</label>
+                          <label htmlFor="create-room-privacy-1">Privacy Type</label>
                           <select
+                            id="create-room-privacy-1"
                             value={formData.isPrivate}
                             onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
                             disabled={isCreatingRoom}
@@ -8898,8 +8904,9 @@ function Dashboard() {
 
                         <form onSubmit={(e) => { handleCreateRoom(e); setShowMobileCreateModal(false); }} className="compact-form" style={{ marginTop: "14px" }}>
                           <div className="form-field">
-                            <label>Workspace Title</label>
+                            <label htmlFor="create-room-title-2">Workspace Title</label>
                             <input
+                              id="create-room-title-2"
                               type="text"
                               placeholder="e.g. DSA Practice Prep"
                               value={formData.title}
@@ -8910,8 +8917,9 @@ function Dashboard() {
                           </div>
 
                           <div className="form-field">
-                            <label>Language</label>
+                            <label htmlFor="create-room-lang-2">Language</label>
                             <select
+                              id="create-room-lang-2"
                               value={formData.language}
                               onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                               disabled={isCreatingRoom}
@@ -8925,8 +8933,9 @@ function Dashboard() {
                           </div>
 
                           <div className="form-field">
-                            <label>Privacy Type</label>
+                            <label htmlFor="create-room-privacy-2">Privacy Type</label>
                             <select
+                              id="create-room-privacy-2"
                               value={formData.isPrivate}
                               onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
                               disabled={isCreatingRoom}
@@ -9058,6 +9067,7 @@ function Dashboard() {
                                 placeholder="Search room name or ID..."
                                 value={historySearch}
                                 onChange={(e) => setHistorySearch(e.target.value)}
+                                aria-label="Search history room name or ID"
                               />
                             </div>
 
@@ -9065,6 +9075,7 @@ function Dashboard() {
                               value={historyFilterLang}
                               onChange={(e) => setHistoryFilterLang(e.target.value)}
                               style={{ background: activeTheme === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.05)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", padding: "6px 12px", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", height: "36px" }}
+                              aria-label="Filter history list by language"
                             >
                               <option value="all">All Languages</option>
                               <option value="javascript">JavaScript</option>
@@ -9078,6 +9089,7 @@ function Dashboard() {
                               value={historySortBy}
                               onChange={(e) => setHistorySortBy(e.target.value)}
                               style={{ background: activeTheme === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.05)", color: "var(--ce-text)", border: "1px solid var(--ce-border)", padding: "6px 12px", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", height: "36px" }}
+                              aria-label="Sort history items"
                             >
                               <option value="recent">Sort by: Recent</option>
                               <option value="name">Sort by: Name</option>
@@ -9483,12 +9495,13 @@ function Dashboard() {
                       placeholder="Search rooms..."
                       value={historySearch}
                       onChange={(e) => setHistorySearch(e.target.value)}
+                      aria-label="Search workspace rooms history"
                     />
                   </div>
 
                   <div className="filter-controls">
                     <SlidersHorizontal size={14} />
-                    <select value={historyFilterLang} onChange={(e) => setHistoryFilterLang(e.target.value)}>
+                    <select value={historyFilterLang} onChange={(e) => setHistoryFilterLang(e.target.value)} aria-label="Filter history list by language">
                       <option value="all">All Languages</option>
                       <option value="javascript">JavaScript</option>
                       <option value="python">Python</option>
@@ -9497,7 +9510,7 @@ function Dashboard() {
                       <option value="html">HTML/CSS/JS</option>
                     </select>
 
-                    <select value={historySortBy} onChange={(e) => setHistorySortBy(e.target.value)}>
+                    <select value={historySortBy} onChange={(e) => setHistorySortBy(e.target.value)} aria-label="Sort history list items">
                       <option value="recent">Sort by: Recent</option>
                       <option value="name">Sort by: Name</option>
                       <option value="created">Sort by: Date Created</option>
@@ -11383,12 +11396,12 @@ function Dashboard() {
 
                         <div className="settings-form-row">
                           <div className="settings-form-field flex-1">
-                            <label>Font Size (px)</label>
-                            <input type="number" value={dashEditorFontSize} onChange={handleEditorFontSizeChange} min="12" max="24" />
+                            <label htmlFor="pref-editor-fontsize">Font Size (px)</label>
+                            <input id="pref-editor-fontsize" type="number" value={dashEditorFontSize} onChange={handleEditorFontSizeChange} min="12" max="24" />
                           </div>
                           <div className="settings-form-field flex-1">
-                            <label>Tab Size</label>
-                            <select value={dashEditorTabSize} onChange={handleEditorTabSizeChange}>
+                            <label htmlFor="pref-editor-tabsize">Tab Size</label>
+                            <select id="pref-editor-tabsize" value={dashEditorTabSize} onChange={handleEditorTabSizeChange}>
                               <option value={2}>2 spaces</option>
                               <option value={4}>4 spaces</option>
                               <option value={8}>8 spaces</option>
@@ -11398,8 +11411,8 @@ function Dashboard() {
 
                         <div className="settings-form-row">
                           <div className="settings-form-field flex-1">
-                            <label>Default Room Language</label>
-                            <select value={dashDefaultLanguage} onChange={handleDefaultLanguageChange}>
+                            <label htmlFor="pref-editor-roomlang">Default Room Language</label>
+                            <select id="pref-editor-roomlang" value={dashDefaultLanguage} onChange={handleDefaultLanguageChange}>
                               <option value="javascript">JavaScript</option>
                               <option value="python">Python</option>
                               <option value="cpp">C++</option>
@@ -11408,8 +11421,8 @@ function Dashboard() {
                             </select>
                           </div>
                           <div className="settings-form-field flex-1">
-                            <label>Default Whiteboard Grid</label>
-                            <select value={dashWhiteboardGrid} onChange={handleWhiteboardGridChange}>
+                            <label htmlFor="pref-editor-wbgrid">Default Whiteboard Grid</label>
+                            <select id="pref-editor-wbgrid" value={dashWhiteboardGrid} onChange={handleWhiteboardGridChange}>
                               <option value="dots">Dots</option>
                               <option value="lines">Grid Lines</option>
                               <option value="none">None</option>
@@ -11419,16 +11432,16 @@ function Dashboard() {
 
                         <div className="settings-form-row">
                           <div className="settings-form-field flex-1">
-                            <label>AI IntelliSense Autocomplete</label>
-                            <select value={dashEditorSuggestions} onChange={handleEditorSuggestionsChange}>
+                            <label htmlFor="pref-editor-autocomplete">AI IntelliSense Autocomplete</label>
+                            <select id="pref-editor-autocomplete" value={dashEditorSuggestions} onChange={handleEditorSuggestionsChange}>
                               <option value="ai">AI-Powered (Smart Autocomplete) ✨</option>
                               <option value="standard">Standard Autocomplete</option>
                               <option value="disabled">Disabled</option>
                             </select>
                           </div>
                           <div className="settings-form-field flex-1">
-                            <label>Auto-Save Frequency</label>
-                            <select value={dashEditorAutoSave} onChange={handleEditorAutoSaveChange}>
+                            <label htmlFor="pref-editor-autosave">Auto-Save Frequency</label>
+                            <select id="pref-editor-autosave" value={dashEditorAutoSave} onChange={handleEditorAutoSaveChange}>
                               <option value="off">Manual Save Only</option>
                               <option value="5">Every 5 Seconds</option>
                               <option value="30">Every 30 Seconds</option>
@@ -11921,7 +11934,7 @@ function Dashboard() {
         {/* Room Details Modal */}
         {selectedRoomDetails && createPortal(
           <div className="ce-modal-overlay" onClick={() => setSelectedRoomDetails(null)}>
-            <button className="modal-close-btn-outside" onClick={(e) => { e.stopPropagation(); setSelectedRoomDetails(null); }} title="Close Details">
+            <button className="modal-close-btn-outside" onClick={(e) => { e.stopPropagation(); setSelectedRoomDetails(null); }} title="Close Details" aria-label="Close details modal">
               <X size={18} />
             </button>
             <div className="ce-modal-card room-details-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -11942,6 +11955,7 @@ function Dashboard() {
                       onClick={(e) => handleCopyId(e, selectedRoomDetails.roomId)}
                       className="modal-copy-btn"
                       title="Copy Room ID"
+                      aria-label="Copy Room ID"
                     >
                       {copiedId === selectedRoomDetails.roomId ? <Check size={12} style={{ color: "var(--ce-success)" }} /> : <Copy size={12} />}
                     </button>
@@ -12182,6 +12196,7 @@ function Dashboard() {
                 className="modal-close-btn"
                 onClick={() => !isCreatingRoom && setShowQuickCreateModal(false)}
                 disabled={isCreatingRoom}
+                aria-label="Close create workspace dialog"
               >
                 <X size={18} />
               </button>
@@ -12192,8 +12207,9 @@ function Dashboard() {
 
               <form onSubmit={handleCreateRoom} className="compact-form modal-form-new">
                 <div className="form-field">
-                  <label>Workspace Title</label>
+                  <label htmlFor="create-room-title-modal">Workspace Title</label>
                   <input
+                    id="create-room-title-modal"
                     type="text"
                     placeholder="e.g. DSA Practice Prep"
                     value={formData.title}
@@ -12206,8 +12222,9 @@ function Dashboard() {
 
                 <div className="form-field-row">
                   <div className="form-field flex-1">
-                    <label>Language</label>
+                    <label htmlFor="create-room-lang-modal">Language</label>
                     <select
+                      id="create-room-lang-modal"
                       value={formData.language}
                       onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                       className="modal-input-new select"
@@ -12222,8 +12239,9 @@ function Dashboard() {
                   </div>
 
                   <div className="form-field flex-1">
-                    <label>Privacy Type</label>
+                    <label htmlFor="create-room-privacy-modal">Privacy Type</label>
                     <select
+                      id="create-room-privacy-modal"
                       value={formData.isPrivate}
                       onChange={(e) => setFormData({ ...formData, isPrivate: e.target.value === "true" })}
                       className="modal-input-new select"

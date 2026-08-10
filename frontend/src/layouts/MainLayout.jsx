@@ -1704,7 +1704,16 @@ export default function MainLayout({
           </div>
 
           <div className="user-dropdown" ref={profileDropdownRef}>
-            <div className="user-profile-trigger" onClick={() => setProfileDropdownOpen(prev => !prev)} title={user?.username || "Developer"}>
+            <button
+              type="button"
+              className="user-profile-trigger"
+              onClick={() => setProfileDropdownOpen(prev => !prev)}
+              title={user?.username || "Developer"}
+              aria-label="Toggle user profile menu"
+              aria-haspopup="true"
+              aria-expanded={profileDropdownOpen}
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+            >
               {user?.avatar ? (
                 <img src={user.avatar} className="user-avatar-img" alt={user.username} />
               ) : (
@@ -1712,7 +1721,7 @@ export default function MainLayout({
                   {user?.username?.charAt(0).toUpperCase() || "U"}
                 </span>
               )}
-            </div>
+            </button>
             {profileDropdownOpen && (
               <div className="dropdown-menu premium-menu">
                 <div
@@ -1870,6 +1879,8 @@ export default function MainLayout({
               className={`pin-btn ${isPinned ? "pinned" : ""}`}
               onClick={handlePinToggle}
               title={isPinned ? "Unpin Sidebar" : "Pin Sidebar"}
+              aria-label={isPinned ? "Unpin Sidebar" : "Pin Sidebar"}
+              aria-pressed={isPinned}
             >
               <Pin size={14} className="pin-icon" />
             </button>
@@ -1944,7 +1955,12 @@ export default function MainLayout({
       <aside className={`ce-drawer-sidebar ${isDrawerOpen ? "open" : ""}`}>
         <div className="drawer-header-menu">
           <Logo size={28} showText={true} className="ce-brand" />
-          <button className="drawer-close-menu-btn" onClick={() => setIsDrawerOpen(false)} title="Close navigation">
+          <button
+            className="drawer-close-menu-btn"
+            onClick={() => setIsDrawerOpen(false)}
+            title="Close navigation"
+            aria-label="Close navigation"
+          >
             <X size={18} />
           </button>
         </div>
@@ -1955,6 +1971,15 @@ export default function MainLayout({
           onClick={() => {
             setIsDrawerOpen(false);
             handleConfirmNavigate(user?.username ? `/u/${user.username}` : "/dashboard?tab=profile");
+          }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setIsDrawerOpen(false);
+              handleConfirmNavigate(user?.username ? `/u/${user.username}` : "/dashboard?tab=profile");
+            }
           }}
         >
           <div className="drawer-user-avatar">

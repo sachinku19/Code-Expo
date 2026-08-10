@@ -26,6 +26,8 @@ export function MeetingToolbar({
         className={`ce-meet-btn ${isMicOn ? "active" : "muted"}`}
         onClick={onMicToggle}
         title={isMicOn ? "Mute Microphone" : "Unmute Microphone"}
+        aria-label={isMicOn ? "Mute microphone" : "Unmute microphone"}
+        aria-pressed={isMicOn}
       >
         {isMicOn ? <Mic size={18} /> : <MicOff size={18} />}
       </button>
@@ -36,6 +38,8 @@ export function MeetingToolbar({
         className={`ce-meet-btn ${isVideoOn ? "active" : "muted"}`}
         onClick={onCameraToggle}
         title={isVideoOn ? "Turn Camera Off" : "Turn Camera On"}
+        aria-label={isVideoOn ? "Turn camera off" : "Turn camera on"}
+        aria-pressed={isVideoOn}
       >
         {isVideoOn ? <Video size={18} /> : <VideoOff size={18} />}
       </button>
@@ -46,6 +50,8 @@ export function MeetingToolbar({
         className={`ce-meet-btn ${isScreenSharing ? "active-screen" : ""}`}
         onClick={onScreenShareToggle}
         title={isScreenSharing ? "Stop Presenting" : "Present Screen"}
+        aria-label={isScreenSharing ? "Stop presenting screen" : "Present screen"}
+        aria-pressed={isScreenSharing}
       >
         <Monitor size={18} />
       </button>
@@ -56,6 +62,8 @@ export function MeetingToolbar({
         className={`ce-meet-btn ${isHandRaised ? "active-hand" : ""}`}
         onClick={onHandToggle}
         title={isHandRaised ? "Lower Hand" : "Raise Hand"}
+        aria-label={isHandRaised ? "Lower hand" : "Raise hand"}
+        aria-pressed={isHandRaised}
       >
         <Hand size={18} />
       </button>
@@ -66,6 +74,8 @@ export function MeetingToolbar({
         className={`ce-meet-btn ${showParticipants ? "active-info" : ""}`}
         onClick={onParticipantsToggle}
         title="View Room Participants"
+        aria-label={showParticipants ? "Hide participants list" : "Show participants list"}
+        aria-pressed={showParticipants}
       >
         <Users size={18} />
         {participantCount > 0 && <span className="ce-meet-btn-badge">{participantCount}</span>}
@@ -77,6 +87,7 @@ export function MeetingToolbar({
         className="ce-meet-btn hangup"
         onClick={onLeaveMeeting}
         title="Leave Meeting Room"
+        aria-label="Leave meeting"
       >
         <PhoneOff size={18} />
       </button>

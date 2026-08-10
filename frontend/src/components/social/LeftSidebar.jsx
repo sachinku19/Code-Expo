@@ -94,15 +94,18 @@ export default function LeftSidebar({ user, activeSection, setActiveTab, setTab 
             { repo: "facebook/react", desc: "Library for user interfaces", stars: "220k" },
             { repo: "codeexpo/editor", desc: "Collaborative sandbox module", stars: "4.8k" }
           ].map(r => (
-            <div
+            <a
               key={r.repo}
+              href={`https://github.com/${r.repo}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="trend-item"
-              onClick={() => window.open(`https://github.com/${r.repo}`, "_blank")}
+              style={{ display: "flex", flexDirection: "column", textDecoration: "none" }}
             >
               <span style={{ fontSize: "0.82rem", fontWeight: "700", color: "#60a5fa" }}>{r.repo}</span>
               <span style={{ fontSize: "0.72rem", color: "var(--ce-premium-muted)" }}>{r.desc}</span>
               <span style={{ fontSize: "0.68rem", color: "#fbbf24", marginTop: "2px" }}>⭐ {r.stars}</span>
-            </div>
+            </a>
           ))}
         </div>
       </div>

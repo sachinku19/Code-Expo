@@ -709,8 +709,8 @@ const Profile = () => {
                       placeholder="e.g. Bengaluru, Karnataka"
                       style={{ flex: 1, minWidth: 0, padding: "8px 12px", border: "1px solid var(--ce-border)", borderRadius: "6px", background: resolvedTheme === "light" ? "#fff" : "rgba(255,255,255,0.03)", color: "var(--ce-text)", fontSize: "0.82rem" }}
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={handleAutoLocate}
                       style={{
                         padding: "8px 12px",

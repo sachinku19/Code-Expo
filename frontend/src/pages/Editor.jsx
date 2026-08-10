@@ -5706,8 +5706,9 @@ function Editor() {
 
                   {chatTab === "private" && (
                     <div className="private-recipient-selector">
-                      <label>To:</label>
+                      <label htmlFor="private-recipient-select">To:</label>
                       <select
+                        id="private-recipient-select"
                         className="ce-select-box sm"
                         value={privateRecipient}
                         onChange={(e) => setPrivateRecipient(e.target.value)}

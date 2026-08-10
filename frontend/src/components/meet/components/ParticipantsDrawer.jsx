@@ -15,7 +15,7 @@ export function ParticipantsDrawer({ participants, onClose }) {
     <div className="ce-meet-drawer">
       <div className="ce-meet-drawer-header">
         <h3>Participants ({participants.length})</h3>
-        <button type="button" className="ce-meet-drawer-close" onClick={onClose}>
+        <button type="button" className="ce-meet-drawer-close" onClick={onClose} aria-label="Close participants list">
           <X size={18} />
         </button>
       </div>
@@ -27,6 +27,7 @@ export function ParticipantsDrawer({ participants, onClose }) {
           placeholder="Search participants..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search participants"
         />
       </div>
 

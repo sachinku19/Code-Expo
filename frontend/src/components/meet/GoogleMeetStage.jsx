@@ -363,6 +363,8 @@ const GoogleMeetStage = ({
             className={`ce-meet-minimized-btn ${!isMicOn ? "off" : ""}`}
             onClick={handleMicToggle}
             title={isMicOn ? "Mute Mic" : "Unmute Mic"}
+            aria-label={isMicOn ? "Mute microphone" : "Unmute microphone"}
+            aria-pressed={isMicOn}
           >
             {isMicOn ? <Mic size={14} /> : <MicOff size={14} />}
           </button>
@@ -372,6 +374,8 @@ const GoogleMeetStage = ({
             className={`ce-meet-minimized-btn ${!isVideoOn ? "off" : ""}`}
             onClick={handleCameraToggle}
             title={isVideoOn ? "Turn off video" : "Turn on video"}
+            aria-label={isVideoOn ? "Turn camera off" : "Turn camera on"}
+            aria-pressed={isVideoOn}
           >
             {isVideoOn ? <Video size={14} /> : <VideoOff size={14} />}
           </button>
@@ -381,6 +385,7 @@ const GoogleMeetStage = ({
             className="ce-meet-minimized-btn expand"
             onClick={() => setIsMinimized(false)}
             title="Expand Meeting Stage"
+            aria-label="Expand meeting stage"
           >
             <Maximize2 size={14} />
           </button>
@@ -390,6 +395,7 @@ const GoogleMeetStage = ({
             className="ce-meet-minimized-btn end"
             onClick={handleLeaveCall}
             title="Leave Meeting"
+            aria-label="Leave meeting"
           >
             <PhoneOff size={14} />
           </button>
@@ -450,6 +456,7 @@ const GoogleMeetStage = ({
               className="ce-meet-float-btn"
               onClick={() => setIsMinimized(true)}
               title="Minimize Stage"
+              aria-label="Minimize meeting stage"
             >
               <Minus size={15} />
             </button>
@@ -459,6 +466,8 @@ const GoogleMeetStage = ({
               className={`ce-meet-float-btn-pill ${showParticipantsPanel ? "active-feature" : ""}`}
               onClick={() => setShowParticipantsPanel(!showParticipantsPanel)}
               title="Participants list"
+              aria-label="Toggle participants list"
+              aria-pressed={showParticipantsPanel}
             >
               <Users size={15} />
               <span style={{ fontSize: "0.72rem", fontWeight: "700" }}>{allMembers.length}</span>
@@ -504,6 +513,7 @@ const GoogleMeetStage = ({
                 type="button"
                 className="ce-meet-side-close"
                 onClick={() => setShowParticipantsPanel(false)}
+                aria-label="Close participants list"
               >
                 <X size={18} />
               </button>
@@ -519,12 +529,14 @@ const GoogleMeetStage = ({
                   value={participantSearchQuery}
                   onChange={(e) => setParticipantSearchQuery(e.target.value)}
                   className="ce-meet-search-input"
+                  aria-label="Search participants"
                 />
                 {participantSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setParticipantSearchQuery("")}
                     className="ce-meet-search-clear"
+                    aria-label="Clear search"
                   >
                     <X size={12} />
                   </button>
@@ -615,6 +627,8 @@ const GoogleMeetStage = ({
                           className={`ce-meet-side-pin ${isPinned ? "active" : ""}`}
                           onClick={() => setPinnedUserId(isPinned ? null : member.userId)}
                           title={isPinned ? "Unpin" : "Pin participant"}
+                          aria-label={isPinned ? `Unpin ${member.username}` : `Pin ${member.username}`}
+                          aria-pressed={isPinned}
                         >
                           {isPinned ? <PinOff size={13} /> : <Pin size={13} />}
                         </button>

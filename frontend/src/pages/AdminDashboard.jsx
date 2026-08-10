@@ -2080,20 +2080,20 @@ const AdminDashboard = () => {
       "ce_tour_seen_",
       "ce_room_tour_seen_"
     ];
-    
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && prefixesToPreserve.some(prefix => key.startsWith(prefix))) {
         preservedKeys.push({ key, value: localStorage.getItem(key) });
       }
     }
-    
+
     localStorage.clear();
-    
+
     preservedKeys.forEach(item => {
       localStorage.setItem(item.key, item.value);
     });
-    
+
     window.location.href = "/login";
   };
 
@@ -3542,7 +3542,7 @@ const AdminDashboard = () => {
                         const isExpanded = !!expandedUserLogs[developer.id];
                         return (
                           <Fragment key={developer.id}>
-                            <tr 
+                            <tr
                               className={`developer-log-row ${isExpanded ? 'row-expanded' : ''}`}
                               onClick={() => {
                                 setExpandedUserLogs(prev => ({
@@ -3593,7 +3593,7 @@ const AdminDashboard = () => {
                                 </button>
                               </td>
                             </tr>
-                            
+
                             {isExpanded && (
                               <tr className="expanded-logs-subrow">
                                 <td colSpan="5">
@@ -4132,10 +4132,10 @@ const AdminDashboard = () => {
                       feedUsers.map((developer) => {
                         const isExpanded = !!expandedUserFeed[developer.id];
                         const activeSubTab = expandedUserSubTab[developer.id] || "posts";
-                        
+
                         return (
                           <Fragment key={developer.id}>
-                            <tr 
+                            <tr
                               className={`developer-log-row ${isExpanded ? 'row-expanded' : ''}`}
                               onClick={() => {
                                 setExpandedUserFeed(prev => ({
@@ -4306,14 +4306,14 @@ const AdminDashboard = () => {
                                                       <span className="metric-item" title="Comments"><MessageSquare size={12} /> {post.comments?.length || 0}</span>
                                                     </div>
                                                     <div className="post-actions-group">
-                                                      <button onClick={() => window.open(`/post/${post.id || post._id}`, "_blank")} className="btn-post-action" title="View Post"><Eye size={12}/></button>
-                                                      <button onClick={() => { setEditingPostId(post.id || post._id); setEditingPostText(post.text); }} className="btn-post-action" title="Edit Post"><Edit size={12}/></button>
+                                                      <button onClick={() => window.open(`/post/${post.id || post._id}`, "_blank")} className="btn-post-action" title="View Post"><Eye size={12} /></button>
+                                                      <button onClick={() => { setEditingPostId(post.id || post._id); setEditingPostText(post.text); }} className="btn-post-action" title="Edit Post"><Edit size={12} /></button>
                                                       <button onClick={() => handleStatusChange(post.id || post._id, post.status === "hidden" ? "active" : "hidden")} className="btn-post-action" title={post.status === "hidden" ? "Unhide" : "Hide"}><EyeOff size={12} style={{ color: post.status === "hidden" ? "#10b981" : "inherit" }} /></button>
                                                       <button onClick={() => handleTogglePin(post)} className="btn-post-action" title={post.isPinned ? "Unpin" : "Pin"}><Pin size={12} style={{ color: post.isPinned ? "#818cf8" : "inherit" }} /></button>
                                                       <button onClick={() => handleToggleFeature(post)} className="btn-post-action" title={post.isFeatured ? "Unfeature" : "Feature"}><Sparkles size={12} style={{ color: post.isFeatured ? "#c084fc" : "inherit" }} /></button>
-                                                      <button onClick={() => handleCopyPostLink(post.id || post._id)} className="btn-post-action" title="Copy Link"><Link size={12}/></button>
-                                                      <button onClick={() => setSelectedPostAnalytics(post)} className="btn-post-action" title="View Analytics"><BarChart2 size={12}/></button>
-                                                      <button onClick={() => handleDeletePostClick(post.id || post._id, developer.username)} className="btn-post-action btn-delete" title="Delete Post"><Trash2 size={12}/></button>
+                                                      <button onClick={() => handleCopyPostLink(post.id || post._id)} className="btn-post-action" title="Copy Link"><Link size={12} /></button>
+                                                      <button onClick={() => setSelectedPostAnalytics(post)} className="btn-post-action" title="View Analytics"><BarChart2 size={12} /></button>
+                                                      <button onClick={() => handleDeletePostClick(post.id || post._id, developer.username)} className="btn-post-action btn-delete" title="Delete Post"><Trash2 size={12} /></button>
                                                     </div>
                                                   </div>
                                                 </div>
@@ -4333,7 +4333,7 @@ const AdminDashboard = () => {
                                             const storyType = story.mediaUrl && (story.mediaUrl.match(/\.(mp4|mov|avi|webm)/i) || story.mediaUrl.includes("video")) ? "video" : story.mediaUrl ? "image" : "text";
                                             const expiryDate = new Date(new Date(story.createdAt).getTime() + 24 * 60 * 60 * 1000);
                                             const hoursRemaining = Math.max(0, Math.round((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60)));
-                                            
+
                                             return (
                                               <div key={story.id} className={`admin-story-card-premium glass-panel ${story.status || "active"}`}>
                                                 <div className="story-card-header">
@@ -5216,7 +5216,7 @@ const AdminDashboard = () => {
                 <h4 style={{ margin: 0, color: "#fff", fontSize: "1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px" }}>
                   <ShieldAlert size={16} style={{ color: "#ef4444" }} /> Reported Developers
                 </h4>
-                
+
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "4px" }}>
                   <label style={{ fontSize: "0.68rem", color: "var(--admin-text-muted)" }}>Filter by Status</label>
                   <select
@@ -5232,7 +5232,7 @@ const AdminDashboard = () => {
                     <option value="dismissed">Dismissed (Completed)</option>
                   </select>
                 </div>
-                
+
                 {loadingReports ? (
                   <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
                     <Loader className="spinner" size={24} />
@@ -5619,7 +5619,7 @@ const AdminDashboard = () => {
 
           {activeTab === "subscriptions" && (
             <div className="admin-subscriptions-section" style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%", animation: "fadeIn 0.25s ease" }}>
-              
+
               {/* Header metrics row */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
                 <div className="glass-panel" style={{ padding: "16px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", textAlign: "left" }}>
@@ -5694,7 +5694,7 @@ const AdminDashboard = () => {
 
               {/* Main content split panel */}
               <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-                
+
                 {/* Left: User subscription overrides panel */}
                 <div className="glass-panel" style={{ flex: "1 1 300px", padding: "20px", borderRadius: "12px", background: "var(--admin-panel-bg)", border: "1px solid var(--admin-border)", textAlign: "left" }}>
                   <h3 style={{ margin: "0 0 16px", fontSize: "1.05rem", color: "#fff", fontWeight: "700" }}>
@@ -5751,7 +5751,7 @@ const AdminDashboard = () => {
                   <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#fff", fontWeight: "700" }}>
                     📜 Global Invoices & Transaction Ledger
                   </h3>
-                  
+
                   <div style={{ overflowX: "auto", width: "100%" }}>
                     <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
                       <thead>

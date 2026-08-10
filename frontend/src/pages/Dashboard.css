@@ -9,7 +9,7 @@
   --ce-surface: rgba(16, 16, 22, 0.65);
   --ce-surface-card: rgba(255, 255, 255, 0.03);
   --ce-hover: rgba(170, 59, 255, 0.08);
-  --ce-border: rgba(255, 255, 255, 0.08);
+  --ce-border: rgba(255, 255, 255, 0.12);
   --ce-border-hover: rgba(170, 59, 255, 0.3);
   --ce-border-focus: #aa3bff;
   --ce-text: #cbd5e1;
@@ -56,7 +56,7 @@
   --ce-surface: rgba(255, 255, 255, 0.85);
   --ce-surface-card: #f1f5f9;
   --ce-hover: rgba(139, 92, 246, 0.05);
-  --ce-border: rgba(15, 23, 42, 0.09);
+  --ce-border: rgba(15, 23, 42, 0.12);
   --ce-border-hover: rgba(139, 92, 246, 0.65);
   --ce-border-focus: #8b5cf6;
   --ce-text: #475569;
@@ -5333,14 +5333,14 @@
 .profile-room-card-id {
   margin: 10px 0 0 0;
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.55);
   font-family: 'Fira Code', monospace;
 }
 
 .profile-room-card-author {
   margin: 10px 0 0 0;
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .profile-room-card-footer {
@@ -5366,7 +5366,7 @@
 
 .profile-room-card-date {
   font-size: 0.74rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
   font-weight: 500;
 }
 
@@ -11559,7 +11559,7 @@ tier-badge.master {
 }
 
 .form-field input::placeholder {
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .form-field input:focus,
@@ -13732,7 +13732,7 @@ select option {
 
 .profile-room-card-body-premium .profile-room-card-id {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.6);
   margin: 0;
   font-family: monospace;
 }
@@ -13799,7 +13799,7 @@ select option {
 
 .premium-creator-date {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.55);
   margin: 0;
 }
 
@@ -13816,7 +13816,7 @@ select option {
   align-items: center;
   gap: 6px;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .premium-footer-icon {

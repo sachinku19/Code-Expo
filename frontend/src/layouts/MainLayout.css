@@ -13,7 +13,7 @@
   --ce-bg: #07070a;
   --ce-surface: rgba(16, 16, 22, 0.7);
   --ce-surface-card: rgba(22, 22, 30, 0.7);
-  --ce-border: rgba(255, 255, 255, 0.09);
+  --ce-border: rgba(255, 255, 255, 0.12);
   --ce-border-active: #aa3bff;
   --ce-text: #cbd5e1;
   --ce-text-muted: #8e9aa9;
@@ -54,7 +54,7 @@
   --ce-bg: #f8fafc;
   --ce-surface: rgba(255, 255, 255, 0.85);
   --ce-surface-card: #f1f5f9;
-  --ce-border: rgba(15, 23, 42, 0.09);
+  --ce-border: rgba(15, 23, 42, 0.12);
   --ce-border-active: #8b5cf6;
   --ce-text: #475569;
   --ce-text-muted: #64748b;
@@ -3433,4 +3433,15 @@ html.light .ce-nav-action-btn.tasks-btn.active-tasks {
 body.light .ce-nav-action-btn.tasks-btn.active-tasks .nav-btn-icon,
 html.light .ce-nav-action-btn.tasks-btn.active-tasks .nav-btn-icon {
   color: #ffffff !important;
+}
+
+/* Visible Focus Indicators for Accessibility (WCAG AA) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #6366f1 !important;
+  outline-offset: 2px !important;
 }

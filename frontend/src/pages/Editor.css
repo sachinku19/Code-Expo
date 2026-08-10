@@ -13,7 +13,7 @@
   --ce-bg-active: rgba(170, 59, 255, 0.08);
   --ce-bg-code-header: #07070a;
 
-  --ce-border: rgba(255, 255, 255, 0.09);
+  --ce-border: rgba(255, 255, 255, 0.12);
   --ce-border-active: #aa3bff;
   --ce-accent: #aa3bff;
   --ce-accent-hover: #b857ff;
@@ -36,7 +36,7 @@
   --ce-bg-active: rgba(139, 92, 246, 0.06);
   --ce-bg-code-header: #f8fafc;
 
-  --ce-border: rgba(15, 23, 42, 0.09);
+  --ce-border: rgba(15, 23, 42, 0.12);
   --ce-border-active: #8b5cf6;
   --ce-accent: #8b5cf6;
   --ce-accent-hover: #7c3aed;
@@ -4279,7 +4279,7 @@ body.resizing-console * {
 }
 
 .metric-label {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .metric-value {
@@ -4301,7 +4301,7 @@ body.resizing-console * {
 
 .diagnostics-no-peers {
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
   text-align: center;
   padding: 8px 0;
 }
@@ -5308,7 +5308,7 @@ body.light .monaco-editor .current-line {
 .filter-menu-title {
   font-size: 0.62rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 2px 4px 6px 4px;
@@ -5401,7 +5401,7 @@ body.light .monaco-editor .current-line {
 .call-header-action-btn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -7274,4 +7274,15 @@ body.light .chat-call-btn.video-call-btn:hover {
 
 .light .ce-exit-transition-content {
   color: #1f2937;
+}
+
+/* Visible Focus Indicators for Accessibility (WCAG AA) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #6366f1 !important;
+  outline-offset: 2px !important;
 }
