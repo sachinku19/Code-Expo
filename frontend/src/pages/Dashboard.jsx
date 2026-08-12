@@ -2193,11 +2193,12 @@ function Dashboard() {
   const [isLoadingRoomLikes, setIsLoadingRoomLikes] = useState(false);
 
   useEffect(() => {
-    if (selectedRoomDetails?.roomId) {
+    if (selectedRoomDetails?.roomId || selectedRoomDetails?._id) {
+      const targetId = selectedRoomDetails.roomId || selectedRoomDetails._id;
       const fetchLikes = async () => {
         setIsLoadingRoomLikes(true);
         try {
-          const res = await getRoomSocialStats(selectedRoomDetails.roomId);
+          const res = await getRoomSocialStats(targetId);
           if (res.success) {
             setSelectedRoomLikes(res.likedBy || []);
           }
@@ -2212,7 +2213,7 @@ function Dashboard() {
     } else {
       setSelectedRoomLikes([]);
     }
-  }, [selectedRoomDetails?.roomId]);
+  }, [selectedRoomDetails?.roomId, selectedRoomDetails?._id]);
 
   const [showQuickCreateModal, setShowQuickCreateModal] = useState(false);
   const [showQuickJoinModal, setShowQuickJoinModal] = useState(false);
@@ -2231,7 +2232,7 @@ function Dashboard() {
   const [showAllActiveContinueCoding, setShowAllActiveContinueCoding] = useState(false);
   const [showAllOfflineContinueCoding, setShowAllOfflineContinueCoding] = useState(false);
 
-  const [publicRooms, setPublicRooms] = useState([]);
+  const [publicRooms, setPublicRooms] = useState(() => loadFromCache("ce_cache_publicRooms", []));
   const [publicRoomsSearch, setPublicRoomsSearch] = useState("");
   const [showAllPublicRooms, setShowAllPublicRooms] = useState(false);
   const [roomsTab, setRoomsTab] = useState(() => localStorage.getItem("ce_roomsTab") || "public");
@@ -3607,8 +3608,9 @@ function Dashboard() {
   useEffect(() => {
     const unsubRoom = subscribeToLikes("ROOM", (data) => {
       const roomId = data.entityId;
+      const roomDbId = data.roomDbId;
       const updateRoomFn = r => {
-        if (r && (r.roomId === roomId || r._id === roomId)) {
+        if (r && (r.roomId === roomId || r._id === roomId || (roomDbId && String(r._id) === roomDbId))) {
           return {
             ...r,
             likes: data.likes,
@@ -3629,7 +3631,7 @@ function Dashboard() {
       setLikedRooms(prev => {
         const isUserLiked = isEntityLiked(data.likes, user);
         if (isUserLiked) {
-          const exists = prev.some(r => r && (r.roomId === roomId || r._id === roomId));
+          const exists = prev.some(r => r && (r.roomId === roomId || r._id === roomId || (roomDbId && String(r._id) === roomDbId)));
           if (!exists) {
             const matched = liveRooms.find(r => r && (r.roomId === roomId || r._id === roomId)) ||
               trendingRooms.find(r => r && (r.roomId === roomId || r._id === roomId));
@@ -3637,8 +3639,15 @@ function Dashboard() {
           }
           return prev.map(updateRoomFn);
         } else {
-          return prev.filter(r => r && r.roomId !== roomId && r._id !== roomId);
+          return prev.filter(r => r && r.roomId !== roomId && r._id !== roomId && (!roomDbId || String(r._id) !== roomDbId));
         }
+      });
+
+      setSelectedRoomDetails(prevDetails => {
+        if (prevDetails && (prevDetails.roomId === roomId || prevDetails._id === roomId || (roomDbId && String(prevDetails._id) === roomDbId))) {
+          setSelectedRoomLikes(data.likes || []);
+        }
+        return prevDetails;
       });
     });
 
@@ -12139,7 +12148,7 @@ function Dashboard() {
               {/* Liked By Section */}
               <div className="modal-likes-section">
                 <h4 className="modal-likes-title">
-                  <Heart size={13} fill="var(--ce-danger, #f85149)" />
+                  <Heart size={13} fill="var(--ce-danger, #f85149)" color="var(--ce-danger, #f85149)" />
                   Liked By ({selectedRoomLikes.length})
                 </h4>
                 {isLoadingRoomLikes ? (
@@ -12148,29 +12157,42 @@ function Dashboard() {
                   <p className="modal-likes-empty">No likes yet. Be the first to like this room!</p>
                 ) : (
                   <div className="likes-list-scrollable">
-                    {selectedRoomLikes.map((u, idx) => (
-                      <div
-                        key={idx}
-                        className="modal-like-chip"
-                        title={u.bio || u.email || `@${u.username}`}
-                      >
-                        {u.avatar ? (
-                          <img
-                            src={u.avatar}
-                            alt={u.username}
-                            className="modal-like-avatar-img"
-                          />
-                        ) : (
-                          <div
-                            className="modal-like-avatar-placeholder"
-                            style={{ backgroundColor: getAvatarColor(u.username || "D") }}
-                          >
-                            {(u.username || "D").charAt(0).toUpperCase()}
+                    {selectedRoomLikes.map((u, idx) => {
+                      const userObj = typeof u === "object" ? u : {};
+                      const username = userObj.username || "Collaborator";
+                      const avatar = userObj.avatar;
+                      const uId = userObj._id || idx;
+
+                      return (
+                        <div key={uId} className="modal-like-card">
+                          <div className="modal-like-user-info">
+                            {avatar ? (
+                              <img
+                                src={avatar}
+                                alt={username}
+                                className="member-avatar-img-mini"
+                              />
+                            ) : (
+                              <div
+                                className="member-avatar-initials-mini"
+                                style={{ backgroundColor: getAvatarColor(username) }}
+                              >
+                                {username.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="modal-like-details">
+                              <span className="modal-member-name">{username}</span>
+                              {userObj.bio ? (
+                                <span className="modal-like-subtext">{userObj.bio}</span>
+                              ) : userObj.email ? (
+                                <span className="modal-like-subtext">{userObj.email}</span>
+                              ) : null}
+                            </div>
                           </div>
-                        )}
-                        <span>{u.username}</span>
-                      </div>
-                    ))}
+                          <Heart size={12} fill="var(--ce-danger, #f85149)" color="var(--ce-danger, #f85149)" style={{ opacity: 0.85 }} />
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

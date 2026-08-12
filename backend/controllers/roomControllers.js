@@ -387,7 +387,9 @@ const getUserRoomsHistory = async (req, res) => {
             .populate("createdBy", "username email avatar")
             .populate("participants.user", "username email avatar")
             .populate("likes", "username email avatar")
-            .sort({ updatedAt: -1 });
+            .select("-whiteboardData -__v")
+            .sort({ updatedAt: -1 })
+            .lean();
 
         const socketHandler = require("../sockets/socketHandler");
         const roomUsers = socketHandler.roomUsers || {};
@@ -397,7 +399,7 @@ const getUserRoomsHistory = async (req, res) => {
             const likesCount = room.likes ? room.likes.length : 0;
             const likedBy = room.likes || [];
             return {
-                ...room.toObject(),
+                ...room,
                 activeUsersCount: activeUsers.length,
                 activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
                 likesCount,
@@ -445,14 +447,16 @@ const getLiveRooms = async (req, res) => {
                 roomId: { $in: liveRoomIds }
             })
                 .populate("createdBy", "username avatar")
-                .populate("participants.user", "username avatar");
+                .populate("participants.user", "username avatar")
+                .select("-whiteboardData -__v")
+                .lean();
 
             roomsWithCount = rooms.map((room) => {
                 const activeUsers = roomUsers[room.roomId] || [];
                 const likesCount = room.likes ? room.likes.length : 0;
                 const likedBy = room.likes || [];
                 return {
-                    ...room.toObject(),
+                    ...room,
                     activeUsersCount: activeUsers.length,
                     activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
                     likesCount,
@@ -496,8 +500,10 @@ const getRecentRooms = async (req, res) => {
             .populate("createdBy", "username email avatar")
             .populate("participants.user", "username email avatar")
             .populate("likes", "username email avatar")
+            .select("-whiteboardData -__v")
             .sort({ lastActivity: -1 })
-            .limit(10);
+            .limit(10)
+            .lean();
 
         const socketHandler = require("../sockets/socketHandler");
         const roomUsers = socketHandler.roomUsers || {};
@@ -507,7 +513,7 @@ const getRecentRooms = async (req, res) => {
             const likesCount = room.likes ? room.likes.length : 0;
             const likedBy = room.likes || [];
             return {
-                ...room.toObject(),
+                ...room,
                 activeUsersCount: activeUsers.length,
                 activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
                 likesCount,
@@ -798,16 +804,17 @@ const getAllPublicRooms = async (req, res) => {
             .populate("createdBy", "username avatar")
             .populate("participants.user", "username avatar")
             .populate("likes", "username avatar")
-            .select("-__v")
+            .select("-whiteboardData -__v")
             .sort({ createdAt: -1 })
-            .limit(100);
+            .limit(100)
+            .lean();
 
         const roomsWithCount = rooms.map((room) => {
             const activeUsers = roomUsers[room.roomId] || [];
             const likesCount = room.likes ? room.likes.length : 0;
             const likedBy = room.likes || [];
             return {
-                ...room.toObject(),
+                ...room,
                 activeUsersCount: activeUsers.length,
                 activeUsers: activeUsers.map(u => ({ username: u.username, userId: u.userId, isOwner: u.isOwner })),
                 likesCount,

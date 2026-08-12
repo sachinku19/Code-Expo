@@ -44,8 +44,13 @@ export const toggleBookmarkRoom = async (roomId) => {
 };
 
 export const getRoomSocialStats = async (roomId) => {
-  const response = await API.get(`/room-stats/${roomId}`, getHeaders());
-  return response.data;
+  try {
+    const response = await API.get(`/rooms/${roomId}/stats`, getHeaders());
+    return response.data;
+  } catch {
+    const response = await API.get(`/room-stats/${roomId}`, getHeaders());
+    return response.data;
+  }
 };
 
 export const getTrendingRooms = async (limit = 10) => {

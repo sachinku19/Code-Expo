@@ -4579,9 +4579,10 @@
   align-items: center;
   gap: 6px;
   margin: 0 0 8px 0;
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  color: var(--ce-text);
+  color: var(--ce-text-h);
+  letter-spacing: 0.02em;
 }
 
 .modal-likes-loader {
@@ -4597,16 +4598,14 @@
 }
 
 .likes-list-scrollable {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-  max-height: 75px;
+  max-height: 140px;
   overflow-y: auto;
-  background-color: var(--ce-surface-card);
-  border: 1px solid var(--ce-border);
-  border-radius: 4px;
-  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ce-border) transparent;
 }
 
 .likes-list-scrollable::-webkit-scrollbar {
@@ -4618,22 +4617,43 @@
   border-radius: 2px;
 }
 
-.modal-like-chip {
-  display: inline-flex;
+.modal-like-card {
+  display: flex;
   align-items: center;
-  gap: 5px;
-  background: var(--ce-surface);
+  justify-content: space-between;
+  padding: 8px 10px;
+  background-color: var(--ce-surface-card);
   border: 1px solid var(--ce-border);
   border-radius: 4px;
-  padding: 3px 6px 3px 4px;
-  font-size: 0.7rem;
-  color: var(--ce-text);
+  gap: 10px;
   transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.modal-like-chip:hover {
-  border-color: var(--ce-primary);
+.modal-like-card:hover {
+  border-color: var(--ce-border-hover);
   background-color: var(--ce-hover);
+}
+
+.modal-like-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-like-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.modal-like-subtext {
+  font-size: 0.7rem;
+  color: var(--ce-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .modal-like-avatar-img {

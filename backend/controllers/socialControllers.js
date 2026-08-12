@@ -216,7 +216,12 @@ const toggleLikeRoom = async (req, res) => {
     const roomId = req.params.id;
     const userId = req.user._id;
 
-    const room = await Room.findOne({ roomId });
+    const room = await Room.findOne({
+      $or: [
+        { roomId: roomId },
+        ...(mongoose.Types.ObjectId.isValid(roomId) ? [{ _id: roomId }] : [])
+      ]
+    });
     if (!room) {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
@@ -240,7 +245,8 @@ const toggleLikeRoom = async (req, res) => {
     if (io) {
       io.emit("like:update", {
         entityType: "ROOM",
-        entityId: roomId,
+        entityId: room.roomId || roomId,
+        roomDbId: String(room._id),
         likes: updatedRoom.likes,
         likesCount,
         version,
@@ -478,16 +484,24 @@ const getTrendingRooms = async (req, res) => {
 const getRoomSocialStats = async (req, res) => {
   try {
     const roomId = req.params.id;
-    const userId = req.user._id;
+    const userId = req.user ? req.user._id : null;
 
-    const dbRoom = await Room.findOne({ roomId }).populate("likes", "username avatar email bio");
+    const dbRoom = await Room.findOne({
+      $or: [
+        { roomId: roomId },
+        ...(mongoose.Types.ObjectId.isValid(roomId) ? [{ _id: roomId }] : [])
+      ]
+    }).populate("likes", "username avatar email bio");
+
     if (!dbRoom) {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
 
     const likesCount = dbRoom.likes ? dbRoom.likes.length : 0;
-    const isLiked = dbRoom.likes ? dbRoom.likes.some(id => String(id._id || id) === String(userId)) : false;
-    const isBookmarked = await Bookmark.exists({ user: userId, room: dbRoom._id });
+    const isLiked = (userId && dbRoom.likes) 
+      ? dbRoom.likes.some(id => String(id._id || id) === String(userId)) 
+      : false;
+    const isBookmarked = userId ? await Bookmark.exists({ user: userId, room: dbRoom._id }) : false;
     const likedBy = dbRoom.likes || [];
 
     res.status(200).json({

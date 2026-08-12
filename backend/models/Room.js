@@ -97,6 +97,15 @@ const roomSchema=new mongoose.Schema({
     ]
 },{timestamps:true});
 
+// Performance indexes for fast room list queries
+roomSchema.index({ isPrivate: 1, createdAt: -1 });
+roomSchema.index({ createdBy: 1, updatedAt: -1 });
+roomSchema.index({ "participants.user": 1, updatedAt: -1 });
+roomSchema.index({ lastActivity: -1 });
+roomSchema.index({ likes: 1 });
+roomSchema.index({ "pendingRequests.user": 1 });
+roomSchema.index({ "rejectedRequests.user": 1 });
+
 const Room=mongoose.model("Room",roomSchema);
 
 module.exports=Room;
