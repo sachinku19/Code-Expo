@@ -22,7 +22,7 @@ import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../servic
 import {
   X, Heart, Bookmark, Users, Sparkles, Terminal, Mail,
   Plus, FolderGit, Check, Copy, Lock, Globe, Clock, ArrowLeft, LogIn, MapPin,
-  LayoutGrid, Activity, Trash2, Code, User, Edit3
+  LayoutGrid, Activity, Trash2, Code, User, Edit3, FileText
 } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
@@ -178,7 +178,8 @@ const Profile = () => {
           return {
             ...r,
             title: data.title,
-            isPrivate: data.isPrivate
+            isPrivate: data.isPrivate,
+            description: data.description
           };
         }
         return r;
@@ -1636,55 +1637,127 @@ const Profile = () => {
               <h3 className="modal-title-new"><Terminal size={18} style={{ marginRight: "8px", color: "var(--ce-accent)", verticalAlign: "middle" }} />{selectedRoomDetails.title}</h3>
             </div>
 
-            <div className="modal-details-grid">
-              <div className="modal-detail-item">
-                <span className="modal-detail-label">
-                  <Terminal size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Room ID
-                </span>
-                <div className="modal-detail-value-wrapper">
-                  <span className="modal-detail-value mono-text">{selectedRoomDetails.roomId || selectedRoomDetails._id}</span>
-                  <button
-                    onClick={(e) => handleCopyId(e, selectedRoomDetails.roomId || selectedRoomDetails._id)}
-                    className="modal-copy-btn"
-                    title="Copy Room ID"
-                  >
-                    {copiedId === (selectedRoomDetails.roomId || selectedRoomDetails._id) ? <Check size={12} style={{ color: "var(--ce-success)" }} /> : <Copy size={12} />}
-                  </button>
+            <div className="modal-details-body-layout">
+              {/* LEFT SIDE: Existing room information */}
+              <div className="modal-details-left-side">
+                <div className="modal-details-grid">
+                  <div className="modal-detail-item">
+                    <span className="modal-detail-label">
+                      <Terminal size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Room ID
+                    </span>
+                    <div className="modal-detail-value-wrapper">
+                      <span className="modal-detail-value mono-text">{selectedRoomDetails.roomId || selectedRoomDetails._id}</span>
+                      <button
+                        onClick={(e) => handleCopyId(e, selectedRoomDetails.roomId || selectedRoomDetails._id)}
+                        className="modal-copy-btn"
+                        title="Copy Room ID"
+                      >
+                        {copiedId === (selectedRoomDetails.roomId || selectedRoomDetails._id) ? <Check size={12} style={{ color: "var(--ce-success)" }} /> : <Copy size={12} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="modal-detail-item">
+                    <span className="modal-detail-label">
+                      <Code size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Language
+                    </span>
+                    <span className="modal-detail-value lang-badge-new">{selectedRoomDetails.language?.toUpperCase()}</span>
+                  </div>
+
+                  <div className="modal-detail-item">
+                    <span className="modal-detail-label">
+                      {selectedRoomDetails.isPrivate ? <Lock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> : <Globe size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} />} Visibility
+                    </span>
+                    <span className="modal-detail-value privacy-badge-new">
+                      {selectedRoomDetails.isPrivate ? "Private Room" : "Public Room"}
+                    </span>
+                  </div>
+
+                  <div className="modal-detail-item">
+                    <span className="modal-detail-label">
+                      <User size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Owner
+                    </span>
+                    <span className="modal-detail-value">
+                      {selectedRoomDetails.createdBy?.username || "Collaborator"}
+                    </span>
+                  </div>
+
+                  <div className="modal-detail-item">
+                    <span className="modal-detail-label">
+                      <Clock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Created At
+                    </span>
+                    <span className="modal-detail-value">
+                      {new Date(selectedRoomDetails.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="modal-detail-item">
-                <span className="modal-detail-label">
-                  <Code size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Language
-                </span>
-                <span className="modal-detail-value lang-badge-new">{selectedRoomDetails.language?.toUpperCase()}</span>
-              </div>
+              {/* RIGHT SIDE: Dedicated Room Description Card */}
+              <div className="modal-details-right-side">
+                <div className="modal-room-description-card">
+                  <div className="modal-room-desc-header">
+                    <div className="modal-room-desc-title-group">
+                      <FileText size={14} className="modal-room-desc-icon" />
+                      <h4 className="modal-room-desc-heading">ROOM DESCRIPTION</h4>
+                    </div>
+                    {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?._id || user?.id) && selectedRoomDetails.description && selectedRoomDetails.description.trim() ? (
+                      <button
+                        type="button"
+                        className="modal-room-desc-edit-link"
+                        onClick={() => {
+                          const target = selectedRoomDetails;
+                          setSelectedRoomDetails(null);
+                          setEditingRoomTarget(target);
+                        }}
+                        title="Edit Description"
+                      >
+                        <Edit3 size={11} />
+                        <span>Edit</span>
+                      </button>
+                    ) : null}
+                  </div>
 
-              <div className="modal-detail-item">
-                <span className="modal-detail-label">
-                  {selectedRoomDetails.isPrivate ? <Lock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> : <Globe size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} />} Visibility
-                </span>
-                <span className="modal-detail-value privacy-badge-new">
-                  {selectedRoomDetails.isPrivate ? "Private Room" : "Public Room"}
-                </span>
-              </div>
-
-              <div className="modal-detail-item">
-                <span className="modal-detail-label">
-                  <User size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Owner
-                </span>
-                <span className="modal-detail-value">
-                  {selectedRoomDetails.createdBy?.username || "Collaborator"}
-                </span>
-              </div>
-
-              <div className="modal-detail-item">
-                <span className="modal-detail-label">
-                  <Clock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Created At
-                </span>
-                <span className="modal-detail-value">
-                  {new Date(selectedRoomDetails.createdAt).toLocaleDateString()}
-                </span>
+                  {selectedRoomDetails.description && selectedRoomDetails.description.trim() ? (
+                    <>
+                      <div className="modal-room-desc-body">
+                        <p className="modal-room-desc-text">
+                          {selectedRoomDetails.description}
+                        </p>
+                      </div>
+                      <div className="modal-room-desc-footer">
+                        <span className="modal-room-desc-length">
+                          {selectedRoomDetails.description.length} / 1000 characters
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="modal-room-desc-empty">
+                      <div className="modal-room-desc-empty-icon">
+                        <FileText size={22} />
+                      </div>
+                      <p className="modal-room-desc-empty-msg">
+                        {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?._id || user?.id)
+                          ? "No description has been added yet."
+                          : "Description hasn't been added yet."}
+                      </p>
+                      {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?._id || user?.id) && (
+                        <button
+                          type="button"
+                          className="modal-room-desc-add-btn"
+                          onClick={() => {
+                            const target = selectedRoomDetails;
+                            setSelectedRoomDetails(null);
+                            setEditingRoomTarget(target);
+                          }}
+                        >
+                          <Plus size={13} />
+                          <span>Add Description</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

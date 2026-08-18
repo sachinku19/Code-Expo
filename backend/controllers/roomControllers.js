@@ -1276,7 +1276,7 @@ const acceptWorkspaceInvite = async (req, res) => {
 const updateRoom = async (req, res) => {
     try {
         const { roomId } = req.params;
-        const { title, isPrivate } = req.body;
+        const { title, isPrivate, description } = req.body;
 
         if (!roomId) {
             return res.status(400).json({
@@ -1310,8 +1310,10 @@ const updateRoom = async (req, res) => {
         const updateFields = {};
         let titleChanged = false;
         let privacyChanged = false;
+        let descriptionChanged = false;
         const previousTitle = room.title;
         const previousIsPrivate = room.isPrivate;
+        const previousDescription = room.description || "";
 
         // 1. Title Validation
         if (typeof title !== "undefined") {
@@ -1345,27 +1347,51 @@ const updateRoom = async (req, res) => {
             }
         }
 
+        // 3. Description Validation
+        if (typeof description !== "undefined") {
+            if (typeof description !== "string") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Description must be a string"
+                });
+            }
+
+            const trimmedDescription = description.trim();
+            if (trimmedDescription.length > 1000) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Description cannot exceed 1000 characters"
+                });
+            }
+
+            if (trimmedDescription !== (room.description || "")) {
+                updateFields.description = trimmedDescription;
+                descriptionChanged = true;
+            }
+        }
+
         // If no fields actually changed, return 200 without unnecessary writes or socket broadcasts
-        if (!titleChanged && !privacyChanged) {
+        if (!titleChanged && !privacyChanged && !descriptionChanged) {
             return res.status(200).json({
                 success: true,
                 message: "No changes detected",
                 room,
                 titleChanged: false,
-                privacyChanged: false
+                privacyChanged: false,
+                descriptionChanged: false
             });
         }
 
         updateFields.lastActivity = new Date();
 
-        // 3. Atomic MongoDB Update
+        // 4. Atomic MongoDB Update
         const updatedRoom = await Room.findOneAndUpdate(
             { _id: room._id },
             { $set: updateFields },
             { new: true }
         ).populate("createdBy", "username displayName avatar email");
 
-        // 4. Create Activity Logs
+        // 5. Create Activity Logs
         const Activity = require("../models/Activity");
         if (titleChanged) {
             await Activity.create({
@@ -1394,13 +1420,28 @@ const updateRoom = async (req, res) => {
             }).catch(err => console.error("Error logging room privacy activity:", err));
         }
 
-        // 5. Emit single Socket.IO event: room:updated
+        if (descriptionChanged) {
+            const actionText = updatedRoom.description ? "updated room description" : "removed room description";
+            await Activity.create({
+                user: req.user._id,
+                userId: req.user._id,
+                username: req.user.username,
+                room: updatedRoom._id,
+                roomTitle: updatedRoom.title,
+                action: actionText,
+                activityType: "ROOM_DESCRIPTION",
+                timestamp: new Date()
+            }).catch(err => console.error("Error logging room description activity:", err));
+        }
+
+        // 6. Emit single Socket.IO event: room:updated
         const io = req.app.get("io");
         if (io) {
             const socketPayload = {
                 roomId: updatedRoom.roomId,
                 title: updatedRoom.title,
                 isPrivate: updatedRoom.isPrivate,
+                description: updatedRoom.description || "",
                 updatedBy: {
                     _id: req.user._id,
                     username: req.user.username,
@@ -1409,8 +1450,10 @@ const updateRoom = async (req, res) => {
                 updatedAt: updatedRoom.updatedAt,
                 titleChanged,
                 privacyChanged,
+                descriptionChanged,
                 previousTitle,
-                previousIsPrivate
+                previousIsPrivate,
+                previousDescription
             };
 
             io.emit("room:updated", socketPayload);
@@ -1421,7 +1464,8 @@ const updateRoom = async (req, res) => {
             message: "Room updated successfully",
             room: updatedRoom,
             titleChanged,
-            privacyChanged
+            privacyChanged,
+            descriptionChanged
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });

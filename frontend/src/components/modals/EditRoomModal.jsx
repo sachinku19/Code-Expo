@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Edit3, Globe, Lock, Loader2, CheckCircle2 } from "lucide-react";
+import { X, Edit3, Globe, Lock, Loader2, CheckCircle2, FileText, Plus } from "lucide-react";
 import { updateRoomDetails } from "../../services/roomService";
 import "./EditRoomModal.css";
 
@@ -12,6 +12,8 @@ const EditRoomModal = ({
 }) => {
   const [title, setTitle] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [description, setDescription] = useState("");
+  const [showDescEditor, setShowDescEditor] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -19,12 +21,15 @@ const EditRoomModal = ({
   const targetRoomId = room?.roomId || room?._id || "";
   const initialTitle = (room?.title || "").trim();
   const initialIsPrivate = Boolean(room?.isPrivate);
+  const initialDescription = (room?.description || "").trim();
 
   // Sync initial fields when modal opens or room changes
   useEffect(() => {
     if (isOpen && room) {
       setTitle(room.title || "");
       setIsPrivate(Boolean(room.isPrivate));
+      setDescription(room.description || "");
+      setShowDescEditor(Boolean(room.description && room.description.trim()));
       setErrorMsg("");
       setSuccessMsg("");
     }
@@ -44,9 +49,14 @@ const EditRoomModal = ({
   if (!isOpen || !room) return null;
 
   const trimmedTitle = title.trim();
+  const trimmedDesc = description.trim();
   const isTitleValid = trimmedTitle.length >= 3 && trimmedTitle.length <= 60;
-  const hasChanged = trimmedTitle !== initialTitle || isPrivate !== initialIsPrivate;
-  const isSaveDisabled = !isTitleValid || !hasChanged || isSubmitting;
+  const isDescValid = description.length <= 1000;
+  const hasChanged =
+    trimmedTitle !== initialTitle ||
+    isPrivate !== initialIsPrivate ||
+    trimmedDesc !== initialDescription;
+  const isSaveDisabled = !isTitleValid || !isDescValid || !hasChanged || isSubmitting;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,7 +69,8 @@ const EditRoomModal = ({
     try {
       const res = await updateRoomDetails(targetRoomId, {
         title: trimmedTitle,
-        isPrivate
+        isPrivate,
+        description: trimmedDesc
       });
 
       if (res && res.success) {
@@ -96,7 +107,7 @@ const EditRoomModal = ({
             </div>
             <div>
               <h3 id="edit-room-modal-title">Edit Workspace Settings</h3>
-              <p className="edit-room-subtitle">Update title and visibility permissions for <code>{targetRoomId}</code></p>
+              <p className="edit-room-subtitle">Update title, description, and visibility for <code>{targetRoomId}</code></p>
             </div>
           </div>
           <button
@@ -156,6 +167,71 @@ const EditRoomModal = ({
                 </span>
               </div>
             </div>
+
+            {/* Room Description Section */}
+            {!showDescEditor && !initialDescription ? (
+              <div className="edit-room-field">
+                <label className="edit-room-label">Room Description</label>
+                <button
+                  type="button"
+                  className="edit-room-add-desc-btn"
+                  onClick={() => setShowDescEditor(true)}
+                  disabled={isSubmitting}
+                >
+                  <Plus size={15} />
+                  <FileText size={15} />
+                  <span>Add Description</span>
+                </button>
+              </div>
+            ) : (
+              <div className="edit-room-field edit-room-desc-section">
+                <div className="edit-room-desc-heading-wrap">
+                  <label htmlFor="edit-room-desc-input" className="edit-room-label">
+                    {initialDescription ? "Edit Room Description" : "Add Room Description"}
+                  </label>
+                  {!initialDescription && (
+                    <button
+                      type="button"
+                      className="edit-room-desc-remove-btn"
+                      onClick={() => {
+                        setDescription("");
+                        setShowDescEditor(false);
+                      }}
+                      disabled={isSubmitting}
+                      title="Cancel adding description"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p className="edit-room-desc-support">
+                  Explain what this room is about and what you&apos;re building together.
+                </p>
+                <textarea
+                  id="edit-room-desc-input"
+                  className={`edit-room-textarea ${description.length > 1000 ? "invalid" : ""}`}
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (errorMsg) setErrorMsg("");
+                  }}
+                  placeholder="Example: Building a collaborative web application using React and Node.js. The goal is to implement the main UI and backend features together."
+                  maxLength={1000}
+                  rows={4}
+                  disabled={isSubmitting}
+                />
+                <div className="edit-room-field-meta">
+                  <span className="field-hint">
+                    {initialDescription && !trimmedDesc
+                      ? "Clearing description will remove it from the room."
+                      : "Optional summary for room collaborators"}
+                  </span>
+                  <span className={`char-counter ${description.length > 1000 ? "exceeded" : ""}`}>
+                    {description.length} / 1000
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Privacy Setting Options */}
             <div className="edit-room-field">
@@ -230,7 +306,11 @@ const EditRoomModal = ({
                   <span>Saving Changes...</span>
                 </>
               ) : (
-                <span>Save Changes</span>
+                <span>
+                  {!initialDescription && showDescEditor && trimmedTitle === initialTitle && isPrivate === initialIsPrivate
+                    ? "Save Description"
+                    : "Save Changes"}
+                </span>
               )}
             </button>
           </div>

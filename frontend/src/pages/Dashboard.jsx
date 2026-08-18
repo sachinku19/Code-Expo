@@ -4329,7 +4329,8 @@ function Dashboard() {
           return {
             ...r,
             title: data.title,
-            isPrivate: data.isPrivate
+            isPrivate: data.isPrivate,
+            description: data.description
           };
         }
         return r;
@@ -6008,7 +6009,7 @@ function Dashboard() {
                                   <div
                                     key={room._id}
                                     className={`trending-room-card rank-${rank}`}
-                                    onClick={() => handleJoinRoomDirect(room.roomId)}
+                                    onClick={() => setSelectedRoomDetails(room)}
                                   >
                                     <div className="trending-card-top">
                                       <div className="trending-creator-info">
@@ -12029,248 +12030,320 @@ function Dashboard() {
                 <h3 className="modal-title-new"><Terminal size={18} style={{ marginRight: "8px", color: "var(--ce-accent)", verticalAlign: "middle" }} />{selectedRoomDetails.title}</h3>
               </div>
 
-              <div className="modal-details-grid">
-                <div className="modal-detail-item">
-                  <span className="modal-detail-label">
-                    <Terminal size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Room ID
-                  </span>
-                  <div className="modal-detail-value-wrapper">
-                    <span className="modal-detail-value mono-text">{selectedRoomDetails.roomId}</span>
-                    <button
-                      onClick={(e) => handleCopyId(e, selectedRoomDetails.roomId)}
-                      className="modal-copy-btn"
-                      title="Copy Room ID"
-                      aria-label="Copy Room ID"
-                    >
-                      {copiedId === selectedRoomDetails.roomId ? <Check size={12} style={{ color: "var(--ce-success)" }} /> : <Copy size={12} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="modal-detail-item">
-                  <span className="modal-detail-label">
-                    <Code size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Language
-                  </span>
-                  <span className="modal-detail-value lang-badge-new">{selectedRoomDetails.language?.toUpperCase()}</span>
-                </div>
-
-                <div className="modal-detail-item">
-                  <span className="modal-detail-label">
-                    {selectedRoomDetails.isPrivate ? <Lock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> : <Globe size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} />} Visibility
-                  </span>
-                  <span className="modal-detail-value privacy-badge-new">
-                    {selectedRoomDetails.isPrivate ? "Private Room" : "Public Room"}
-                  </span>
-                </div>
-
-                <div className="modal-detail-item">
-                  <span className="modal-detail-label">
-                    <User size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Owner
-                  </span>
-                  <div className="modal-owner-badge">
-                    {selectedRoomDetails.createdBy?.avatar ? (
-                      <img
-                        src={selectedRoomDetails.createdBy.avatar}
-                        alt="Owner"
-                        className="modal-owner-avatar-img"
-                      />
-                    ) : (
-                      <div
-                        className="modal-owner-avatar-placeholder"
-                        style={{ backgroundColor: getAvatarColor(selectedRoomDetails.createdBy?.username || "Owner") }}
-                      >
-                        {(selectedRoomDetails.createdBy?.username || "O").charAt(0).toUpperCase()}
+              <div className="modal-details-body-layout">
+                {/* LEFT SIDE: Existing room information */}
+                <div className="modal-details-left-side">
+                  <div className="modal-details-grid">
+                    <div className="modal-detail-item">
+                      <span className="modal-detail-label">
+                        <Terminal size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Room ID
+                      </span>
+                      <div className="modal-detail-value-wrapper">
+                        <span className="modal-detail-value mono-text">{selectedRoomDetails.roomId}</span>
+                        <button
+                          onClick={(e) => handleCopyId(e, selectedRoomDetails.roomId)}
+                          className="modal-copy-btn"
+                          title="Copy Room ID"
+                          aria-label="Copy Room ID"
+                        >
+                          {copiedId === selectedRoomDetails.roomId ? <Check size={12} style={{ color: "var(--ce-success)" }} /> : <Copy size={12} />}
+                        </button>
                       </div>
-                    )}
-                    <span className="owner-name-new">
-                      {selectedRoomDetails.createdBy?.username || "Collaborator"}
-                    </span>
+                    </div>
+
+                    <div className="modal-detail-item">
+                      <span className="modal-detail-label">
+                        <Code size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Language
+                      </span>
+                      <span className="modal-detail-value lang-badge-new">{selectedRoomDetails.language?.toUpperCase()}</span>
+                    </div>
+
+                    <div className="modal-detail-item">
+                      <span className="modal-detail-label">
+                        {selectedRoomDetails.isPrivate ? <Lock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> : <Globe size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} />} Visibility
+                      </span>
+                      <span className="modal-detail-value privacy-badge-new">
+                        {selectedRoomDetails.isPrivate ? "Private Room" : "Public Room"}
+                      </span>
+                    </div>
+
+                    <div className="modal-detail-item">
+                      <span className="modal-detail-label">
+                        <User size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Owner
+                      </span>
+                      <div className="modal-owner-badge">
+                        {selectedRoomDetails.createdBy?.avatar ? (
+                          <img
+                            src={selectedRoomDetails.createdBy.avatar}
+                            alt="Owner"
+                            className="modal-owner-avatar-img"
+                          />
+                        ) : (
+                          <div
+                            className="modal-owner-avatar-placeholder"
+                            style={{ backgroundColor: getAvatarColor(selectedRoomDetails.createdBy?.username || "Owner") }}
+                          >
+                            {(selectedRoomDetails.createdBy?.username || "O").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="owner-name-new">
+                          {selectedRoomDetails.createdBy?.username || "Collaborator"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="modal-detail-item">
+                      <span className="modal-detail-label">
+                        <Clock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Last Active
+                      </span>
+                      <span className="modal-detail-value last-active-time">
+                        {formatLastActive(selectedRoomDetails.lastActivity || selectedRoomDetails.updatedAt)}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="modal-detail-item">
-                  <span className="modal-detail-label">
-                    <Clock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Last Active
-                  </span>
-                  <span className="modal-detail-value last-active-time">
-                    {formatLastActive(selectedRoomDetails.lastActivity || selectedRoomDetails.updatedAt)}
-                  </span>
-                </div>
-              </div>
+                  <div className="modal-members-section">
+                    <h4 className="members-title-new">
+                      Members ({selectedRoomDetails.participants?.length || 0})
+                    </h4>
+                    <div className="members-list-scrollable">
+                      {(() => {
+                        const onlineUserIds = new Set((selectedRoomDetails.activeUsers || []).map(u => String(u.userId)));
+                        const isCurrentUserOwner = String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id);
+                        return (selectedRoomDetails.participants || []).map((m, i) => {
+                          const userObj = m.user && typeof m.user === 'object' ? m.user : null;
+                          const uId = userObj ? userObj._id : (m.user || m._id || m);
+                          const username = userObj ? userObj.username : (m.username || "Collaborator");
+                          const avatar = userObj ? userObj.avatar : m.avatar;
+                          const role = m.role || "MEMBER";
 
-              <div className="modal-members-section">
-                <h4 className="members-title-new">
-                  Members ({selectedRoomDetails.participants?.length || 0})
-                </h4>
-                <div className="members-list-scrollable">
-                  {(() => {
-                    const onlineUserIds = new Set((selectedRoomDetails.activeUsers || []).map(u => String(u.userId)));
-                    const isCurrentUserOwner = String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id);
-                    return (selectedRoomDetails.participants || []).map((m, i) => {
-                      const userObj = m.user && typeof m.user === 'object' ? m.user : null;
-                      const uId = userObj ? userObj._id : (m.user || m._id || m);
-                      const username = userObj ? userObj.username : (m.username || "Collaborator");
-                      const avatar = userObj ? userObj.avatar : m.avatar;
-                      const role = m.role || "MEMBER";
+                          const isOnline = onlineUserIds.has(String(uId)) || (selectedRoomDetails.activeUsers || []).some(au => au.username === username);
+                          const isOwner = String(uId) === String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy);
+                          const isSelf = String(uId) === String(user?.id);
 
-                      const isOnline = onlineUserIds.has(String(uId)) || (selectedRoomDetails.activeUsers || []).some(au => au.username === username);
-                      const isOwner = String(uId) === String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy);
-                      const isSelf = String(uId) === String(user?.id);
-
-                      return (
-                        <div key={i} className="modal-member-card">
-                          <div className="member-avatar-wrapper-mini">
-                            {avatar ? (
-                              <img src={avatar} alt={username} className="member-avatar-img-mini" />
-                            ) : (
-                              <div className="member-avatar-initials-mini" style={{ backgroundColor: getAvatarColor(username) }}>
-                                {(username || "C").charAt(0).toUpperCase()}
+                          return (
+                            <div key={i} className="modal-member-card">
+                              <div className="member-avatar-wrapper-mini">
+                                {avatar ? (
+                                  <img src={avatar} alt={username} className="member-avatar-img-mini" />
+                                ) : (
+                                  <div className="member-avatar-initials-mini" style={{ backgroundColor: getAvatarColor(username) }}>
+                                    {(username || "C").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <span className={`presence-indicator-dot-mini ${isOnline ? "online" : "offline"}`} />
                               </div>
-                            )}
-                            <span className={`presence-indicator-dot-mini ${isOnline ? "online" : "offline"}`} />
-                          </div>
-                          <div className="modal-member-info">
-                            <span className="modal-member-name">{username}</span>
-                            <span className={`member-role-badge ${String(role).toLowerCase()}`}>
-                              {role}
-                            </span>
-                          </div>
-                          <span className={`presence-text-badge-mini ${isOnline ? "online" : "offline"}`}>
-                            {isOnline ? "Online" : "Offline"}
-                          </span>
-                          {isCurrentUserOwner && !isOwner && !isSelf && (
-                            <button
-                              onClick={() => handleRemoveUser(selectedRoomDetails.roomId, uId, username)}
-                              className="modal-kick-member-btn"
-                              title="Kick user from room"
-                            >
-                              Kick
-                            </button>
-                          )}
-                          {!isSelf && (
-                            <div style={{ position: "relative", marginLeft: "6px" }}>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveRoomMemberMenuId(activeRoomMemberMenuId === uId ? null : uId);
-                                }}
-                                className="modal-kick-member-btn"
-                                style={{ background: "none", border: "1px solid var(--ce-border)", color: "var(--ce-text-muted)", padding: "2px 6px", display: "flex", alignItems: "center" }}
-                                title="Options"
-                              >
-                                <MoreVertical size={12} />
-                              </button>
-                              {activeRoomMemberMenuId === uId && (
-                                <div
-                                  style={{
-                                    position: "absolute",
-                                    right: 0,
-                                    top: "calc(100% + 4px)",
-                                    background: "rgba(10, 10, 18, 0.96)",
-                                    backdropFilter: "blur(16px)",
-                                    border: "1px solid var(--ce-border)",
-                                    borderRadius: "4px",
-                                    boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
-                                    zIndex: 1000,
-                                    minWidth: "135px",
-                                    width: "max-content",
-                                    whiteSpace: "nowrap",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    padding: "4px",
-                                    gap: "2px"
-                                  }}
+                              <div className="modal-member-info">
+                                <span className="modal-member-name">{username}</span>
+                                <span className={`member-role-badge ${String(role).toLowerCase()}`}>
+                                  {role}
+                                </span>
+                              </div>
+                              <span className={`presence-text-badge-mini ${isOnline ? "online" : "offline"}`}>
+                                {isOnline ? "Online" : "Offline"}
+                              </span>
+                              {isCurrentUserOwner && !isOwner && !isSelf && (
+                                <button
+                                  onClick={() => handleRemoveUser(selectedRoomDetails.roomId, uId, username)}
+                                  className="modal-kick-member-btn"
+                                  title="Kick user from room"
                                 >
+                                  Kick
+                                </button>
+                              )}
+                              {!isSelf && (
+                                <div style={{ position: "relative", marginLeft: "6px" }}>
                                   <button
-                                    onClick={() => {
-                                      setActiveRoomMemberMenuId(null);
-                                      setReportedTargetUser({ _id: uId, username });
-                                      setReportEvidenceType("ROOM");
-                                      setReportEvidenceId(selectedRoomDetails._id || selectedRoomDetails.roomId);
-                                      setReportModalOpen(true);
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveRoomMemberMenuId(activeRoomMemberMenuId === uId ? null : uId);
                                     }}
-                                    style={{
-                                      background: "transparent",
-                                      border: "none",
-                                      color: "#ef4444",
-                                      fontSize: "0.74rem",
-                                      fontWeight: "600",
-                                      padding: "8px 12px",
-                                      textAlign: "left",
-                                      cursor: "pointer",
-                                      width: "100%",
-                                      borderRadius: "4px",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "8px",
-                                      transition: "background 0.2s ease"
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                    className="modal-kick-member-btn"
+                                    style={{ background: "none", border: "1px solid var(--ce-border)", color: "var(--ce-text-muted)", padding: "2px 6px", display: "flex", alignItems: "center" }}
+                                    title="Options"
                                   >
-                                    ⚠️ Report User
+                                    <MoreVertical size={12} />
                                   </button>
+                                  {activeRoomMemberMenuId === uId && (
+                                    <div
+                                      style={{
+                                        position: "absolute",
+                                        right: 0,
+                                        top: "calc(100% + 4px)",
+                                        background: "rgba(10, 10, 18, 0.96)",
+                                        backdropFilter: "blur(16px)",
+                                        border: "1px solid var(--ce-border)",
+                                        borderRadius: "4px",
+                                        boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
+                                        zIndex: 1000,
+                                        minWidth: "135px",
+                                        width: "max-content",
+                                        whiteSpace: "nowrap",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        padding: "4px",
+                                        gap: "2px"
+                                      }}
+                                    >
+                                      <button
+                                        onClick={() => {
+                                          setActiveRoomMemberMenuId(null);
+                                          setReportedTargetUser({ _id: uId, username });
+                                          setReportEvidenceType("ROOM");
+                                          setReportEvidenceId(selectedRoomDetails._id || selectedRoomDetails.roomId);
+                                          setReportModalOpen(true);
+                                        }}
+                                        style={{
+                                          background: "transparent",
+                                          border: "none",
+                                          color: "#ef4444",
+                                          fontSize: "0.74rem",
+                                          fontWeight: "600",
+                                          padding: "8px 12px",
+                                          textAlign: "left",
+                                          cursor: "pointer",
+                                          width: "100%",
+                                          borderRadius: "4px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          transition: "background 0.2s ease"
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                      >
+                                        ⚠️ Report User
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-
-              {/* Liked By Section */}
-              <div className="modal-likes-section">
-                <h4 className="modal-likes-title">
-                  <Heart size={13} fill="var(--ce-danger, #f85149)" color="var(--ce-danger, #f85149)" />
-                  Liked By ({selectedRoomLikes.length})
-                </h4>
-                {isLoadingRoomLikes ? (
-                  <div className="modal-likes-loader">Loading likes...</div>
-                ) : selectedRoomLikes.length === 0 ? (
-                  <p className="modal-likes-empty">No likes yet. Be the first to like this room!</p>
-                ) : (
-                  <div className="likes-list-scrollable">
-                    {selectedRoomLikes.map((u, idx) => {
-                      const userObj = typeof u === "object" ? u : {};
-                      const username = userObj.username || "Collaborator";
-                      const avatar = userObj.avatar;
-                      const uId = userObj._id || idx;
-
-                      return (
-                        <div key={uId} className="modal-like-card">
-                          <div className="modal-like-user-info">
-                            {avatar ? (
-                              <img
-                                src={avatar}
-                                alt={username}
-                                className="member-avatar-img-mini"
-                              />
-                            ) : (
-                              <div
-                                className="member-avatar-initials-mini"
-                                style={{ backgroundColor: getAvatarColor(username) }}
-                              >
-                                {username.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <div className="modal-like-details">
-                              <span className="modal-member-name">{username}</span>
-                              {userObj.bio ? (
-                                <span className="modal-like-subtext">{userObj.bio}</span>
-                              ) : userObj.email ? (
-                                <span className="modal-like-subtext">{userObj.email}</span>
-                              ) : null}
-                            </div>
-                          </div>
-                          <Heart size={12} fill="var(--ce-danger, #f85149)" color="var(--ce-danger, #f85149)" style={{ opacity: 0.85 }} />
-                        </div>
-                      );
-                    })}
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
-                )}
+
+                  {/* Liked By Section */}
+                  <div className="modal-likes-section">
+                    <h4 className="modal-likes-title">
+                      <Heart size={13} fill="var(--ce-danger, #f85149)" color="var(--ce-danger, #f85149)" />
+                      Liked By ({selectedRoomLikes.length})
+                    </h4>
+                    {isLoadingRoomLikes ? (
+                      <div className="modal-likes-loader">Loading likes...</div>
+                    ) : selectedRoomLikes.length === 0 ? (
+                      <p className="modal-likes-empty">No likes yet. Be the first to like this room!</p>
+                    ) : (
+                      <div className="likes-list-scrollable">
+                        {selectedRoomLikes.map((u, idx) => {
+                          const userObj = typeof u === "object" ? u : {};
+                          const username = userObj.username || "Collaborator";
+                          const avatar = userObj.avatar;
+                          const uId = userObj._id || idx;
+
+                          return (
+                            <div key={uId} className="modal-like-card">
+                              <div className="modal-like-user-info">
+                                {avatar ? (
+                                  <img
+                                    src={avatar}
+                                    alt={username}
+                                    className="member-avatar-img-mini"
+                                  />
+                                ) : (
+                                  <div
+                                    className="member-avatar-initials-mini"
+                                    style={{ backgroundColor: getAvatarColor(username) }}
+                                  >
+                                    {username.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="modal-like-details">
+                                  <span className="modal-member-name">{username}</span>
+                                  {userObj.bio ? (
+                                    <span className="modal-like-subtext">{userObj.bio}</span>
+                                  ) : userObj.email ? (
+                                    <span className="modal-like-subtext">{userObj.email}</span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <Heart size={12} fill="var(--ce-danger, #f85149)" color="var(--ce-danger, #f85149)" style={{ opacity: 0.85 }} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT SIDE: Dedicated Room Description Card */}
+                <div className="modal-details-right-side">
+                  <div className="modal-room-description-card">
+                    <div className="modal-room-desc-header">
+                      <div className="modal-room-desc-title-group">
+                        <FileText size={14} className="modal-room-desc-icon" />
+                        <h4 className="modal-room-desc-heading">ROOM DESCRIPTION</h4>
+                      </div>
+                      {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id) && selectedRoomDetails.description && selectedRoomDetails.description.trim() ? (
+                        <button
+                          type="button"
+                          className="modal-room-desc-edit-link"
+                          onClick={() => {
+                            const target = selectedRoomDetails;
+                            setSelectedRoomDetails(null);
+                            setEditingRoomTarget(target);
+                          }}
+                          title="Edit Description"
+                        >
+                          <Edit3 size={11} />
+                          <span>Edit</span>
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {selectedRoomDetails.description && selectedRoomDetails.description.trim() ? (
+                      <>
+                        <div className="modal-room-desc-body">
+                          <p className="modal-room-desc-text">
+                            {selectedRoomDetails.description}
+                          </p>
+                        </div>
+                        <div className="modal-room-desc-footer">
+                          <span className="modal-room-desc-length">
+                            {selectedRoomDetails.description.length} / 1000 characters
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="modal-room-desc-empty">
+                        <div className="modal-room-desc-empty-icon">
+                          <FileText size={22} />
+                        </div>
+                        <p className="modal-room-desc-empty-msg">
+                          {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id)
+                            ? "No description has been added yet."
+                            : "Description hasn't been added yet."}
+                        </p>
+                        {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id) && (
+                          <button
+                            type="button"
+                            className="modal-room-desc-add-btn"
+                            onClick={() => {
+                              const target = selectedRoomDetails;
+                              setSelectedRoomDetails(null);
+                              setEditingRoomTarget(target);
+                            }}
+                          >
+                            <Plus size={13} />
+                            <span>Add Description</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="modal-actions-new">
@@ -12408,7 +12481,7 @@ function Dashboard() {
                   </div>
                 )}
 
-                <button type="submit" onMouseEnter={prefetchEditor} className="modal-join-btn-new ce-btn-success ce-mt-16">
+                <button type="submit" onMouseEnter={prefetchEditor} className="modal-join-btn-new ce-mt-16">
                   Join Workspace
                 </button>
               </form>

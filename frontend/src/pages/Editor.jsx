@@ -1673,7 +1673,7 @@ function Editor() {
     if (!socket) return;
     const handleRoomUpdated = (data) => {
       if (data && String(data.roomId) === String(roomId)) {
-        setRoom((prev) => (prev ? { ...prev, title: data.title, isPrivate: data.isPrivate } : prev));
+        setRoom((prev) => (prev ? { ...prev, title: data.title, isPrivate: data.isPrivate, description: data.description } : prev));
 
         if (data.titleChanged) {
           showToastNotification(`✏️ Room renamed to "${data.title}"`);
@@ -1681,6 +1681,11 @@ function Editor() {
         if (data.privacyChanged) {
           showToastNotification(
             data.isPrivate ? "🔒 Room privacy changed to Private" : "🌍 Room is now Public"
+          );
+        }
+        if (data.descriptionChanged) {
+          showToastNotification(
+            data.description ? "📝 Room description updated" : "📝 Room description removed"
           );
         }
       }
@@ -4981,6 +4986,17 @@ function Editor() {
                         </div>
 
                         <div className="welcome-sections-grid">
+                          {room?.description && room.description.trim() ? (
+                            <div className="welcome-section-card welcome-room-desc-card">
+                              <h3 className="section-card-title">
+                                <FileText size={14} style={{ marginRight: "6px", color: "var(--ce-accent, #818cf8)" }} /> Room Description
+                              </h3>
+                              <p className="welcome-room-desc-content">
+                                {room.description}
+                              </p>
+                            </div>
+                          ) : null}
+
                           <div className="welcome-section-card">
                             <h3 className="section-card-title">
                               <Sparkles size={14} style={{ marginRight: "6px" }} /> Start
@@ -6097,7 +6113,7 @@ function Editor() {
           onClose={() => setEditRoomModalOpen(false)}
           room={room}
           onRoomUpdated={(updatedRoom) => {
-            setRoom((prev) => (prev ? { ...prev, title: updatedRoom.title, isPrivate: updatedRoom.isPrivate } : prev));
+            setRoom((prev) => (prev ? { ...prev, title: updatedRoom.title, isPrivate: updatedRoom.isPrivate, description: updatedRoom.description } : prev));
           }}
         />
 

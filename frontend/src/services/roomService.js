@@ -311,11 +311,16 @@ export const acceptWorkspaceInvite = async (roomId) => {
     return response.data;
 };
 
-export const updateRoomDetails = async (roomId, { title, isPrivate }) => {
+export const updateRoomDetails = async (roomId, { title, isPrivate, description }) => {
     const token = localStorage.getItem("token");
+    const payload = {};
+    if (typeof title !== "undefined") payload.title = title;
+    if (typeof isPrivate !== "undefined") payload.isPrivate = isPrivate;
+    if (typeof description !== "undefined") payload.description = description;
+
     const response = await API.patch(
         `/rooms/${roomId}`,
-        { title, isPrivate },
+        payload,
         {
             headers: {
                 Authorization: `Bearer ${token}`

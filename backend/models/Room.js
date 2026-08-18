@@ -59,6 +59,13 @@ const roomSchema=new mongoose.Schema({
         default:false
     },
 
+    description:{
+        type:String,
+        trim:true,
+        maxlength:1000,
+        default:""
+    },
+
     whiteboardData:{
         type:String,
         default:"[]"
