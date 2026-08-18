@@ -1,5 +1,23 @@
 const express=require("express");
-const { registerUser, loginUser, my_profile, totalUser,logoutUser, changePassword, getPublicStats, getPublicDevelopers, getPublicUserProfile, googleLogin, getGoogleConfig, forgotPassword, resetPassword } = require("../controllers/authControllers");
+const { 
+  registerUser, 
+  loginUser, 
+  my_profile, 
+  totalUser, 
+  logoutUser, 
+  changePassword, 
+  getPublicStats, 
+  getPublicDevelopers, 
+  getPublicUserProfile, 
+  googleLogin, 
+  getGoogleConfig, 
+  forgotPassword, 
+  resetPassword,
+  getRecoveryKeyStatus,
+  generateRecoveryKey,
+  verifyRecoveryKey,
+  resetPasswordWithRecoveryKey
+} = require("../controllers/authControllers");
 const auth_protect = require("../middleware/authMiddleware");
 
 //make router
@@ -17,6 +35,12 @@ router.get("/public-developers", getPublicDevelopers);
 router.get("/user-profile/:username", getPublicUserProfile);
 router.put("/logout", auth_protect, logoutUser);
 router.put("/change-password", auth_protect, changePassword);
+
+// Account Recovery Key routes
+router.get("/recovery-key-status", auth_protect, getRecoveryKeyStatus);
+router.post("/generate-recovery-key", auth_protect, generateRecoveryKey);
+router.post("/verify-recovery-key", verifyRecoveryKey);
+router.post("/reset-password-with-key", resetPasswordWithRecoveryKey);
 
 // Email Verification & Password Reset routes
 router.post("/forgot-password", forgotPassword);

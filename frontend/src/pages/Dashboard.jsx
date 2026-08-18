@@ -23,6 +23,7 @@ import {
 import socket from "../socket/socket";
 import { useAuth } from "../context/AuthContext";
 import { getUserProfile, changePassword, getPublicUserProfile } from "../services/authService";
+import SecuritySettings from "../components/settings/SecuritySettings";
 import ReportUserModal from "../components/social/ReportUserModal";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
 import EditRoomModal from "../components/modals/EditRoomModal";
@@ -35,7 +36,7 @@ import {
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
   Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2, Edit3,
-  Volume2, VolumeX, Radio, GitPullRequest, Send, DoorOpen
+  Volume2, VolumeX, Radio, GitPullRequest, Send, DoorOpen, FileText, Video
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -379,15 +380,35 @@ const ProfilePostCard = ({ post, onOpen, user, onDelete, onReport }) => {
   const renderBadge = () => {
     if (hasCode) {
       const langName = (codeDetails.lang || "code").toUpperCase();
-      return <span className="profile-card-badge code">{langName}</span>;
+      return (
+        <span className="profile-card-badge code">
+          <Code size={11} className="profile-card-badge-icon" />
+          <span>{langName}</span>
+        </span>
+      );
     }
     if (hasVideo) {
-      return <span className="profile-card-badge video">VIDEO</span>;
+      return (
+        <span className="profile-card-badge video">
+          <Video size={11} className="profile-card-badge-icon" />
+          <span>VIDEO</span>
+        </span>
+      );
     }
     if (hasImage) {
-      return <span className="profile-card-badge image">IMAGE</span>;
+      return (
+        <span className="profile-card-badge image">
+          <Image size={11} className="profile-card-badge-icon" />
+          <span>IMAGE</span>
+        </span>
+      );
     }
-    return <span className="profile-card-badge text">POST</span>;
+    return (
+      <span className="profile-card-badge text">
+        <FileText size={11} className="profile-card-badge-icon" />
+        <span>POST</span>
+      </span>
+    );
   };
 
   const renderBody = () => {
@@ -414,7 +435,9 @@ const ProfilePostCard = ({ post, onOpen, user, onDelete, onReport }) => {
       const cleanDesc = hasCode ? getRightSideText(post.text) : post.text;
       return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <img src={postImages[0]} alt="Post media preview" className="profile-card-image-preview" />
+          <div className="profile-card-image-wrapper">
+            <img src={postImages[0]} alt="Post media preview" className="profile-card-image-preview" />
+          </div>
           {cleanDesc && (
             <p className="profile-card-image-caption">{cleanDesc}</p>
           )}
@@ -5558,17 +5581,32 @@ function Dashboard() {
                           </div>
 
                           {/* MIDDLE COLUMN: WEEKLY CHAMPIONS PODIUM */}
-                          <div className="bottom-highlight-card leaderboard-podium-card">
-                            <div className="highlight-card-header">
-                              <Trophy size={16} className="leaderboard-trophy-icon" style={{ color: "#eab308" }} />
-                              <h4>Weekly Champions</h4>
+                          <div
+                            className="bottom-highlight-card leaderboard-podium-card"
+                            onClick={() => setActiveSection("leaderboard")}
+                            style={{ cursor: "pointer" }}
+                            title="Click to view full leaderboard"
+                          >
+                            <div className="highlight-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <Trophy size={16} className="leaderboard-trophy-icon" style={{ color: "#eab308" }} />
+                                <h4>Weekly Champions</h4>
+                              </div>
+                              <ChevronRight size={14} style={{ color: "var(--ce-text-muted)", opacity: 0.7 }} />
                             </div>
                             <div className="ce-bottom-podium-container">
                               {/* 2nd Place */}
                               <div
                                 className="ce-bottom-podium-step step-second"
-                                onClick={() => leaderboardData[1] && handleViewUserProfile(leaderboardData[1].userId)}
-                                style={{ cursor: leaderboardData[1] ? "pointer" : "default" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (leaderboardData[1]?.userId) {
+                                    handleViewUserProfile(leaderboardData[1].userId);
+                                  } else {
+                                    setActiveSection("leaderboard");
+                                  }
+                                }}
+                                style={{ cursor: "pointer" }}
                               >
                                 <div className="ce-bottom-podium-avatar-wrapper">
                                   {leaderboardData[1] ? (
@@ -5592,8 +5630,15 @@ function Dashboard() {
                               {/* 1st Place */}
                               <div
                                 className="ce-bottom-podium-step step-first"
-                                onClick={() => leaderboardData[0] && handleViewUserProfile(leaderboardData[0].userId)}
-                                style={{ cursor: leaderboardData[0] ? "pointer" : "default" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (leaderboardData[0]?.userId) {
+                                    handleViewUserProfile(leaderboardData[0].userId);
+                                  } else {
+                                    setActiveSection("leaderboard");
+                                  }
+                                }}
+                                style={{ cursor: "pointer" }}
                               >
                                 <div className="ce-bottom-podium-avatar-wrapper gold-ring">
                                   {leaderboardData[0] ? (
@@ -5617,8 +5662,15 @@ function Dashboard() {
                               {/* 3rd Place */}
                               <div
                                 className="ce-bottom-podium-step step-third"
-                                onClick={() => leaderboardData[2] && handleViewUserProfile(leaderboardData[2].userId)}
-                                style={{ cursor: leaderboardData[2] ? "pointer" : "default" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (leaderboardData[2]?.userId) {
+                                    handleViewUserProfile(leaderboardData[2].userId);
+                                  } else {
+                                    setActiveSection("leaderboard");
+                                  }
+                                }}
+                                style={{ cursor: "pointer" }}
                               >
                                 <div className="ce-bottom-podium-avatar-wrapper">
                                   {leaderboardData[2] ? (
@@ -11581,36 +11633,7 @@ function Dashboard() {
                     )}
 
                     {settingsTab === "security" && (
-                      <div className="settings-pane-form">
-                        <h3>Security Preferences</h3>
-                        <p>Configure security authorizations and passwords.</p>
-                        <div className="settings-form-field">
-                          <label>Current Password</label>
-                          <input type="password" placeholder="••••••••" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-                        </div>
-                        <div className="settings-form-field">
-                          <label>New Password</label>
-                          <input type="password" placeholder="At least 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                          {newPassword && (
-                            <div className="password-strength-container">
-                              <div className="strength-bar-track">
-                                <div
-                                  className="strength-bar-fill"
-                                  style={{
-                                    width: `${passwordStrength.percent}%`,
-                                    backgroundColor: passwordStrength.color,
-                                    boxShadow: `0 0 10px ${passwordStrength.color}55`
-                                  }}
-                                />
-                              </div>
-                              <span className="strength-label" style={{ color: passwordStrength.color }}>
-                                Strength: <strong>{passwordStrength.label}</strong>
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <button className="settings-save-btn" onClick={handleUpdatePassword}>Change Password</button>
-                      </div>
+                      <SecuritySettings user={user} addToast={addToast} />
                     )}
 
                     {settingsTab === "integrations" && (

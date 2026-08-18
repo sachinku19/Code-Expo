@@ -14,7 +14,6 @@ const userSchema=new mongoose.Schema({
         sparse: true,
         lowercase: true,
         trim: true,
-        default: null,
         index: true
     },
     lastUsernameChange: {
@@ -230,6 +229,31 @@ const userSchema=new mongoose.Schema({
     },
     resetPasswordToken:String,
     resetPasswordExpire:Date,
+    recoveryKeyHash: {
+        type: String,
+        default: null
+    },
+    recoveryKeyCreatedAt: {
+        type: Date,
+        default: null
+    },
+    recoveryKeyLastRegeneratedAt: {
+        type: Date,
+        default: null
+    },
+    recoveryKeyStatus: {
+        type: String,
+        enum: ["active", "unconfigured", "revoked"],
+        default: "unconfigured"
+    },
+    failedRecoveryAttempts: {
+        type: Number,
+        default: 0
+    },
+    recoveryLockUntil: {
+        type: Date,
+        default: null
+    },
     subscription: {
         plan: {
             type: String,

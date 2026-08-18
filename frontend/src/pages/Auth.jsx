@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { loginUser, registerUser, googleLoginUser, getGoogleConfig, forgotPassword } from "../services/authService";
+import {
+  loginUser,
+  registerUser,
+  googleLoginUser,
+  getGoogleConfig,
+  forgotPassword,
+  verifyRecoveryKey,
+  resetPasswordWithRecoveryKey
+} from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useGateTransition } from "../routes/AppRoutes";
-import { ArrowLeft, Eye, EyeOff, Sun, Moon } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Sun, Moon, Key, Mail, ShieldCheck, Lock, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Auth.css";
 
@@ -91,10 +99,35 @@ function Auth({ mode }) {
 
   // State for Forgot Password Form
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotMode, setForgotMode] = useState("email"); // "email" | "recovery-key"
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotError, setForgotError] = useState(null);
   const [forgotSuccess, setForgotSuccess] = useState(null);
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Recovery Key States
+  const [recoveryIdentifier, setRecoveryIdentifier] = useState("");
+  const [recoveryKeyInput, setRecoveryKeyInput] = useState("");
+  const [recoveryVerifiedToken, setRecoveryVerifiedToken] = useState(null);
+  const [recoveryNewPassword, setRecoveryNewPassword] = useState("");
+  const [recoveryConfirmPassword, setRecoveryConfirmPassword] = useState("");
+  const [showRecoveryNewPass, setShowRecoveryNewPass] = useState(false);
+  const [showRecoveryConfirmPass, setShowRecoveryConfirmPass] = useState(false);
+
+  const resetForgotFlow = () => {
+    setIsForgotPassword(false);
+    setForgotMode("email");
+    setForgotEmail("");
+    setForgotError(null);
+    setForgotSuccess(null);
+    setRecoveryIdentifier("");
+    setRecoveryKeyInput("");
+    setRecoveryVerifiedToken(null);
+    setRecoveryNewPassword("");
+    setRecoveryConfirmPassword("");
+    setShowRecoveryNewPass(false);
+    setShowRecoveryConfirmPass(false);
+  };
 
   const [agreeTerms, setAgreeTerms] = useState(false);
 
@@ -123,10 +156,7 @@ function Auth({ mode }) {
     setGoogleError(null);
     setShowLoginPassword(false);
     setShowRegisterPassword(false);
-    setIsForgotPassword(false);
-    setForgotEmail("");
-    setForgotError(null);
-    setForgotSuccess(null);
+    resetForgotFlow();
     setAgreeTerms(false);
   }, [activeMode]);
 
@@ -293,6 +323,76 @@ function Auth({ mode }) {
     }
   };
 
+  const handleRecoveryKeyInputChange = (e) => {
+    const raw = e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 20);
+    const formatted = raw.match(/.{1,4}/g)?.join("-") || raw;
+    setRecoveryKeyInput(formatted);
+  };
+
+  const handleVerifyRecoveryKeySubmit = async (e) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+
+    if (!recoveryIdentifier.trim() || !recoveryKeyInput.trim()) {
+      setForgotError("Please provide your username/email and recovery key.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const data = await verifyRecoveryKey({
+        identifier: recoveryIdentifier.trim(),
+        recoveryKey: recoveryKeyInput.trim()
+      });
+      if (data.success && data.token) {
+        setRecoveryVerifiedToken(data.token);
+        setForgotSuccess("Identity verified. Please create a new password.");
+      } else {
+        setForgotError(data.message || "Invalid recovery key or account identifier.");
+      }
+    } catch (error) {
+      const errMsg = error.response?.data?.message || error.message || "Invalid recovery key or account identifier.";
+      setForgotError(errMsg);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPasswordWithRecoveryKeySubmit = async (e) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+
+    if (recoveryNewPassword.length < 6) {
+      setForgotError("New password must be at least 6 characters.");
+      return;
+    }
+    if (recoveryNewPassword !== recoveryConfirmPassword) {
+      setForgotError("Passwords do not match.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const data = await resetPasswordWithRecoveryKey({
+        token: recoveryVerifiedToken,
+        newPassword: recoveryNewPassword
+      });
+      if (data.success) {
+        resetForgotFlow();
+        setLocalSuccessMessage(data.message || "Password reset successful! You can now log in.");
+      } else {
+        setForgotError(data.message || "Failed to reset password.");
+      }
+    } catch (error) {
+      const errMsg = error.response?.data?.message || error.message || "Failed to reset password.";
+      setForgotError(errMsg);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   const isPasswordValid = registerData.password.length >= 6;
   const activeError = activeMode === "login" ? loginError || googleError : registerError || googleError;
   const activeLoading = activeMode === "login" ? loginLoading || googleLoading : registerLoading || googleLoading;
@@ -388,8 +488,46 @@ function Auth({ mode }) {
                   className="auth-form-motion-wrapper"
                 >
                   <div className="auth-brand-header">
-                    <h2 className="auth-form-title">Forgot Password</h2>
+                    <h2 className="auth-form-title">
+                      {recoveryVerifiedToken
+                        ? "Identity Verified"
+                        : "Forgot your password?"}
+                    </h2>
+                    <p className="auth-form-subtitle-small">
+                      {recoveryVerifiedToken
+                        ? "Create a new secure password to regain access."
+                        : "Choose how you'd like to recover access to your CodeExpo account."}
+                    </p>
                   </div>
+
+                  {!recoveryVerifiedToken && (
+                    <div className="recovery-method-toggle-container">
+                      <button
+                        type="button"
+                        className={`recovery-toggle-pill ${forgotMode === "email" ? "active" : ""}`}
+                        onClick={() => {
+                          setForgotMode("email");
+                          setForgotError(null);
+                          setForgotSuccess(null);
+                        }}
+                      >
+                        <Mail size={13} />
+                        <span>Recover with Email</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`recovery-toggle-pill ${forgotMode === "recovery-key" ? "active" : ""}`}
+                        onClick={() => {
+                          setForgotMode("recovery-key");
+                          setForgotError(null);
+                          setForgotSuccess(null);
+                        }}
+                      >
+                        <Key size={13} />
+                        <span>Use Recovery Key</span>
+                      </button>
+                    </div>
+                  )}
 
                   {forgotError && (
                     <div className="error-alert-banner">
@@ -405,42 +543,177 @@ function Auth({ mode }) {
                     </div>
                   )}
 
-                  <form className="auth-form-main" onSubmit={handleForgotSubmit}>
-                    <div className="form-group">
-                      <label htmlFor="forgotEmail" className="form-label">Email Address</label>
-                      <div className="input-container">
-                        <input
-                          id="forgotEmail"
-                          type="email"
-                          name="email"
-                          placeholder="name@example.com"
-                          value={forgotEmail}
-                          onChange={(e) => setForgotEmail(e.target.value)}
-                          required
-                          className="form-input-underline"
-                          autoComplete="email"
-                        />
-                        {isForgotEmailValid && <span className="input-valid-tick">✓</span>}
+                  {/* FLOW 1: EMAIL RECOVERY */}
+                  {!recoveryVerifiedToken && forgotMode === "email" && (
+                    <form className="auth-form-main" onSubmit={handleForgotSubmit}>
+                      <div className="form-group">
+                        <label htmlFor="forgotEmail" className="form-label">Email Address</label>
+                        <div className="input-container">
+                          <input
+                            id="forgotEmail"
+                            type="email"
+                            name="email"
+                            placeholder="name@example.com"
+                            value={forgotEmail}
+                            onChange={(e) => setForgotEmail(e.target.value)}
+                            required
+                            className="form-input-underline"
+                            autoComplete="email"
+                          />
+                          {isForgotEmailValid && <span className="input-valid-tick">✓</span>}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="auth-action-row">
-                      <button type="submit" className="btn-capsule-filled" disabled={forgotLoading}>
-                        {forgotLoading ? "Sending..." : "Send Link"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsForgotPassword(false);
-                          setForgotError(null);
-                          setForgotSuccess(null);
-                        }}
-                        className="btn-capsule-outlined"
-                      >
-                        Back
-                      </button>
-                    </div>
-                  </form>
+                      <div className="auth-action-row">
+                        <button type="submit" className="btn-capsule-filled" disabled={forgotLoading}>
+                          {forgotLoading ? "Sending..." : "Send Link"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetForgotFlow}
+                          className="btn-capsule-outlined"
+                        >
+                          Back
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* FLOW 2: RECOVERY KEY VERIFICATION */}
+                  {!recoveryVerifiedToken && forgotMode === "recovery-key" && (
+                    <form className="auth-form-main" onSubmit={handleVerifyRecoveryKeySubmit}>
+                      <div className="form-group">
+                        <label htmlFor="recoveryIdentifier" className="form-label">Username or Email</label>
+                        <div className="input-container">
+                          <input
+                            id="recoveryIdentifier"
+                            type="text"
+                            placeholder="Enter your email or username"
+                            value={recoveryIdentifier}
+                            onChange={(e) => setRecoveryIdentifier(e.target.value)}
+                            required
+                            className="form-input-underline"
+                            autoComplete="username"
+                          />
+                          {recoveryIdentifier.trim().length >= 3 && <span className="input-valid-tick">✓</span>}
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="recoveryKeyInput" className="form-label">Recovery Key</label>
+                        <div className="input-container">
+                          <input
+                            id="recoveryKeyInput"
+                            type="text"
+                            placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"
+                            value={recoveryKeyInput}
+                            onChange={handleRecoveryKeyInputChange}
+                            required
+                            className="form-input-underline font-monospace"
+                            autoComplete="off"
+                            spellCheck="false"
+                            maxLength={24}
+                          />
+                          {recoveryKeyInput.replace(/[^A-Za-z0-9]/g, "").length >= 20 && <span className="input-valid-tick">✓</span>}
+                        </div>
+                        <span className="field-hint-text">
+                          Enter your 20-character offline recovery key.
+                        </span>
+                      </div>
+
+                      <div className="auth-action-row">
+                        <button type="submit" className="btn-capsule-filled" disabled={forgotLoading}>
+                          {forgotLoading ? "Verifying..." : "Verify Recovery Key"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetForgotFlow}
+                          className="btn-capsule-outlined"
+                        >
+                          Back
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* FLOW 3: IDENTITY VERIFIED -> RESET PASSWORD */}
+                  {recoveryVerifiedToken && (
+                    <form className="auth-form-main" onSubmit={handleResetPasswordWithRecoveryKeySubmit}>
+                      <div className="identity-verified-badge-row">
+                        <div className="id-badge-pill">
+                          <ShieldCheck size={14} />
+                          <span>Offline Identity Verified</span>
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="recoveryNewPassword" className="form-label">Create New Password</label>
+                        <div className="input-container">
+                          <input
+                            id="recoveryNewPassword"
+                            type={showRecoveryNewPass ? "text" : "password"}
+                            placeholder="Enter new password (min 6 chars)"
+                            value={recoveryNewPassword}
+                            onChange={(e) => setRecoveryNewPassword(e.target.value)}
+                            required
+                            className="form-input-underline"
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            className="input-icon-right-toggle"
+                            onClick={() => setShowRecoveryNewPass(!showRecoveryNewPass)}
+                          >
+                            {showRecoveryNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                          {recoveryNewPassword.length >= 6 && <span className="input-valid-tick with-icon">✓</span>}
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="recoveryConfirmPassword" className="form-label">Confirm New Password</label>
+                        <div className="input-container">
+                          <input
+                            id="recoveryConfirmPassword"
+                            type={showRecoveryConfirmPass ? "text" : "password"}
+                            placeholder="Confirm new password"
+                            value={recoveryConfirmPassword}
+                            onChange={(e) => setRecoveryConfirmPassword(e.target.value)}
+                            required
+                            className="form-input-underline"
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            className="input-icon-right-toggle"
+                            onClick={() => setShowRecoveryConfirmPass(!showRecoveryConfirmPass)}
+                          >
+                            {showRecoveryConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                          {recoveryConfirmPassword && recoveryNewPassword === recoveryConfirmPassword && (
+                            <span className="input-valid-tick with-icon">✓</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="auth-action-row">
+                        <button
+                          type="submit"
+                          className="btn-capsule-filled"
+                          disabled={forgotLoading || recoveryNewPassword.length < 6 || recoveryNewPassword !== recoveryConfirmPassword}
+                        >
+                          {forgotLoading ? "Resetting..." : "Reset Password"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetForgotFlow}
+                          className="btn-capsule-outlined"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </motion.div>
               ) : activeMode === "login" ? (
                 <motion.div

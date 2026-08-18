@@ -700,25 +700,34 @@
 .profile-activity-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
 }
 
 .profile-activity-item {
-  padding: 10px 14px;
-  background-color: var(--ce-surface-card);
-  border: 1px solid var(--ce-border);
-  border-radius: 8px;
-  font-size: 0.75rem;
+  padding: 12px 16px;
+  background-color: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.06));
+  border-radius: 10px;
+  font-size: 0.78rem;
   color: var(--ce-text);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background-color var(--transition-fast) ease, border-color var(--transition-fast) ease;
+  transition: background-color 0.2s ease;
 }
 
 .profile-activity-item:hover {
-  background-color: var(--ce-hover);
-  border-color: var(--ce-primary);
+  background-color: rgba(255, 255, 255, 0.055);
+}
+
+.light .profile-activity-item {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.light .profile-activity-item:hover {
+  background-color: rgba(0, 0, 0, 0.045);
 }
 
 @media (max-width: 576px) {
@@ -1448,33 +1457,14 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.25s ease;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-sizing: border-box;
 }
 
 .premium-room-card:hover {
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(20, 21, 38, 0.85);
-  transform: translateY(-4px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(99, 102, 241, 0.18);
-}
-
-/* CSS-only customized language glows using :has() selector */
-.premium-room-card:has(.javascript):hover {
-  border-color: rgba(245, 158, 11, 0.55);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(245, 158, 11, 0.2);
-}
-
-.premium-room-card:has(.python):hover {
-  border-color: rgba(59, 130, 246, 0.55);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(59, 130, 246, 0.2);
-}
-
-.premium-room-card:has(.cpp):hover {
-  border-color: rgba(6, 182, 212, 0.55);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(6, 182, 212, 0.2);
+  background: rgba(22, 24, 44, 0.85);
 }
 
 /* Header Premium */
@@ -1820,9 +1810,7 @@
 }
 
 .light .premium-room-card:hover {
-  background: #ffffff;
-  border-color: rgba(99, 102, 241, 0.38);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.07), 0 0 20px rgba(99, 102, 241, 0.06);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .light .premium-room-title-wrapper .profile-room-card-title {

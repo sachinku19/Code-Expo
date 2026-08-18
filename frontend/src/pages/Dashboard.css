@@ -219,14 +219,12 @@
   align-items: center;
   gap: 18px;
   box-shadow: var(--ce-card-shadow);
-  transition: border-color var(--transition-smooth), box-shadow var(--transition-smooth), background-color var(--transition-smooth), transform var(--transition-smooth);
+  transition: background-color var(--transition-smooth);
   position: relative;
   overflow: hidden;
 }
 
 .compact-stat-card:hover {
-  border-color: var(--ce-primary);
-  box-shadow: var(--ce-card-shadow-hover);
   background-color: var(--ce-hover);
   transform: none !important;
 }
@@ -393,12 +391,11 @@
   justify-content: space-between;
   min-height: 190px;
   box-shadow: var(--ce-card-shadow);
-  transition: border-color var(--transition-smooth), box-shadow var(--transition-smooth), background-color var(--transition-smooth), transform var(--transition-smooth);
+  transition: background-color var(--transition-smooth);
 }
 
 .active-room-card:hover {
-  border-color: var(--ce-primary);
-  box-shadow: var(--ce-card-shadow-hover);
+  background-color: var(--ce-hover, rgba(255, 255, 255, 0.04));
 }
 
 .room-card-header-main {
@@ -3441,14 +3438,13 @@
   flex-direction: column;
   gap: 16px;
   box-shadow: var(--ce-card-shadow);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.25s ease;
   position: relative;
   text-align: left;
 }
 
 .active-room-card:hover {
-  border-color: var(--ce-primary);
-  box-shadow: var(--ce-card-shadow-hover);
+  background-color: var(--ce-hover);
 }
 
 .room-card-top-row {
@@ -5560,25 +5556,34 @@
 .profile-activity-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
 }
 
 .profile-activity-item {
-  padding: 10px 14px;
-  background-color: var(--ce-surface-card);
-  border: 1px solid var(--ce-border);
-  border-radius: 8px;
-  font-size: 0.78rem;
+  padding: 12px 16px;
+  background-color: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.06));
+  border-radius: 10px;
+  font-size: 0.8rem;
   color: var(--ce-text);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background-color var(--transition-fast) ease, border-color var(--transition-fast) ease;
+  transition: background-color 0.2s ease;
 }
 
 .profile-activity-item:hover {
-  background-color: var(--ce-hover);
-  border-color: var(--ce-primary);
+  background-color: rgba(255, 255, 255, 0.055);
+}
+
+.light .profile-activity-item {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.light .profile-activity-item:hover {
+  background-color: rgba(0, 0, 0, 0.045);
 }
 
 @media (max-width: 576px) {
@@ -9095,8 +9100,7 @@ tier-badge.master {
 }
 
 .recent-joined-card:hover {
-  border-color: var(--ce-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: var(--ce-hover);
 }
 
 .joined-card-top-content {
@@ -10641,6 +10645,10 @@ tier-badge.master {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03) !important;
 }
 
+.light .compact-stat-card:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
 .light .stat-card-val {
   color: var(--ce-text) !important;
 }
@@ -10802,13 +10810,10 @@ tier-badge.master {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
 }
 
 .profile-post-card-item:hover {
-  transform: translateY(-4px);
-  border-color: rgba(170, 59, 255, 0.35);
-  box-shadow: 0 12px 40px rgba(170, 59, 255, 0.18);
   background: rgba(20, 20, 32, 0.55);
 }
 
@@ -10819,8 +10824,6 @@ tier-badge.master {
 }
 
 .light .profile-post-card-item:hover {
-  border-color: rgba(139, 92, 246, 0.35);
-  box-shadow: 0 16px 40px rgba(139, 92, 246, 0.12);
   background: rgba(255, 255, 255, 0.9);
 }
 
@@ -10875,39 +10878,92 @@ tier-badge.master {
 }
 
 /* Badge styling */
+.profile-card-badge,
 .profile-card-type-badge {
-  font-size: 0.68rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--ce-text);
+  letter-spacing: 0.6px;
+  line-height: 1;
+  padding: 4px 9px;
+  border-radius: 20px;
   text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
 }
 
+.profile-card-badge-icon {
+  flex-shrink: 0;
+  stroke-width: 2.2px;
+}
+
+.profile-card-badge.code,
 .profile-card-type-badge.code {
   color: #a5b4fc;
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(129, 140, 248, 0.28);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12);
 }
 
+.profile-card-badge.image,
 .profile-card-type-badge.image {
   color: #34d399;
-  background: rgba(52, 211, 153, 0.1);
-  border-color: rgba(52, 211, 153, 0.2);
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
 }
 
+.profile-card-badge.video,
 .profile-card-type-badge.video {
   color: #fb7185;
-  background: rgba(251, 113, 133, 0.1);
-  border-color: rgba(251, 113, 133, 0.2);
+  background: rgba(244, 63, 94, 0.14);
+  border: 1px solid rgba(251, 113, 133, 0.28);
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.12);
 }
 
+.profile-card-badge.text,
 .profile-card-type-badge.text {
-  color: #fbbf24;
-  background: rgba(251, 191, 36, 0.1);
-  border-color: rgba(251, 191, 36, 0.2);
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.12);
+}
+
+/* Light Mode Overrides for badges */
+.light .profile-card-badge.code,
+.light .profile-card-type-badge.code {
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.08);
+}
+
+.light .profile-card-badge.image,
+.light .profile-card-type-badge.image {
+  color: #059669;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.08);
+}
+
+.light .profile-card-badge.video,
+.light .profile-card-type-badge.video {
+  color: #e11d48;
+  background: rgba(244, 63, 94, 0.1);
+  border-color: rgba(244, 63, 94, 0.25);
+  box-shadow: 0 1px 4px rgba(244, 63, 94, 0.08);
+}
+
+.light .profile-card-badge.text,
+.light .profile-card-type-badge.text {
+  color: #0284c7;
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 1px 4px rgba(56, 189, 248, 0.08);
 }
 
 /* Card Body */
@@ -10975,12 +11031,29 @@ tier-badge.master {
 }
 
 /* Image preview */
-.profile-card-image-preview {
+.profile-card-image-wrapper {
   width: 100%;
   height: 160px;
   border-radius: 10px;
-  object-fit: cover;
+  overflow: hidden;
+  position: relative;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #09090f;
+  flex-shrink: 0;
+}
+
+.profile-card-image-preview {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.profile-post-card-item:hover .profile-card-image-preview {
+  transform: scale(1.08);
 }
 
 .profile-card-image-caption {
@@ -12478,8 +12551,7 @@ tier-badge.master {
 
   .active-room-card:hover,
   .trending-room-card:hover {
-    border-color: #f59e0b !important;
-    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.25) !important;
+    background-color: rgba(255, 255, 255, 0.04);
   }
 
   /* Fix Inner Content Overflow & Text Truncation */
@@ -13050,46 +13122,6 @@ select option {
   color: #6b21a8;
 }
 
-/* Stat card icon wrappers hover indicator overrides */
-.compact-stat-card:hover .blue-theme-wrapper {
-  background-color: var(--ce-primary) !important;
-  border-color: var(--ce-primary) !important;
-  color: #ffffff !important;
-}
-
-.compact-stat-card:hover .blue-theme-wrapper svg {
-  color: #ffffff !important;
-}
-
-.compact-stat-card:hover .green-theme-wrapper {
-  background-color: var(--ce-success) !important;
-  border-color: var(--ce-success) !important;
-  color: #ffffff !important;
-}
-
-.compact-stat-card:hover .green-theme-wrapper svg {
-  color: #ffffff !important;
-}
-
-.compact-stat-card:hover .purple-theme-wrapper {
-  background-color: var(--ce-primary) !important;
-  border-color: var(--ce-primary) !important;
-  color: #ffffff !important;
-}
-
-.compact-stat-card:hover .purple-theme-wrapper svg {
-  color: #ffffff !important;
-}
-
-.compact-stat-card:hover .rank-icon-wrapper {
-  background-color: var(--ce-primary) !important;
-  border-color: var(--ce-primary) !important;
-  color: #ffffff !important;
-}
-
-.compact-stat-card:hover .rank-icon-wrapper svg {
-  color: #ffffff !important;
-}
 
 /* Quick action arrows dark mode styling */
 .create-room-card .quick-action-arrow {
@@ -13566,33 +13598,14 @@ select option {
   display: flex;
   flex-direction: column;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.25s ease;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-sizing: border-box;
 }
 
 .premium-room-card:hover {
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(20, 21, 38, 0.85);
-  transform: translateY(-4px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(99, 102, 241, 0.18);
-}
-
-/* CSS-only customized language glows using :has() selector */
-.premium-room-card:has(.javascript):hover {
-  border-color: rgba(245, 158, 11, 0.55);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(245, 158, 11, 0.2);
-}
-
-.premium-room-card:has(.python):hover {
-  border-color: rgba(59, 130, 246, 0.55);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(59, 130, 246, 0.2);
-}
-
-.premium-room-card:has(.cpp):hover {
-  border-color: rgba(6, 182, 212, 0.55);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(6, 182, 212, 0.2);
+  background: rgba(22, 24, 44, 0.85);
 }
 
 /* Header Premium */
@@ -13938,9 +13951,7 @@ select option {
 }
 
 .light .premium-room-card:hover {
-  background: #ffffff;
-  border-color: rgba(99, 102, 241, 0.38);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.07), 0 0 20px rgba(99, 102, 241, 0.06);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .light .premium-room-title-wrapper .profile-room-card-title {
@@ -14091,13 +14102,11 @@ select option {
   flex-direction: column;
   justify-content: space-between;
   min-height: 180px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.25s ease;
 }
 
 .bottom-highlight-card:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(168, 85, 247, 0.2);
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .highlight-card-header {
@@ -14345,9 +14354,7 @@ select option {
 }
 
 .light .bottom-highlight-card:hover {
-  background: #ffffff;
-  border-color: rgba(168, 85, 247, 0.35);
-  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.08);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .light .highlight-card-header h4 {
@@ -14756,7 +14763,7 @@ select option {
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   border-radius: 20px !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: background-color 0.25s ease !important;
 }
 
 .light .active-room-card {
@@ -14766,14 +14773,13 @@ select option {
 }
 
 .active-room-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(124, 92, 255, 0.4) !important;
-  box-shadow: 0 12px 40px rgba(124, 92, 255, 0.12) !important;
+  background: rgba(22, 22, 38, 0.65) !important;
+  transform: none !important;
 }
 
 .light .active-room-card:hover {
-  border-color: rgba(124, 92, 255, 0.3) !important;
-  box-shadow: 0 12px 40px rgba(124, 92, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  transform: none !important;
 }
 
 /* Lang Icon Square Badge premium style */

@@ -1120,3 +1120,115 @@ input[name="password"] {
     display: none;
   }
 }
+
+/* ==========================================================================
+   Account Recovery & Forgot Password Enhancements (Clean & Solid)
+   ========================================================================== */
+
+.auth-form-subtitle-small {
+  font-size: 0.8rem;
+  color: #8f95a8;
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+
+.light .auth-form-subtitle-small {
+  color: #64748b;
+}
+
+.recovery-method-toggle-container {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 18px;
+  gap: 3px;
+}
+
+.light .recovery-method-toggle-container {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.recovery-toggle-pill {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #8f95a8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.light .recovery-toggle-pill {
+  color: #64748b;
+}
+
+.recovery-toggle-pill:hover {
+  color: #ffffff;
+}
+
+.light .recovery-toggle-pill:hover {
+  color: #0f172a;
+}
+
+.recovery-toggle-pill.active {
+  background: #25283b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.light .recovery-toggle-pill.active {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.font-monospace {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace !important;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.field-hint-text {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 4px;
+  display: block;
+}
+
+.identity-verified-badge-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.id-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #34d399;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.light .id-badge-pill {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #059669;
+}

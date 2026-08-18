@@ -11,7 +11,7 @@ const setupInterceptors = (instance) => {
     (error) => {
       if (error.response && error.response.status === 401) {
         const url = error.config?.url || "";
-        const isAuthSubmit = url.includes("/auth/login") || url.includes("/auth/register") || url.includes("/auth/forgot-password");
+        const isAuthSubmit = url.includes("/auth/login") || url.includes("/auth/register") || url.includes("/auth/forgot-password") || url.includes("/auth/verify-recovery-key") || url.includes("/auth/reset-password");
 
         // Do not auto-logout if the 401 was a failed password/credential check during login submit or if we are already logging out
         if (!isAuthSubmit && !window.isLoggingOut) {
@@ -115,5 +115,35 @@ export const forgotPassword = async (emailData) => {
 
 export const resetPassword = async (token, passwordData) => {
   const response = await API.post(`/auth/reset-password/${token}`, passwordData);
+  return response.data;
+};
+
+export const getRecoveryKeyStatus = async () => {
+  const token = localStorage.getItem("token");
+  const response = await API.get("/auth/recovery-key-status", {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+};
+
+export const generateRecoveryKey = async () => {
+  const token = localStorage.getItem("token");
+  const response = await API.post("/auth/generate-recovery-key", {}, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+};
+
+export const verifyRecoveryKey = async (payload) => {
+  const response = await API.post("/auth/verify-recovery-key", payload);
+  return response.data;
+};
+
+export const resetPasswordWithRecoveryKey = async (payload) => {
+  const response = await API.post("/auth/reset-password-with-key", payload);
   return response.data;
 };

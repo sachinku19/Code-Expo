@@ -80,13 +80,17 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const user = await User.create({
+    const userPayload = {
       displayName: nameProvided.trim(),
-      username: null, // Username setup required on first login/onboarding
       email,
       password: hashedPassword,
       isVerified: true
-    });
+    };
+    if (username && /^[a-z0-9_]{3,20}$/i.test(username.trim())) {
+      userPayload.username = username.toLowerCase().trim();
+    }
+
+    const user = await User.create(userPayload);
 
     res.status(200).json({
       success: true,
@@ -704,6 +708,226 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// Helper to generate a 20-character uppercase alphanumeric recovery key in 5 blocks (e.g. CX7K-92MP-Q8RT-4LWX-N6KP)
+const generateSecureRecoveryKeyString = () => {
+  const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // High entropy, removes easily confused characters like 0/O, 1/I
+  const length = 20;
+  const bytes = crypto.randomBytes(length);
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars[bytes[i] % chars.length];
+  }
+  return result.match(/.{1,4}/g).join("-");
+};
+
+// Normalizer for recovery key inputs (strips whitespace and hyphens, uppercase)
+const normalizeRecoveryKey = (key) => {
+  if (!key) return "";
+  return key.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+};
+
+const getRecoveryKeyStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const hasKey = !!user.recoveryKeyHash && user.recoveryKeyStatus === "active";
+    res.status(200).json({
+      success: true,
+      hasRecoveryKey: hasKey,
+      status: hasKey ? "active" : "unconfigured",
+      createdAt: user.recoveryKeyCreatedAt || null,
+      lastRegeneratedAt: user.recoveryKeyLastRegeneratedAt || null
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to retrieve recovery key status"
+    });
+  }
+};
+
+const generateRecoveryKey = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const rawKey = generateSecureRecoveryKeyString();
+    const normalizedKey = normalizeRecoveryKey(rawKey);
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedKey = await bcrypt.hash(normalizedKey, salt);
+
+    const now = new Date();
+    user.recoveryKeyHash = hashedKey;
+    if (!user.recoveryKeyCreatedAt) {
+      user.recoveryKeyCreatedAt = now;
+    }
+    user.recoveryKeyLastRegeneratedAt = now;
+    user.recoveryKeyStatus = "active";
+    user.failedRecoveryAttempts = 0;
+    user.recoveryLockUntil = null;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Recovery key generated successfully.",
+      recoveryKey: rawKey,
+      createdAt: user.recoveryKeyCreatedAt,
+      lastRegeneratedAt: user.recoveryKeyLastRegeneratedAt
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to generate recovery key"
+    });
+  }
+};
+
+const verifyRecoveryKey = async (req, res) => {
+  try {
+    const { identifier, recoveryKey } = req.body;
+
+    if (!identifier || !recoveryKey) {
+      return res.status(400).json({
+        success: false,
+        message: "Identifier (email/username) and recovery key are required."
+      });
+    }
+
+    const cleanIdentifier = identifier.trim().toLowerCase();
+    const normalizedInputKey = normalizeRecoveryKey(recoveryKey);
+
+    if (normalizedInputKey.length < 16) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid recovery key or account identifier."
+      });
+    }
+
+    const user = await User.findOne({
+      $or: [
+        { email: cleanIdentifier },
+        { username: cleanIdentifier }
+      ]
+    });
+
+    // Uniform response to avoid account enumeration
+    if (!user || !user.recoveryKeyHash || user.recoveryKeyStatus !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid recovery key or account identifier."
+      });
+    }
+
+    // Check rate limiting / lockout
+    if (user.recoveryLockUntil && user.recoveryLockUntil > Date.now()) {
+      const minutesLeft = Math.ceil((user.recoveryLockUntil - Date.now()) / (60 * 1000));
+      return res.status(429).json({
+        success: false,
+        message: `Too many failed recovery attempts. Account recovery is temporarily locked for ${minutesLeft} more minute(s).`
+      });
+    }
+
+    // Verify key hash
+    const isMatch = await bcrypt.compare(normalizedInputKey, user.recoveryKeyHash);
+    if (!isMatch) {
+      user.failedRecoveryAttempts = (user.failedRecoveryAttempts || 0) + 1;
+      if (user.failedRecoveryAttempts >= 5) {
+        user.recoveryLockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15-minute lock
+      }
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        message: "Invalid recovery key or account identifier."
+      });
+    }
+
+    // Verification succeeded: reset failed attempts counter and issue short-lived recovery token (15 mins)
+    user.failedRecoveryAttempts = 0;
+    user.recoveryLockUntil = null;
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Identity verified successfully.",
+      token: rawToken
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to verify recovery key"
+    });
+  }
+};
+
+const resetPasswordWithRecoveryKey = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Token and new password are required."
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters."
+      });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Recovery session has expired or is invalid. Please verify your recovery key again."
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    user.failedRecoveryAttempts = 0;
+    user.recoveryLockUntil = null;
+    user.isVerified = true;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successful! You can now sign in with your new password."
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to reset password"
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -717,5 +941,9 @@ module.exports = {
   googleLogin,
   getGoogleConfig,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getRecoveryKeyStatus,
+  generateRecoveryKey,
+  verifyRecoveryKey,
+  resetPasswordWithRecoveryKey
 }
