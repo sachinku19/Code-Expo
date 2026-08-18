@@ -49,13 +49,16 @@ const router = express.Router();
 
 const optional_auth = async (req, res, next) => {
   try {
-    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-      await auth_protect(req, res, next);
-    } else {
-      next();
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      if (token && token !== "null" && token !== "undefined" && token.trim() !== "") {
+        return auth_protect(req, res, next);
+      }
     }
+    return next();
   } catch (e) {
-    next();
+    return next();
   }
 };
 

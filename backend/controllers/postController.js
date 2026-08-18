@@ -211,8 +211,8 @@ const getPosts = async (req, res) => {
     }
 
     const posts = await Post.find(query)
-      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount subscription")
-      .populate({ path: "comments.user", select: "username email avatar subscription" })
+      .populate("author", "username displayName avatar title developerLevel status reputationScore executionsCount subscription")
+      .populate({ path: "comments.user", select: "username displayName avatar title subscription" })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -525,8 +525,8 @@ const getPostById = async (req, res) => {
       { $inc: { viewsCount: 1 } },
       { returnDocument: 'after' }
     )
-      .populate("author", "username email avatar title developerLevel status reputationScore executionsCount subscription")
-      .populate({ path: "comments.user", select: "username email avatar subscription" })
+      .populate("author", "username displayName avatar title developerLevel status reputationScore executionsCount subscription")
+      .populate({ path: "comments.user", select: "username displayName avatar title subscription" })
       .lean();
 
     const isAuthor = req.user && String(post.author?._id || post.author) === String(req.user._id);

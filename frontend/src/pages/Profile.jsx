@@ -27,8 +27,43 @@ import {
 import ProfileAvatar from "../components/ProfileAvatar";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
 import EditRoomModal from "../components/modals/EditRoomModal";
-import socket from "../socket/socket";
+import { getAvatarColor, getAvatarInitial } from "../utils/avatarUtils";
 import "./Profile.css";
+
+const ProfileGithubIcon = ({ size = 13 }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+    <path d="M9 18c-4.51 2-5-2-7-2" />
+  </svg>
+);
+
+const ProfileLinkedinIcon = ({ size = 13 }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+    <rect width="4" height="12" x="2" y="9" />
+    <circle cx="4" cy="4" r="2" />
+  </svg>
+);
 
 const INDIA_STATES = [
   { name: "J&K", d: "M 195,15 L 210,32 L 202,72 L 175,72 L 182,45 Z", labelX: 192, labelY: 42 },
@@ -535,20 +570,6 @@ const Profile = () => {
     setShowJoinConfirmModal(true);
   };
 
-  const getAvatarColor = (name) => {
-    const colors = [
-      "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
-      "#ec4899", "#14b8a6", "#6366f1", "#06b6d4", "#84cc16"
-    ];
-    if (!name) return colors[0];
-    const cleanName = String(name).toLowerCase();
-    let hash = 0;
-    for (let i = 0; i < cleanName.length; i++) {
-      hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
-
   const getBadgeStyle = (title) => {
     const t = (title || "").toLowerCase();
     if (t === "system admin") {
@@ -815,6 +836,47 @@ const Profile = () => {
                         {lang}
                       </span>
                     ))}
+                  </div>
+                )}
+
+                {Boolean(profileUser.githubUrl || profileUser.linkedinUrl || profileUser.portfolioUrl) && (
+                  <div className="profile-socials-row" style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "10px", justifyContent: "center", flexWrap: "wrap" }}>
+                    {profileUser.githubUrl && (
+                      <a
+                        href={profileUser.githubUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="profile-social-badge"
+                        title="GitHub Profile"
+                      >
+                        <ProfileGithubIcon size={12} />
+                        <span>GitHub</span>
+                      </a>
+                    )}
+                    {profileUser.linkedinUrl && (
+                      <a
+                        href={profileUser.linkedinUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="profile-social-badge"
+                        title="LinkedIn Profile"
+                      >
+                        <ProfileLinkedinIcon size={12} />
+                        <span>LinkedIn</span>
+                      </a>
+                    )}
+                    {profileUser.portfolioUrl && (
+                      <a
+                        href={profileUser.portfolioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="profile-social-badge"
+                        title="Portfolio Website"
+                      >
+                        <Globe size={12} />
+                        <span>Portfolio</span>
+                      </a>
+                    )}
                   </div>
                 )}
                 <button className="profile-edit-trigger-btn" onClick={startEditingProfile}>

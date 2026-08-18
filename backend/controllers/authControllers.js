@@ -427,7 +427,7 @@ const getPublicUserProfile = async (req, res) => {
       : { username: cleanHandle };
 
     const userObj = await User.findOne(query)
-      .select('displayName username avatar title bio programmingLanguages status executionsCount followersCount followingCount location codingHours reputationScore contributionScore developerLevel projectsShared')
+      .select('displayName username avatar title bio programmingLanguages status executionsCount followersCount followingCount location codingHours reputationScore contributionScore developerLevel projectsShared githubUrl linkedinUrl portfolioUrl')
       .lean();
 
     if (!userObj) {

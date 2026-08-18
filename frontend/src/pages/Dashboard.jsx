@@ -24,6 +24,43 @@ import socket from "../socket/socket";
 import { useAuth } from "../context/AuthContext";
 import { getUserProfile, changePassword, getPublicUserProfile } from "../services/authService";
 import SecuritySettings from "../components/settings/SecuritySettings";
+import AccountSettings from "../components/settings/AccountSettings";
+import { getAvatarColor, getAvatarInitial } from "../utils/avatarUtils";
+
+const DashboardGithubIcon = ({ size = 13 }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+    <path d="M9 18c-4.51 2-5-2-7-2" />
+  </svg>
+);
+
+const DashboardLinkedinIcon = ({ size = 13 }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+    <rect width="4" height="12" x="2" y="9" />
+    <circle cx="4" cy="4" r="2" />
+  </svg>
+);
 import ReportUserModal from "../components/social/ReportUserModal";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
 import EditRoomModal from "../components/modals/EditRoomModal";
@@ -153,20 +190,6 @@ const getPostSnippet = (targetPost) => {
     return plainText.slice(0, 30) + "...";
   }
   return plainText || "post";
-};
-
-const getAvatarColor = (name) => {
-  const colors = [
-    "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
-    "#ec4899", "#14b8a6", "#6366f1", "#06b6d4", "#84cc16"
-  ];
-  if (!name) return colors[0];
-  const cleanName = String(name).toLowerCase();
-  let hash = 0;
-  for (let i = 0; i < cleanName.length; i++) {
-    hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
 };
 
 const getBannerGradient = (username) => {
@@ -1787,7 +1810,7 @@ function Dashboard() {
   }, [settingsTab]);
 
   // Theme synchronization state
-  const { resolvedTheme: activeTheme, setTheme: setGlobalTheme } = useTheme();
+  const { theme: currentThemeMode, resolvedTheme: activeTheme, setTheme: setGlobalTheme } = useTheme();
 
   const handleThemeChange = (newTheme) => {
     setGlobalTheme(newTheme);
@@ -5780,9 +5803,9 @@ function Dashboard() {
                                   <span className="dev-online-status-badge" />
                                 </div>
 
-                                <div className="dev-meta-column">
-                                  <span className="dev-name-text">{dev.username}</span>
-                                  <span className="dev-bio-text">{dev.bio || "No bio yet"}</span>
+                                <div className="dev-meta-column" style={{ minWidth: 0, overflow: "hidden" }}>
+                                  <span className="dev-name-text" title={dev.username} style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dev.username}</span>
+                                  <span className="dev-bio-text" title={dev.bio || "No bio yet"} style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dev.bio || "No bio yet"}</span>
                                 </div>
 
                                 <span className="dev-far-right-online-dot" title="Online now" />
@@ -10492,6 +10515,52 @@ function Dashboard() {
                                 ))}
                               </div>
                             )}
+
+                            {/* Social / Professional Links */}
+                            {Boolean(
+                              (viewingUserProfile ? viewingUserProfile.githubUrl : user?.githubUrl) ||
+                              (viewingUserProfile ? viewingUserProfile.linkedinUrl : user?.linkedinUrl) ||
+                              (viewingUserProfile ? viewingUserProfile.portfolioUrl : user?.portfolioUrl)
+                            ) && (
+                                <div className="profile-socials-row" style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                                  {(viewingUserProfile ? viewingUserProfile.githubUrl : user?.githubUrl) && (
+                                    <a
+                                      href={viewingUserProfile ? viewingUserProfile.githubUrl : user.githubUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="profile-social-badge"
+                                      title="GitHub Profile"
+                                    >
+                                      <DashboardGithubIcon size={12} />
+                                      <span>GitHub</span>
+                                    </a>
+                                  )}
+                                  {(viewingUserProfile ? viewingUserProfile.linkedinUrl : user?.linkedinUrl) && (
+                                    <a
+                                      href={viewingUserProfile ? viewingUserProfile.linkedinUrl : user.linkedinUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="profile-social-badge"
+                                      title="LinkedIn Profile"
+                                    >
+                                      <DashboardLinkedinIcon size={12} />
+                                      <span>LinkedIn</span>
+                                    </a>
+                                  )}
+                                  {(viewingUserProfile ? viewingUserProfile.portfolioUrl : user?.portfolioUrl) && (
+                                    <a
+                                      href={viewingUserProfile ? viewingUserProfile.portfolioUrl : user.portfolioUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="profile-social-badge"
+                                      title="Portfolio Website"
+                                    >
+                                      <Globe size={12} />
+                                      <span>Portfolio</span>
+                                    </a>
+                                  )}
+                                </div>
+                              )}
                             {viewingUserProfile && String(viewingUserProfile._id) !== String(user?.id || user?._id) && (() => {
                               const targetFollowers = viewingUserProfile.followers || [];
                               const targetFollowing = viewingUserProfile.following || [];
@@ -11366,47 +11435,7 @@ function Dashboard() {
 
                   <div className="settings-pane-content">
                     {settingsTab === "account" && (
-                      <div className="settings-pane-form">
-                        <h3>Account Profile</h3>
-                        <p>Manage your account name, email listings, and developer bio.</p>
-                        <div className="settings-form-row">
-                          <div className="settings-form-field flex-1">
-                            <label>Username</label>
-                            <input type="text" value={user?.username || ""} disabled />
-                          </div>
-                          <div className="settings-form-field flex-1">
-                            <label>Email Address</label>
-                            <input type="email" value={user?.email || ""} disabled />
-                          </div>
-                        </div>
-                        <div className="settings-form-field">
-                          <label>Profile Bio</label>
-                          <textarea
-                            placeholder="Tell us about your coding identity..."
-                            value={bioInput}
-                            onChange={(e) => setBioInput(e.target.value)}
-                          />
-                        </div>
-                        <div className="settings-form-field">
-                          <label>Professional Title</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Full Stack Developer, Technical Architect"
-                            value={titleInput}
-                            onChange={(e) => setTitleInput(e.target.value)}
-                          />
-                        </div>
-                        <div className="settings-form-field">
-                          <label>Programming Languages</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. JavaScript, Python, C++"
-                            value={langsInput}
-                            onChange={(e) => setLangsInput(e.target.value)}
-                          />
-                        </div>
-                        <button className="settings-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile}>{isSavingProfile ? "Saving..." : "Update Profile"}</button>
-                      </div>
+                      <AccountSettings user={user} setUser={setUser} addToast={addToast} />
                     )}
 
                     {settingsTab === "appearance" && (
@@ -11415,7 +11444,30 @@ function Dashboard() {
                         <p>Customize the look and feel of your workspace.</p>
                         <div className="appearance-themes-grid">
                           <div
-                            className={`appearance-theme-card ${activeTheme === "dark" ? "active" : ""}`}
+                            className={`appearance-theme-card ${(currentThemeMode === "system" || (!currentThemeMode && activeTheme === "system")) ? "active" : ""}`}
+                            onClick={() => handleThemeChange("system")}
+                          >
+                            <div className="theme-preview system">
+                              <div className="theme-preview-half dark-half">
+                                <div className="preview-decor-sidebar" />
+                                <div className="preview-decor-editor">
+                                  <div className="decor-line code-blue" style={{ width: "65%" }} />
+                                  <div className="decor-line code-purple" style={{ width: "45%" }} />
+                                </div>
+                              </div>
+                              <div className="theme-preview-half light-half">
+                                <div className="preview-decor-editor">
+                                  <div className="decor-line code-yellow" style={{ width: "70%" }} />
+                                  <div className="decor-line code-green" style={{ width: "50%" }} />
+                                </div>
+                                <div className="preview-decor-chat" />
+                              </div>
+                            </div>
+                            <span>System Default</span>
+                          </div>
+
+                          <div
+                            className={`appearance-theme-card ${currentThemeMode === "dark" ? "active" : ""}`}
                             onClick={() => handleThemeChange("dark")}
                           >
                             <div className="theme-preview dark">
@@ -11428,10 +11480,11 @@ function Dashboard() {
                               </div>
                               <div className="preview-decor-chat" />
                             </div>
-                            <span>System Dark Mode</span>
+                            <span>Dark Mode</span>
                           </div>
+
                           <div
-                            className={`appearance-theme-card ${activeTheme === "light" ? "active" : ""}`}
+                            className={`appearance-theme-card ${currentThemeMode === "light" ? "active" : ""}`}
                             onClick={() => handleThemeChange("light")}
                           >
                             <div className="theme-preview light">
@@ -11444,7 +11497,7 @@ function Dashboard() {
                               </div>
                               <div className="preview-decor-chat" />
                             </div>
-                            <span>Linear Light Mode</span>
+                            <span>Light Mode</span>
                           </div>
                         </div>
                       </div>
@@ -13233,10 +13286,10 @@ function Dashboard() {
                           <button
                             onClick={() => !selectedPostModal.likesDisabled && handleLikePostInModal()}
                             disabled={selectedPostModal.likesDisabled}
-                            style={{ background: "none", border: "none", color: selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "var(--ce-text)", cursor: selectedPostModal.likesDisabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", padding: 0, opacity: selectedPostModal.likesDisabled ? 0.45 : 1 }}
+                            style={{ background: "none", border: "none", color: isEntityLiked(selectedPostModal.likes, user) ? "#ef4444" : "var(--ce-text)", cursor: selectedPostModal.likesDisabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", padding: 0, opacity: selectedPostModal.likesDisabled ? 0.45 : 1 }}
                             title={selectedPostModal.likesDisabled ? "Likes are disabled" : ""}
                           >
-                            <Heart size={20} fill={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "none"} color={selectedPostModal.likes?.includes(user?.id || user?._id) ? "#ef4444" : "currentColor"} />
+                            <Heart size={20} fill={isEntityLiked(selectedPostModal.likes, user) ? "#ef4444" : "none"} color={isEntityLiked(selectedPostModal.likes, user) ? "#ef4444" : "currentColor"} />
                           </button>
 
                           {/* Likers Stack with Clickable More Option */}

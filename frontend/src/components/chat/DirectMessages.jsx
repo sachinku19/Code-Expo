@@ -129,8 +129,8 @@ function SafeAvatar({ src, name, className = "user-avatar", isGroup = false, siz
           navigate("/dashboard/profile");
           return;
         }
-      } catch (err) {}
-      
+      } catch (err) { }
+
       if (displayName && displayName !== "User") {
         navigate(`/u/${displayName}`);
       } else {
@@ -267,14 +267,14 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     if (!activeChat) return;
     const targetId = activeChat._id || activeChat.id;
     setShowClearConfirm(false);
-    
+
     // Clear messages locally immediately
     setMessages([]);
     if (activeChatRef.current) {
       const key = activeChatRef.current._id || activeChatRef.current.id;
       chatHistoryCacheRef.current[key] = [];
     }
-    
+
     try {
       await clearChatHistory(targetId);
       if (addToast) addToast("Chat history cleared from your side", "success");
@@ -326,7 +326,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           if (Array.isArray(parsed) && parsed.length > 0) return false;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return true;
   });
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -563,7 +563,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
       if (currentUserIdRef.current) {
         localStorage.setItem(`ce_conversations_${currentUserIdRef.current}`, json);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Fetch active conversations
@@ -689,12 +689,12 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
     const handlePartnerTyping = ({ senderId, senderInfo }) => {
       const activeChatVal = activeChatRef.current;
       const currentUserIdVal = currentUserIdRef.current;
-      
+
       // Filter out typing updates sent by the current user (using both ID and username fallback)
       const isSelfId = currentUserIdVal && String(senderId) === String(currentUserIdVal);
-      const isSelfUsername = senderInfo?.username && user?.username && 
+      const isSelfUsername = senderInfo?.username && user?.username &&
         String(senderInfo.username).toLowerCase().trim() === String(user.username).toLowerCase().trim();
-        
+
       if (!activeChatVal || isSelfId || isSelfUsername) return;
 
       const isFromActiveChat = activeChatVal.isGroup
@@ -1752,16 +1752,16 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               <h4>Clear Chat History?</h4>
               <p>Are you sure you want to clear your chat history? This will delete all messages in this chat from your side only and cannot be undone.</p>
               <div className="chat-inline-confirm-actions">
-                <button 
-                  type="button" 
-                  className="chat-inline-confirm-btn cancel" 
+                <button
+                  type="button"
+                  className="chat-inline-confirm-btn cancel"
                   onClick={() => setShowClearConfirm(false)}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="button" 
-                  className="chat-inline-confirm-btn confirm" 
+                <button
+                  type="button"
+                  className="chat-inline-confirm-btn confirm"
                   onClick={confirmClearChat}
                 >
                   Clear Chat
@@ -1817,7 +1817,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                         <span className="chat-partner-handle" style={{ fontSize: "0.78rem", color: "var(--ce-accent)", fontFamily: "monospace" }}>
                           @{activeChat.username}
                         </span>
-                    )}
+                      )}
                   </div>
                   <span className={`status-label ${activeChat.isOnline || activeChat.isGroup ? "online" : ""}`}>
                     {activeChat.isGroup ? (activeChat.bio || "Group Channel") : activeChat.isOnline ? "Online" : "Offline"}
@@ -1977,10 +1977,10 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                       </div>
                       <h3>Say hello to {activeChat.name || activeChat.username}!</h3>
                       <p>This is the start of your message history. Type a message below or send an invite to start pair-programming together.</p>
-                      
+
                       <div className="quick-hello-buttons">
-                        <button 
-                          className="hello-action-chip" 
+                        <button
+                          className="hello-action-chip"
                           onClick={() => {
                             setNewMessageText("👋 Hey there! How's it going?");
                             if (inputRef.current) inputRef.current.focus();
@@ -1988,8 +1988,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                         >
                           👋 Say Hey!
                         </button>
-                        <button 
-                          className="hello-action-chip" 
+                        <button
+                          className="hello-action-chip"
                           onClick={() => {
                             setNewMessageText("💻 Let's collaborate on some code!");
                             if (inputRef.current) inputRef.current.focus();
@@ -1997,8 +1997,8 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                         >
                           💻 Let's Code!
                         </button>
-                        <button 
-                          className="hello-action-chip" 
+                        <button
+                          className="hello-action-chip"
                           onClick={() => {
                             setNewMessageText("🚀 Hey, saw your profile on CodeExpo. Nice to connect!");
                             if (inputRef.current) inputRef.current.focus();
@@ -2014,116 +2014,67 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                       return messages.map((msg) => {
                         const isMe = String(msg.sender?._id || msg.sender) === String(currentUserId);
                         const msgDateStr = new Date(msg.createdAt).toDateString();
-                      const showDateHeader = msgDateStr !== lastDateStr;
-                      lastDateStr = msgDateStr;
+                        const showDateHeader = msgDateStr !== lastDateStr;
+                        lastDateStr = msgDateStr;
 
-                      return (
-                        <React.Fragment key={msg._id}>
-                          {showDateHeader && (
-                            <div className="chat-date-header">
-                              <span className="chat-date-badge">{formatChatDate(msg.createdAt)}</span>
-                            </div>
-                          )}
-                          {msg.isSystem ? (
-                            <div className="chat-system-message-container">
-                              <span className="chat-system-message-badge">
-                                {msg.message}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className={`message-bubble-wrapper ${isMe ? "sent" : "received"}`}>
-                            {!isMe && (
-                              <div className="bubble-avatar-container">
-                                <SafeAvatar
-                                  src={activeChat.isGroup ? msg.sender?.avatar : activeChat.avatar}
-                                  name={activeChat.isGroup ? msg.sender?.username : activeChat.username}
-                                  className="bubble-partner-avatar"
-                                  isGroup={false}
-                                  size={32}
-                                />
+                        return (
+                          <React.Fragment key={msg._id}>
+                            {showDateHeader && (
+                              <div className="chat-date-header">
+                                <span className="chat-date-badge">{formatChatDate(msg.createdAt)}</span>
                               </div>
                             )}
-
-                            <div className="message-bubble-container">
-                              {isMe && (
-                                <div className="message-bubble-actions">
-                                  <button
-                                    type="button"
-                                    onClick={() => setDeleteModalMsg(msg)}
-                                    className="bubble-action-btn delete-btn"
-                                    title="Delete message"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              )}
-
-                              <div className={`message-bubble ${msg.fileType === 'call' ? 'call-history-bubble' : ''}`}>
-                                {activeChat.isGroup && !isMe && (
-                                  <div className="group-message-sender-name" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <span>{msg.sender?.displayName || msg.sender?.username || "Developer"}</span>
-                                    {msg.sender?.username &&
-                                      msg.sender?.displayName &&
-                                      msg.sender.displayName.trim().toLowerCase() !== msg.sender.username.trim().toLowerCase() && (
-                                        <span style={{ fontSize: "10.5px", color: "var(--ce-accent)", opacity: 0.85, fontFamily: "monospace" }}>
-                                          @{msg.sender.username}
-                                        </span>
-                                    )}
+                            {msg.isSystem ? (
+                              <div className="chat-system-message-container">
+                                <span className="chat-system-message-badge">
+                                  {msg.message}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className={`message-bubble-wrapper ${isMe ? "sent" : "received"}`}>
+                                {!isMe && (
+                                  <div className="bubble-avatar-container">
+                                    <SafeAvatar
+                                      src={activeChat.isGroup ? msg.sender?.avatar : activeChat.avatar}
+                                      name={activeChat.isGroup ? msg.sender?.username : activeChat.username}
+                                      className="bubble-partner-avatar"
+                                      isGroup={false}
+                                      size={32}
+                                    />
                                   </div>
                                 )}
 
-                                {msg.fileType === 'call' ? (
-                                  <div className="message-call-history-container">
-                                    {renderCallHistory(msg, currentUserId)}
-                                    <span className="message-meta-inline">
-                                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                      {isMe && (
-                                        <span className="tick-container">
-                                          {msg.isRead ? (
-                                            <CheckCheck size={12} className="read-tick" />
-                                          ) : (
-                                            <Check size={12} className="sent-tick" />
-                                          )}
-                                        </span>
-                                      )}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <>
-                                    {msg.fileUrl && (
-                                      <div className="message-attachment-container">
-                                        <div className="message-attachment">
-                                          <img
-                                            src={optimizeCloudinaryUrl(msg.fileUrl, { quality: "best" })}
-                                            srcSet={getCloudinarySrcSet(msg.fileUrl, { quality: "best" })}
-                                            sizes="(max-width: 600px) 100vw, 400px"
-                                            alt={msg.fileName || "Image attachment"}
-                                            className="dm-message-image"
-                                            onClick={() => window.open(msg.fileUrl, "_blank")}
-                                            title="Click to view image"
-                                          />
-                                        </div>
+                                <div className="message-bubble-container">
+                                  {isMe && (
+                                    <div className="message-bubble-actions">
+                                      <button
+                                        type="button"
+                                        onClick={() => setDeleteModalMsg(msg)}
+                                        className="bubble-action-btn delete-btn"
+                                        title="Delete message"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  )}
 
-                                        {msg.fileUrl && !msg.message && (
-                                          <span className="attachment-meta-overlay">
-                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            {isMe && (
-                                              <span className="tick-container">
-                                                {msg.isRead ? (
-                                                  <CheckCheck size={12} className="read-tick" />
-                                                ) : (
-                                                  <Check size={12} className="sent-tick" />
-                                                )}
-                                              </span>
-                                            )}
-                                          </span>
-                                        )}
+                                  <div className={`message-bubble ${msg.fileType === 'call' ? 'call-history-bubble' : ''}`}>
+                                    {activeChat.isGroup && !isMe && (
+                                      <div className="group-message-sender-name" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <span>{msg.sender?.displayName || msg.sender?.username || "Developer"}</span>
+                                        {msg.sender?.username &&
+                                          msg.sender?.displayName &&
+                                          msg.sender.displayName.trim().toLowerCase() !== msg.sender.username.trim().toLowerCase() && (
+                                            <span style={{ fontSize: "10.5px", color: "var(--ce-accent)", opacity: 0.85, fontFamily: "monospace" }}>
+                                              @{msg.sender.username}
+                                            </span>
+                                          )}
                                       </div>
                                     )}
 
-                                    {msg.message && (
-                                      <div className="message-text">
-                                        {renderMessageText(msg.message)}
+                                    {msg.fileType === 'call' ? (
+                                      <div className="message-call-history-container">
+                                        {renderCallHistory(msg, currentUserId)}
                                         <span className="message-meta-inline">
                                           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                           {isMe && (
@@ -2137,69 +2088,118 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
                                           )}
                                         </span>
                                       </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
+                                    ) : (
+                                      <>
+                                        {msg.fileUrl && (
+                                          <div className="message-attachment-container">
+                                            <div className="message-attachment">
+                                              <img
+                                                src={optimizeCloudinaryUrl(msg.fileUrl, { quality: "best" })}
+                                                srcSet={getCloudinarySrcSet(msg.fileUrl, { quality: "best" })}
+                                                sizes="(max-width: 600px) 100vw, 400px"
+                                                alt={msg.fileName || "Image attachment"}
+                                                className="dm-message-image"
+                                                onClick={() => window.open(msg.fileUrl, "_blank")}
+                                                title="Click to view image"
+                                              />
+                                            </div>
 
-                              {!isMe && (
-                                <div
-                                  className="message-bubble-actions"
-                                  style={{
-                                    position: "relative",
-                                    display: "flex",
-                                    gap: "4px",
-                                    opacity: activeMessageMenuId === msg._id ? 1 : undefined,
-                                    pointerEvents: activeMessageMenuId === msg._id ? "auto" : undefined,
-                                    transform: activeMessageMenuId === msg._id ? "scale(1)" : undefined
-                                  }}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveMessageMenuId(activeMessageMenuId === msg._id ? null : msg._id);
-                                    }}
-                                    className="bubble-action-btn delete-btn"
-                                    style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-                                    title="Options"
-                                  >
-                                    <MoreVertical size={12} />
-                                  </button>
-                                  {activeMessageMenuId === msg._id && (
-                                    <div className="bubble-options-dropdown">
+                                            {msg.fileUrl && !msg.message && (
+                                              <span className="attachment-meta-overlay">
+                                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {isMe && (
+                                                  <span className="tick-container">
+                                                    {msg.isRead ? (
+                                                      <CheckCheck size={12} className="read-tick" />
+                                                    ) : (
+                                                      <Check size={12} className="sent-tick" />
+                                                    )}
+                                                  </span>
+                                                )}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {msg.message && (
+                                          <div className="message-text">
+                                            {renderMessageText(msg.message)}
+                                            <span className="message-meta-inline">
+                                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                              {isMe && (
+                                                <span className="tick-container">
+                                                  {msg.isRead ? (
+                                                    <CheckCheck size={12} className="read-tick" />
+                                                  ) : (
+                                                    <Check size={12} className="sent-tick" />
+                                                  )}
+                                                </span>
+                                              )}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+
+                                  {!isMe && (
+                                    <div
+                                      className="message-bubble-actions"
+                                      style={{
+                                        position: "relative",
+                                        display: "flex",
+                                        gap: "4px",
+                                        opacity: activeMessageMenuId === msg._id ? 1 : undefined,
+                                        pointerEvents: activeMessageMenuId === msg._id ? "auto" : undefined,
+                                        transform: activeMessageMenuId === msg._id ? "scale(1)" : undefined
+                                      }}
+                                    >
                                       <button
-                                        onClick={() => {
-                                          setActiveMessageMenuId(null);
-                                          setDeleteModalMsg(msg);
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveMessageMenuId(activeMessageMenuId === msg._id ? null : msg._id);
                                         }}
-                                        className="bubble-dropdown-item danger"
+                                        className="bubble-action-btn delete-btn"
+                                        style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+                                        title="Options"
                                       >
-                                        <Trash2 size={13} /> Delete for Me
+                                        <MoreVertical size={12} />
                                       </button>
-                                      <button
-                                        onClick={() => {
-                                          setActiveMessageMenuId(null);
-                                          setReportedTargetUser(msg.sender || activeChat);
-                                          setReportEvidenceType("MESSAGE");
-                                          setReportEvidenceId(msg._id);
-                                          setReportModalOpen(true);
-                                        }}
-                                        className="bubble-dropdown-item warning"
-                                      >
-                                        ⚠️ Report Msg
-                                      </button>
+                                      {activeMessageMenuId === msg._id && (
+                                        <div className="bubble-options-dropdown">
+                                          <button
+                                            onClick={() => {
+                                              setActiveMessageMenuId(null);
+                                              setDeleteModalMsg(msg);
+                                            }}
+                                            className="bubble-dropdown-item danger"
+                                          >
+                                            <Trash2 size={13} /> Delete for Me
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setActiveMessageMenuId(null);
+                                              setReportedTargetUser(msg.sender || activeChat);
+                                              setReportEvidenceType("MESSAGE");
+                                              setReportEvidenceId(msg._id);
+                                              setReportModalOpen(true);
+                                            }}
+                                            className="bubble-dropdown-item warning"
+                                          >
+                                            ⚠️ Report Msg
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                          )}
-                        </React.Fragment>
-                      );
-                    });
-                  })())}
+                              </div>
+                            )}
+                          </React.Fragment>
+                        );
+                      });
+                    })())}
                   {partnerTypers.map((typer) => (
                     <div key={typer.userId} className="message-bubble-wrapper received typing-wrapper-row">
                       <div className="bubble-avatar-container">
@@ -2325,7 +2325,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
               </div>
             )}
 
-              {showGroupInfoPanel && activeChat.isGroup && (() => {
+            {showGroupInfoPanel && activeChat.isGroup && (() => {
               const isOwnerOfGroup = activeChat.createdBy && (String(activeChat.createdBy._id || activeChat.createdBy) === String(currentUserId));
               const isAdminOfGroup = (activeChat.admins || []).some(admin => String(admin._id || admin) === String(currentUserId)) || isOwnerOfGroup;
               return (

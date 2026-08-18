@@ -105,7 +105,7 @@ const deleteAvatar = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { bio, programmingLanguages, title, displayName } = req.body;
+    const { bio, programmingLanguages, title, displayName, githubUrl, linkedinUrl, portfolioUrl } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -117,6 +117,10 @@ const updateProfile = async (req, res) => {
     if (bio !== undefined) user.bio = bio;
     if (req.body.location !== undefined) user.location = req.body.location;
     if (title !== undefined) user.title = title.trim() || "Developer";
+    if (githubUrl !== undefined) user.githubUrl = githubUrl.trim();
+    if (linkedinUrl !== undefined) user.linkedinUrl = linkedinUrl.trim();
+    if (portfolioUrl !== undefined) user.portfolioUrl = portfolioUrl.trim();
+
     if (programmingLanguages !== undefined) {
       if (Array.isArray(programmingLanguages)) {
         user.programmingLanguages = programmingLanguages;
@@ -154,7 +158,10 @@ const updateProfile = async (req, res) => {
         programmingLanguages: user.programmingLanguages,
         followersCount: user.followersCount,
         followingCount: user.followingCount,
-        location: user.location || ""
+        location: user.location || "",
+        githubUrl: user.githubUrl || "",
+        linkedinUrl: user.linkedinUrl || "",
+        portfolioUrl: user.portfolioUrl || ""
       }
     });
   } catch (error) {

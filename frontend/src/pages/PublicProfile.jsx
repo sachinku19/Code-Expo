@@ -4,6 +4,7 @@ import { getPublicUserProfile } from "../services/authService";
 import { toggleFollowUser } from "../services/socialService";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { getAvatarColor, getAvatarInitial } from "../utils/avatarUtils";
 import {
   Code2,
   User,
@@ -28,6 +29,7 @@ import {
 } from "lucide-react";
 import { optimizeCloudinaryUrl } from "../utils/imageOptimizer";
 import MainLayout from "../layouts/MainLayout";
+import AuthPromptModal from "../components/modals/AuthPromptModal";
 import "./PublicProfile.css";
 
 const PublicProfile = () => {
@@ -41,6 +43,13 @@ const PublicProfile = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+
+  const [authModalState, setAuthModalState] = useState({
+    isOpen: false,
+    title: "",
+    subtitle: "",
+    actionName: ""
+  });
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -78,18 +87,27 @@ const PublicProfile = () => {
     (authUser.username && profileUser.username && authUser.username.toLowerCase() === profileUser.username.toLowerCase())
   );
 
-  // LinkedIn-style Guest Intercept: Redirects non-logged-in users to /login on any action
-  const handleProtectedAction = (e) => {
-    if (e && e.preventDefault) e.preventDefault();
+  // Gated action check: prompts AuthPromptModal if guest
+  const requireAuth = (title, subtitle, actionName) => {
     if (!authUser) {
-      navigate("/login");
+      setAuthModalState({
+        isOpen: true,
+        title: title || "Sign in to CodeExpo",
+        subtitle: subtitle || "Join the developer network to interact with developers, follow profiles, and collaborate on code.",
+        actionName: actionName || "interact"
+      });
       return false;
     }
     return true;
   };
 
   const handleFollowToggle = async () => {
-    if (!handleProtectedAction()) return;
+    if (!profileUser) return;
+    if (!requireAuth(
+      `Sign in to follow @${profileUser.username}`,
+      `Stay updated with @${profileUser.username}'s latest code projects, posts, and rooms.`,
+      `follow @${profileUser.username}`
+    )) return;
 
     try {
       if (isFollowing) {
@@ -103,15 +121,6 @@ const PublicProfile = () => {
     } catch (err) {
       console.error("Error toggling follow status:", err);
     }
-  };
-
-  const getAvatarColor = (name) => {
-    if (!name) return "#8b5cf6";
-    const cleanName = String(name).toLowerCase();
-    const colors = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#3b82f6"];
-    let hash = 0;
-    for (let i = 0; i < cleanName.length; i++) hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Math.abs(hash) % colors.length];
   };
 
   // Render complete LinkedIn-style profile UI
@@ -239,7 +248,12 @@ const PublicProfile = () => {
                   <button
                     className="pub-action-btn secondary"
                     onClick={(e) => {
-                      if (!handleProtectedAction(e)) return;
+                      if (e && e.preventDefault) e.preventDefault();
+                      if (!requireAuth(
+                        `Sign in to message @${profileUser.username}`,
+                        `Start a conversation and collaborate on code directly with @${profileUser.username}.`,
+                        `message @${profileUser.username}`
+                      )) return;
                       navigate(`/dashboard/messages?user=${profileUser._id || profileUser.id}`);
                     }}
                   >
@@ -255,7 +269,13 @@ const PublicProfile = () => {
         <div className="pub-stats-row">
           <div
             className="pub-stat-box clickable"
-            onClick={handleProtectedAction}
+            onClick={() => {
+              requireAuth(
+                "Sign in to view followers",
+                "Explore developer networks and followers across CodeExpo.",
+                "view followers"
+              );
+            }}
             title={!authUser ? "Sign in to view followers" : undefined}
           >
             <span className="pub-stat-num">{followersCount}</span>
@@ -263,7 +283,13 @@ const PublicProfile = () => {
           </div>
           <div
             className="pub-stat-box clickable"
-            onClick={handleProtectedAction}
+            onClick={() => {
+              requireAuth(
+                "Sign in to view following",
+                "Explore developer networks and following connections.",
+                "view following"
+              );
+            }}
             title={!authUser ? "Sign in to view following" : undefined}
           >
             <span className="pub-stat-num">{profileUser.followingCount || 0}</span>
@@ -301,7 +327,14 @@ const PublicProfile = () => {
           {profileUser.projectsShared && profileUser.projectsShared.length > 0 ? (
             <div className="pub-rooms-grid">
               {profileUser.projectsShared.map((project, idx) => (
-                <div key={idx} className="pub-room-card" onClick={handleProtectedAction}>
+                <div
+                  key={idx}
+                  className="pub-room-card"
+                  onClick={() => {
+                    if (!requireAuth("Sign in to join room", "Join collaborative developer rooms and code together in real-time.", "join room")) return;
+                    if (project.roomId) navigate(`/editor/${project.roomId}`);
+                  }}
+                >
                   <div className="pub-room-card-header">
                     <h4>{project.name || project.title || "Workspace Room"}</h4>
                     <span className="pub-lang-tag">{project.language || "code"}</span>
@@ -322,6 +355,15 @@ const PublicProfile = () => {
             </div>
           )}
         </div>
+
+        {/* Reusable Auth Gate Modal for Guests */}
+        <AuthPromptModal
+          isOpen={authModalState.isOpen}
+          onClose={() => setAuthModalState(prev => ({ ...prev, isOpen: false }))}
+          title={authModalState.title}
+          subtitle={authModalState.subtitle}
+          actionName={authModalState.actionName}
+        />
       </div>
     );
   };

@@ -20,6 +20,7 @@ const Editor = lazy(() => import("../pages/Editor"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
 const ResetPassword = lazy(() => import("../pages/ResetPassword"));
 const PublicPostView = lazy(() => import("../pages/PublicPostView"));
+const PublicProfile = lazy(() => import("../pages/PublicProfile"));
 const SetupUsername = lazy(() => import("../pages/SetupUsername"));
 const StandalonePreview = lazy(() => import("../pages/StandalonePreview"));
 
@@ -99,9 +100,29 @@ const RouteLoader = () => (
   </div>
 );
 
+const ProfileRouteHandler = () => {
+  const token = localStorage.getItem("token");
+  const storedUser = localStorage.getItem("user");
+  const isAuthenticated = Boolean(token && storedUser && storedUser !== "null" && storedUser !== "undefined");
+  if (isAuthenticated) {
+    return (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    );
+  }
+  return <PublicProfile />;
+};
+
 const UserProfileRedirect = () => {
   const { userId } = useParams();
-  return <Navigate to={`/dashboard/profile/${userId}`} replace />;
+  const token = localStorage.getItem("token");
+  const storedUser = localStorage.getItem("user");
+  const isAuthenticated = Boolean(token && storedUser && storedUser !== "null" && storedUser !== "undefined");
+  if (isAuthenticated) {
+    return <Navigate to={`/dashboard/profile/${userId}`} replace />;
+  }
+  return <PublicProfile />;
 };
 
 const OwnProfileRedirect = () => {
@@ -154,7 +175,8 @@ const AppRoutes = () => {
                     <Route path={ROUTES.SETUP_USERNAME} element={<ProtectedRoute><SetupUsername /></ProtectedRoute>} />
 
                     {/* User profile and redirect links */}
-                    <Route path={ROUTES.PROFILE} element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path={ROUTES.PROFILE} element={<ProfileRouteHandler />} />
+                    <Route path="/profile/:username" element={<ProfileRouteHandler />} />
                     <Route path="/profile" element={<OwnProfileRedirect />} />
                     <Route path={ROUTES.USER_PROFILE} element={<UserProfileRedirect />} />
                     <Route path={ROUTES.POST} element={<PostRouteHandler />} />

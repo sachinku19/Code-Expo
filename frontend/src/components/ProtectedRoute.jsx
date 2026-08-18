@@ -10,6 +10,15 @@ const ProtectedRoute = ({ children }) => {
   }
    
   if (!token) {
+    const params = new URLSearchParams(location.search);
+    const postId = params.get("post");
+    if (postId) {
+      return <Navigate to={`/post/${postId}`} replace />;
+    }
+    const profileMatch = location.pathname.match(/^\/dashboard\/profile\/(.+)$/);
+    if (profileMatch && profileMatch[1]) {
+      return <Navigate to={`/u/${profileMatch[1]}`} replace />;
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

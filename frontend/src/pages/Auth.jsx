@@ -25,9 +25,24 @@ function Auth({ mode }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const getTargetRedirect = () => {
+    const redirectUrl = localStorage.getItem("redirectAfterLogin");
+    if (redirectUrl) {
+      localStorage.removeItem("redirectAfterLogin");
+      return redirectUrl;
+    }
+    if (location.state?.from?.pathname) {
+      return location.state.from.pathname + (location.state.from.search || "");
+    }
+    if (typeof location.state?.from === "string" && location.state.from) {
+      return location.state.from;
+    }
+    return "/dashboard";
+  };
+
   useEffect(() => {
     if (user) {
-      navigate("/dashboard", { replace: true });
+      navigate(getTargetRedirect(), { replace: true });
     }
   }, [user, navigate]);
 
@@ -45,16 +60,7 @@ function Auth({ mode }) {
   }, [mode]);
 
   const completeAuthRedirect = () => {
-    const redirectUrl = localStorage.getItem("redirectAfterLogin");
-    if (redirectUrl) {
-      localStorage.removeItem("redirectAfterLogin");
-      navigate(redirectUrl, { replace: true });
-      return;
-    }
-    const from = location.state?.from?.pathname
-      ? location.state.from.pathname + (location.state.from.search || "")
-      : "/dashboard";
-    navigate(from, { replace: true });
+    navigate(getTargetRedirect(), { replace: true });
   };
 
   // Animation state tracking

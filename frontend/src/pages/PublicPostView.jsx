@@ -11,6 +11,7 @@ import {
 import { motion } from "framer-motion";
 import Logo from "../components/shared/Logo";
 import { optimizeCloudinaryUrl, getCloudinarySrcSet } from "../utils/imageOptimizer";
+import AuthPromptModal from "../components/modals/AuthPromptModal";
 import "../components/social/PremiumFeed.css";
 
 const ExpandableText = ({ children, text, lines = 3 }) => {
@@ -75,6 +76,12 @@ export default function PublicPostView() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [revealedSensitive, setRevealedSensitive] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [authModalState, setAuthModalState] = useState({
+    isOpen: false,
+    title: "",
+    subtitle: "",
+    actionName: ""
+  });
 
   useEffect(() => {
     if (user && postId) {
@@ -166,19 +173,26 @@ export default function PublicPostView() {
     };
   }, [postId]);
 
-  const requireAuth = (actionName = "perform this action") => {
+  const requireAuth = (title, subtitle, actionName) => {
     if (!user) {
-      addToast(`Please log in to ${actionName}`, "error");
-      setTimeout(() => {
-        navigate("/login", { state: { from: location } });
-      }, 1200);
+      setAuthModalState({
+        isOpen: true,
+        title: title || "Sign in to CodeExpo",
+        subtitle: subtitle || "Join the developer network to like, comment, bookmark posts, and collaborate on code.",
+        actionName: actionName || "interact with post"
+      });
       return false;
     }
     return true;
   };
 
   const handleLike = async () => {
-    if (!requireAuth("like this post") || !post) return;
+    if (!post) return;
+    if (!requireAuth(
+      "Sign in to like this post",
+      "Show appreciation for developer posts and projects across the CodeExpo network.",
+      "like post"
+    )) return;
 
     await toggleLikeOptimistic({
       entityType: "POST",
@@ -196,8 +210,12 @@ export default function PublicPostView() {
   };
 
   const handleAddComment = async (e) => {
-    e.preventDefault();
-    if (!requireAuth("comment on posts")) return;
+    if (e && e.preventDefault) e.preventDefault();
+    if (!requireAuth(
+      "Sign in to comment",
+      "Share your thoughts, answer technical questions, and participate in developer discussions.",
+      "comment on post"
+    )) return;
 
     if (!commentText.trim()) return;
 
@@ -214,7 +232,11 @@ export default function PublicPostView() {
   };
 
   const handleBookmark = () => {
-    if (!requireAuth("bookmark posts")) return;
+    if (!requireAuth(
+      "Sign in to bookmark",
+      "Save developer posts, code snippets, and rooms to your personal library for quick reference.",
+      "bookmark post"
+    )) return;
 
     try {
       const saved = localStorage.getItem("codeexpo_bookmarked_post_ids");
@@ -273,8 +295,7 @@ export default function PublicPostView() {
   const postImages = post.images && post.images.length > 0 ? post.images : (post.image ? [post.image] : []);
   const hasImage = postImages.length > 0;
   const postContentText = post.text || post.content || "";
-  const currentUserId = user?.id || user?._id;
-  const isLiked = post.likes ? post.likes.some(id => String(id) === String(currentUserId)) : false;
+  const isLiked = isEntityLiked(post.likes, user);
 
   return (
     <div style={{ minHeight: "100vh", background: "#090a0f", color: "#f8fafc", fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -331,8 +352,42 @@ export default function PublicPostView() {
           <ArrowLeft size={16} /> <span>{user ? "Back to Workspace" : "Back to CodeExpo"}</span>
         </Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <Logo size={28} showText={true} />
+          {!user && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "8px" }}>
+              <Link
+                to="/login"
+                state={{ from: location.pathname + (location.search || "") }}
+                style={{
+                  color: "#94a3b8",
+                  textDecoration: "none",
+                  fontSize: "0.82rem",
+                  fontWeight: "600",
+                  padding: "6px 12px",
+                  borderRadius: "6px"
+                }}
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                state={{ from: location.pathname + (location.search || "") }}
+                style={{
+                  background: "var(--ce-primary, #8b5cf6)",
+                  color: "#ffffff",
+                  textDecoration: "none",
+                  fontSize: "0.82rem",
+                  fontWeight: "650",
+                  padding: "6px 14px",
+                  borderRadius: "6px",
+                  boxShadow: "0 2px 8px rgba(139, 92, 246, 0.3)"
+                }}
+              >
+                Join CodeExpo
+              </Link>
+            </div>
+          )}
         </div>
       </header>
 
@@ -525,12 +580,18 @@ export default function PublicPostView() {
               <form onSubmit={handleAddComment} style={{ display: "flex", gap: "8px" }}>
                 <input
                   type="text"
-                  placeholder={user ? "Add a comment..." : "Log in to write a comment..."}
+                  placeholder={user ? "Add a comment..." : "Sign in to write a comment..."}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   readOnly={!user}
                   onClick={() => {
-                    if (!user) requireAuth("write a comment");
+                    if (!user) {
+                      requireAuth(
+                        "Sign in to comment",
+                        "Share your thoughts, answer technical questions, and participate in developer discussions.",
+                        "comment on post"
+                      );
+                    }
                   }}
                   style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", padding: "10px 14px", borderRadius: "10px", fontSize: "0.84rem", outline: "none" }}
                 />
@@ -546,6 +607,15 @@ export default function PublicPostView() {
           </div>
         </motion.div>
       </main>
+
+      {/* Reusable Auth Gate Modal for Guests */}
+      <AuthPromptModal
+        isOpen={authModalState.isOpen}
+        onClose={() => setAuthModalState(prev => ({ ...prev, isOpen: false }))}
+        title={authModalState.title}
+        subtitle={authModalState.subtitle}
+        actionName={authModalState.actionName}
+      />
     </div>
   );
 }

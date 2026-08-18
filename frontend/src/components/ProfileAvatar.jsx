@@ -6,6 +6,7 @@ import socket from "../socket/socket";
 import { Camera, Trash2, Sliders, Maximize2, Loader, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { optimizeCloudinaryUrl } from "../utils/imageOptimizer";
+import { getAvatarColor, getAvatarInitial } from "../utils/avatarUtils";
 import "./ProfileAvatar.css";
 
 
@@ -220,7 +221,7 @@ export default function ProfileAvatar() {
     }
   };
 
-  const initial = user?.username?.charAt(0).toUpperCase() || "U";
+  const initial = getAvatarInitial(user?.username);
   const displayW = imageSize.width * imageScale;
   const displayH = imageSize.height * imageScale;
 
@@ -241,7 +242,9 @@ export default function ProfileAvatar() {
         {user?.avatar ? (
           <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 160, height: 160, crop: "fill" })} alt="Avatar" className="avatar-image" />
         ) : (
-          <div className="avatar-placeholder">{initial}</div>
+          <div className="avatar-placeholder" style={{ backgroundColor: getAvatarColor(user?.username) }}>
+            {initial}
+          </div>
         )}
 
         <div className="avatar-overlay">

@@ -22,6 +22,7 @@ import { submitWebsiteRating, getWebsiteRatingInfo } from "../services/websiteRa
 import "./MainLayout.css";
 import Logo from "../components/shared/Logo";
 import WorkspaceActionsDropdown from "../components/WorkspaceActionsDropdown";
+import { getAvatarColor, getAvatarInitial } from "../utils/avatarUtils";
 
 const SquareCode = (props) => {
   const { className, size = 18, ...rest } = props;
@@ -1717,8 +1718,11 @@ export default function MainLayout({
               {user?.avatar ? (
                 <img src={user.avatar} className="user-avatar-img" alt={user.username} />
               ) : (
-                <span className="user-avatar-initial">
-                  {user?.username?.charAt(0).toUpperCase() || "U"}
+                <span
+                  className="user-avatar-initial"
+                  style={{ backgroundColor: getAvatarColor(user?.username) }}
+                >
+                  {getAvatarInitial(user?.username)}
                 </span>
               )}
             </button>
@@ -1733,11 +1737,11 @@ export default function MainLayout({
                   title="View Profile"
                 >
                   <div className="profile-header-top">
-                    <div className="dropdown-avatar-wrapper" style={{ backgroundColor: user?.avatar ? "transparent" : getCursorColor(user?.username) }}>
+                    <div className="dropdown-avatar-wrapper" style={{ backgroundColor: user?.avatar ? "transparent" : getAvatarColor(user?.username) }}>
                       {user?.avatar ? (
                         <img src={user.avatar} alt={user.username} className="dropdown-avatar-img" />
                       ) : (
-                        user?.username?.charAt(0).toUpperCase()
+                        getAvatarInitial(user?.username)
                       )}
                     </div>
                     <div className="profile-header-info">

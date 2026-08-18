@@ -7,6 +7,7 @@ import { ROUTES } from "../../constants/routes";
 import { logoutUser } from "../../services/authService";
 import { useSmartNavbar } from "../../hooks/useSmartNavbar";
 import Logo from "../shared/Logo";
+import { getAvatarColor, getAvatarInitial } from "../../utils/avatarUtils";
 import "./Navbar.css";
 
 function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
@@ -155,8 +156,11 @@ function Navbar({ activeSection, theme, onThemeToggle, onScrollToSection }) {
                   {user.avatar ? (
                     <img src={user.avatar} alt={user.username} />
                   ) : (
-                    <span className="avatar-initial">
-                      {user.username?.charAt(0).toUpperCase() || "U"}
+                    <span
+                      className="avatar-initial"
+                      style={{ backgroundColor: getAvatarColor(user.username), color: "#ffffff" }}
+                    >
+                      {getAvatarInitial(user.username)}
                     </span>
                   )}
                 </div>

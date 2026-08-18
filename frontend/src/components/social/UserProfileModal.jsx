@@ -130,9 +130,11 @@ export default function UserProfileModal({ profile, stats, onClose }) {
                 <LinkedinIcon size={14} />
               </a>
             )}
-            <a href={profile.portfolioUrl || "#"} className="social-icon-link">
-              <Globe size={14} />
-            </a>
+            {profile.portfolioUrl && (
+              <a href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer" className="social-icon-link" title="Portfolio Website">
+                <Globe size={14} />
+              </a>
+            )}
           </div>
         </div>
 

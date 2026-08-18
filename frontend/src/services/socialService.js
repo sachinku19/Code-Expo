@@ -6,6 +6,9 @@ const API = axios.create({
 
 const getHeaders = () => {
   const token = localStorage.getItem("token");
+  if (!token || token === "null" || token === "undefined") {
+    return { headers: {} };
+  }
   return {
     headers: {
       Authorization: `Bearer ${token}`

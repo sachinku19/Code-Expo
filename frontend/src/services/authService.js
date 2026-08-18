@@ -12,9 +12,10 @@ const setupInterceptors = (instance) => {
       if (error.response && error.response.status === 401) {
         const url = error.config?.url || "";
         const isAuthSubmit = url.includes("/auth/login") || url.includes("/auth/register") || url.includes("/auth/forgot-password") || url.includes("/auth/verify-recovery-key") || url.includes("/auth/reset-password");
+        const hasActiveToken = Boolean(localStorage.getItem("token") && localStorage.getItem("token") !== "null" && localStorage.getItem("token") !== "undefined");
 
-        // Do not auto-logout if the 401 was a failed password/credential check during login submit or if we are already logging out
-        if (!isAuthSubmit && !window.isLoggingOut) {
+        // Only auto-logout if an active session token existed and expired, not for unauthenticated guests
+        if (!isAuthSubmit && hasActiveToken && !window.isLoggingOut) {
           window.isLoggingOut = true; // Set flag to block subsequent redirects
           localStorage.removeItem("token");
           localStorage.removeItem("user");

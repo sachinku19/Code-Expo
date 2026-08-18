@@ -603,7 +603,7 @@ const getUserPublicProfile = async (req, res) => {
       : { username: cleanTarget.toLowerCase() };
 
     const targetUser = await User.findOne(targetQuery)
-      .select("displayName username avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner followers following title");
+      .select("displayName username avatar bio programmingLanguages followersCount followingCount executionsCount coverBanner followers following title location githubUrl linkedinUrl portfolioUrl");
 
     if (!targetUser) {
       return res.status(404).json({ success: false, message: "User not found" });

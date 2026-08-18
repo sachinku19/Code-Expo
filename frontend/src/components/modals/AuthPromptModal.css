@@ -1,0 +1,184 @@
+/* ==========================================================================
+   AuthPromptModal Stylesheet - Production SaaS Dialog
+   ========================================================================== */
+
+.auth-prompt-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 16px;
+  animation: authPromptFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-prompt-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 32px 28px 24px 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  animation: authPromptScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-prompt-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-prompt-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.auth-prompt-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-prompt-brand-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2));
+  border: 1.5px solid rgba(139, 92, 246, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+.auth-prompt-logo-icon {
+  color: var(--ce-primary, #8b5cf6);
+}
+
+.auth-prompt-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-prompt-title {
+  font-size: 1.2rem;
+  font-weight: 750;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+
+.auth-prompt-subtitle {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.auth-prompt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.auth-prompt-btn-primary {
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 8px;
+  background: var(--ce-primary, #8b5cf6);
+  color: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 650;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px var(--ce-primary-glow, rgba(139, 92, 246, 0.3));
+}
+
+.auth-prompt-btn-primary:hover {
+  background: var(--ce-primary-hover, #7c3aed);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px var(--ce-primary-glow, rgba(139, 92, 246, 0.4));
+}
+
+.auth-prompt-btn-secondary {
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.auth-prompt-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.auth-prompt-footer {
+  margin-top: -4px;
+}
+
+.auth-prompt-dismiss-link {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.15s ease;
+}
+
+.auth-prompt-dismiss-link:hover {
+  color: #94a3b8;
+  text-decoration: underline;
+}
+
+@keyframes authPromptFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes authPromptScaleIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
