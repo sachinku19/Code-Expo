@@ -9411,28 +9411,38 @@ tier-badge.master {
 /* Dashboard Split Grid for Social Feed, Recent Joined Rooms & Active Rooms */
 .ce-dashboard-split-grid {
   display: grid;
-  grid-template-columns: 1.05fr 0.9fr 1.05fr;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 1.05fr);
   gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 1366px) {
   .ce-dashboard-split-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 8px;
   }
 }
 
 @media (max-width: 1024px) {
   .ce-dashboard-split-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
+}
+
+.ce-dashboard-split-grid > * {
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
 .recent-joined-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .recent-joined-card {
@@ -9445,6 +9455,12 @@ tier-badge.master {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex-shrink: 0 !important;
 }
 
 .recent-joined-card.task-card-clickable {
@@ -9476,6 +9492,9 @@ tier-badge.master {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .joined-card-logo-area {
@@ -9497,7 +9516,8 @@ tier-badge.master {
   flex-direction: column;
   gap: 1px;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 0%;
+  overflow: hidden;
 }
 
 .joined-room-title {
@@ -9508,11 +9528,18 @@ tier-badge.master {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
 }
 
 .joined-room-owner {
   font-size: 0.72rem;
   color: var(--ce-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
 }
 
 .joined-card-top-right-meta {
@@ -9521,6 +9548,7 @@ tier-badge.master {
   align-items: flex-end;
   gap: 2px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .room-visibility-badge-flat {
@@ -9563,6 +9591,8 @@ tier-badge.master {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
+  width: 100%;
 }
 
 .joined-detail-btn-new {
@@ -13619,6 +13649,9 @@ select option {
     flex-direction: column !important;
     justify-content: flex-start !important;
     box-sizing: border-box !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
   }
 }
 
@@ -13861,6 +13894,9 @@ select option {
 .ce-dashboard-split-grid>.ce-dashboard-section.today-tasks-section {
   height: 280px !important;
   transition: border-color var(--transition-fast, 0.15s ease), box-shadow var(--transition-fast, 0.15s ease) !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
 }
 
 .ce-dashboard-split-grid>.ce-dashboard-section.pending-tasks-section {
@@ -13914,6 +13950,10 @@ select option {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease !important;
   cursor: pointer;
   box-sizing: border-box;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  gap: 8px !important;
 }
 
 /* Red Theme (Pending & Overdue tasks) */

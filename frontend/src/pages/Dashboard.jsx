@@ -1098,19 +1098,25 @@ const renderDashboardTaskItem = (task, isCompleted = false, onClick = null, isPe
       className={`ce-dashboard-task-card ${themeClass} ${onClick ? "task-card-clickable" : ""}`}
       onClick={() => onClick && onClick(task)}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "3px", textAlign: "left" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "3px", textAlign: "left", minWidth: 0, flex: 1, overflow: "hidden" }}>
         <span
           style={{
             fontSize: "0.85rem",
             fontWeight: "600",
             color: "var(--ce-text)",
             textDecoration: isCompleted ? "line-through" : "none",
-            opacity: isCompleted ? 0.7 : 1
+            opacity: isCompleted ? 0.7 : 1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            display: "block",
+            maxWidth: "100%"
           }}
+          title={task.title}
         >
           {task.title}
         </span>
-        <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
+        <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {isCompleted ? `Completed` : `Due: ${dateStr}`}
         </span>
       </div>
@@ -1121,7 +1127,9 @@ const renderDashboardTaskItem = (task, isCompleted = false, onClick = null, isPe
           padding: "2px 6px",
           borderRadius: "4px",
           background: badgeBg,
-          color: badgeColor
+          color: badgeColor,
+          flexShrink: 0,
+          whiteSpace: "nowrap"
         }}
       >
         {isRoom ? "Room Task" : "Personal"}
