@@ -617,41 +617,15 @@ body.light .room-history-action {
 }
 
 .workspace-editor-header {
-  height: 36px;
+  height: 35px;
+  min-height: 35px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  background-color: var(--ce-bg-nav);
-  border-bottom: 1px solid var(--ce-border);
-  padding: 0 10px;
+  align-items: stretch;
+  background-color: #0e111a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0 8px 0 0;
   z-index: 10;
-}
-
-.workspace-editor-tabs {
-  display: flex;
-  height: 100%;
-}
-
-.editor-tab {
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  border-right: 1px solid var(--ce-border);
-  font-size: 0.76rem;
-  font-weight: 550;
-  color: var(--ce-text-muted);
-  cursor: pointer;
-}
-
-.editor-tab.active {
-  background-color: var(--ce-bg-page);
-  color: var(--ce-text);
-  border-bottom: 1.5px solid var(--ce-accent);
-}
-
-.editor-tab-icon {
-  margin-right: 6px;
-  color: var(--ce-accent);
 }
 
 .editor-controls-toolbar {
@@ -817,68 +791,192 @@ body.light .room-history-action {
 
 /* 6. BOTTOM CONSOLE PANEL */
 .ce-console-panel {
-  background-color: var(--ce-bg-nav);
-  border-top: 1px solid var(--ce-border);
+  background-color: var(--ce-bg-nav, #0c0d14);
+  border-top: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 10;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
 }
 
 .console-tab-header {
-  height: 32px;
-  min-height: 32px;
+  height: 36px;
+  min-height: 36px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 10px;
-  border-bottom: 1px solid var(--ce-border);
+  background-color: rgba(12, 14, 22, 0.96);
+  border-bottom: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  user-select: none;
 }
 
 .console-tabs {
   display: flex;
+  align-items: center;
   height: 100%;
+  gap: 3px;
 }
 
 .console-tab-btn {
   background: transparent;
-  border: none;
-  color: var(--ce-text-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
+  border: 1px solid transparent;
+  color: var(--ce-text-muted, #8b949e);
+  font-size: 0.76rem;
+  font-weight: 550;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 12px;
+  padding: 0 11px;
+  height: 28px;
+  border-radius: 6px;
   cursor: pointer;
-  border-right: 1px solid var(--ce-border);
+  position: relative;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: -0.01em;
+}
+
+.console-tab-icon {
+  opacity: 0.7;
+  flex-shrink: 0;
+  transition: transform 0.16s ease, opacity 0.16s ease, color 0.16s ease;
+}
+
+/* Individual tab icon subtle color accents */
+.console-tab-btn .tab-icon-output {
+  color: #38bdf8;
+}
+
+.console-tab-btn .tab-icon-input {
+  color: #fbbf24;
+}
+
+.console-tab-btn .tab-icon-logs {
+  color: #34d399;
+}
+
+.console-tab-btn .tab-icon-history {
+  color: #818cf8;
+}
+
+.console-tab-btn .tab-icon-copilot {
+  color: #c084fc;
+}
+
+.console-tab-btn:hover {
+  color: var(--ce-text-h, #f3f4f6);
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.console-tab-btn:hover .console-tab-icon {
+  opacity: 1;
+  transform: translateY(-0.5px);
 }
 
 .console-tab-btn.active {
-  background-color: var(--ce-bg-page);
-  color: var(--ce-text);
-  border-bottom: 1.5px solid var(--ce-accent);
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  font-weight: 650;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.console-tab-btn.active .console-tab-icon {
+  opacity: 1;
+}
+
+
+
+/* ExpoAI Copilot pill button */
+.console-tab-btn.ce-btn-ai-copilot-tab {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  color: #d8b4fe;
+}
+
+.console-tab-btn.ce-btn-ai-copilot-tab:hover {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.16) 0%, rgba(99, 102, 241, 0.16) 100%);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #ffffff;
+}
+
+.console-tab-btn.ce-btn-ai-copilot-tab.active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(99, 102, 241, 0.22) 100%) !important;
+  border-color: rgba(168, 85, 247, 0.5) !important;
+  color: #ffffff !important;
+}
+
+.console-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ce-btn-save {
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: #d8b4fe;
+  height: 25px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ce-btn-save:hover {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #ffffff;
+  transform: translateY(-0.5px);
 }
 
 .ce-btn-run {
-  background-color: var(--ce-success);
-  border: none;
-  color: #fff;
-  height: 22px;
-  padding: 0 10px;
-  border-radius: var(--border-radius-sm);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #ffffff;
+  height: 25px;
+  padding: 0 11px;
+  border-radius: 6px;
   font-size: 0.74rem;
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
-  transition: opacity 0.2s, background-color 0.2s;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: all 0.15s ease;
+}
+
+.ce-btn-run:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transform: translateY(-0.5px);
 }
 
 .ce-btn-run:disabled {
-  opacity: 0.75;
+  opacity: 0.65;
   cursor: not-allowed;
+  transform: none;
+}
+
+.ce-btn-run.running-stop-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.35) !important;
+}
+
+.ce-btn-run.running-stop-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.5) !important;
 }
 
 .ce-btn-loader {
@@ -893,33 +991,6 @@ body.light .room-history-action {
   to {
     transform: rotate(360deg);
   }
-}
-
-
-.console-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ce-btn-save {
-  background-color: var(--ce-accent);
-  border: none;
-  color: #fff;
-  height: 22px;
-  padding: 0 10px;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.74rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.ce-btn-save:hover {
-  background-color: var(--ce-accent-hover);
 }
 
 .console-tab-body {
@@ -1758,22 +1829,26 @@ body.light .delete-card-btn.cancel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--ce-border);
-  border-radius: 8px;
-  padding: 3px 6px;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0 0 8px 0;
   margin-bottom: 8px;
 }
 
 .light .chat-tabs-header {
-  background: rgba(0, 0, 0, 0.03);
+  background: transparent;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
 }
 
 .chat-tab-triggers {
   display: flex;
   align-items: center;
   gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 0;
   flex: 1;
   min-width: 0;
 }
@@ -1850,14 +1925,15 @@ body.light .delete-card-btn.cancel {
   flex: 1;
   min-width: 0;
   background: transparent;
-  border: none;
-  color: var(--ce-text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 8px;
+  border: 1px solid transparent;
+  color: var(--ce-text-muted, #94a3b8);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  height: 28px;
   border-radius: 6px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.16s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1883,21 +1959,23 @@ body.light .delete-card-btn.cancel {
 }
 
 .chat-tab-btn:hover {
-  color: var(--ce-text);
+  color: var(--ce-text-h, #ffffff);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .chat-tab-btn.active {
-  background: var(--ce-surface);
-  color: var(--ce-accent);
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  font-weight: 700;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .light .chat-tab-btn.active {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.chat-tab-btn {
-  position: relative;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .chat-tab-unread-dot {
@@ -3590,6 +3668,63 @@ body.light .chat-messages-container::-webkit-scrollbar-thumb {
 
 .explorer-context-menu li.delete-item:hover {
   background-color: rgba(248, 81, 73, 0.08);
+}
+
+/* Explorer Compact Storage Footer */
+.explorer-storage-footer {
+  padding: 8px 6px 4px 6px;
+  border-top: 1px solid var(--ce-border);
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.explorer-storage-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+}
+
+.storage-info-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ce-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.storage-info-text {
+  color: var(--ce-text);
+  font-family: monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.explorer-storage-track {
+  width: 100%;
+  height: 4px;
+  background: var(--ce-bg-active, rgba(255, 255, 255, 0.08));
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.explorer-storage-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.explorer-storage-fill.warning {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.explorer-storage-fill.danger {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
 }
 
 /* VS Code-like Welcome Screen */
@@ -6316,61 +6451,12 @@ body.light .monaco-editor .current-line {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  background: rgba(12, 12, 20, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  background: rgba(12, 14, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
   padding: 8px;
-  gap: 8px;
+  gap: 6px;
   overflow: hidden;
-}
-
-.chat-tabs-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.chat-tab-triggers {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 3px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.chat-tab-btn {
-  flex: 1;
-  background: transparent;
-  border: 1px solid transparent;
-  color: #9ca3af;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-}
-
-.chat-tab-btn:hover {
-  color: #f3f4f6;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.chat-tab-btn.active {
-  background: rgba(99, 102, 241, 0.25);
-  color: #a5b4fc;
-  font-weight: 700;
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .private-recipient-selector {
@@ -6686,8 +6772,8 @@ body.light .chat-tabs-header {
 
 .light .chat-tab-triggers,
 body.light .chat-tab-triggers {
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
+  background: transparent;
+  border: none;
 }
 
 .light .chat-tab-btn,
@@ -6699,16 +6785,16 @@ body.light .chat-tab-btn {
 .light .chat-tab-btn:hover,
 body.light .chat-tab-btn:hover {
   color: #0f172a;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .light .chat-tab-btn.active,
 body.light .chat-tab-btn.active {
-  background: #ffffff;
-  color: #4338ca;
+  background: #f1f5f9;
+  color: #0f172a;
   font-weight: 700;
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.08);
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .light .private-recipient-selector,
@@ -6812,15 +6898,13 @@ body.light .chat-call-btn.video-call-btn:hover {
 
 /* ExpoAI Copilot Tab Button Styling */
 .console-tab-btn.ce-btn-ai-copilot-tab.active {
-  background-color: rgba(168, 85, 247, 0.08) !important;
-  color: #c7d2fe !important;
-  border-bottom: 1.5px solid #a855f7 !important;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(99, 102, 241, 0.22) 100%) !important;
+  color: #ffffff !important;
 }
 
 .light .console-tab-btn.ce-btn-ai-copilot-tab.active {
-  background-color: rgba(168, 85, 247, 0.06) !important;
+  background-color: rgba(168, 85, 247, 0.1) !important;
   color: #6d28d9 !important;
-  border-bottom: 1.5px solid #8b5cf6 !important;
 }
 
 /* Responsive bottom console layout (VS Code inspired) */
@@ -7352,6 +7436,219 @@ body.light .chat-call-btn.video-call-btn:hover {
   color: #1f2937;
 }
 
+/* ==========================================================================
+   FAST QUICK FILE / FOLDER CREATION MODAL
+   ========================================================================== */
+
+.ce-quick-create-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(4, 6, 12, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  padding: 16px;
+  animation: ce-quick-fade 0.16s ease-out;
+}
+
+@keyframes ce-quick-fade {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ce-quick-create-modal {
+  background: #0e111a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 4px 16px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  color: #e5e7eb;
+}
+
+.ce-quick-create-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ce-quick-create-title-box {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.ce-quick-create-icon {
+  color: #818cf8;
+}
+
+.ce-quick-create-icon.folder {
+  color: #fca035;
+}
+
+.ce-quick-create-title-box h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.ce-quick-create-close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  padding: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ce-quick-create-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.ce-quick-create-form {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ce-quick-create-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.ce-quick-create-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.86rem;
+  font-family: var(--ce-font-mono, monospace);
+  color: #ffffff;
+  outline: none;
+  transition: all 0.16s ease;
+  box-sizing: border-box;
+}
+
+.ce-quick-create-input:focus {
+  border-color: #818cf8;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18);
+}
+
+.ce-quick-create-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ce-quick-pills-label {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  margin-right: 2px;
+}
+
+.ce-quick-pill-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #c7d2fe;
+  font-family: monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ce-quick-pill-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #818cf8;
+  color: #ffffff;
+}
+
+.ce-quick-create-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.ce-quick-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ce-quick-create-btn.cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #9ca3af;
+}
+
+.ce-quick-create-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.ce-quick-create-btn.submit {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
+}
+
+.ce-quick-create-btn.submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  transform: translateY(-1px);
+}
+
+.ce-quick-create-btn.submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ce-quick-create-btn .ce-spin {
+  animation: ce-spin-quick 1s linear infinite;
+}
+
+@keyframes ce-spin-quick {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* Visible Focus Indicators for Accessibility (WCAG AA) */
 button:focus-visible,
 a:focus-visible,
@@ -7361,4 +7658,409 @@ textarea:focus-visible,
 [role="button"]:focus-visible {
   outline: 2px solid #6366f1 !important;
   outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   IMAGE ASSET PREVIEW PANE (HTML/CSS/JS WORKSPACE ASSETS)
+   ========================================================================== */
+
+.ce-image-preview-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #090b10;
+  overflow: hidden;
+  position: relative;
+}
+
+.ce-image-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  z-index: 10;
+  min-height: 40px;
+}
+
+.ce-image-meta-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ce-image-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.ce-image-badge.format {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.ce-image-badge.dim {
+  background: rgba(129, 140, 248, 0.12);
+  color: #a5b4fc;
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  font-family: var(--ce-font-mono, monospace);
+}
+
+.ce-image-badge.size {
+  background: rgba(255, 255, 255, 0.05);
+  color: #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ce-image-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ce-img-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ce-img-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.ce-img-zoom-val {
+  font-size: 0.72rem;
+  font-family: var(--ce-font-mono, monospace);
+  color: #d1d5db;
+  min-width: 36px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.ce-image-canvas {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  position: relative;
+  background-color: #0d1117;
+  background-image: 
+    linear-gradient(45deg, rgba(255, 255, 255, 0.02) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.02) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.02) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.02) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  padding: 24px;
+}
+
+.ce-image-viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.ce-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  transition: transform 0.15s ease-out;
+  transform-origin: center center;
+}
+
+.ce-image-loading-state,
+.ce-image-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.ce-image-error-state {
+  color: #ef4444;
+}
+
+/* ==========================================================================
+   SIMPLE & PROFESSIONAL VS CODE WORKSPACE EDITOR TABS
+   ========================================================================== */
+
+.workspace-editor-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  max-width: calc(100% - 220px);
+  height: 100%;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.workspace-editor-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ce-editor-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 35px;
+  padding: 0 10px 0 14px;
+  background: #111420;
+  color: #8b949e;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 2px solid transparent;
+  border-radius: 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s ease, color 0.12s ease;
+  position: relative;
+  max-width: 200px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.ce-editor-tab:hover {
+  background: #161928;
+  color: #d1d5db;
+}
+
+.ce-editor-tab.active {
+  background: #1c2033;
+  color: #ffffff;
+  border-top: 2px solid #6366f1;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 500;
+}
+
+.ce-tab-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.ce-tab-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+  font-size: 0.8rem;
+  letter-spacing: -0.01em;
+}
+
+/* VS Code minimal square close button */
+.ce-tab-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin-left: 4px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #64748b;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
+}
+
+.ce-editor-tab:hover .ce-tab-close-btn,
+.ce-editor-tab.active .ce-tab-close-btn {
+  opacity: 0.85;
+  color: #94a3b8;
+}
+
+.ce-tab-close-btn:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.ce-tab-close-btn:active {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Light Theme Overrides for Editor Tabs */
+.light .workspace-editor-header,
+body.light .workspace-editor-header {
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.light .workspace-editor-tabs,
+body.light .workspace-editor-tabs {
+  background: transparent;
+}
+
+.light .ce-editor-tab,
+body.light .ce-editor-tab {
+  background: #e2e8f0;
+  color: #64748b;
+  border-right: 1px solid #cbd5e1;
+  border-top: 2px solid transparent;
+}
+
+.light .ce-editor-tab:hover,
+body.light .ce-editor-tab:hover {
+  background: #edf2f7;
+  color: #1e293b;
+}
+
+.light .ce-editor-tab.active,
+body.light .ce-editor-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  border-top: 2px solid #4f46e5;
+  border-right: 1px solid #cbd5e1;
+  font-weight: 600;
+}
+
+.light .ce-tab-close-btn {
+  color: #94a3b8;
+}
+
+.light .ce-editor-tab:hover .ce-tab-close-btn,
+.light .ce-editor-tab.active .ce-tab-close-btn {
+  color: #64748b;
+}
+
+.light .ce-tab-close-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+/* Light Theme Overrides for Image Preview Pane */
+.light .ce-image-preview-pane,
+body.light .ce-image-preview-pane {
+  background: #f8fafc;
+}
+
+.light .ce-image-preview-toolbar {
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.light .ce-image-filename {
+  color: #0f172a;
+}
+
+.light .ce-image-badge.format {
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.light .ce-image-badge.dimensions,
+.light .ce-image-badge.size {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.light .ce-image-zoom-controls {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.light .ce-img-btn {
+  color: #475569;
+}
+
+.light .ce-img-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.light .ce-img-zoom-val {
+  color: #0f172a;
+}
+
+.light .ce-image-canvas {
+  background-color: #f1f5f9;
+  background-image: 
+    linear-gradient(45deg, rgba(0, 0, 0, 0.03) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(0, 0, 0, 0.03) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.03) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.03) 75%);
+}
+
+.light .ce-preview-img {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Light Theme Overrides for Delete Confirm Modal */
+.light .ce-confirm-modal-overlay,
+body.light .ce-confirm-modal-overlay {
+  background-color: rgba(15, 23, 42, 0.45);
+}
+
+.light .ce-confirm-modal,
+body.light .ce-confirm-modal {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
+}
+
+.light .ce-confirm-modal-header h3 {
+  color: #0f172a;
+}
+
+.light .ce-confirm-modal-body {
+  color: #475569;
+}
+
+.light .ce-confirm-modal-body strong {
+  color: #0f172a;
+}
+
+.light .ce-confirm-modal-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+  border-left-color: #d97706;
+}
+
+.light .ce-confirm-btn-cancel {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.light .ce-confirm-btn-cancel:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }

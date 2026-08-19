@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const WorkspaceItem = require("../models/WorkspaceItem");
 const Room = require("../models/Room");
 const { logActivity } = require("./activityControllers");
@@ -55,19 +57,55 @@ const wouldCreateCycle = async (itemId, targetParentId) => {
   return false;
 };
 
-// Helper: Recursively delete items
+// Helper: Fast recursive collector & batch deleter
 const deleteItemRecursively = async (itemId) => {
-  const item = await WorkspaceItem.findById(itemId);
-  if (!item) return;
+  const rootItem = await WorkspaceItem.findById(itemId);
+  if (!rootItem) return [];
 
-  if (item.type === "folder") {
-    const children = await WorkspaceItem.find({ parentId: itemId });
-    for (const child of children) {
-      await deleteItemRecursively(child._id);
+  const roomId = rootItem.roomId;
+  // Fetch all items in this room to build exact recursive tree with zero missed children
+  const allRoomItems = await WorkspaceItem.find({ roomId });
+
+  const deletedIds = new Set([String(rootItem._id)]);
+  let currentParents = new Set([String(rootItem._id)]);
+
+  if (rootItem.type === "folder") {
+    while (currentParents.size > 0) {
+      const nextParents = new Set();
+      for (const item of allRoomItems) {
+        if (item.parentId && currentParents.has(String(item.parentId))) {
+          const idStr = String(item._id);
+          if (!deletedIds.has(idStr)) {
+            deletedIds.add(idStr);
+            if (item.type === "folder") {
+              nextParents.add(idStr);
+            }
+          }
+        }
+      }
+      currentParents = nextParents;
     }
   }
 
-  await WorkspaceItem.findByIdAndDelete(itemId);
+  const deletedIdArray = Array.from(deletedIds);
+
+  // Clean up physical disk files for any deleted assets
+  for (const it of allRoomItems) {
+    if (deletedIds.has(String(it._id)) && it.storageKey) {
+      try {
+        const assetPath = path.join(__dirname, "../uploads/workspace_assets", it.storageKey);
+        if (fs.existsSync(assetPath)) {
+          fs.unlinkSync(assetPath);
+        }
+      } catch (e) {
+        console.warn("Failed to delete physical asset file:", e.message);
+      }
+    }
+  }
+
+  // Fast single batch delete in MongoDB
+  await WorkspaceItem.deleteMany({ _id: { $in: deletedIdArray } });
+  return deletedIdArray;
 };
 
 // 1. Get Workspace Tree Metadata (excluding contents)
@@ -193,6 +231,18 @@ exports.createWorkspaceItem = async (req, res) => {
         success: false,
         message: `An item named "${name}" already exists in this directory`
       });
+    }
+
+    if (type === "file") {
+      const { calculateRoomStorage } = require("../services/importService");
+      const { MAX_ROOM_STORAGE } = require("../utils/importRules");
+      const storageInfo = await calculateRoomStorage(roomId);
+      if (storageInfo.currentUsage >= MAX_ROOM_STORAGE) {
+        return res.status(400).json({
+          success: false,
+          message: "Room storage limit of 10 MB reached. Cannot create more files."
+        });
+      }
     }
 
     const newItem = await WorkspaceItem.create({
@@ -437,7 +487,7 @@ exports.deleteWorkspaceItem = async (req, res) => {
     const name = item.name;
     const type = item.type;
 
-    await deleteItemRecursively(itemId);
+    const deletedIds = await deleteItemRecursively(itemId);
 
     logActivity(
       req.user._id,
@@ -449,7 +499,8 @@ exports.deleteWorkspaceItem = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Successfully deleted ${type} "${name}"`
+      message: `Successfully deleted ${type} "${name}"`,
+      deletedItemIds: deletedIds
     });
   } catch (error) {
     res.status(500).json({
@@ -488,11 +539,33 @@ exports.saveFileContent = async (req, res) => {
       });
     }
 
+    if (file.fileType === "asset") {
+      return res.status(400).json({
+        success: false,
+        message: "Binary asset files (.jpg, .jpeg, .png) cannot be edited as plain text."
+      });
+    }
+
     if (content && content.split(/\r?\n/).length > 1000) {
       return res.status(400).json({
         success: false,
         message: "File content exceeds the maximum limit of 1000 lines."
       });
+    }
+
+    const oldSize = Buffer.byteLength(file.content || "", "utf8");
+    const newSize = Buffer.byteLength(content || "", "utf8");
+    const sizeDelta = newSize - oldSize;
+    if (sizeDelta > 0) {
+      const { calculateRoomStorage } = require("../services/importService");
+      const { MAX_ROOM_STORAGE } = require("../utils/importRules");
+      const storageInfo = await calculateRoomStorage(file.roomId);
+      if (storageInfo.currentUsage + sizeDelta > MAX_ROOM_STORAGE) {
+        return res.status(400).json({
+          success: false,
+          message: "Room storage limit exceeded. Saving this file would exceed the 10 MB workspace limit."
+        });
+      }
     }
 
     file.content = content;
@@ -642,6 +715,207 @@ exports.getWorkspaceContents = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+};
+
+// 11. Get Authoritative Room Storage Usage (10 MB Limit)
+exports.getRoomStorageUsage = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const room = await checkRoomAccess(roomId, req.user._id);
+    if (!room) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to view storage usage for this workspace"
+      });
+    }
+
+    const { calculateRoomStorage } = require("../services/importService");
+    const storageInfo = await calculateRoomStorage(roomId);
+
+    res.status(200).json({
+      success: true,
+      storage: storageInfo
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// 12. Validate Import Batch (Pre-flight Inspection)
+exports.validateImport = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { files = [] } = req.body;
+
+    const room = await checkRoomAccess(roomId, req.user._id);
+    if (!room) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to access this workspace"
+      });
+    }
+
+    const { validateImportBatch } = require("../services/importService");
+    const result = await validateImportBatch(roomId, room.language, files, req.user, room);
+
+    res.status(200).json({
+      success: true,
+      validation: result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// 13. Execute Import Batch
+exports.executeImport = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const room = await checkRoomAccess(roomId, req.user._id);
+    if (!room) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to import files into this workspace"
+      });
+    }
+
+    const { executeImportBatch } = require("../services/importService");
+
+    let files = [];
+    let duplicateResolutions = {};
+
+    // Check if multipart files were uploaded
+    if (req.files && req.files.length > 0) {
+      let pathsMap = {};
+      if (req.body.paths) {
+        try {
+          pathsMap = typeof req.body.paths === "string" ? JSON.parse(req.body.paths) : req.body.paths;
+        } catch {
+          pathsMap = {};
+        }
+      }
+
+      if (req.body.duplicateResolutions) {
+        try {
+          duplicateResolutions =
+            typeof req.body.duplicateResolutions === "string"
+              ? JSON.parse(req.body.duplicateResolutions)
+              : req.body.duplicateResolutions;
+        } catch {
+          duplicateResolutions = {};
+        }
+      }
+
+      files = req.files.map((f, idx) => {
+        let relativePath = "";
+        if (Array.isArray(pathsMap)) {
+          relativePath = pathsMap[idx] || f.originalname || `file_${idx}`;
+        } else if (typeof pathsMap === "object" && pathsMap !== null) {
+          relativePath = pathsMap[idx] || pathsMap[f.originalname] || f.originalname || `file_${idx}`;
+        } else {
+          relativePath = f.originalname || `file_${idx}`;
+        }
+
+        const ext = path.extname(relativePath).toLowerCase();
+        const isImg = [".jpg", ".jpeg", ".png"].includes(ext);
+
+        return {
+          name: path.basename(relativePath),
+          relativePath,
+          buffer: f.buffer,
+          content: isImg ? (f.buffer ? `data:${ext === ".png" ? "image/png" : "image/jpeg"};base64,${f.buffer.toString("base64")}` : "") : (f.buffer ? f.buffer.toString("utf8") : ""),
+          size: f.size
+        };
+      });
+    } else if (req.body.files && Array.isArray(req.body.files)) {
+      // JSON body upload
+      files = req.body.files;
+      duplicateResolutions = req.body.duplicateResolutions || {};
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "No files provided for import"
+      });
+    }
+
+    const result = await executeImportBatch(
+      roomId,
+      room.language,
+      files,
+      duplicateResolutions,
+      req.user,
+      room
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message || "Import execution failed"
+    });
+  }
+};
+
+// 14. Serve Workspace Binary Asset (Stream with Security Headers)
+exports.serveWorkspaceAsset = async (req, res) => {
+  try {
+    const { roomId, assetId } = req.params;
+
+    const room = await checkRoomAccess(roomId, req.user._id);
+    if (!room) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to access assets in this workspace"
+      });
+    }
+
+    const item = await WorkspaceItem.findOne({ _id: assetId, roomId, type: "file" });
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Asset not found"
+      });
+    }
+
+    const mimeType = item.mimeType || "application/octet-stream";
+
+    // 1. Try streaming from physical disk
+    if (item.storageKey) {
+      const diskPath = path.join(__dirname, "../uploads/workspace_assets", item.storageKey);
+      if (fs.existsSync(diskPath)) {
+        res.setHeader("Content-Type", mimeType);
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return fs.createReadStream(diskPath).pipe(res);
+      }
+    }
+
+    // 2. Fallback to base64 content if disk file was moved/cached
+    if (item.content && item.content.startsWith("data:")) {
+      const base64Data = item.content.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return res.send(buffer);
+    }
+
+    return res.status(404).json({
+      success: false,
+      message: "Asset binary data unavailable"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to serve asset"
     });
   }
 };

@@ -31,6 +31,27 @@ const workspaceItemSchema = new mongoose.Schema(
       type: String,
       default: "javascript"
     },
+    fileType: {
+      type: String,
+      enum: ["code", "asset"],
+      default: "code"
+    },
+    mimeType: {
+      type: String,
+      default: null
+    },
+    size: {
+      type: Number,
+      default: 0
+    },
+    assetUrl: {
+      type: String,
+      default: null
+    },
+    storageKey: {
+      type: String,
+      default: null
+    },
     isEntryPoint: {
       type: Boolean,
       default: false

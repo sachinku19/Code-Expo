@@ -33,8 +33,32 @@ export const resolveRelativePath = (basePath, relativePath) => {
   return baseParts.join("/");
 };
 
+// Helper: Resolve url() in CSS declarations to workspace asset URLs
+export const resolveCSSUrls = (cssContent, cssFolder, assetUrls) => {
+  if (!cssContent) return "";
+  const urlRegex = /url\(\s*(['"]?)(.*?)\1\s*\)/gi;
+  return cssContent.replace(urlRegex, (match, quote, urlPath) => {
+    const trimmed = urlPath.trim();
+    if (
+      trimmed.startsWith("data:") ||
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("blob:") ||
+      trimmed.startsWith("#")
+    ) {
+      return match;
+    }
+    const resolvedPath = resolveRelativePath(cssFolder, trimmed);
+    const assetUrl = assetUrls[resolvedPath] || assetUrls[trimmed] || assetUrls["./" + resolvedPath] || assetUrls["/" + resolvedPath];
+    if (assetUrl) {
+      return `url("${assetUrl}")`;
+    }
+    return match;
+  });
+};
+
 // Helper: Inline CSS @import statements
-export const inlineCSS = (cssContent, cssFolder, allFiles) => {
+export const inlineCSS = (cssContent, cssFolder, allFiles, assetUrls = {}) => {
   const importRegex = /@import\s+(?:url\()?['"]([^'"]+)['"]\)?\s*;/g;
   return cssContent.replace(importRegex, (match, importPath) => {
     const resolvedPath = resolveRelativePath(cssFolder, importPath);
@@ -43,7 +67,7 @@ export const inlineCSS = (cssContent, cssFolder, allFiles) => {
       const importedFolder = resolvedPath.includes("/") 
         ? resolvedPath.substring(0, resolvedPath.lastIndexOf("/")) 
         : "";
-      return inlineCSS(importedFile.content, importedFolder, allFiles);
+      return inlineCSS(importedFile.content, importedFolder, allFiles, assetUrls);
     }
     return `/* Failed to import CSS: ${importPath} (resolved: ${resolvedPath}) */`;
   });
@@ -51,6 +75,8 @@ export const inlineCSS = (cssContent, cssFolder, allFiles) => {
 
 // Convert base64 image data to base64 data URL
 export const getAssetDataUrl = (fileName, base64Content) => {
+  if (!base64Content) return "";
+  if (base64Content.startsWith("data:")) return base64Content;
   const ext = fileName.split(".").pop().toLowerCase();
   let mime = "application/octet-stream";
   if (ext === "png") mime = "image/png";
@@ -59,8 +85,8 @@ export const getAssetDataUrl = (fileName, base64Content) => {
   else if (ext === "svg") mime = "image/svg+xml";
   else if (ext === "webp") mime = "image/webp";
   else if (ext === "avif") mime = "image/avif";
+  else if (ext === "ico") mime = "image/x-icon";
   
-  if (base64Content.startsWith("data:")) return base64Content;
   return `data:${mime};base64,${base64Content}`;
 };
 
@@ -154,19 +180,11 @@ export const compileWorkspaceProject = async ({
   const jsBlobUrls = {};
   const assetUrls = {};
 
+  // Pass 1: Build asset & JS URLs first so CSS and HTML can reference them
   allFiles.forEach((file) => {
     const ext = file.name.split(".").pop().toLowerCase();
     
-    if (ext === "css") {
-      const cssFolder = file.path.includes("/") 
-        ? file.path.substring(0, file.path.lastIndexOf("/")) 
-        : "";
-      const inlined = inlineCSS(file.content, cssFolder, allFiles);
-      const blob = new Blob([inlined], { type: "text/css" });
-      const url = URL.createObjectURL(blob);
-      cssBlobUrls[file.path] = url;
-      if (activeBlobUrlsRef && activeBlobUrlsRef.current) activeBlobUrlsRef.current[file.path] = url;
-    } else if (ext === "js" || ext === "jsx") {
+    if (ext === "js" || ext === "jsx") {
       const blob = new Blob([file.content], { type: "application/javascript" });
       const url = URL.createObjectURL(blob);
       jsBlobUrls[file.path] = url;
@@ -179,13 +197,39 @@ export const compileWorkspaceProject = async ({
       } else if (ext === "svg") {
         const blob = new Blob([file.content], { type: "image/svg+xml" });
         url = URL.createObjectURL(blob);
+      } else if (file.content && file.content.startsWith("data:")) {
+        url = file.content;
+      } else if (file.assetUrl) {
+        url = file.assetUrl;
       } else {
         url = getAssetDataUrl(file.name, file.content);
       }
-      assetUrls[file.path] = url;
-      if (!url.startsWith("data:") && activeBlobUrlsRef && activeBlobUrlsRef.current) {
-        activeBlobUrlsRef.current[file.path] = url;
+
+      if (url) {
+        assetUrls[file.path] = url;
+        assetUrls[file.name] = url;
+        assetUrls["./" + file.path] = url;
+        assetUrls["/" + file.path] = url;
+        if (!url.startsWith("data:") && activeBlobUrlsRef && activeBlobUrlsRef.current) {
+          activeBlobUrlsRef.current[file.path] = url;
+        }
       }
+    }
+  });
+
+  // Pass 2: Compile CSS files with resolved background-image url() and imports
+  allFiles.forEach((file) => {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (ext === "css") {
+      const cssFolder = file.path.includes("/") 
+        ? file.path.substring(0, file.path.lastIndexOf("/")) 
+        : "";
+      let inlined = inlineCSS(file.content, cssFolder, allFiles, assetUrls);
+      inlined = resolveCSSUrls(inlined, cssFolder, assetUrls);
+      const blob = new Blob([inlined], { type: "text/css" });
+      const url = URL.createObjectURL(blob);
+      cssBlobUrls[file.path] = url;
+      if (activeBlobUrlsRef && activeBlobUrlsRef.current) activeBlobUrlsRef.current[file.path] = url;
     }
   });
 
@@ -294,14 +338,66 @@ export const compileWorkspaceProject = async ({
     }
   });
 
+  // Resolve <img> src and srcset
   doc.querySelectorAll("img").forEach((img) => {
     const src = img.getAttribute("src");
     if (src) {
       const resolvedPath = resolveRelativePath(activeHTMLFolder, src);
-      const assetUrl = assetUrls[resolvedPath];
+      const assetUrl = assetUrls[resolvedPath] || assetUrls[src] || assetUrls["./" + resolvedPath] || assetUrls["/" + resolvedPath];
       if (assetUrl) {
         img.setAttribute("src", assetUrl);
       }
+    }
+  });
+
+  // Resolve <source> elements (picture / video / audio)
+  doc.querySelectorAll("source").forEach((source) => {
+    const src = source.getAttribute("src");
+    const srcset = source.getAttribute("srcset");
+    if (src) {
+      const resolvedPath = resolveRelativePath(activeHTMLFolder, src);
+      const assetUrl = assetUrls[resolvedPath] || assetUrls[src];
+      if (assetUrl) source.setAttribute("src", assetUrl);
+    }
+    if (srcset) {
+      const resolvedPath = resolveRelativePath(activeHTMLFolder, srcset);
+      const assetUrl = assetUrls[resolvedPath] || assetUrls[srcset];
+      if (assetUrl) source.setAttribute("srcset", assetUrl);
+    }
+  });
+
+  // Resolve <video> poster images
+  doc.querySelectorAll("video[poster]").forEach((video) => {
+    const poster = video.getAttribute("poster");
+    if (poster) {
+      const resolvedPath = resolveRelativePath(activeHTMLFolder, poster);
+      const assetUrl = assetUrls[resolvedPath] || assetUrls[poster];
+      if (assetUrl) video.setAttribute("poster", assetUrl);
+    }
+  });
+
+  // Resolve favicon and icon links
+  doc.querySelectorAll('link[rel*="icon"]').forEach((link) => {
+    const href = link.getAttribute("href");
+    if (href) {
+      const resolvedPath = resolveRelativePath(activeHTMLFolder, href);
+      const assetUrl = assetUrls[resolvedPath] || assetUrls[href];
+      if (assetUrl) link.setAttribute("href", assetUrl);
+    }
+  });
+
+  // Resolve inline <style> tags
+  doc.querySelectorAll("style").forEach((styleTag) => {
+    if (styleTag.textContent) {
+      styleTag.textContent = resolveCSSUrls(styleTag.textContent, activeHTMLFolder, assetUrls);
+    }
+  });
+
+  // Resolve inline style attributes (e.g. style="background-image: url(...)")
+  doc.querySelectorAll("[style*='url']").forEach((el) => {
+    const styleAttr = el.getAttribute("style");
+    if (styleAttr) {
+      el.setAttribute("style", resolveCSSUrls(styleAttr, activeHTMLFolder, assetUrls));
     }
   });
 

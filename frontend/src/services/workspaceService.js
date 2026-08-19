@@ -66,3 +66,25 @@ export const getWorkspaceContents = async (roomId) => {
   const response = await API.get(`/${roomId}/contents`, getHeaders());
   return response.data;
 };
+
+export const getRoomStorage = async (roomId) => {
+  const response = await API.get(`/${roomId}/storage`, getHeaders());
+  return response.data;
+};
+
+export const validateImport = async (roomId, files) => {
+  const response = await API.post(`/${roomId}/import/validate`, { files }, getHeaders());
+  return response.data;
+};
+
+export const importFiles = async (roomId, formData, onUploadProgress) => {
+  const token = localStorage.getItem("token");
+  const response = await API.post(`/${roomId}/import`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data"
+    },
+    onUploadProgress
+  });
+  return response.data;
+};

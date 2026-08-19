@@ -416,11 +416,11 @@ const AIAssistantPanel = ({
         title="Click & Drag to move AI Assistant anywhere"
       >
         <div className="ai-brand-group">
-          <div className="ai-drag-handle" style={{ display: "flex", alignItems: "center", color: "rgba(255,255,255,0.4)", marginRight: "2px" }}>
-            <GripHorizontal size={16} />
-          </div>
-          <div className="ai-avatar-icon">
-            <Bot size={18} className="ai-copilot-bot-icon" />
+          <div className="ai-avatar-icon-brand">
+            <img src="/logo.png" alt="CodeExpo AI" className="ai-brand-logo-img" />
+            <span className="ai-badge-sparkle">
+              <Sparkles size={9} />
+            </span>
           </div>
           <div>
             <h3 className="ai-panel-title">ExpoAI Assistant</h3>
@@ -432,11 +432,6 @@ const AIAssistantPanel = ({
           <button className="icon-action-btn" onClick={handleClearChat} title="Clear Chat History">
             <Trash2 size={14} />
           </button>
-          {onToggleCollapse && (
-            <button className="icon-action-btn" onClick={onToggleCollapse} title="Collapse Panel">
-              <ChevronRight size={16} />
-            </button>
-          )}
           {(onClose || onToggleCollapse) && (
             <button
               className="icon-action-btn close-action-btn"

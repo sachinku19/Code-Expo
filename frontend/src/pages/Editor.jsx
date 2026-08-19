@@ -29,6 +29,7 @@ import GoogleMeetStage from "../components/meet/GoogleMeetStage";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { logoutUser } from "../services/authService";
+import toast from "react-hot-toast";
 import {
   ShieldAlert,
   FolderOpen,
@@ -57,6 +58,7 @@ import {
   Palette,
   FileCode,
   Sparkles,
+  Upload,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -95,7 +97,11 @@ import {
   FolderKanban,
   FileClock,
   Lock,
-  Scroll
+  Scroll,
+  ZoomIn,
+  ZoomOut,
+  ImageOff,
+  Image as ImageIcon
 } from "lucide-react";
 import "./Editor.css";
 import GateOverlay from "../components/GateOverlay";
@@ -409,17 +415,22 @@ function Editor() {
     }
   };
 
-  const getFileIconInfo = (name) => {
+  const getFileIconInfo = (name = "") => {
     const ext = name.split(".").pop().toLowerCase();
-    let color = "#8e9aa9"; // default gray
-    if (ext === "js" || ext === "jsx") color = "#f1e05a"; // JavaScript yellow
-    else if (ext === "py") color = "#3572A5"; // Python blue
-    else if (ext === "cpp" || ext === "h" || ext === "hpp" || ext === "c") color = "#f34b7d"; // C++ red
-    else if (ext === "java") color = "#b07219"; // Java brown
-    else if (ext === "html") color = "#e34c26"; // HTML orange
-    else if (ext === "css") color = "#563d7c"; // CSS purple
-    else if (ext === "json") color = "#db5858"; // JSON reddish
-    return { color };
+    let color = "#94a3b8"; // default slate gray
+    let isImage = false;
+    if (ext === "js" || ext === "jsx" || ext === "mjs" || ext === "cjs") color = "#f7df1e";
+    else if (ext === "py" || ext === "pyw") color = "#38bdf8";
+    else if (ext === "cpp" || ext === "h" || ext === "hpp" || ext === "c" || ext === "cc") color = "#00599c";
+    else if (ext === "java") color = "#ea2d2e";
+    else if (ext === "html" || ext === "htm") color = "#e34c26";
+    else if (ext === "css") color = "#38bdf8";
+    else if (ext === "json") color = "#fbbf24";
+    else if (["png", "jpg", "jpeg", "webp", "gif", "svg", "ico"].includes(ext)) {
+      color = "#22c55e";
+      isImage = true;
+    }
+    return { color, isImage };
   };
 
   const handlePathChange = (path) => {
@@ -427,6 +438,8 @@ function Editor() {
   };
 
   const handleFileSelect = async (fileId, fileInfo = null) => {
+    if (!fileId) return;
+    const strFileId = String(fileId);
     isTabRestoredRef.current = true;
     if (layoutMode !== "editor" && layoutMode !== "split") {
       changeLayoutMode("editor");
@@ -440,15 +453,16 @@ function Editor() {
 
       // 1. Save current code in tabs before switching away
       if (activeFileIdRef.current) {
+        const curActiveId = String(activeFileIdRef.current);
         setTabs((prev) =>
           prev.map((t) =>
-            t._id === activeFileIdRef.current ? { ...t, content: code } : t
+            String(t._id) === curActiveId ? { ...t, content: code } : t
           )
         );
       }
 
       // 2. Check if already open in tabs
-      const existingTab = tabs.find((t) => t._id === fileId);
+      const existingTab = tabs.find((t) => String(t._id) === strFileId);
       if (existingTab) {
         setActiveFileId(existingTab._id);
         setCode(existingTab.content || "");
@@ -467,13 +481,13 @@ function Editor() {
       if (fileInfo) {
         // Add optimistic tab safely
         setTabs((prev) => {
-          const exists = prev.some((t) => t._id === fileId);
+          const exists = prev.some((t) => String(t._id) === strFileId);
           if (exists) return prev;
-          return [...prev, { ...fileInfo, content: "" }];
+          return [...prev, { ...fileInfo, content: fileInfo.content || "" }];
         });
         setActiveFileId(fileId);
         setEditorLanguage(fileInfo.language || "javascript");
-        setCode("");
+        setCode(fileInfo.content || "");
       }
 
       // 4. Fetch content from the server
@@ -481,15 +495,15 @@ function Editor() {
       const file = data.file;
 
       setTabs((prev) => {
-        const exists = prev.some((t) => t._id === file._id);
+        const exists = prev.some((t) => String(t._id) === String(file._id));
         if (exists) {
-          return prev.map((t) => (t._id === file._id ? { ...t, content: file.content || "" } : t));
+          return prev.map((t) => (String(t._id) === String(file._id) ? { ...t, ...file, content: file.content || "" } : t));
         }
         return [...prev, file];
       });
 
       // Update editor state if the user is still on this file
-      if (activeFileIdRef.current === file._id) {
+      if (String(activeFileIdRef.current) === String(file._id)) {
         setCode(file.content || "");
       }
       setEditorLanguage(file.language || "javascript");
@@ -502,14 +516,17 @@ function Editor() {
   };
 
   const handleCloseTab = (e, fileId) => {
-    e.stopPropagation();
-    const nextTabs = tabs.filter((t) => t._id !== fileId);
+    if (e && typeof e.stopPropagation === "function") {
+      e.stopPropagation();
+    }
+    const strFileId = String(fileId);
+    const nextTabs = tabs.filter((t) => String(t._id) !== strFileId);
     setTabs(nextTabs);
 
-    if (activeFileId === fileId) {
+    if (String(activeFileId) === strFileId) {
       if (nextTabs.length > 0) {
         const lastTab = nextTabs[nextTabs.length - 1];
-        handleFileSelect(lastTab._id);
+        handleFileSelect(lastTab._id, lastTab);
       } else {
         setActiveFileId(null);
         setCode("");
@@ -518,82 +535,122 @@ function Editor() {
     }
   };
 
-  const handleFileDelete = (fileId) => {
-    const nextTabs = tabs.filter((t) => t._id !== fileId);
-    setTabs(nextTabs);
+  const handleFileDelete = (deletedTarget) => {
+    if (!deletedTarget) return;
+    const deletedIds = Array.isArray(deletedTarget)
+      ? new Set(deletedTarget.map(String))
+      : deletedTarget instanceof Set
+      ? deletedTarget
+      : new Set([String(deletedTarget)]);
 
-    if (activeFileId === fileId) {
-      if (nextTabs.length > 0) {
-        const lastTab = nextTabs[nextTabs.length - 1];
-        handleFileSelect(lastTab._id);
-      } else {
-        setActiveFileId(null);
-        setCode("");
-        setEditorLanguage("javascript");
+    setTabs((prev) => {
+      const nextTabs = prev.filter((t) => !deletedIds.has(String(t._id)));
+
+      if (activeFileId && deletedIds.has(String(activeFileId))) {
+        if (nextTabs.length > 0) {
+          const nextTab = nextTabs[nextTabs.length - 1];
+          setTimeout(() => {
+            handleFileSelect(nextTab._id, nextTab);
+          }, 0);
+        } else {
+          setActiveFileId(null);
+          setCode("");
+          setEditorLanguage("javascript");
+        }
       }
-    }
+      return nextTabs;
+    });
+
+    setWorkspaceItems((prev) => prev.filter((i) => !deletedIds.has(String(i._id))));
   };
 
-  const handleCreateFileFromWelcome = async () => {
-    const filename = prompt("Enter new file name (e.g. index.js, script.py, main.cpp):");
-    if (!filename || !filename.trim()) return;
+  // Fast Quick File/Folder Creation State & Handlers
+  const [quickCreateModal, setQuickCreateModal] = useState(null); // { type: 'file' | 'folder' } | null
+  const [quickCreateName, setQuickCreateName] = useState("");
+  const [isQuickCreating, setIsQuickCreating] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const quickCreateInputRef = useRef(null);
+
+  const activeFileObj = useMemo(() => {
+    if (!activeFileId) return null;
+    return tabs.find((t) => String(t._id) === String(activeFileId)) || workspaceItems.find((t) => String(t._id) === String(activeFileId)) || null;
+  }, [activeFileId, tabs, workspaceItems]);
+
+  const isImageFile = useMemo(() => {
+    if (!activeFileObj) return false;
+    if (activeFileObj.fileType === "asset" || activeFileObj.language === "image") return true;
+    const ext = (activeFileObj.name || "").split(".").pop().toLowerCase();
+    return ["png", "jpg", "jpeg"].includes(ext);
+  }, [activeFileObj]);
+
+  const handleCreateFileFromWelcome = () => {
+    setQuickCreateModal({ type: "file" });
+    setQuickCreateName("");
+    setTimeout(() => quickCreateInputRef.current?.focus(), 40);
+  };
+
+  const handleCreateFolderFromWelcome = () => {
+    setQuickCreateModal({ type: "folder" });
+    setQuickCreateName("");
+    setTimeout(() => quickCreateInputRef.current?.focus(), 40);
+  };
+
+  const handleQuickCreateSubmit = async (e) => {
+    if (e) e.preventDefault();
+    const name = quickCreateName.trim();
+    if (!name) {
+      toast.error(`Please enter a valid ${quickCreateModal?.type || "item"} name`);
+      return;
+    }
+
+    const type = quickCreateModal?.type || "file";
 
     try {
-      const getLanguageByExtension = (name) => {
-        const ext = name.split(".").pop().toLowerCase();
-        if (ext === "js") return "javascript";
-        if (ext === "py") return "python";
-        if (ext === "cpp" || ext === "h" || ext === "hpp") return "cpp";
+      setIsQuickCreating(true);
+
+      const getLanguageByExtension = (filename) => {
+        const ext = filename.includes(".") ? filename.split(".").pop().toLowerCase() : "";
+        if (ext === "js" || ext === "jsx" || ext === "mjs" || ext === "cjs") return "javascript";
+        if (ext === "py" || ext === "pyw") return "python";
+        if (ext === "cpp" || ext === "cc" || ext === "cxx" || ext === "c" || ext === "h" || ext === "hpp") return "cpp";
         if (ext === "java") return "java";
-        if (ext === "html") return "html";
+        if (ext === "html" || ext === "htm") return "html";
         if (ext === "css") return "css";
         if (ext === "json") return "json";
-        return "plaintext";
+        return room?.language || "javascript";
       };
 
-      const lang = getLanguageByExtension(filename.trim());
+      const lang = type === "file" ? getLanguageByExtension(name) : undefined;
       const data = await workspaceService.createWorkspaceItem(
         roomId,
-        filename.trim(),
-        "file",
+        name,
+        type,
         null, // root
         lang
       );
 
       const createdItem = data.item;
 
-      socket.emit("file-created", {
+      socket.emit(type === "file" ? "file-created" : "folder-created", {
         roomId,
         item: createdItem
       });
 
-      await handleFileSelect(createdItem._id, createdItem);
+      toast.success(`${type === "file" ? "File" : "Folder"} "${name}" created!`);
+      setQuickCreateModal(null);
+      setQuickCreateName("");
+
+      // Open left drawer to show new file in explorer
+      setLeftSidebarCollapsed(false);
+      setLeftActiveTab("files");
+
+      if (type === "file") {
+        await handleFileSelect(createdItem._id, createdItem);
+      }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to create file.");
-    }
-  };
-
-  const handleCreateFolderFromWelcome = async () => {
-    const foldername = prompt("Enter new folder name:");
-    if (!foldername || !foldername.trim()) return;
-
-    try {
-      const data = await workspaceService.createWorkspaceItem(
-        roomId,
-        foldername.trim(),
-        "folder",
-        null, // root
-        "plaintext"
-      );
-
-      const createdItem = data.item;
-
-      socket.emit("folder-created", {
-        roomId,
-        item: createdItem
-      });
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to create folder.");
+      toast.error(err.response?.data?.message || `Failed to create ${type}`);
+    } finally {
+      setIsQuickCreating(false);
     }
   };
 
@@ -1806,7 +1863,7 @@ function Editor() {
       triggerNotification("User promoted to Moderator successfully.");
       fetchRoom();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to promote user");
+      toast.error(err.response?.data?.message || "Failed to promote user");
     }
   };
 
@@ -1816,7 +1873,7 @@ function Editor() {
       triggerNotification("User demoted to Member successfully.");
       fetchRoom();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to demote user");
+      toast.error(err.response?.data?.message || "Failed to demote user");
     }
   };
 
@@ -1826,7 +1883,7 @@ function Editor() {
       triggerNotification(`User role changed to ${role} successfully.`);
       fetchRoom();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to change user role");
+      toast.error(err.response?.data?.message || "Failed to change user role");
     }
   };
 
@@ -1836,7 +1893,7 @@ function Editor() {
       triggerNotification(`User ${mute ? "muted" : "unmuted"} successfully.`);
       fetchRoom();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to toggle user mute");
+      toast.error(err.response?.data?.message || "Failed to toggle user mute");
     }
   };
 
@@ -1990,7 +2047,7 @@ function Editor() {
   // Playback & Version Timeline Handlers
   const handleSaveVersion = () => {
     if (!code) {
-      alert("Cannot save an empty snapshot.");
+      toast.error("Cannot save an empty snapshot.");
       return;
     }
     socket.emit("version:create", {
@@ -2004,7 +2061,7 @@ function Editor() {
 
   const startPlayback = () => {
     if (versions.length === 0) {
-      alert("No version history available to replay.");
+      toast.error("No version history available to replay.");
       return;
     }
     setIsPlaybackActive(true);
@@ -2341,7 +2398,7 @@ function Editor() {
           if (createRes && createRes.room) {
             navigate(`/editor/${createRes.room.roomId}`, { replace: true });
           } else {
-            alert("Failed to initialize default workspace.");
+            toast.error("Failed to initialize default workspace.");
             navigate("/dashboard");
           }
         }
@@ -2350,7 +2407,7 @@ function Editor() {
 
       const data = await getRoom(roomId);
       if (!data || !data.room) {
-        alert("Room not found.");
+        toast.error("Room not found.");
         localStorage.removeItem("ceLastActiveRoomId");
         navigate("/dashboard");
         return;
@@ -2365,7 +2422,7 @@ function Editor() {
           return String(pUserId) === String(user.id || user._id);
         });
         if (!isOwner && !isParticipant) {
-          alert("You are not authorized to access this private room without approval.");
+          toast.error("You are not authorized to access this private room without approval.");
           localStorage.removeItem("ceLastActiveRoomId");
           navigate("/dashboard");
           return;
@@ -2383,7 +2440,7 @@ function Editor() {
       await loadCollaborationState(roomId, null);
     } catch (error) {
       console.error(error.response?.data?.message || error.message);
-      alert(error.response?.data?.message || "Failed to load room workspace. Returning to dashboard.");
+      toast.error(error.response?.data?.message || "Failed to load room workspace. Returning to dashboard.");
       localStorage.removeItem("ceLastActiveRoomId");
       navigate("/dashboard");
     }
@@ -2766,12 +2823,17 @@ function Editor() {
       setPrivateMessages((prev) => prev.filter((msg) => msg._id !== messageId));
     };
 
+    const cleanAnsi = (str) => {
+      if (typeof str !== "string") return str;
+      return str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
+    };
+
     const handleTerminalOutput = ({ text }) => {
-      setTerminalOutput((prev) => prev + text);
+      setTerminalOutput((prev) => prev + cleanAnsi(text || ""));
     };
 
     const handleTerminalExit = ({ code, message }) => {
-      setTerminalOutput((prev) => prev + message);
+      setTerminalOutput((prev) => prev + cleanAnsi(message || ""));
       setIsTerminalExecuting(false);
     };
 
@@ -2935,6 +2997,11 @@ function Editor() {
       setActiveCallUsers(callUsersList || []);
     };
 
+    const handleRemoteItemDeleted = (data) => {
+      const deletedIds = data?.deletedIds || (Array.isArray(data) ? data : [data?.itemId || data]);
+      handleFileDelete(deletedIds);
+    };
+
     socket.off("user-joined");
     socket.on("user-joined", handleUserJoined);
     socket.off("room-users");
@@ -2945,6 +3012,10 @@ function Editor() {
     socket.on("receive-code", handleReceiveCode);
     socket.off("receive-file-content");
     socket.on("receive-file-content", handleReceiveFileContent);
+    socket.off("file-deleted");
+    socket.on("file-deleted", handleRemoteItemDeleted);
+    socket.off("folder-deleted");
+    socket.on("folder-deleted", handleRemoteItemDeleted);
     socket.off("Receive-Message");
     socket.on("Receive-Message", handleReceiveMessage);
     socket.off("join-request");
@@ -3022,6 +3093,8 @@ function Editor() {
       socket.off("user-avatar-updated", handleUserAvatarUpdated);
       socket.off("receive-code", handleReceiveCode);
       socket.off("receive-file-content", handleReceiveFileContent);
+      socket.off("file-deleted", handleRemoteItemDeleted);
+      socket.off("folder-deleted", handleRemoteItemDeleted);
       socket.off("Receive-Message", handleReceiveMessage);
       socket.off("join-request", handleJoinRequest);
       socket.off("user-left", handleUserLeft);
@@ -3874,7 +3947,7 @@ function Editor() {
         navigate("/dashboard");
       }, 550);
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      toast.error(error.response?.data?.message || error.message);
     } finally {
       setIsDeletingRoomTarget(false);
     }
@@ -4418,6 +4491,8 @@ function Editor() {
                 {leftActiveTab === "files" && (
                   <FileExplorer
                     roomId={roomId}
+                    room={room}
+                    roomLanguage={room?.language || "javascript"}
                     currentUser={user}
                     currentUserRole={currentUserRole}
                     activeFileId={activeFileId}
@@ -4426,6 +4501,9 @@ function Editor() {
                     onFileDelete={handleFileDelete}
                     onPathChange={handlePathChange}
                     onItemsUpdate={(items) => setWorkspaceItems(items)}
+                    isImportOpen={isImportModalOpen}
+                    onOpenImport={() => setIsImportModalOpen(true)}
+                    onCloseImport={() => setIsImportModalOpen(false)}
                   />
                 )}
 
@@ -4776,35 +4854,42 @@ function Editor() {
 
             {/* Editor Header / Toolbars */}
             <div className="workspace-editor-header">
-              <div className="workspace-editor-tabs" style={{ display: "flex", gap: "2px", overflowX: "auto", maxWidth: "calc(100% - 240px)" }}>
+              <div className="workspace-editor-tabs" role="tablist">
                 {tabs.map((tab) => {
-                  const isActive = layoutMode !== "planner" && tab._id === activeFileId;
+                  const isActive = layoutMode !== "planner" && String(tab._id) === String(activeFileId);
+                  const iconInfo = getFileIconInfo(tab.name);
                   return (
                     <div
                       key={tab._id}
-                      className={`editor-tab ${isActive ? "active" : ""}`}
-                      onClick={() => handleFileSelect(tab._id)}
-                      style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`ce-editor-tab ${isActive ? "active" : ""}`}
+                      onClick={() => handleFileSelect(tab._id, tab)}
+                      onMouseDown={(e) => {
+                        // Middle click (wheel click) closes tab like in VS Code
+                        if (e.button === 1) {
+                          e.preventDefault();
+                          handleCloseTab(e, tab._id);
+                        }
+                      }}
+                      title={`${tab.name} (Middle click to close)`}
                     >
-                      <FileCode size={13} className="editor-tab-icon" />
-                      <span className="tab-name-text" style={{ whiteSpace: "nowrap" }}>
+                      {iconInfo.isImage ? (
+                        <ImageIcon size={13} className="ce-tab-icon" style={{ color: iconInfo.color, flexShrink: 0 }} />
+                      ) : (
+                        <FileCode size={13} className="ce-tab-icon" style={{ color: iconInfo.color, flexShrink: 0 }} />
+                      )}
+                      <span className="ce-tab-name-text">
                         {tab.name}
                       </span>
                       <button
+                        type="button"
                         onClick={(e) => handleCloseTab(e, tab._id)}
-                        className="tab-close-btn"
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "var(--ce-text-muted)",
-                          padding: "2px",
-                          display: "flex",
-                          alignItems: "center",
-                          cursor: "pointer",
-                          borderRadius: "4px"
-                        }}
+                        className="ce-tab-close-btn"
+                        title="Close"
+                        aria-label={`Close ${tab.name}`}
                       >
-                        <X size={10} />
+                        <X size={13} strokeWidth={2.2} />
                       </button>
                     </div>
                   );
@@ -4920,14 +5005,17 @@ function Editor() {
                     </div>
                   )}
                   {activeFileId ? (
-                    <div style={{ flex: 1, minHeight: 0 }}>
-                      <MonacoEditor
-                        height="100%"
-                        theme={editorTheme === "light" ? "custom-light" : "custom-dark"}
-                        language={editorLanguage}
-                        value={activeFileId ? undefined : code}
-                        onChange={activeFileId ? undefined : handleEditorChange}
-                        onMount={handleEditorMount}
+                    isImageFile ? (
+                      <ImagePreviewPane file={activeFileObj} roomId={roomId} />
+                    ) : (
+                      <div style={{ flex: 1, minHeight: 0 }}>
+                        <MonacoEditor
+                          height="100%"
+                          theme={editorTheme === "light" ? "custom-light" : "custom-dark"}
+                          language={editorLanguage}
+                          value={activeFileId ? undefined : code}
+                          onChange={activeFileId ? undefined : handleEditorChange}
+                          onMount={handleEditorMount}
                         loading={
                           <div className="ce-monaco-skeleton-loader">
                             <div className="ce-monaco-skeleton-line" style={{ width: "35%" }} />
@@ -4974,7 +5062,8 @@ function Editor() {
                         }}
                       />
                     </div>
-                  ) : (
+                  )
+                ) : (
                     <div className="vscode-welcome-screen" style={{ flex: 1 }}>
                       <div className="welcome-inner">
                         <div className="welcome-header">
@@ -5009,6 +5098,10 @@ function Editor() {
                               <li onClick={handleCreateFolderFromWelcome}>
                                 <span className="action-icon"><FolderOpen size={14} /></span>
                                 <span className="action-text">New Folder...</span>
+                              </li>
+                              <li onClick={() => setIsImportModalOpen(true)}>
+                                <span className="action-icon"><Upload size={14} /></span>
+                                <span className="action-text">Import Files...</span>
                               </li>
                             </ul>
                           </div>
@@ -5092,35 +5185,35 @@ function Editor() {
             )}
 
             {/* 6. BOTTOM CONSOLE PANEL */}
-            <div className="ce-console-panel" style={{ height: isConsoleOpen ? `${consoleHeight}px` : "32px" }}>
+            <div className="ce-console-panel" style={{ height: isConsoleOpen ? `${consoleHeight}px` : "36px" }}>
               <div className="console-tab-header">
                 <div className="console-tabs">
                   <button
-                    className={`console-tab-btn ${consoleTab === "output" ? "active" : ""}`}
+                    className={`console-tab-btn tab-output ${consoleTab === "output" ? "active" : ""}`}
                     onClick={() => handleConsoleTabClick("output")}
                   >
-                    <Laptop size={14} />
-                    <span>Terminal Output</span>
+                    <Laptop size={13} className="console-tab-icon tab-icon-output" />
+                    <span>Output</span>
                   </button>
                   <button
-                    className={`console-tab-btn ${consoleTab === "input" ? "active" : ""}`}
+                    className={`console-tab-btn tab-input ${consoleTab === "input" ? "active" : ""}`}
                     onClick={() => handleConsoleTabClick("input")}
                   >
-                    <FileText size={14} />
-                    <span>Program Input (stdin)</span>
+                    <FileText size={13} className="console-tab-icon tab-icon-input" />
+                    <span>Input</span>
                   </button>
                   <button
-                    className={`console-tab-btn ${consoleTab === "console" ? "active" : ""}`}
+                    className={`console-tab-btn tab-logs ${consoleTab === "console" ? "active" : ""}`}
                     onClick={() => handleConsoleTabClick("console")}
                   >
-                    <Activity size={14} />
+                    <Activity size={13} className="console-tab-icon tab-icon-logs" />
                     <span>Execution Logs</span>
                   </button>
                   <button
-                    className={`console-tab-btn ${consoleTab === "ai-history" ? "active" : ""}`}
+                    className={`console-tab-btn tab-ai-history ${consoleTab === "ai-history" ? "active" : ""}`}
                     onClick={() => handleConsoleTabClick("ai-history")}
                   >
-                    <Sparkles size={14} style={{ color: "#818cf8" }} />
+                    <History size={13} className="console-tab-icon tab-icon-history" />
                     <span>AI History</span>
                   </button>
                   <button
@@ -5129,7 +5222,7 @@ function Editor() {
                     onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
                     title="Open ExpoAI Copilot Assistant"
                   >
-                    <Sparkles size={13} className="sparkle-pulse" style={{ color: "#a855f7" }} />
+                    <Sparkles size={13} className="sparkle-pulse tab-icon-copilot" />
                     <span>ExpoAI Copilot</span>
                   </button>
                 </div>
@@ -5188,37 +5281,10 @@ function Editor() {
               <div className="console-tab-body">
 
                 {consoleTab === "output" && (
-                  <div
-                    className="terminal-shell-container"
-                    onClick={() => {
-                      const inputEl = document.querySelector(".terminal-interactive-input");
-                      if (inputEl) inputEl.focus();
-                    }}
-                  >
+                  <div className="terminal-shell-container">
                     <pre className="terminal-output-pre">
-                      {terminalOutput || "Terminal ready. Trigger 'Run Program' above to capture outputs."}
+                      {terminalOutput || "Output ready. Trigger 'Run Program' above to capture outputs."}
                     </pre>
-                    {isTerminalExecuting && (
-                      <form
-                        className="terminal-input-form"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const val = terminalInputVal;
-                          socket.emit("terminal-input", { input: val });
-                          setTerminalInputVal("");
-                        }}
-                      >
-                        <span className="terminal-prompt-prefix">❯</span>
-                        <input
-                          type="text"
-                          className="terminal-interactive-input"
-                          value={terminalInputVal}
-                          onChange={(e) => setTerminalInputVal(e.target.value)}
-                          placeholder="Type input here and press Enter..."
-                          autoFocus
-                        />
-                      </form>
-                    )}
                     <div ref={terminalEndRef} />
                   </div>
                 )}
@@ -6043,9 +6109,9 @@ function Editor() {
               height: isMobileScreen ? "auto" : "560px",
               maxHeight: isMobileScreen ? "calc(100vh - 108px)" : "calc(100vh - 90px)",
               zIndex: 99999,
-              borderRadius: isMobileScreen ? "0px" : "16px",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.85), 0 0 30px rgba(99,102,241,0.4)",
-              border: isMobileScreen ? "none" : "1px solid rgba(99,102,241,0.5)",
+              borderRadius: isMobileScreen ? "0px" : "10px",
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.75), 0 6px 20px rgba(0, 0, 0, 0.4)",
+              border: isMobileScreen ? "none" : "1px solid rgba(255, 255, 255, 0.1)",
               overflow: "hidden",
               background: "#0d0d14",
               transform: isMobileScreen ? "none" : `translate(${aiPanelPos.x}px, ${aiPanelPos.y}px)`,
@@ -6588,9 +6654,9 @@ function Editor() {
                         await collabService.restoreVersion(roomId, activeFileIdRef.current, diffVersion.versionId);
                         setIsDiffModalOpen(false);
                         setDiffVersion(null);
-                        triggerNotification("Snapshot restored successfully.");
+                        toast.success("Snapshot restored successfully.");
                       } catch (err) {
-                        alert(err.response?.data?.message || "Failed to restore version.");
+                        toast.error(err.response?.data?.message || "Failed to restore version.");
                       }
                     }
                   }}
@@ -7026,6 +7092,103 @@ function Editor() {
           </button>
         )}
 
+        {/* Fast Quick File / Folder Creation Modal */}
+        {quickCreateModal && (
+          <div className="ce-quick-create-overlay" onClick={() => setQuickCreateModal(null)}>
+            <div className="ce-quick-create-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="ce-quick-create-header">
+                <div className="ce-quick-create-title-box">
+                  {quickCreateModal.type === "file" ? (
+                    <FileCode size={16} className="ce-quick-create-icon" />
+                  ) : (
+                    <FolderOpen size={16} className="ce-quick-create-icon folder" />
+                  )}
+                  <h3>Create New {quickCreateModal.type === "file" ? "File" : "Folder"}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="ce-quick-create-close"
+                  onClick={() => setQuickCreateModal(null)}
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <form onSubmit={handleQuickCreateSubmit} className="ce-quick-create-form">
+                <div className="ce-quick-create-input-wrapper">
+                  <input
+                    ref={quickCreateInputRef}
+                    type="text"
+                    className="ce-quick-create-input"
+                    placeholder={
+                      quickCreateModal.type === "file"
+                        ? (room?.language === "python" ? "main.py" : room?.language === "cpp" ? "main.cpp" : room?.language === "java" ? "Main.java" : room?.language === "html" ? "index.html" : "index.js")
+                        : "components"
+                    }
+                    value={quickCreateName}
+                    onChange={(e) => setQuickCreateName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                {quickCreateModal.type === "file" && (
+                  <div className="ce-quick-create-pills">
+                    <span className="ce-quick-pills-label">Quick extension:</span>
+                    {((room?.language === "python" && [".py", ".json", ".txt"]) ||
+                      (room?.language === "cpp" && [".cpp", ".h", ".hpp"]) ||
+                      (room?.language === "java" && [".java", ".properties", ".xml"]) ||
+                      (room?.language === "html" && [".html", ".css", ".js"]) ||
+                      [".js", ".jsx", ".json", ".css"]
+                    ).map((ext) => (
+                      <button
+                        type="button"
+                        key={ext}
+                        className="ce-quick-pill-btn"
+                        onClick={() => {
+                          const base = quickCreateName.includes(".")
+                            ? quickCreateName.split(".")[0]
+                            : quickCreateName.trim();
+                          setQuickCreateName((base || "index") + ext);
+                          quickCreateInputRef.current?.focus();
+                        }}
+                      >
+                        {ext}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="ce-quick-create-actions">
+                  <button
+                    type="button"
+                    className="ce-quick-create-btn cancel"
+                    onClick={() => setQuickCreateModal(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="ce-quick-create-btn submit"
+                    disabled={isQuickCreating || !quickCreateName.trim()}
+                  >
+                    {isQuickCreating ? (
+                      <>
+                        <Loader2 size={13} className="ce-spin" />
+                        <span>Creating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={13} />
+                        <span>Create {quickCreateModal.type === "file" ? "File" : "Folder"}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {isExiting && (
           <div className="ce-exit-transition-overlay">
             <div className="ce-exit-transition-content">
@@ -7144,6 +7307,111 @@ function CallParticipantCard({ id, username, stream, isLocal, isMuted, isCameraO
           {isMuted && <MicOff size={12} className="status-icon-muted" />}
           {isCameraOff && <VideoOff size={12} className="status-icon-camera-off" />}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Dedicated Image Asset Preview Component for HTML/CSS/JS Workspaces ---
+function ImagePreviewPane({ file, roomId }) {
+  const [naturalDimensions, setNaturalDimensions] = useState({ width: 0, height: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const imgSrc = useMemo(() => {
+    if (!file) return "";
+    if (file.content && file.content.startsWith("data:")) return file.content;
+    if (file.assetUrl) return file.assetUrl;
+    if (file._id && roomId) return `/api/workspace/${roomId}/assets/${file._id}`;
+    return "";
+  }, [file, roomId]);
+
+  const ext = file?.name ? file.name.split(".").pop().toUpperCase() : "IMG";
+  const formattedSize = useMemo(() => {
+    const bytes = file?.size || (file?.content ? Math.round((file.content.length * 3) / 4) : 0);
+    if (!bytes) return "Unknown size";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }, [file]);
+
+  const handleImageLoad = (e) => {
+    setNaturalDimensions({
+      width: e.target.naturalWidth,
+      height: e.target.naturalHeight
+    });
+    setLoading(false);
+  };
+
+  return (
+    <div className="ce-image-preview-pane">
+      {/* Top Toolbar */}
+      <div className="ce-image-preview-toolbar">
+        <div className="ce-image-meta-pills">
+          <span className="ce-image-badge format">{ext}</span>
+          {naturalDimensions.width > 0 && (
+            <span className="ce-image-badge dim">
+              {naturalDimensions.width} × {naturalDimensions.height} px
+            </span>
+          )}
+          <span className="ce-image-badge size">{formattedSize}</span>
+        </div>
+
+        <div className="ce-image-zoom-controls">
+          <button
+            type="button"
+            className="ce-img-btn"
+            onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))))}
+            title="Zoom Out"
+          >
+            <ZoomOut size={13} />
+          </button>
+          <span className="ce-img-zoom-val">{Math.round(zoom * 100)}%</span>
+          <button
+            type="button"
+            className="ce-img-btn"
+            onClick={() => setZoom((z) => Math.min(4, Number((z + 0.25).toFixed(2))))}
+            title="Zoom In"
+          >
+            <ZoomIn size={13} />
+          </button>
+          <button
+            type="button"
+            className="ce-img-btn reset"
+            onClick={() => setZoom(1)}
+            title="Reset to 100%"
+          >
+            <Maximize2 size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Canvas Area */}
+      <div className="ce-image-canvas">
+        {loading && (
+          <div className="ce-image-loading-state">
+            <div className="loading-spinner-small" />
+            <span>Loading image asset...</span>
+          </div>
+        )}
+        {error ? (
+          <div className="ce-image-error-state">
+            <ImageOff size={32} />
+            <span>Failed to load image asset</span>
+          </div>
+        ) : (
+          <div className="ce-image-viewport">
+            <img
+              src={imgSrc}
+              alt={file?.name || "Image Preview"}
+              className="ce-preview-img"
+              style={{ transform: `scale(${zoom})` }}
+              onLoad={handleImageLoad}
+              onError={() => { setLoading(false); setError(true); }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

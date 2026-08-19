@@ -1,5 +1,6 @@
 const express = require("express");
 const auth_protect = require("../middleware/authMiddleware");
+const { handleImportUpload, importRateLimiter } = require("../middleware/importMiddleware");
 const {
   getWorkspaceTree,
   getFileContent,
@@ -10,7 +11,11 @@ const {
   saveFileContent,
   setFileEntryPoint,
   getRoomHistory,
-  getWorkspaceContents
+  getWorkspaceContents,
+  getRoomStorageUsage,
+  validateImport,
+  executeImport,
+  serveWorkspaceAsset
 } = require("../controllers/workspaceControllers");
 
 const router = express.Router();
@@ -18,6 +23,11 @@ const router = express.Router();
 router.get("/:roomId/tree", auth_protect, getWorkspaceTree);
 router.get("/:roomId/history", auth_protect, getRoomHistory);
 router.get("/:roomId/contents", auth_protect, getWorkspaceContents);
+router.get("/:roomId/storage", auth_protect, getRoomStorageUsage);
+router.get("/:roomId/assets/:assetId", auth_protect, serveWorkspaceAsset);
+router.post("/:roomId/import/validate", auth_protect, importRateLimiter, validateImport);
+router.post("/:roomId/import", auth_protect, importRateLimiter, handleImportUpload, executeImport);
+
 router.get("/files/:fileId", auth_protect, getFileContent);
 router.post("/:roomId/item", auth_protect, createWorkspaceItem);
 router.put("/items/:itemId/rename", auth_protect, renameWorkspaceItem);

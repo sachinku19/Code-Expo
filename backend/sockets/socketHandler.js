@@ -1249,6 +1249,11 @@ const socketHandler = (io) => {
     });
 
     // 3. Structure creation sync
+    socket.on("files-imported", ({ roomId, count, items }) => {
+      if (getUserRole(roomId, socket.id) === "VIEWER") return;
+      socket.to(roomId).emit("files-imported", { count, items });
+    });
+
     socket.on("file-created", ({ roomId, item }) => {
       if (getUserRole(roomId, socket.id) === "VIEWER") return;
       io.to(roomId).emit("file-created", item);
@@ -1260,14 +1265,14 @@ const socketHandler = (io) => {
     });
 
     // 4. Structure deletion sync
-    socket.on("file-deleted", ({ roomId, itemId }) => {
+    socket.on("file-deleted", ({ roomId, itemId, deletedIds }) => {
       if (getUserRole(roomId, socket.id) === "VIEWER") return;
-      socket.to(roomId).emit("file-deleted", itemId);
+      socket.to(roomId).emit("file-deleted", { itemId, deletedIds: deletedIds || [itemId] });
     });
 
-    socket.on("folder-deleted", ({ roomId, itemId }) => {
+    socket.on("folder-deleted", ({ roomId, itemId, deletedIds }) => {
       if (getUserRole(roomId, socket.id) === "VIEWER") return;
-      socket.to(roomId).emit("folder-deleted", itemId);
+      socket.to(roomId).emit("folder-deleted", { itemId, deletedIds: deletedIds || [itemId] });
     });
 
     // 5. Structure rename sync

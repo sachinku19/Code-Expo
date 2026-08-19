@@ -13,11 +13,14 @@ import {
   Play,
   X,
   FilePlus,
-  FolderPlus
+  FolderPlus,
+  Upload,
+  HardDrive
 } from "lucide-react";
 import * as workspaceService from "../services/workspaceService";
 import socket from "../socket/socket";
 import toast from "react-hot-toast";
+import ImportModal from "./modals/ImportModal";
 
 const FileIcon = ({ name, size = 14, className = "node-icon file-icon" }) => {
   const ext = name.split(".").pop().toLowerCase();
@@ -103,8 +106,35 @@ const FileIcon = ({ name, size = 14, className = "node-icon file-icon" }) => {
   }
 };
 
+// Helper: Fast recursive descendant collector
+const getDescendantIds = (rootId, allItems = []) => {
+  if (!rootId) return [];
+  const strRootId = String(rootId);
+  const deletedSet = new Set([strRootId]);
+  let currentParents = new Set([strRootId]);
+
+  while (currentParents.size > 0) {
+    const nextParents = new Set();
+    for (const item of allItems) {
+      if (item && item.parentId && currentParents.has(String(item.parentId))) {
+        const idStr = String(item._id);
+        if (!deletedSet.has(idStr)) {
+          deletedSet.add(idStr);
+          if (item.type === "folder") {
+            nextParents.add(idStr);
+          }
+        }
+      }
+    }
+    currentParents = nextParents;
+  }
+  return Array.from(deletedSet);
+};
+
 export default function FileExplorer({
   roomId,
+  room,
+  roomLanguage = "javascript",
   currentUser,
   currentUserRole = "MEMBER",
   activeFileId,
@@ -112,11 +142,19 @@ export default function FileExplorer({
   openTabs,
   onFileDelete,
   onPathChange,
-  onItemsUpdate
+  onItemsUpdate,
+  isImportOpen,
+  onOpenImport,
+  onCloseImport
 }) {
   const [items, setItems] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [localImportModalOpen, setLocalImportModalOpen] = useState(false);
+  const isImportModalOpen = isImportOpen !== undefined ? isImportOpen : localImportModalOpen;
+  const openImportModal = onOpenImport || (() => setLocalImportModalOpen(true));
+  const closeImportModal = onCloseImport || (() => setLocalImportModalOpen(false));
+  const [storageInfo, setStorageInfo] = useState({ currentUsage: 0, maxStorage: 10485760, availableStorage: 10485760, percentage: 0 });
 
   useEffect(() => {
     if (typeof onItemsUpdate === "function") {
@@ -164,8 +202,21 @@ export default function FileExplorer({
     }
   };
 
+  // Fetch Authoritative Storage
+  const fetchStorage = async () => {
+    try {
+      const data = await workspaceService.getRoomStorage(roomId);
+      if (data && data.storage) {
+        setStorageInfo(data.storage);
+      }
+    } catch (err) {
+      console.error("Failed to load room storage:", err);
+    }
+  };
+
   useEffect(() => {
     fetchWorkspace();
+    fetchStorage();
   }, [roomId]);
 
   // Sync selected item with active tab
@@ -189,9 +240,12 @@ export default function FileExplorer({
         return [...prev, item].sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
       });
     };
-    const handleItemDeleted = (itemId) => {
-      setItems((prev) => prev.filter((item) => item._id !== itemId));
-      onFileDelete(itemId);
+    const handleItemDeleted = (data) => {
+      const deletedIds = data?.deletedIds || (Array.isArray(data) ? data : [data?.itemId || data]);
+      const idSet = new Set(deletedIds.map(String));
+      setItems((prev) => prev.filter((item) => !idSet.has(String(item._id))));
+      onFileDelete(deletedIds);
+      fetchStorage();
     };
     const handleItemRenamed = ({ itemId, name }) => {
       setItems((prev) =>
@@ -213,6 +267,12 @@ export default function FileExplorer({
       );
     };
 
+    const handleFilesImported = () => {
+      fetchWorkspace();
+      fetchStorage();
+    };
+
+    socket.on("files-imported", handleFilesImported);
     socket.on("file-created", handleFileCreated);
     socket.on("folder-created", handleFolderCreated);
     socket.on("file-deleted", handleItemDeleted);
@@ -223,6 +283,7 @@ export default function FileExplorer({
     socket.on("entry-point-changed", handleEntryPointChanged);
 
     return () => {
+      socket.off("files-imported", handleFilesImported);
       socket.off("file-created", handleFileCreated);
       socket.off("folder-created", handleFolderCreated);
       socket.off("file-deleted", handleItemDeleted);
@@ -736,6 +797,14 @@ export default function FileExplorer({
             >
               <FolderPlus size={13} />
             </button>
+            <button
+              type="button"
+              className="action-btn-mini"
+              onClick={openImportModal}
+              title={`Import Files / Folder (${roomLanguage})`}
+            >
+              <Upload size={13} />
+            </button>
           </div>
         )}
       </div>
@@ -902,16 +971,28 @@ export default function FileExplorer({
                 onClick={async () => {
                   const { itemId, itemName, itemType } = deleteConfirm;
                   setDeleteConfirm(null);
+
+                  // 1. Calculate all affected items (self + recursive sub-items)
+                  const affectedIds = getDescendantIds(itemId, items);
+                  const affectedSet = new Set(affectedIds.map(String));
+                  const prevItems = [...items];
+
+                  // 2. 0ms Optimistic UI updates across sidebar, open tabs, and socket
+                  setItems((prev) => prev.filter((i) => !affectedSet.has(String(i._id))));
+                  onFileDelete(affectedIds);
+                  socket.emit(itemType === "file" ? "file-deleted" : "folder-deleted", {
+                    roomId,
+                    itemId,
+                    deletedIds: affectedIds
+                  });
+
                   try {
                     await workspaceService.deleteWorkspaceItem(itemId);
-                    setItems((prev) => prev.filter((i) => i._id !== itemId));
-                    onFileDelete(itemId);
-                    socket.emit(itemType === "file" ? "file-deleted" : "folder-deleted", {
-                      roomId,
-                      itemId
-                    });
+                    fetchStorage();
                     toast.success(`Successfully deleted "${itemName}"`);
                   } catch (error) {
+                    // Revert on network failure
+                    setItems(prevItems);
                     toast.error(error.response?.data?.message || "Failed to delete item.");
                   }
                 }}
@@ -922,6 +1003,38 @@ export default function FileExplorer({
           </div>
         </div>
       )}
+
+      {/* Compact Room Storage Indicator Footer */}
+      <div className="explorer-storage-footer">
+        <div className="explorer-storage-info">
+          <div className="storage-info-left">
+            <HardDrive size={11} />
+            <span>Storage</span>
+          </div>
+          <span className="storage-info-text">
+            {((storageInfo.currentUsage || 0) / (1024 * 1024)).toFixed(1)} / 10 MB
+          </span>
+        </div>
+        <div className="explorer-storage-track">
+          <div
+            className={`explorer-storage-fill ${storageInfo.percentage > 90 ? "danger" : storageInfo.percentage > 75 ? "warning" : ""}`}
+            style={{ width: `${Math.min(100, storageInfo.percentage || 0)}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Room-Aware File/Folder Import Modal */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={closeImportModal}
+        roomId={roomId}
+        roomLanguage={roomLanguage || room?.language || "javascript"}
+        existingItems={items}
+        onImportSuccess={() => {
+          fetchWorkspace();
+          fetchStorage();
+        }}
+      />
     </div>
   );
 }
