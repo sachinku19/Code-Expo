@@ -10,54 +10,55 @@
   position: fixed;
   inset: 0;
   z-index: 99999;
-  background: rgba(15, 17, 26, 0.75);
-  backdrop-filter: blur(12px);
+  background: rgba(3, 5, 11, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  animation: ceMeetFadeIn 0.2s ease-out forwards;
+  animation: ceMeetFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes ceMeetFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.98);
+    transform: scale(0.96) translateY(6px);
   }
-
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
 }
 
 /* Light Mode Overlay */
-.light .ce-meet-lobby-overlay,
-[data-theme-mode="light"] .ce-meet-lobby-overlay {
-  background: rgba(241, 245, 249, 0.82);
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-lobby-overlay {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .ce-meet-lobby-card {
-  width: 680px;
+  width: 640px;
   max-width: 92vw;
-  background: #1e202e;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  background: #0d0e15;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 18px 22px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  color: #ffffff;
-  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  gap: 16px;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
 }
 
 /* Light Mode Card */
-.light .ce-meet-lobby-card,
-[data-theme-mode="light"] .ce-meet-lobby-card {
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-lobby-card {
   background: #ffffff;
   border-color: #e2e8f0;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.04);
   color: #0f172a;
 }
 
@@ -67,6 +68,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding-bottom: 2px;
 }
 
 .ce-meet-lobby-header-left {
@@ -76,59 +78,79 @@
 }
 
 .ce-meet-brand-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: #4f46e5;
-  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 5px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-brand-icon {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0284c7;
+}
+
 .ce-meet-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .ce-meet-room-title {
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 0.96rem;
+  font-weight: 600;
   margin: 0;
-  color: inherit;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-room-title {
+  color: #0f172a;
 }
 
 .ce-meet-status-badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
   text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-status-badge {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #059669;
 }
 
 .ce-meet-subtitle {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   color: #94a3b8;
   margin: 2px 0 0 0;
+  line-height: 1.3;
 }
 
-.light .ce-meet-subtitle,
-[data-theme-mode="light"] .ce-meet-subtitle {
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-subtitle {
   color: #64748b;
 }
 
 .ce-meet-close-button {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
   color: #94a3b8;
   display: flex;
   align-items: center;
@@ -138,36 +160,39 @@
   flex-shrink: 0;
 }
 
-.light .ce-meet-close-button,
-[data-theme-mode="light"] .ce-meet-close-button {
-  border-color: #e2e8f0;
-  background: #f1f5f9;
+.ce-meet-close-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-close-button {
   color: #64748b;
 }
 
-.ce-meet-close-button:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-close-button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #e2e8f0;
 }
 
 /* Video Preview Container */
 .ce-meet-preview-box {
   position: relative;
   width: 100%;
-  height: 340px;
-  background: #0f111a;
-  border-radius: 16px;
+  height: 330px;
+  background: #06070a;
+  border-radius: 5px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 
-.light .ce-meet-preview-box,
-[data-theme-mode="light"] .ce-meet-preview-box {
-  background: #1e293b;
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-preview-box {
+  background: #090a10;
   border-color: #cbd5e1;
 }
 
@@ -188,25 +213,25 @@
 
 .ce-meet-avatar-image,
 .ce-meet-avatar-circle {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .ce-meet-avatar-circle {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: #0284c7;
   color: #ffffff;
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .ce-meet-camera-off-text {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: #94a3b8;
 }
@@ -214,19 +239,20 @@
 /* Name Tag Overlay */
 .ce-meet-preview-name-tag {
   position: absolute;
-  bottom: 14px;
-  left: 14px;
+  bottom: 12px;
+  left: 12px;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(15, 23, 42, 0.75);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(9, 10, 16, 0.82);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #f1f5f9;
   z-index: 5;
 }
 
@@ -235,20 +261,22 @@
   height: 6px;
   border-radius: 50%;
   background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 
 /* Mic Audio Indicator */
 .ce-meet-audio-indicator {
   position: absolute;
-  bottom: 14px;
-  right: 14px;
+  bottom: 12px;
+  right: 12px;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(15, 23, 42, 0.75);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(9, 10, 16, 0.82);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   z-index: 5;
 }
@@ -258,9 +286,9 @@
 }
 
 .ce-meet-audio-bar-bg {
-  width: 40px;
+  width: 36px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.18);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -275,12 +303,12 @@
 /* Center Toggle Controls */
 .ce-meet-preview-controls {
   position: absolute;
-  bottom: 14px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   z-index: 6;
 }
 
@@ -288,27 +316,34 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(10px);
-  color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(13, 14, 21, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f1f5f9;
+  font-size: 0.75rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .ce-meet-toggle-btn:hover {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
 }
 
 .ce-meet-toggle-btn.disabled {
-  background: #ef4444 !important;
-  border-color: #ef4444 !important;
-  color: #ffffff !important;
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #fca5a5 !important;
+}
+
+.ce-meet-toggle-btn.disabled:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(239, 68, 68, 0.7) !important;
 }
 
 /* Footer Bar */
@@ -317,7 +352,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 .ce-meet-user-badge {
@@ -328,21 +363,23 @@
 
 .ce-meet-badge-avatar,
 .ce-meet-badge-initial {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
   object-fit: cover;
   flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .ce-meet-badge-initial {
-  background: #4f46e5;
+  background: #0284c7;
   color: #ffffff;
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid #38bdf8;
 }
 
 .ce-meet-badge-details {
@@ -352,74 +389,97 @@
 }
 
 .ce-meet-badge-name {
-  font-size: 0.82rem;
-  color: inherit;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-badge-name {
+  color: #475569;
 }
 
 .ce-meet-badge-name strong {
-  font-weight: 700;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-badge-name strong {
+  color: #0f172a;
 }
 
 .ce-meet-badge-sec {
-  font-size: 0.72rem;
-  color: #10b981;
-  display: flex;
+  font-size: 0.69rem;
+  color: #34d399;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-weight: 600;
+  font-weight: 500;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-badge-sec {
+  color: #059669;
 }
 
 .ce-meet-actions-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .ce-meet-btn-secondary {
-  padding: 10px 18px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.light .ce-meet-btn-secondary,
-[data-theme-mode="light"] .ce-meet-btn-secondary {
-  background: #f1f5f9;
+.ce-meet-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-btn-secondary {
+  background: #ffffff;
   border-color: #cbd5e1;
   color: #334155;
 }
 
-.ce-meet-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.light .ce-meet-btn-secondary:hover,
-[data-theme-mode="light"] .ce-meet-btn-secondary:hover {
-  background: #e2e8f0;
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .ce-meet-btn-secondary:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
 }
 
 .ce-meet-btn-primary {
-  padding: 10px 22px;
-  border-radius: 10px;
-  background: #4f46e5;
-  border: none;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background: #0284c7;
+  border: 1px solid #38bdf8;
   color: #ffffff;
-  font-size: 0.88rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ce-meet-btn-primary:hover {
-  background: #4338ca;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.45);
+  background: #0369a1;
+  border-color: #0284c7;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
 }
 
 .ce-meet-btn-primary:active {
@@ -432,13 +492,14 @@
 
 @media (max-width: 640px) {
   .ce-meet-lobby-card {
-    padding: 18px;
-    gap: 16px;
-    border-radius: 16px;
+    padding: 16px;
+    gap: 14px;
+    border-radius: 6px;
   }
 
   .ce-meet-preview-box {
     height: 240px;
+    border-radius: 5px;
   }
 
   .ce-meet-lobby-footer-bar {

@@ -669,38 +669,69 @@ body.light .ce-nav-avatar-group:hover {
   transform: translateY(0);
 }
 
-/* Meeting Nav Button */
+/* ==========================================================================
+   MEETING NAV BUTTON (Professional Purple Theme)
+   ========================================================================== */
+
 .ce-nav-action-btn.meeting-nav-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--ce-border);
-  color: var(--ce-text);
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.28);
+  transition: all 0.15s ease;
+}
+
+.ce-nav-action-btn.meeting-nav-btn svg {
+  color: #ffffff;
 }
 
 .ce-nav-action-btn.meeting-nav-btn:hover {
-  background: var(--ce-hover);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  transform: translateY(-0.5px);
 }
 
+.ce-nav-action-btn.meeting-nav-btn:active {
+  transform: translateY(0);
+}
+
+/* Call In Progress Indicator */
 .ce-nav-action-btn.meeting-nav-btn.call-in-progress {
-  background: #059669;
-  border-color: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: #34d399;
   color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
+}
+
+.ce-nav-action-btn.meeting-nav-btn.call-in-progress svg {
+  color: #ffffff;
 }
 
 .ce-nav-action-btn.meeting-nav-btn.call-in-progress:hover {
-  background: #047857;
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.55);
+  transform: translateY(-0.5px);
 }
 
+/* Currently In-Call State */
 .ce-nav-action-btn.active-call {
-  background: #10b981;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid #6ee7b7;
   color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+}
+
+.ce-nav-action-btn.active-call svg {
+  color: #ffffff;
 }
 
 .ce-nav-action-btn.active-call:hover {
-  background: #059669;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
 }
 
 /* Sidebar Toggle Nav Button */
@@ -751,6 +782,27 @@ body.light .ce-nav-action-btn.invite-btn {
 .light .ce-nav-action-btn.invite-btn:hover,
 body.light .ce-nav-action-btn.invite-btn:hover {
   background: #4338ca;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.22);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn svg {
+  color: #ffffff;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn:hover svg {
+  color: #ffffff;
 }
 
 /* User Menu Trigger */

@@ -455,22 +455,50 @@ export default function FileExplorer({
     }
   };
 
-  const triggerCreateNewItem = (type) => {
+  const triggerCreateNewItem = (type, explicitParentId = undefined) => {
     let parentId = null;
-    if (selectedItemId) {
-      const selectedItem = items.find(i => i._id === selectedItemId);
+
+    if (explicitParentId !== undefined) {
+      parentId = explicitParentId;
+    } else if (selectedItemId && selectedItemId !== "root") {
+      const selectedItem = items.find((i) => String(i._id) === String(selectedItemId));
       if (selectedItem) {
         if (selectedItem.type === "folder") {
           parentId = selectedItem._id;
-          // Auto expand the folder
-          const next = new Set(expandedFolders);
-          next.add(parentId);
-          setExpandedFolders(next);
         } else {
-          parentId = selectedItem.parentId;
+          // File selected: create in the same folder as this file
+          parentId = selectedItem.parentId || null;
         }
       }
+    } else if (selectedItemId !== "root") {
+      // Check if there is an active file open inside a folder
+      if (activeFileId) {
+        const activeItem = items.find((i) => String(i._id) === String(activeFileId));
+        if (activeItem && activeItem.parentId) {
+          parentId = activeItem.parentId;
+        }
+      } else if (activeFolderIds && activeFolderIds.size > 0) {
+        parentId = Array.from(activeFolderIds)[0];
+      }
     }
+
+    // Auto expand the folder if creating inside one so the creation input is visible
+    if (parentId) {
+      setExpandedFolders((prev) => {
+        const next = new Set(prev);
+        next.add(parentId);
+        // Expand all ancestors if nested
+        let curr = items.find((i) => String(i._id) === String(parentId));
+        const visited = new Set();
+        while (curr && curr.parentId && !visited.has(String(curr.parentId))) {
+          visited.add(String(curr.parentId));
+          next.add(curr.parentId);
+          curr = items.find((i) => String(i._id) === String(curr.parentId));
+        }
+        return next;
+      });
+    }
+
     setCreatingParentId(parentId);
     setCreatingType(type);
     setNewItemName("");
@@ -678,16 +706,41 @@ export default function FileExplorer({
                   )}
 
                   {currentUserRole !== "VIEWER" && (
-                    <button
-                      className="node-options-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleContextMenu(e, item);
-                      }}
-                      title="More Options..."
-                    >
-                      <MoreVertical size={13} />
-                    </button>
+                    <div className="node-actions-group" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="node-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerCreateNewItem("file", item._id);
+                        }}
+                        title={`New File inside ${item.name}`}
+                      >
+                        <FilePlus size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className="node-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerCreateNewItem("folder", item._id);
+                        }}
+                        title={`New Folder inside ${item.name}`}
+                      >
+                        <FolderPlus size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className="node-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleContextMenu(e, item);
+                        }}
+                        title="More Options..."
+                      >
+                        <MoreVertical size={13} />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -707,6 +760,7 @@ export default function FileExplorer({
                               if (e.key === "Escape") {
                                 setNewItemName("");
                                 setCreatingType(null);
+                                setCreatingParentId(null);
                               }
                             }}
                             placeholder={`New ${creatingType}...`}
@@ -831,7 +885,7 @@ export default function FileExplorer({
           className="explorer-tree-view"
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, null)}
-          onClick={() => setSelectedItemId(null)}
+          onClick={() => setSelectedItemId("root")}
         >
           {/* Create at root inline input */}
           {creatingParentId === null && creatingType && (
@@ -847,6 +901,7 @@ export default function FileExplorer({
                     if (e.key === "Escape") {
                       setNewItemName("");
                       setCreatingType(null);
+                      setCreatingParentId(null);
                     }
                   }}
                   placeholder={`New ${creatingType}...`}
