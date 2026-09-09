@@ -1611,7 +1611,7 @@ function Editor() {
     localStorage.getItem("editor_autoSave") || "off"
   );
   const [editorFontFamily, setEditorFontFamily] = useState(
-    localStorage.getItem("editor_fontFamily") || "'Fira Code', 'JetBrains Mono', 'Cascadia Code', 'Source Code Pro', Consolas, monospace"
+    localStorage.getItem("editor_fontFamily") || "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace"
   );
   const [editorCursorBlinking, setEditorCursorBlinking] = useState(
     localStorage.getItem("editor_cursorBlinking") || "blink"
@@ -2475,6 +2475,7 @@ function Editor() {
       try {
         const data = await workspaceService.getWorkspaceTree(roomId);
         if (data && data.items) {
+          setWorkspaceItems(data.items);
           const files = data.items.filter((item) => item.type === "file");
           if (files.length > 0) {
             // Check for saved open tabs in localStorage for this room
@@ -3549,20 +3550,26 @@ function Editor() {
         { token: "number", foreground: "b5cea8" },
         { token: "type", foreground: "4ec9b0" },
         { token: "function", foreground: "dcdcaa" },
+        { token: "tag", foreground: "569cd6" },
+        { token: "tag.html", foreground: "569cd6" },
+        { token: "attribute.name", foreground: "9cdcfe" },
+        { token: "attribute.value", foreground: "ce9178" },
+        { token: "delimiter", foreground: "808080" },
+        { token: "delimiter.html", foreground: "808080" },
       ],
       colors: {
         "editor.background": "#121218",
-        "editor.foreground": "#d4d4d4",
-        "editor.lineHighlightBackground": "rgba(255, 255, 255, 0.04)",
+        "editor.foreground": "#e2e8f0",
+        "editor.lineHighlightBackground": "rgba(255, 255, 255, 0.03)",
         "editor.lineHighlightBorder": "#00000000",
-        "editorCursor.foreground": "#569cd6",
+        "editorCursor.foreground": "#38bdf8",
         "editor.selectionBackground": "#264f78",
         "editor.inactiveSelectionBackground": "rgba(38, 79, 120, 0.5)",
-        "editor.selectionHighlightBackground": "rgba(99, 102, 241, 0.25)",
-        "editor.wordHighlightBackground": "rgba(99, 102, 241, 0.3)",
-        "editor.wordHighlightStrongBackground": "rgba(99, 102, 241, 0.4)",
-        "editorLineNumber.foreground": "#5a5a5a",
-        "editorLineNumber.activeForeground": "#c6c6c6",
+        "editor.selectionHighlightBackground": "rgba(56, 189, 248, 0.2)",
+        "editor.wordHighlightBackground": "rgba(56, 189, 248, 0.25)",
+        "editor.wordHighlightStrongBackground": "rgba(56, 189, 248, 0.35)",
+        "editorLineNumber.foreground": "#64748b",
+        "editorLineNumber.activeForeground": "#f8fafc",
         "editorGutter.background": "#121218",
         "editorGutter.modifiedBackground": "#10b981",
         "editorGutter.addedBackground": "#3b82f6",
@@ -3574,7 +3581,7 @@ function Editor() {
       base: "vs",
       inherit: true,
       rules: [
-        { token: "", foreground: "000000" },
+        { token: "", foreground: "0f172a" },
         { token: "invalid", foreground: "#dc2626", background: "ffffff" },
         { token: "invalid.illegal", foreground: "#dc2626", background: "ffffff" },
         { token: "keyword.directive", foreground: "#af00db", fontStyle: "bold" },
@@ -3586,20 +3593,26 @@ function Editor() {
         { token: "number", foreground: "098658" },
         { token: "type", foreground: "267f99" },
         { token: "function", foreground: "795e26" },
+        { token: "tag", foreground: "800000" },
+        { token: "tag.html", foreground: "800000" },
+        { token: "attribute.name", foreground: "e50000" },
+        { token: "attribute.value", foreground: "0000ff" },
+        { token: "delimiter", foreground: "0000ff" },
+        { token: "delimiter.html", foreground: "800000" },
       ],
       colors: {
         "editor.background": "#ffffff",
-        "editor.foreground": "#000000",
+        "editor.foreground": "#0f172a",
         "editor.lineHighlightBackground": "rgba(0, 0, 0, 0.03)",
         "editor.lineHighlightBorder": "#00000000",
-        "editorCursor.foreground": "#0000ff",
+        "editorCursor.foreground": "#0969da",
         "editor.selectionBackground": "#add6ff",
         "editor.inactiveSelectionBackground": "rgba(173, 214, 255, 0.5)",
-        "editor.selectionHighlightBackground": "rgba(99, 102, 241, 0.18)",
-        "editor.wordHighlightBackground": "rgba(99, 102, 241, 0.22)",
-        "editor.wordHighlightStrongBackground": "rgba(99, 102, 241, 0.3)",
-        "editorLineNumber.foreground": "#237893",
-        "editorLineNumber.activeForeground": "#0b216f",
+        "editor.selectionHighlightBackground": "rgba(173, 214, 255, 0.35)",
+        "editor.wordHighlightBackground": "rgba(173, 214, 255, 0.25)",
+        "editor.wordHighlightStrongBackground": "rgba(173, 214, 255, 0.4)",
+        "editorLineNumber.foreground": "#94a3b8",
+        "editorLineNumber.activeForeground": "#0f172a",
         "editorGutter.background": "#ffffff",
         "editorGutter.modifiedBackground": "#059669",
         "editorGutter.addedBackground": "#2563eb",
@@ -3825,11 +3838,15 @@ function Editor() {
   useEffect(() => {
     if (editorInstance) {
       editorInstance.updateOptions({
-        fontSize: editorFontSize || 13,
-        fontFamily: editorFontFamily || "'Fira Code', 'JetBrains Mono', 'Cascadia Code', 'Source Code Pro', Consolas, monospace",
+        fontSize: editorFontSize || 13.5,
+        fontFamily: editorFontFamily || "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
         fontLigatures: true,
         fontWeight: "400",
-        lineHeight: 19,
+        lineHeight: 22,
+        letterSpacing: 0.15,
+        padding: { top: 10, bottom: 10 },
+        smoothScrolling: true,
+        cursorSmoothCaretAnimation: "on",
         minimap: { enabled: editorShowMinimap },
         tabSize: editorTabSize,
         wordWrap: editorWordWrap,
@@ -4888,6 +4905,14 @@ function Editor() {
                 {tabs.map((tab) => {
                   const isActive = layoutMode !== "planner" && String(tab._id) === String(activeFileId);
                   const iconInfo = getFileIconInfo(tab.name);
+                  const parentFolder = tab.parentId
+                    ? workspaceItems.find((item) => String(item._id) === String(tab.parentId))
+                    : null;
+                  const parentFolderName = parentFolder?.name || null;
+                  const shortFolderName = parentFolderName
+                    ? (parentFolderName.length > 4 ? `${parentFolderName.slice(0, 3)}..` : parentFolderName)
+                    : null;
+
                   return (
                     <div
                       key={tab._id}
@@ -4902,7 +4927,7 @@ function Editor() {
                           handleCloseTab(e, tab._id);
                         }
                       }}
-                      title={`${tab.name} (Middle click to close)`}
+                      title={`${parentFolderName ? `${parentFolderName}/${tab.name}` : tab.name} (Middle click to close)`}
                     >
                       {iconInfo.isImage ? (
                         <ImageIcon size={13} className="ce-tab-icon" style={{ color: iconInfo.color, flexShrink: 0 }} />
@@ -4912,6 +4937,11 @@ function Editor() {
                       <span className="ce-tab-name-text">
                         {tab.name}
                       </span>
+                      {shortFolderName && (
+                        <span className="ce-tab-folder-hint" title={`Folder: ${parentFolderName}`}>
+                          {shortFolderName}
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={(e) => handleCloseTab(e, tab._id)}
@@ -5011,13 +5041,22 @@ function Editor() {
                         {explorerPath.map((item) => (
                           <span key={item._id} className="ce-breadcrumbs-item-wrapper" style={{ display: "inline-flex", alignItems: "center" }}>
                             <ChevronRight size={12} className="ce-breadcrumbs-separator" style={{ margin: "0 4px" }} />
-                            <span className={`ce-breadcrumbs-item ${item.type === "folder" ? "is-folder" : "is-file"}`}>
+                            <span
+                              className={`ce-breadcrumbs-item ${item.type === "folder" ? "is-folder" : "is-file"}`}
+                              onClick={() => {
+                                if (item.type === "folder") {
+                                  setLeftSidebarCollapsed(false);
+                                  setLeftActiveTab("files");
+                                }
+                              }}
+                              title={item.type === "folder" ? `Folder: ${item.name} (Click to show in Explorer)` : item.name}
+                            >
                               {item.type === "folder" ? (
                                 <FolderOpen size={12} className="ce-breadcrumbs-icon folder" style={{ color: "#fca035", marginRight: "4px" }} />
                               ) : (
                                 <FileCode size={12} className="ce-breadcrumbs-icon file" style={{ color: getFileIconInfo(item.name).color, marginRight: "4px" }} />
                               )}
-                              {item.name}
+                              <span className={item.type === "folder" ? "ce-breadcrumbs-folder-text" : ""}>{item.name}</span>
                             </span>
                           </span>
                         ))}
@@ -5062,11 +5101,15 @@ function Editor() {
                           }
                           options={{
                             readOnly: isEditorReadOnly,
-                            fontSize: isMobileScreen ? Math.min(editorFontSize || 13, 12) : (editorFontSize || 13),
-                            fontFamily: editorFontFamily || "'Fira Code', 'JetBrains Mono', 'Cascadia Code', 'Source Code Pro', Consolas, monospace",
+                            fontSize: isMobileScreen ? Math.min(editorFontSize || 13.5, 12) : (editorFontSize || 13.5),
+                            fontFamily: editorFontFamily || "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
                             fontLigatures: true,
                             fontWeight: "400",
-                            lineHeight: 19,
+                            lineHeight: 22,
+                            letterSpacing: 0.15,
+                            padding: { top: 10, bottom: 10 },
+                            smoothScrolling: true,
+                            cursorSmoothCaretAnimation: "on",
                             mouseWheelZoom: true,
                             minimap: { enabled: !isMobileScreen && editorShowMinimap },
                             tabSize: editorTabSize,

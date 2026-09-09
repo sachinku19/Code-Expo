@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Folder,
   FolderOpen,
@@ -218,6 +218,20 @@ export default function FileExplorer({
     fetchWorkspace();
     fetchStorage();
   }, [roomId]);
+
+  // Set of folder IDs that contain the activeFileId (for subtle color indication without auto-expansion)
+  const activeFolderIds = useMemo(() => {
+    if (!activeFileId || items.length === 0) return new Set();
+    const set = new Set();
+    let current = items.find((i) => String(i._id) === String(activeFileId));
+    const visited = new Set();
+    while (current && current.parentId && !visited.has(String(current.parentId))) {
+      visited.add(String(current.parentId));
+      set.add(String(current.parentId));
+      current = items.find((i) => String(i._id) === String(current.parentId));
+    }
+    return set;
+  }, [activeFileId, items]);
 
   // Sync selected item with active tab
   useEffect(() => {
@@ -614,6 +628,7 @@ export default function FileExplorer({
           const isExpanded = expandedFolders.has(item._id);
           const isActiveFile = activeFileId === item._id;
           const isSelected = selectedItemId === item._id;
+          const isFolderOfActiveFile = isFolder && activeFolderIds.has(String(item._id));
 
           if (isFolder) {
             return (
@@ -626,7 +641,7 @@ export default function FileExplorer({
                 onDrop={(e) => handleDrop(e, item)}
               >
                 <div
-                  className={`tree-node folder-node ${isSelected ? "active selected-node" : ""}`}
+                  className={`tree-node folder-node ${isSelected ? "active selected-node" : ""} ${isFolderOfActiveFile ? "folder-has-active" : ""}`}
                   style={{ opacity: item.isOptimistic ? 0.6 : 1, pointerEvents: item.isOptimistic ? "none" : "auto" }}
                   onClick={(e) => {
                     e.stopPropagation();

@@ -1,30 +1,30 @@
 /* CodeExpo SaaS Redesign - Compact Editor Stylesheet */
 
 :root {
-  --border-radius: 8px;
-  --border-radius-sm: 6px;
-  --border-radius-xs: 4px;
+  --border-radius: 6px;
+  --border-radius-sm: 4px;
+  --border-radius-xs: 3px;
 
   --ce-bg-page: #121218;
-  --ce-bg-nav: #07070a;
-  --ce-bg-sidebar: #07070a;
-  --ce-bg-drawer: #07070a;
-  --ce-bg-panel: rgba(16, 16, 22, 0.85);
-  --ce-bg-active: rgba(170, 59, 255, 0.08);
-  --ce-bg-code-header: #07070a;
+  --ce-bg-nav: #090a0f;
+  --ce-bg-sidebar: #090a0f;
+  --ce-bg-drawer: #090a0f;
+  --ce-bg-panel: rgba(16, 17, 24, 0.9);
+  --ce-bg-active: rgba(56, 189, 248, 0.08);
+  --ce-bg-code-header: #090a0f;
 
-  --ce-border: rgba(255, 255, 255, 0.12);
-  --ce-border-active: #aa3bff;
-  --ce-accent: #aa3bff;
-  --ce-accent-hover: #b857ff;
+  --ce-border: rgba(255, 255, 255, 0.08);
+  --ce-border-active: #38bdf8;
+  --ce-accent: #38bdf8;
+  --ce-accent-hover: #0284c7;
 
-  --ce-text: #cbd5e1;
-  --ce-text-muted: #8e9aa9;
+  --ce-text: #e2e8f0;
+  --ce-text-muted: #94a3b8;
 
-  --ce-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --ce-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   --ce-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --ce-font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Consolas, monospace;
-  --transition-fast: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --ce-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, Consolas, monospace;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .light {
@@ -32,16 +32,16 @@
   --ce-bg-nav: #f8fafc;
   --ce-bg-sidebar: #f8fafc;
   --ce-bg-drawer: #f8fafc;
-  --ce-bg-panel: rgba(255, 255, 255, 0.85);
-  --ce-bg-active: rgba(139, 92, 246, 0.06);
+  --ce-bg-panel: rgba(255, 255, 255, 0.9);
+  --ce-bg-active: rgba(9, 105, 218, 0.06);
   --ce-bg-code-header: #f8fafc;
 
-  --ce-border: rgba(15, 23, 42, 0.12);
-  --ce-border-active: #8b5cf6;
-  --ce-accent: #8b5cf6;
-  --ce-accent-hover: #7c3aed;
+  --ce-border: rgba(15, 23, 42, 0.08);
+  --ce-border-active: #0969da;
+  --ce-accent: #0969da;
+  --ce-accent-hover: #0284c7;
 
-  --ce-text: #475569;
+  --ce-text: #0f172a;
   --ce-text-muted: #64748b;
 
   --ce-shadow: 0 3px 12px rgba(140, 149, 159, 0.12);
@@ -674,7 +674,7 @@ body.light .ce-editor-box,
   min-height: 35px;
   display: flex;
   justify-content: space-between;
-  align-items: stretch;
+  align-items: center;
   background-color: #0e111a;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 0px;
@@ -685,14 +685,15 @@ body.light .ce-editor-box,
 .light .workspace-editor-header,
 body.light .workspace-editor-header,
 [data-theme-mode="light"] .workspace-editor-header {
-  background-color: #f1f5f9;
-  border-bottom-color: rgba(15, 23, 42, 0.1);
+  background-color: #f1f4f8;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .editor-controls-toolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  padding-right: 6px;
 }
 
 .ce-select-box {
@@ -721,49 +722,67 @@ body.light .workspace-editor-header,
 
 .btn-fullscreen-toggle,
 .btn-sidebar-toggle {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid var(--ce-border);
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.1));
   background: rgba(255, 255, 255, 0.03);
   color: var(--ce-text-muted);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
   outline: none;
   padding: 0;
-  margin-right: 6px;
+  margin: 0;
 }
 
 .btn-fullscreen-toggle:hover,
 .btn-sidebar-toggle:hover {
-  background: var(--ce-bg-active);
-  color: var(--ce-accent);
-  border-color: var(--ce-accent);
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
-  transform: scale(1.05);
+  background: var(--ce-hover, rgba(255, 255, 255, 0.08));
+  color: var(--ce-text);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .btn-fullscreen-toggle.active {
-  background: rgba(255, 161, 22, 0.1) !important;
-  border-color: #ffa116 !important;
-  color: #ffa116 !important;
-  box-shadow: 0 0 10px rgba(255, 161, 22, 0.25);
+  background: rgba(99, 102, 241, 0.12) !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  color: #818cf8 !important;
+  box-shadow: none;
 }
 
 .btn-sidebar-toggle.collapsed {
   background: rgba(99, 102, 241, 0.12) !important;
-  border-color: var(--ce-primary, #6366f1) !important;
-  color: var(--ce-primary, #6366f1) !important;
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  color: #818cf8 !important;
+  box-shadow: none;
+}
+
+.light .btn-fullscreen-toggle,
+body.light .btn-fullscreen-toggle,
+[data-theme-mode="light"] .btn-fullscreen-toggle,
+.light .btn-sidebar-toggle,
+body.light .btn-sidebar-toggle,
+[data-theme-mode="light"] .btn-sidebar-toggle {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
 }
 
 .light .btn-fullscreen-toggle:hover,
-.light .btn-sidebar-toggle:hover {
-  background: rgba(9, 105, 218, 0.06);
-  border-color: var(--ce-accent);
+body.light .btn-fullscreen-toggle:hover,
+[data-theme-mode="light"] .btn-fullscreen-toggle:hover,
+.light .btn-sidebar-toggle:hover,
+body.light .btn-sidebar-toggle:hover,
+[data-theme-mode="light"] .btn-sidebar-toggle:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 /* Resizable split container */
@@ -1064,14 +1083,14 @@ body.resizing-console .console-drag-handle::after {
 }
 
 .ce-btn-save {
-  background: rgba(168, 85, 247, 0.12);
-  border: 1px solid rgba(168, 85, 247, 0.25);
-  color: #d8b4fe;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
   height: 25px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.74rem;
-  font-weight: 600;
+  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -1082,8 +1101,8 @@ body.resizing-console .console-drag-handle::after {
 }
 
 .ce-btn-save:hover {
-  background: rgba(168, 85, 247, 0.22);
-  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
   color: #ffffff;
   transform: translateY(-0.5px);
 }
@@ -1094,14 +1113,14 @@ body.resizing-console .console-drag-handle::after {
   color: #ffffff;
   height: 25px;
   padding: 0 11px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 5px;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
   transition: all 0.15s ease;
   flex-shrink: 0;
   white-space: nowrap;
@@ -1245,18 +1264,19 @@ body.light .console-tab-btn.ce-btn-ai-copilot-tab.active .tab-icon-copilot,
 [data-theme-mode="light"] .ce-btn-save,
 body.light .ce-btn-save,
 .ce-console-panel.light .ce-btn-save {
-  background: rgba(147, 51, 234, 0.08);
-  border: 1px solid rgba(147, 51, 234, 0.25);
-  color: #7e22ce;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  border-radius: 4px;
 }
 
 .light .ce-btn-save:hover,
 [data-theme-mode="light"] .ce-btn-save:hover,
 body.light .ce-btn-save:hover,
 .ce-console-panel.light .ce-btn-save:hover {
-  background: rgba(147, 51, 234, 0.16);
-  border-color: rgba(147, 51, 234, 0.45);
-  color: #6b21a8;
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
 }
 
 /* Light mode Run button */
@@ -2746,42 +2766,89 @@ body.light .chat-messages-container::-webkit-scrollbar-thumb {
   color: var(--ce-text);
 }
 
-/* Layout Switcher */
+/* Layout Switcher - Google / Adobe Segmented Control */
 .layout-switcher-group {
-  display: flex;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--ce-border);
-  border-radius: var(--border-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
   padding: 2px;
-  margin-right: 8px;
+  gap: 2px;
+  margin-right: 4px;
 }
 
 .layout-switcher-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border: none;
-  background: transparent;
-  color: var(--ce-text-muted);
-  padding: 4px 10px;
+  gap: 5px;
+  border: none !important;
+  background: transparent !important;
+  color: var(--ce-text-muted, #858fa3);
+  padding: 0 8px;
+  height: 22px;
   border-radius: 4px;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.15s ease;
+  user-select: none;
 }
 
 .layout-switcher-btn:hover {
-  color: var(--ce-text);
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--ce-text, #f1f5f9);
 }
 
 .layout-switcher-btn.active {
-  background: var(--ce-accent);
-  color: #000000;
+  background: #232536 !important;
+  color: #f8fafc !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35) !important;
 }
 
-.light .layout-switcher-btn.active {
-  color: #ffffff;
+.layout-switcher-btn.active svg {
+  color: var(--ce-accent, #38bdf8);
+}
+
+.light .layout-switcher-group,
+body.light .layout-switcher-group,
+[data-theme-mode="light"] .layout-switcher-group {
+  background: #eef2f6;
+  border: 1px solid #e2e8f0;
+}
+
+.light .layout-switcher-btn,
+body.light .layout-switcher-btn,
+[data-theme-mode="light"] .layout-switcher-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #64748b;
+  box-shadow: none !important;
+}
+
+.light .layout-switcher-btn:hover,
+body.light .layout-switcher-btn:hover,
+[data-theme-mode="light"] .layout-switcher-btn:hover {
+  background: rgba(15, 23, 42, 0.05) !important;
+  color: #0f172a;
+}
+
+.light .layout-switcher-btn.active,
+body.light .layout-switcher-btn.active,
+[data-theme-mode="light"] .layout-switcher-btn.active {
+  background: #ffffff !important;
+  border: none !important;
+  color: #0f172a !important;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.12) !important;
+}
+
+.light .layout-switcher-btn.active svg,
+body.light .layout-switcher-btn.active svg,
+[data-theme-mode="light"] .layout-switcher-btn.active svg {
+  color: #4f46e5;
 }
 
 /* 8. MOBILE VIEW NAVIGATION TABS (Hidden on Desktop) */
@@ -3893,9 +3960,9 @@ body.light .chat-messages-container::-webkit-scrollbar-thumb {
 .tree-node {
   display: flex;
   align-items: center;
-  height: 30px;
+  height: 28px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   user-select: none;
   position: relative;
@@ -3976,6 +4043,58 @@ body.light .chat-messages-container::-webkit-scrollbar-thumb {
 .node-options-btn:hover {
   background: var(--ce-bg-active);
   color: var(--ce-text);
+}
+
+/* Color Indication for Folder that contains the currently open/active file */
+.tree-node.folder-node.folder-has-active {
+  background-color: rgba(56, 189, 248, 0.08);
+  border-left: 2px solid #38bdf8;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.tree-node.folder-node.folder-has-active .folder-icon-closed,
+.tree-node.folder-node.folder-has-active .folder-icon-open {
+  color: #38bdf8 !important;
+}
+
+.tree-node.folder-node.folder-has-active .node-name {
+  color: #e2e8f0 !important;
+  font-weight: 600;
+}
+
+.tree-node.folder-node.folder-has-active .collapse-chevron {
+  color: #38bdf8;
+}
+
+/* Light Mode Folder Color Indication - Clean, executive VS Code style */
+.light .tree-node.folder-node.folder-has-active,
+body.light .tree-node.folder-node.folder-has-active,
+[data-theme-mode="light"] .tree-node.folder-node.folder-has-active {
+  background-color: rgba(9, 105, 218, 0.07);
+  border-left: 2px solid #0969da;
+}
+
+.light .tree-node.folder-node.folder-has-active .folder-icon-closed,
+.light .tree-node.folder-node.folder-has-active .folder-icon-open,
+body.light .tree-node.folder-node.folder-has-active .folder-icon-closed,
+body.light .tree-node.folder-node.folder-has-active .folder-icon-open,
+[data-theme-mode="light"] .tree-node.folder-node.folder-has-active .folder-icon-closed,
+[data-theme-mode="light"] .tree-node.folder-node.folder-has-active .folder-icon-open {
+  color: #0969da !important;
+}
+
+.light .tree-node.folder-node.folder-has-active .node-name,
+body.light .tree-node.folder-node.folder-has-active .node-name,
+[data-theme-mode="light"] .tree-node.folder-node.folder-has-active .node-name {
+  color: #0969da !important;
+  font-weight: 600;
+}
+
+.light .tree-node.folder-node.folder-has-active .collapse-chevron,
+body.light .tree-node.folder-node.folder-has-active .collapse-chevron,
+[data-theme-mode="light"] .tree-node.folder-node.folder-has-active .collapse-chevron {
+  color: #0969da;
 }
 
 .tree-folder-children {
@@ -5114,20 +5233,107 @@ body.resizing-console * {
    Collaboration, Code Ownership (Git Blame), Versioning & Playback Styles
    ========================================================================== */
 
-/* Universal Monaco Token & Selection Overrides - NO RED BACKGROUNDS EVER */
-.monaco-editor ::selection {
+/* Universal Monaco Token & Selection Overrides - VS Code Modern Standards */
+
+/* Light Mode Selection - Crisp, clean VS Code Light Modern sky blue */
+.light .monaco-editor .selected-text,
+[data-theme-mode="light"] .monaco-editor .selected-text,
+body.light .monaco-editor .selected-text,
+html.light .monaco-editor .selected-text,
+.monaco-editor.custom-light .selected-text,
+.monaco-editor.vs .selected-text {
+  background-color: #add6ff !important;
+}
+
+.light .monaco-editor ::selection,
+[data-theme-mode="light"] .monaco-editor ::selection,
+body.light .monaco-editor ::selection,
+html.light .monaco-editor ::selection,
+.monaco-editor.custom-light ::selection,
+.monaco-editor.vs ::selection {
+  background-color: #add6ff !important;
+  color: inherit !important;
+}
+
+/* Dark Mode Selection - VS Code Dark Modern slate blue */
+.dark .monaco-editor .selected-text,
+[data-theme-mode="dark"] .monaco-editor .selected-text,
+body.dark .monaco-editor .selected-text,
+html.dark .monaco-editor .selected-text,
+.monaco-editor.custom-dark .selected-text,
+.monaco-editor.vs-dark .selected-text {
   background-color: #264f78 !important;
-  color: #ffffff !important;
+}
+
+.dark .monaco-editor ::selection,
+[data-theme-mode="dark"] .monaco-editor ::selection,
+body.dark .monaco-editor ::selection,
+html.dark .monaco-editor ::selection,
+.monaco-editor.custom-dark ::selection,
+.monaco-editor.vs-dark ::selection {
+  background-color: #264f78 !important;
+  color: inherit !important;
+}
+
+/* Default / Fallback Selection */
+.monaco-editor ::selection {
+  background-color: #add6ff !important;
+  color: inherit !important;
 }
 
 .monaco-editor .selected-text {
+  background-color: #add6ff !important;
+}
+
+.monaco-editor.custom-dark .selected-text,
+.monaco-editor.vs-dark .selected-text {
   background-color: #264f78 !important;
 }
 
-.monaco-editor .selectionHighlight,
-.monaco-editor .wordHighlight,
-.monaco-editor .wordHighlightStrong,
-.monaco-editor .wordHighlightText {
+.monaco-editor.custom-dark ::selection,
+.monaco-editor.vs-dark ::selection {
+  background-color: #264f78 !important;
+  color: inherit !important;
+}
+
+/* Light mode word highlights */
+.light .monaco-editor .selectionHighlight,
+.light .monaco-editor .wordHighlight,
+.light .monaco-editor .wordHighlightStrong,
+.light .monaco-editor .wordHighlightText,
+[data-theme-mode="light"] .monaco-editor .selectionHighlight,
+[data-theme-mode="light"] .monaco-editor .wordHighlight,
+[data-theme-mode="light"] .monaco-editor .wordHighlightStrong,
+[data-theme-mode="light"] .monaco-editor .wordHighlightText,
+.monaco-editor.custom-light .selectionHighlight,
+.monaco-editor.custom-light .wordHighlight,
+.monaco-editor.custom-light .wordHighlightStrong,
+.monaco-editor.custom-light .wordHighlightText,
+.monaco-editor.vs .selectionHighlight,
+.monaco-editor.vs .wordHighlight,
+.monaco-editor.vs .wordHighlightStrong,
+.monaco-editor.vs .wordHighlightText {
+  background-color: rgba(173, 214, 255, 0.45) !important;
+  border: 1px solid rgba(147, 197, 253, 0.7) !important;
+}
+
+/* Dark mode word highlights */
+.dark .monaco-editor .selectionHighlight,
+.dark .monaco-editor .wordHighlight,
+.dark .monaco-editor .wordHighlightStrong,
+.dark .monaco-editor .wordHighlightText,
+[data-theme-mode="dark"] .monaco-editor .selectionHighlight,
+[data-theme-mode="dark"] .monaco-editor .wordHighlight,
+[data-theme-mode="dark"] .monaco-editor .wordHighlightStrong,
+[data-theme-mode="dark"] .monaco-editor .wordHighlightText,
+.monaco-editor.custom-dark .selectionHighlight,
+.monaco-editor.custom-dark .wordHighlight,
+.monaco-editor.custom-dark .wordHighlightStrong,
+.monaco-editor.custom-dark .wordHighlightText,
+.monaco-editor.vs-dark .selectionHighlight,
+.monaco-editor.vs-dark .wordHighlight,
+.monaco-editor.vs-dark .wordHighlightStrong,
+.monaco-editor.vs-dark .wordHighlightText {
   background-color: rgba(99, 102, 241, 0.25) !important;
   border: 1px solid rgba(99, 102, 241, 0.4) !important;
 }
@@ -6167,13 +6373,14 @@ body.light .monaco-editor .current-line {
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: var(--ce-bg-page, #12131c);
-  border-bottom: 1px solid var(--ce-border, rgba(255, 255, 255, 0.05));
+  background-color: var(--ce-bg-page, #121218);
+  border-bottom: 1px solid var(--ce-border, rgba(255, 255, 255, 0.07));
   padding: 5px 14px;
   font-size: 0.74rem;
-  color: var(--ce-text-muted, #8e9aa9);
+  color: var(--ce-text-muted, #94a3b8);
   user-select: none;
-  font-family: var(--font-family-mono, monospace);
+  font-family: var(--ce-font-sans, 'Inter', system-ui, sans-serif);
+  letter-spacing: -0.01em;
   overflow-x: auto;
   white-space: nowrap;
 }
@@ -6231,6 +6438,28 @@ body.light .ce-breadcrumbs-separator,
 
 .ce-breadcrumbs-item.is-folder {
   color: var(--ce-text-muted, #8e9aa9);
+  padding: 1px 3px;
+  border-radius: 3px;
+  transition: all 0.12s ease;
+}
+
+.ce-breadcrumbs-item.is-folder:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ce-text, #f1f5f9);
+}
+
+.ce-breadcrumbs-folder-text {
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.light .ce-breadcrumbs-folder-text {
+  color: #334155;
+}
+
+.light .ce-breadcrumbs-item.is-folder:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0f172a;
 }
 
 .ce-breadcrumbs-item.is-file {
@@ -7136,17 +7365,20 @@ body.light .editor-tab.active,
 .light .layout-switcher-btn,
 body.light .layout-switcher-btn,
 [data-theme-mode="light"] .layout-switcher-btn {
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #475569;
+  background: transparent !important;
+  border: none !important;
+  color: #64748b;
+  box-shadow: none !important;
 }
 
 .light .layout-switcher-btn.active,
 body.light .layout-switcher-btn.active,
 [data-theme-mode="light"] .layout-switcher-btn.active {
-  background: #6366f1;
-  border-color: #6366f1;
-  color: #ffffff;
+  background: #ffffff !important;
+  border: none !important;
+  color: #0f172a !important;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.12) !important;
 }
 
 .light .ce-left-sidebar,
@@ -8363,38 +8595,37 @@ textarea:focus-visible,
   align-items: center;
   gap: 7px;
   height: 35px;
-  padding: 0 10px 0 14px;
-  background: #181924;
-  color: #8b949e;
+  padding: 0 10px 0 12px;
+  background: #121520;
+  color: #858fa3;
   border: none;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  border-top: none !important;
-  border-bottom: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 2px solid transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
   border-radius: 0;
-  font-size: 0.8rem;
-  font-weight: 400;
+  font-size: 0.76rem;
+  font-weight: 500;
   cursor: pointer;
   user-select: none;
   transition: background 0.12s ease, color 0.12s ease;
   position: relative;
-  max-width: 200px;
+  max-width: 260px;
   flex-shrink: 0;
   box-sizing: border-box;
 }
 
 .ce-editor-tab:hover {
-  background: #1e202f;
+  background: #181b28;
   color: #e2e8f0;
 }
 
 .ce-editor-tab.active {
-  background: #12131c;
+  background: var(--ce-bg-page, #121218);
   color: #f8fafc;
-  border: none;
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
-  border-top: none !important;
-  border-bottom: none !important;
-  font-weight: 500;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 2px solid var(--ce-accent, #38bdf8) !important;
+  border-bottom: 1px solid var(--ce-bg-page, #121218) !important;
+  font-weight: 600;
 }
 
 .ce-tab-icon {
@@ -8405,20 +8636,39 @@ textarea:focus-visible,
 
 .ce-tab-name-text {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 130px;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   letter-spacing: -0.01em;
+  flex-shrink: 0;
 }
 
-/* VS Code minimal square close button */
+.ce-tab-folder-hint {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-family: var(--ce-font-sans, 'Inter', sans-serif);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.ce-editor-tab.active .ce-tab-folder-hint {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Minimal square close button */
 .ce-tab-close-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   margin-left: 4px;
   background: transparent;
@@ -8426,7 +8676,7 @@ textarea:focus-visible,
   border-radius: 3px;
   color: #64748b;
   cursor: pointer;
-  opacity: 0.55;
+  opacity: 0.5;
   transition: all 0.12s ease;
   flex-shrink: 0;
 }
@@ -8447,12 +8697,12 @@ textarea:focus-visible,
   background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Light Theme Overrides for Editor Tabs - Clean Professional VS Code Style */
+/* Light Theme Overrides for Editor Tabs - Clean Professional Google / Adobe Style */
 .light .workspace-editor-header,
 body.light .workspace-editor-header,
 [data-theme-mode="light"] .workspace-editor-header {
-  background: #f1f3f5;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f1f4f8;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .light .workspace-editor-tabs,
@@ -8464,19 +8714,19 @@ body.light .workspace-editor-tabs,
 .light .ce-editor-tab,
 body.light .ce-editor-tab,
 [data-theme-mode="light"] .ce-editor-tab {
-  background: #f1f3f5;
+  background: #e9eef5;
   color: #64748b;
   border: none;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  border-top: none !important;
-  border-bottom: none !important;
+  border-right: 1px solid #e2e8f0;
+  border-top: 2px solid transparent !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .light .ce-editor-tab:hover,
 body.light .ce-editor-tab:hover,
 [data-theme-mode="light"] .ce-editor-tab:hover {
-  background: #e9ecef;
-  color: #1e293b;
+  background: #f1f5fa;
+  color: #0f172a;
 }
 
 .light .ce-editor-tab.active,
@@ -8485,11 +8735,27 @@ body.light .ce-editor-tab.active,
   background: #ffffff;
   color: #0f172a;
   border: none;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  border-top: none !important;
-  border-bottom: none !important;
-  box-shadow: none;
-  font-weight: 500;
+  border-right: 1px solid #e2e8f0;
+  border-top: 2px solid #4f46e5 !important;
+  border-bottom: 1px solid #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  font-weight: 600;
+}
+
+.light .ce-tab-folder-hint,
+body.light .ce-tab-folder-hint,
+[data-theme-mode="light"] .ce-tab-folder-hint {
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.light .ce-editor-tab.active .ce-tab-folder-hint,
+body.light .ce-editor-tab.active .ce-tab-folder-hint,
+[data-theme-mode="light"] .ce-editor-tab.active .ce-tab-folder-hint {
+  color: #4f46e5;
+  background: #eef2ff;
+  border-color: #c7d2fe;
 }
 
 .light .ce-tab-close-btn,

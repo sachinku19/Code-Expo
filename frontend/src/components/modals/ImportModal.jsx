@@ -51,13 +51,13 @@ const ROOM_TYPE_CONFIG = {
     accept: ".py,.pyw,.json,.txt"
   },
   html: {
-    name: "HTML/CSS/JS (Web)",
+    name: "Web",
     extensions: [".html", ".htm", ".css", ".js", ".json", ".jpg", ".jpeg", ".png"],
     iconColor: "#f97316",
     accept: ".html,.htm,.css,.js,.json,.jpg,.jpeg,.png"
   },
   web: {
-    name: "HTML/CSS/JS (Web)",
+    name: "Web",
     extensions: [".html", ".htm", ".css", ".js", ".json", ".jpg", ".jpeg", ".png"],
     iconColor: "#f97316",
     accept: ".html,.htm,.css,.js,.json,.jpg,.jpeg,.png"
@@ -445,27 +445,10 @@ export default function ImportModal({
         {/* Modal Header */}
         <div className="ce-import-modal-header">
           <div className="ce-import-header-left">
-            <div
-              className="ce-import-header-icon"
-              style={{
-                background: `linear-gradient(135deg, ${roomConfig.iconColor}24 0%, ${roomConfig.iconColor}08 100%)`,
-                borderColor: `${roomConfig.iconColor}55`,
-                boxShadow: `0 0 16px ${roomConfig.iconColor}22`
-              }}
-            >
-              <Upload size={18} color={roomConfig.iconColor} />
+            <div className="ce-import-header-icon">
+              <Upload size={16} />
             </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <h3 className="ce-import-title">Import {roomConfig.name} Files</h3>
-                <span className="ce-import-sandbox-badge">
-                  <Sparkles size={10} /> Workspace
-                </span>
-              </div>
-              <p className="ce-import-subtitle">
-                Add source code files or nested directory trees to your project
-              </p>
-            </div>
+            <h3 className="ce-import-title">Import Files</h3>
           </div>
           <button className="ce-import-close-btn" onClick={onClose} title="Close">
             <X size={16} />
@@ -474,7 +457,7 @@ export default function ImportModal({
 
         {/* Room Allowed Extensions Tag Bar */}
         <div className="ce-import-ext-bar">
-          <span className="ce-import-ext-label">Supported formats:</span>
+          <span className="ce-import-ext-label">Supported:</span>
           <div className="ce-import-ext-tags">
             {roomConfig.extensions.map((ext) => {
               const isImg = [".jpg", ".jpeg", ".png"].includes(ext);
@@ -554,11 +537,11 @@ export default function ImportModal({
             onDrop={handleDrop}
           >
             <div className="ce-import-drop-icon">
-              <FolderUp size={34} />
+              <FolderUp size={24} />
             </div>
-            <h4 className="ce-import-drop-title">Drop project files or folders here</h4>
+            <h4 className="ce-import-drop-title">Drop files or folders here</h4>
             <p className="ce-import-drop-hint">
-              Drag entire multi-folder projects or choose specific files from your device
+              or browse from your device
             </p>
 
             <div className="ce-import-actions-row">
@@ -578,10 +561,6 @@ export default function ImportModal({
                 <FolderArchive size={15} />
                 <span>Choose Folder</span>
               </button>
-            </div>
-
-            <div className="ce-import-drop-tip">
-              <span>💡 Tip: You can drag and drop folders directly from your desktop file explorer</span>
             </div>
           </div>
         )}
