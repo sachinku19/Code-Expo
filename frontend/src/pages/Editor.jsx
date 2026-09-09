@@ -540,8 +540,8 @@ function Editor() {
     const deletedIds = Array.isArray(deletedTarget)
       ? new Set(deletedTarget.map(String))
       : deletedTarget instanceof Set
-      ? deletedTarget
-      : new Set([String(deletedTarget)]);
+        ? deletedTarget
+        : new Set([String(deletedTarget)]);
 
     setTabs((prev) => {
       const nextTabs = prev.filter((t) => !deletedIds.has(String(t._id)));
@@ -4846,14 +4846,18 @@ function Editor() {
             </div>
           </aside>
           {!leftSidebarCollapsed && (
-            <div className="sidebar-drag-divider" onMouseDown={startSidebarResizing} />
+            <div className="sidebar-drag-divider" onMouseDown={startSidebarResizing}>
+              <div className="sidebar-drag-divider-bar" />
+            </div>
           )}
 
           {/* 3. MAIN WORKSPACE CONTAINER */}
           <main className="ce-main-workspace" ref={containerRef}>
 
-            {/* Editor Header / Toolbars */}
-            <div className="workspace-editor-header">
+            {/* 3.1 CODE EDITOR BOX (Enclosed Card with file tabs navbar + Monaco) */}
+            <div className="ce-editor-box">
+              {/* Editor Header / Toolbars */}
+              <div className="workspace-editor-header">
               <div className="workspace-editor-tabs" role="tablist">
                 {tabs.map((tab) => {
                   const isActive = layoutMode !== "planner" && String(tab._id) === String(activeFileId);
@@ -5016,54 +5020,54 @@ function Editor() {
                           value={activeFileId ? undefined : code}
                           onChange={activeFileId ? undefined : handleEditorChange}
                           onMount={handleEditorMount}
-                        loading={
-                          <div className="ce-monaco-skeleton-loader">
-                            <div className="ce-monaco-skeleton-line" style={{ width: "35%" }} />
-                            <div className="ce-monaco-skeleton-line" style={{ width: "55%" }} />
-                            <div className="ce-monaco-skeleton-line" style={{ width: "75%" }} />
-                            <div className="ce-monaco-skeleton-line" style={{ width: "45%" }} />
-                            <div className="ce-monaco-skeleton-line" style={{ width: "65%" }} />
-                            <div className="ce-monaco-skeleton-line" style={{ width: "40%" }} />
-                            <div className="ce-monaco-skeleton-spinner">
-                              <div className="ce-monaco-spinner-dot" />
-                              <span>Booting Monaco IDE...</span>
+                          loading={
+                            <div className="ce-monaco-skeleton-loader">
+                              <div className="ce-monaco-skeleton-line" style={{ width: "35%" }} />
+                              <div className="ce-monaco-skeleton-line" style={{ width: "55%" }} />
+                              <div className="ce-monaco-skeleton-line" style={{ width: "75%" }} />
+                              <div className="ce-monaco-skeleton-line" style={{ width: "45%" }} />
+                              <div className="ce-monaco-skeleton-line" style={{ width: "65%" }} />
+                              <div className="ce-monaco-skeleton-line" style={{ width: "40%" }} />
+                              <div className="ce-monaco-skeleton-spinner">
+                                <div className="ce-monaco-spinner-dot" />
+                                <span>Booting Monaco IDE...</span>
+                              </div>
                             </div>
-                          </div>
-                        }
-                        options={{
-                          readOnly: isEditorReadOnly,
-                          fontSize: isMobileScreen ? Math.min(editorFontSize || 13, 12) : (editorFontSize || 13),
-                          fontFamily: editorFontFamily || "'Fira Code', 'JetBrains Mono', 'Cascadia Code', 'Source Code Pro', Consolas, monospace",
-                          fontLigatures: true,
-                          fontWeight: "400",
-                          lineHeight: 19,
-                          mouseWheelZoom: true,
-                          minimap: { enabled: !isMobileScreen && editorShowMinimap },
-                          tabSize: editorTabSize,
-                          wordWrap: isMobileScreen ? "on" : editorWordWrap,
-                          lineNumbers: editorLineNumbers,
-                          quickSuggestions: editorSuggestions === "disabled" ? false : { other: true, comments: true, strings: true },
-                          suggestOnTriggerCharacters: editorSuggestions !== "disabled",
-                          acceptSuggestionOnEnter: editorSuggestions === "ai" ? "on" : "smart",
-                          snippetSuggestions: editorSuggestions === "disabled" ? "none" : "inline",
-                          detectIndentation: false,
-                          automaticLayout: true,
-                          glyphMargin: false,
-                          lineDecorationsWidth: 5,
-                          lineNumbersMinChars: 3,
-                          scrollbar: {
-                            verticalScrollbarSize: 6,
-                            horizontalScrollbarSize: 6
-                          },
-                          cursorBlinking: editorCursorBlinking,
-                          cursorStyle: editorCursorStyle,
-                          cursorWidth: editorCursorStyle === "line" ? 2 : undefined,
-                          bracketPairColorization: { enabled: editorBracketColorization }
-                        }}
-                      />
-                    </div>
-                  )
-                ) : (
+                          }
+                          options={{
+                            readOnly: isEditorReadOnly,
+                            fontSize: isMobileScreen ? Math.min(editorFontSize || 13, 12) : (editorFontSize || 13),
+                            fontFamily: editorFontFamily || "'Fira Code', 'JetBrains Mono', 'Cascadia Code', 'Source Code Pro', Consolas, monospace",
+                            fontLigatures: true,
+                            fontWeight: "400",
+                            lineHeight: 19,
+                            mouseWheelZoom: true,
+                            minimap: { enabled: !isMobileScreen && editorShowMinimap },
+                            tabSize: editorTabSize,
+                            wordWrap: isMobileScreen ? "on" : editorWordWrap,
+                            lineNumbers: editorLineNumbers,
+                            quickSuggestions: editorSuggestions === "disabled" ? false : { other: true, comments: true, strings: true },
+                            suggestOnTriggerCharacters: editorSuggestions !== "disabled",
+                            acceptSuggestionOnEnter: editorSuggestions === "ai" ? "on" : "smart",
+                            snippetSuggestions: editorSuggestions === "disabled" ? "none" : "inline",
+                            detectIndentation: false,
+                            automaticLayout: true,
+                            glyphMargin: false,
+                            lineDecorationsWidth: 5,
+                            lineNumbersMinChars: 3,
+                            scrollbar: {
+                              verticalScrollbarSize: 6,
+                              horizontalScrollbarSize: 6
+                            },
+                            cursorBlinking: editorCursorBlinking,
+                            cursorStyle: editorCursorStyle,
+                            cursorWidth: editorCursorStyle === "line" ? 2 : undefined,
+                            bracketPairColorization: { enabled: editorBracketColorization }
+                          }}
+                        />
+                      </div>
+                    )
+                  ) : (
                     <div className="vscode-welcome-screen" style={{ flex: 1 }}>
                       <div className="welcome-inner">
                         <div className="welcome-header">
@@ -5177,20 +5181,26 @@ function Editor() {
                   <TaskPlanner roomId={roomId} />
                 </div>
               )}
+              </div>
             </div>
+            {/* End .ce-editor-box */}
 
             {/* Drag Resize Handle for bottom panel */}
             {isConsoleOpen && (
-              <div className="console-drag-handle" onMouseDown={startConsoleResizing} />
+              <div className="console-drag-handle" onMouseDown={startConsoleResizing}>
+                <div className="console-drag-handle-bar" />
+              </div>
             )}
 
             {/* 6. BOTTOM CONSOLE PANEL */}
-            <div className="ce-console-panel" style={{ height: isConsoleOpen ? `${consoleHeight}px` : "36px" }}>
+            <div className={`ce-console-panel ${editorTheme === "light" ? "light" : "dark"}`} style={{ height: isConsoleOpen ? `${consoleHeight}px` : "36px" }}>
               <div className="console-tab-header">
                 <div className="console-tabs">
                   <button
                     className={`console-tab-btn tab-output ${consoleTab === "output" ? "active" : ""}`}
                     onClick={() => handleConsoleTabClick("output")}
+                    title="Output (Terminal)"
+                    type="button"
                   >
                     <Laptop size={13} className="console-tab-icon tab-icon-output" />
                     <span>Output</span>
@@ -5198,6 +5208,8 @@ function Editor() {
                   <button
                     className={`console-tab-btn tab-input ${consoleTab === "input" ? "active" : ""}`}
                     onClick={() => handleConsoleTabClick("input")}
+                    title="Program Input (stdin)"
+                    type="button"
                   >
                     <FileText size={13} className="console-tab-icon tab-icon-input" />
                     <span>Input</span>
@@ -5205,6 +5217,8 @@ function Editor() {
                   <button
                     className={`console-tab-btn tab-logs ${consoleTab === "console" ? "active" : ""}`}
                     onClick={() => handleConsoleTabClick("console")}
+                    title="Execution Logs"
+                    type="button"
                   >
                     <Activity size={13} className="console-tab-icon tab-icon-logs" />
                     <span>Execution Logs</span>
@@ -5212,6 +5226,8 @@ function Editor() {
                   <button
                     className={`console-tab-btn tab-ai-history ${consoleTab === "ai-history" ? "active" : ""}`}
                     onClick={() => handleConsoleTabClick("ai-history")}
+                    title="AI Prompt History"
+                    type="button"
                   >
                     <History size={13} className="console-tab-icon tab-icon-history" />
                     <span>AI History</span>
@@ -5230,7 +5246,7 @@ function Editor() {
                 <div className="console-actions">
                   {currentUserRole !== "VIEWER" && (
                     <>
-                      <button className="ce-btn-save" onClick={handleSaveCode} title="Save file content">
+                      <button className="ce-btn-save" onClick={handleSaveCode} title="Save file content (Ctrl+S)" type="button">
                         <Download size={13} />
                         <span>Save</span>
                       </button>
@@ -5257,6 +5273,7 @@ function Editor() {
                           className={`ce-btn-run ${runCooldownSeconds > 0 ? "cooldown" : ""}`}
                           onClick={handleRunCode}
                           disabled={runCooldownSeconds > 0}
+                          title={runCooldownSeconds > 0 ? `Please wait ${runCooldownSeconds}s` : "Run Program"}
                         >
                           <Play size={13} />
                           <span>
@@ -5269,6 +5286,7 @@ function Editor() {
                     </>
                   )}
                   <button
+                    type="button"
                     className={`ce-console-toggle-btn ${!isConsoleOpen ? "collapsed-pulse" : "expanded"}`}
                     onClick={() => setIsConsoleOpen(!isConsoleOpen)}
                     title={isConsoleOpen ? "Collapse Panel" : "Expand Panel"}

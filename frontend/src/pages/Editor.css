@@ -798,6 +798,7 @@ body.light .room-history-action {
   overflow: hidden;
   z-index: 10;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
+  transition: background-color var(--transition-fast, 0.25s ease), border-color var(--transition-fast, 0.25s ease);
 }
 
 .console-tab-header {
@@ -812,6 +813,11 @@ body.light .room-history-action {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   user-select: none;
+  gap: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  transition: background-color var(--transition-fast, 0.25s ease), border-color var(--transition-fast, 0.25s ease);
 }
 
 .console-tabs {
@@ -819,6 +825,16 @@ body.light .room-history-action {
   align-items: center;
   height: 100%;
   gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.console-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .console-tab-btn {
@@ -837,6 +853,8 @@ body.light .room-history-action {
   position: relative;
   transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
   letter-spacing: -0.01em;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .console-tab-icon {
@@ -878,9 +896,9 @@ body.light .room-history-action {
 }
 
 .console-tab-btn.active {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.12);
   font-weight: 650;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
@@ -888,8 +906,6 @@ body.light .room-history-action {
 .console-tab-btn.active .console-tab-icon {
   opacity: 1;
 }
-
-
 
 /* ExpoAI Copilot pill button */
 .console-tab-btn.ce-btn-ai-copilot-tab {
@@ -905,15 +921,17 @@ body.light .room-history-action {
 }
 
 .console-tab-btn.ce-btn-ai-copilot-tab.active {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(99, 102, 241, 0.22) 100%) !important;
-  border-color: rgba(168, 85, 247, 0.5) !important;
-  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(99, 102, 241, 0.22) 100%);
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #ffffff;
 }
 
 .console-actions {
   display: flex;
   align-items: center;
   gap: 7px;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .ce-btn-save {
@@ -930,6 +948,8 @@ body.light .room-history-action {
   gap: 5px;
   cursor: pointer;
   transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .ce-btn-save:hover {
@@ -954,6 +974,8 @@ body.light .room-history-action {
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
   transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .ce-btn-run:hover:not(:disabled) {
@@ -966,6 +988,257 @@ body.light .room-history-action {
   opacity: 0.65;
   cursor: not-allowed;
   transform: none;
+}
+
+/* =========================================================
+   LIGHT THEME STYLING - TERMINAL / CONSOLE SYSTEM
+   ========================================================= */
+.light .ce-console-panel,
+[data-theme-mode="light"] .ce-console-panel,
+body.light .ce-console-panel,
+.ce-console-panel.light {
+  background-color: #f8fafc;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 -2px 14px rgba(15, 23, 42, 0.04);
+}
+
+.light .console-tab-header,
+[data-theme-mode="light"] .console-tab-header,
+body.light .console-tab-header,
+.ce-console-panel.light .console-tab-header {
+  background-color: #f1f5f9;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.light .console-tab-btn,
+[data-theme-mode="light"] .console-tab-btn,
+body.light .console-tab-btn,
+.ce-console-panel.light .console-tab-btn {
+  color: #64748b;
+  border-color: transparent;
+}
+
+.light .console-tab-btn:hover,
+[data-theme-mode="light"] .console-tab-btn:hover,
+body.light .console-tab-btn:hover,
+.ce-console-panel.light .console-tab-btn:hover {
+  color: #0f172a;
+  background-color: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.light .console-tab-btn.active,
+[data-theme-mode="light"] .console-tab-btn.active,
+body.light .console-tab-btn.active,
+.ce-console-panel.light .console-tab-btn.active {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.15) !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  font-weight: 650;
+}
+
+/* Light mode individual tab icon accents */
+.light .console-tab-btn .tab-icon-output,
+[data-theme-mode="light"] .console-tab-btn .tab-icon-output,
+body.light .console-tab-btn .tab-icon-output,
+.ce-console-panel.light .console-tab-btn .tab-icon-output {
+  color: #0284c7;
+}
+
+.light .console-tab-btn .tab-icon-input,
+[data-theme-mode="light"] .console-tab-btn .tab-icon-input,
+body.light .console-tab-btn .tab-icon-input,
+.ce-console-panel.light .console-tab-btn .tab-icon-input {
+  color: #d97706;
+}
+
+.light .console-tab-btn .tab-icon-logs,
+[data-theme-mode="light"] .console-tab-btn .tab-icon-logs,
+body.light .console-tab-btn .tab-icon-logs,
+.ce-console-panel.light .console-tab-btn .tab-icon-logs {
+  color: #059669;
+}
+
+.light .console-tab-btn .tab-icon-history,
+[data-theme-mode="light"] .console-tab-btn .tab-icon-history,
+body.light .console-tab-btn .tab-icon-history,
+.ce-console-panel.light .console-tab-btn .tab-icon-history {
+  color: #6366f1;
+}
+
+.light .console-tab-btn .tab-icon-copilot,
+[data-theme-mode="light"] .console-tab-btn .tab-icon-copilot,
+body.light .console-tab-btn .tab-icon-copilot,
+.ce-console-panel.light .console-tab-btn .tab-icon-copilot {
+  color: #9333ea;
+}
+
+/* Light mode ExpoAI Copilot pill tab */
+.light .console-tab-btn.ce-btn-ai-copilot-tab,
+[data-theme-mode="light"] .console-tab-btn.ce-btn-ai-copilot-tab,
+body.light .console-tab-btn.ce-btn-ai-copilot-tab,
+.ce-console-panel.light .console-tab-btn.ce-btn-ai-copilot-tab {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px solid rgba(147, 51, 234, 0.25);
+  color: #7e22ce;
+  font-weight: 600;
+}
+
+.light .console-tab-btn.ce-btn-ai-copilot-tab:hover,
+[data-theme-mode="light"] .console-tab-btn.ce-btn-ai-copilot-tab:hover,
+body.light .console-tab-btn.ce-btn-ai-copilot-tab:hover,
+.ce-console-panel.light .console-tab-btn.ce-btn-ai-copilot-tab:hover {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.16) 0%, rgba(99, 102, 241, 0.16) 100%);
+  border-color: rgba(147, 51, 234, 0.45);
+  color: #6b21a8;
+}
+
+.light .console-tab-btn.ce-btn-ai-copilot-tab.active,
+[data-theme-mode="light"] .console-tab-btn.ce-btn-ai-copilot-tab.active,
+body.light .console-tab-btn.ce-btn-ai-copilot-tab.active,
+.ce-console-panel.light .console-tab-btn.ce-btn-ai-copilot-tab.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+  border-color: #7c3aed !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
+}
+
+.light .console-tab-btn.ce-btn-ai-copilot-tab.active .tab-icon-copilot,
+[data-theme-mode="light"] .console-tab-btn.ce-btn-ai-copilot-tab.active .tab-icon-copilot,
+body.light .console-tab-btn.ce-btn-ai-copilot-tab.active .tab-icon-copilot,
+.ce-console-panel.light .console-tab-btn.ce-btn-ai-copilot-tab.active .tab-icon-copilot {
+  color: #ffffff !important;
+}
+
+/* Light mode Save button */
+.light .ce-btn-save,
+[data-theme-mode="light"] .ce-btn-save,
+body.light .ce-btn-save,
+.ce-console-panel.light .ce-btn-save {
+  background: rgba(147, 51, 234, 0.08);
+  border: 1px solid rgba(147, 51, 234, 0.25);
+  color: #7e22ce;
+}
+
+.light .ce-btn-save:hover,
+[data-theme-mode="light"] .ce-btn-save:hover,
+body.light .ce-btn-save:hover,
+.ce-console-panel.light .ce-btn-save:hover {
+  background: rgba(147, 51, 234, 0.16);
+  border-color: rgba(147, 51, 234, 0.45);
+  color: #6b21a8;
+}
+
+/* Light mode Run button */
+.light .ce-btn-run,
+[data-theme-mode="light"] .ce-btn-run,
+body.light .ce-btn-run,
+.ce-console-panel.light .ce-btn-run {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.25);
+}
+
+.light .ce-btn-run:hover:not(:disabled),
+[data-theme-mode="light"] .ce-btn-run:hover:not(:disabled),
+body.light .ce-btn-run:hover:not(:disabled),
+.ce-console-panel.light .ce-btn-run:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+/* Light mode Console toggle button */
+.light .ce-console-toggle-btn,
+[data-theme-mode="light"] .ce-console-toggle-btn,
+body.light .ce-console-toggle-btn,
+.ce-console-panel.light .ce-console-toggle-btn {
+  background: #ffffff;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  color: #0284c7;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.light .ce-console-toggle-btn:hover,
+[data-theme-mode="light"] .ce-console-toggle-btn:hover,
+body.light .ce-console-toggle-btn:hover,
+.ce-console-panel.light .ce-console-toggle-btn:hover {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.6);
+  color: #0369a1;
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.2);
+}
+
+.light .ce-console-toggle-btn.collapsed-pulse,
+[data-theme-mode="light"] .ce-console-toggle-btn.collapsed-pulse,
+body.light .ce-console-toggle-btn.collapsed-pulse,
+.ce-console-panel.light .ce-console-toggle-btn.collapsed-pulse {
+  background: #fffbeb;
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #d97706;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+}
+
+.light .ce-console-toggle-btn.collapsed-pulse:hover,
+[data-theme-mode="light"] .ce-console-toggle-btn.collapsed-pulse:hover,
+body.light .ce-console-toggle-btn.collapsed-pulse:hover,
+.ce-console-panel.light .ce-console-toggle-btn.collapsed-pulse:hover {
+  background: #fef3c7;
+  border-color: rgba(245, 158, 11, 0.8);
+  color: #b45309;
+}
+
+/* Light mode Drag Resize Handle */
+.light .console-drag-handle,
+[data-theme-mode="light"] .console-drag-handle,
+body.light .console-drag-handle {
+  background-color: rgba(15, 23, 42, 0.1);
+}
+
+.light .console-drag-handle:hover,
+[data-theme-mode="light"] .console-drag-handle:hover,
+body.light .console-drag-handle:hover {
+  background-color: var(--ce-accent, #8b5cf6);
+}
+
+/* Light mode Terminal Output Body & Text */
+.light .console-tab-body,
+[data-theme-mode="light"] .console-tab-body,
+body.light .console-tab-body,
+.ce-console-panel.light .console-tab-body {
+  background-color: #ffffff;
+}
+
+.light .terminal-output-pre,
+[data-theme-mode="light"] .terminal-output-pre,
+body.light .terminal-output-pre,
+.ce-console-panel.light .terminal-output-pre {
+  color: #1e293b;
+}
+
+.light .console-stdin-textarea,
+[data-theme-mode="light"] .console-stdin-textarea,
+body.light .console-stdin-textarea,
+.ce-console-panel.light .console-stdin-textarea {
+  background-color: #ffffff;
+  color: #1e293b;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.light .console-stdin-textarea::placeholder,
+[data-theme-mode="light"] .console-stdin-textarea::placeholder,
+body.light .console-stdin-textarea::placeholder,
+.ce-console-panel.light .console-stdin-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.light .console-stdin-textarea:focus,
+[data-theme-mode="light"] .console-stdin-textarea:focus,
+body.light .console-stdin-textarea:focus,
+.ce-console-panel.light .console-stdin-textarea:focus {
+  border-color: var(--ce-accent, #8b5cf6);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
 }
 
 .ce-btn-run.running-stop-btn {
@@ -6896,30 +7169,56 @@ body.light .chat-call-btn.video-call-btn:hover {
   box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
 }
 
-/* ExpoAI Copilot Tab Button Styling */
-.console-tab-btn.ce-btn-ai-copilot-tab.active {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(99, 102, 241, 0.22) 100%) !important;
-  color: #ffffff !important;
-}
-
-.light .console-tab-btn.ce-btn-ai-copilot-tab.active {
-  background-color: rgba(168, 85, 247, 0.1) !important;
-  color: #6d28d9 !important;
-}
-
 /* Responsive bottom console layout (VS Code inspired) */
+@media (max-width: 1200px) {
+  .console-tab-btn {
+    padding: 0 8px;
+    gap: 5px;
+    font-size: 0.73rem;
+  }
+
+  .console-tabs {
+    gap: 3px;
+  }
+
+  .ce-btn-save {
+    padding: 0 8px;
+    font-size: 0.72rem;
+  }
+
+  .ce-btn-run {
+    padding: 0 9px;
+    font-size: 0.72rem;
+  }
+}
+
 @media (max-width: 992px) {
   .console-tab-btn span {
     display: none !important;
-    /* Hide labels, show only icons like VS Code */
+    /* Hide labels, show clean icons like VS Code */
   }
 
   .console-tab-btn {
-    padding: 0 10px;
+    padding: 0 8px;
+    min-width: 32px;
+    justify-content: center;
+  }
+
+  .console-tab-icon {
+    opacity: 0.85;
+    margin: 0;
   }
 }
 
 @media (max-width: 768px) {
+  .console-tab-header {
+    padding: 0 6px;
+    gap: 6px;
+  }
+
+  .console-tabs {
+    gap: 3px;
+  }
 
   .ce-btn-ai-copilot span,
   .ce-btn-save span,
@@ -6930,7 +7229,7 @@ body.light .chat-call-btn.video-call-btn:hover {
   }
 
   .console-actions {
-    gap: 5px;
+    gap: 4px;
   }
 
   .ce-btn-ai-copilot,
@@ -6938,8 +7237,8 @@ body.light .chat-call-btn.video-call-btn:hover {
   .ce-btn-run,
   .running-stop-btn {
     padding: 0 8px !important;
-    height: 22px !important;
-    min-height: 22px !important;
+    height: 24px !important;
+    min-height: 24px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -6950,6 +7249,8 @@ body.light .chat-call-btn.video-call-btn:hover {
   .console-tab-header {
     padding: 0 4px;
     gap: 4px;
+    height: 34px;
+    min-height: 34px;
   }
 
   .console-tabs {
@@ -6958,11 +7259,18 @@ body.light .chat-call-btn.video-call-btn:hover {
 
   .console-tab-btn {
     padding: 0 6px;
+    height: 26px;
+    min-width: 28px;
     border-right: none;
   }
 
   .console-actions {
     gap: 3px;
+  }
+
+  .ce-console-toggle-btn {
+    width: 24px;
+    height: 22px;
   }
 }
 
@@ -7462,6 +7770,7 @@ body.light .chat-call-btn.video-call-btn:hover {
     opacity: 0;
     transform: scale(0.97);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -7645,8 +7954,13 @@ body.light .chat-call-btn.video-call-btn:hover {
 }
 
 @keyframes ce-spin-quick {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Visible Focus Indicators for Accessibility (WCAG AA) */
@@ -7763,7 +8077,7 @@ textarea:focus-visible,
   overflow: auto;
   position: relative;
   background-color: #0d1117;
-  background-image: 
+  background-image:
     linear-gradient(45deg, rgba(255, 255, 255, 0.02) 25%, transparent 25%),
     linear-gradient(-45deg, rgba(255, 255, 255, 0.02) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.02) 75%),
@@ -8011,7 +8325,7 @@ body.light .ce-image-preview-pane {
 
 .light .ce-image-canvas {
   background-color: #f1f5f9;
-  background-image: 
+  background-image:
     linear-gradient(45deg, rgba(0, 0, 0, 0.03) 25%, transparent 25%),
     linear-gradient(-45deg, rgba(0, 0, 0, 0.03) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.03) 75%),
