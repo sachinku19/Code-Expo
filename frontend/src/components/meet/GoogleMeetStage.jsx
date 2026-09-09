@@ -39,7 +39,7 @@ function PersistentRemoteAudio({ userId, stream, onSpeakingChange }) {
       if (audioRef.current.srcObject !== stream) {
         audioRef.current.srcObject = stream;
       }
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
     }
   }, [stream]);
 
@@ -63,6 +63,9 @@ function PersistentRemoteAudio({ userId, stream, onSpeakingChange }) {
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
 
+      let speakingHoldUntil = 0;
+      let lastReported = false;
+
       const checkVolume = () => {
         if (!analyser) return;
         analyser.getByteFrequencyData(dataArray);
@@ -71,10 +74,17 @@ function PersistentRemoteAudio({ userId, stream, onSpeakingChange }) {
           sum += dataArray[i];
         }
         const average = sum / bufferLength;
-        const speaking = average > 12;
+        const now = Date.now();
+        if (average > 8) {
+          speakingHoldUntil = now + 450;
+        }
+        const speaking = now < speakingHoldUntil;
 
-        if (onSpeakingChange && userId) {
-          onSpeakingChange(userId, speaking);
+        if (speaking !== lastReported) {
+          lastReported = speaking;
+          if (onSpeakingChange && userId) {
+            onSpeakingChange(userId, speaking);
+          }
         }
 
         animFrame = requestAnimationFrame(checkVolume);
@@ -88,7 +98,7 @@ function PersistentRemoteAudio({ userId, stream, onSpeakingChange }) {
     return () => {
       if (animFrame) cancelAnimationFrame(animFrame);
       if (audioContext && audioContext.state !== "closed") {
-        audioContext.close().catch(() => {});
+        audioContext.close().catch(() => { });
       }
     };
   }, [stream, userId, onSpeakingChange]);
@@ -283,6 +293,9 @@ const GoogleMeetStage = ({
     if (engine) {
       const state = await engine.toggleHandRaise();
       setIsHandRaised(state);
+      setAllMembers((prev) =>
+        prev.map((m) => (m.isLocal ? { ...m, isHandRaised: state } : m))
+      );
     }
   };
 

@@ -1420,10 +1420,11 @@ export default function MainLayout({
               {onJoinCall && (
                 inCall ? (
                   <button
-                    className="ce-nav-action-btn active-call"
+                    className="ce-nav-action-btn meeting-nav-btn active-call"
                     onClick={onLeaveCall}
                     title="In Meeting - Click to Open / Leave"
                   >
+                    <span className="active-call-pulse-dot" />
                     <Video size={13} />
                     <span>In Meeting</span>
                   </button>

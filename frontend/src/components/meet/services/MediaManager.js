@@ -87,15 +87,24 @@ export class MediaManager {
       const bufferLength = this.analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
 
+      let speakingHoldUntil = 0;
+
       const checkVolume = () => {
-        if (!this.analyser || !this.isMicOn) return;
+        if (!this.analyser || !this.isMicOn) {
+          if (this.onVolumeChange) this.onVolumeChange(false, 0);
+          return;
+        }
         this.analyser.getByteFrequencyData(dataArray);
         let sum = 0;
         for (let i = 0; i < bufferLength; i++) {
           sum += dataArray[i];
         }
         const average = sum / bufferLength;
-        const speaking = average > 12;
+        const now = Date.now();
+        if (average > 8) {
+          speakingHoldUntil = now + 450; // Smooth speech indicator over short pauses
+        }
+        const speaking = now < speakingHoldUntil;
         if (this.onVolumeChange) {
           this.onVolumeChange(speaking, Math.round(average));
         }

@@ -22,7 +22,7 @@ export function VideoGrid({
   // Determine dynamic grid layout class
   const gridClass = `grid-${Math.min(gridCount, 12)}`;
 
-  if (pinnedMember) {
+  if (pinnedMember && unpinnedMembers.length > 0) {
     const isSpeaking = pinnedMember.isLocal ? localSpeaking : speakingMap[pinnedMember.userId];
     const stream = pinnedMember.isLocal ? localStream : remoteStreams[pinnedMember.socketId];
 
@@ -31,16 +31,21 @@ export function VideoGrid({
         {/* Main Pinned Stage */}
         <div className="ce-meet-pinned-main-stage">
           <VideoTile
+            key={pinnedMember.socketId || pinnedMember.userId}
             member={pinnedMember}
             stream={stream}
             isSpeaking={isSpeaking}
             isPinned={true}
+            isFilmstrip={false}
             onPinToggle={() => onPinToggle(pinnedMember.userId)}
           />
         </div>
 
         {/* Filmstrip strip for remaining participants */}
         <div className="ce-meet-filmstrip-panel">
+          <div className="ce-meet-filmstrip-header">
+            <span>Participants ({unpinnedMembers.length})</span>
+          </div>
           {unpinnedMembers.map((m) => {
             const mIsSpeaking = m.isLocal ? localSpeaking : speakingMap[m.userId];
             const mStream = m.isLocal ? localStream : remoteStreams[m.socketId];
@@ -51,6 +56,7 @@ export function VideoGrid({
                 stream={mStream}
                 isSpeaking={mIsSpeaking}
                 isPinned={false}
+                isFilmstrip={true}
                 onPinToggle={() => onPinToggle(m.userId)}
               />
             );
@@ -65,13 +71,14 @@ export function VideoGrid({
       {allMembers.map((m) => {
         const mIsSpeaking = m.isLocal ? localSpeaking : speakingMap[m.userId];
         const mStream = m.isLocal ? localStream : remoteStreams[m.socketId];
+        const isPinned = String(pinnedMember?.userId) === String(m.userId);
         return (
           <VideoTile
             key={m.socketId || m.userId}
             member={m}
             stream={mStream}
             isSpeaking={mIsSpeaking}
-            isPinned={false}
+            isPinned={isPinned}
             onPinToggle={() => onPinToggle(m.userId)}
           />
         );

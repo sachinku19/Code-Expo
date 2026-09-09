@@ -670,32 +670,49 @@ body.light .ce-nav-avatar-group:hover {
 }
 
 /* ==========================================================================
-   MEETING NAV BUTTON (Professional Purple Theme)
+   MEETING NAV BUTTON & ACTIVE CALL (Emerald Green Theme)
    ========================================================================== */
 
-.ce-nav-action-btn.meeting-nav-btn {
-  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+.ce-nav-action-btn.meeting-nav-btn,
+.ce-nav-action-btn.active-call {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid #34d399;
   color: #ffffff;
   font-weight: 600;
   letter-spacing: 0.01em;
-  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.28);
-  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.ce-nav-action-btn.meeting-nav-btn svg {
+.ce-nav-action-btn.meeting-nav-btn svg,
+.ce-nav-action-btn.active-call svg {
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.ce-nav-action-btn.meeting-nav-btn span,
+.ce-nav-action-btn.active-call span {
   color: #ffffff;
 }
 
-.ce-nav-action-btn.meeting-nav-btn:hover {
-  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%);
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
-  transform: translateY(-0.5px);
+.ce-nav-action-btn.meeting-nav-btn:hover,
+.ce-nav-action-btn.active-call:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color: #6ee7b7;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.55);
+  transform: translateY(-1px);
 }
 
-.ce-nav-action-btn.meeting-nav-btn:active {
+.ce-nav-action-btn.meeting-nav-btn:active,
+.ce-nav-action-btn.active-call:active {
   transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
 }
 
 /* Call In Progress Indicator */
@@ -714,7 +731,7 @@ body.light .ce-nav-avatar-group:hover {
 .ce-nav-action-btn.meeting-nav-btn.call-in-progress:hover {
   background: linear-gradient(135deg, #047857 0%, #059669 100%);
   box-shadow: 0 4px 14px rgba(16, 185, 129, 0.55);
-  transform: translateY(-0.5px);
+  transform: translateY(-1px);
 }
 
 /* Currently In-Call State */
@@ -784,25 +801,104 @@ body.light .ce-nav-action-btn.invite-btn:hover {
   background: #4338ca;
 }
 
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn {
-  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.22);
+/* Light mode overrides for Meeting & Active Call (Green Theme) */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.active-call,
+.light .ce-nav-action-btn.meeting-nav-btn,
+body.light .ce-nav-action-btn.meeting-nav-btn,
+html.light .ce-nav-action-btn.meeting-nav-btn,
+.light .ce-nav-action-btn.active-call,
+body.light .ce-nav-action-btn.active-call,
+html.light .ce-nav-action-btn.active-call {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: 1px solid #34d399 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn svg {
-  color: #ffffff;
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn svg,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.active-call svg,
+.light .ce-nav-action-btn.meeting-nav-btn svg,
+body.light .ce-nav-action-btn.meeting-nav-btn svg,
+html.light .ce-nav-action-btn.meeting-nav-btn svg,
+.light .ce-nav-action-btn.active-call svg,
+body.light .ce-nav-action-btn.active-call svg,
+html.light .ce-nav-action-btn.active-call svg {
+  color: #ffffff !important;
+  fill: none;
 }
 
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn:hover {
-  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%);
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn span,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.active-call span,
+.light .ce-nav-action-btn.meeting-nav-btn span,
+body.light .ce-nav-action-btn.meeting-nav-btn span,
+html.light .ce-nav-action-btn.meeting-nav-btn span,
+.light .ce-nav-action-btn.active-call span,
+body.light .ce-nav-action-btn.active-call span,
+html.light .ce-nav-action-btn.active-call span {
+  color: #ffffff !important;
 }
 
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn:hover svg {
-  color: #ffffff;
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn:hover,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.active-call:hover,
+.light .ce-nav-action-btn.meeting-nav-btn:hover,
+body.light .ce-nav-action-btn.meeting-nav-btn:hover,
+html.light .ce-nav-action-btn.meeting-nav-btn:hover,
+.light .ce-nav-action-btn.active-call:hover,
+body.light .ce-nav-action-btn.active-call:hover,
+html.light .ce-nav-action-btn.active-call:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border-color: #6ee7b7 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.55) !important;
+  transform: translateY(-1px);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.meeting-nav-btn:active,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"]) .ce-nav-action-btn.active-call:active,
+.light .ce-nav-action-btn.meeting-nav-btn:active,
+body.light .ce-nav-action-btn.meeting-nav-btn:active,
+html.light .ce-nav-action-btn.meeting-nav-btn:active,
+.light .ce-nav-action-btn.active-call:active,
+body.light .ce-nav-action-btn.active-call:active,
+html.light .ce-nav-action-btn.active-call:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Active Call Live Pulse Dot */
+.active-call-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.85);
+  animation: activeCallPulse 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes activeCallPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.85);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
 
 /* User Menu Trigger */
@@ -3539,6 +3635,13 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
   }
 }
 
+@media (max-width: 640px) {
+  .ce-nav-action-btn {
+    padding: 0 8px;
+    font-size: 0.72rem;
+  }
+}
+
 @media (max-width: 480px) {
   .ce-topnav {
     padding: 0 6px;
@@ -3554,6 +3657,17 @@ button:hover svg.lucide:not(.lucide-settings):not(.lucide-heart):not(.lucide-bel
 
   .ce-nav-divider {
     margin: 0 4px;
+  }
+
+  .ce-nav-action-btn.meeting-nav-btn span:not(.active-call-pulse-dot),
+  .ce-nav-action-btn.invite-btn span {
+    display: none;
+  }
+
+  .ce-nav-action-btn.meeting-nav-btn,
+  .ce-nav-action-btn.invite-btn {
+    padding: 0 7px;
+    min-width: 28px;
   }
 }
 

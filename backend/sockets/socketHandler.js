@@ -181,7 +181,7 @@ const socketHandler = (io) => {
       } catch (err) {
         console.error("Error updating online status or session log in socket register-user:", err);
       }
-      
+
       // Join all group rooms the user belongs to
       try {
         const GroupChat = require("../models/GroupChat");
@@ -754,9 +754,9 @@ const socketHandler = (io) => {
         await room.save();
 
         console.log(`Owner/Moderator requested to kick user ${userId} from room ${roomId}`);
-        
+
         const targetUsername = targetParticipant.user?.username || "User";
-        
+
         // Broadcast user-kicked event IMMEDIATELY to everyone in the room
         io.to(roomId).emit("user-kicked", {
           userId,
@@ -1139,7 +1139,7 @@ const socketHandler = (io) => {
         if (ydoc && update) {
           const updateBuffer = Buffer.from(update, "base64");
           Y.applyUpdate(ydoc, new Uint8Array(updateBuffer));
-          
+
           // Broadcast to other users in the room
           socket.to(roomId).emit("yjs:update", { fileId, update });
 
@@ -1226,7 +1226,7 @@ const socketHandler = (io) => {
         const file = await WorkspaceItem.findById(fileId);
         if (!file) return;
         file.content = content;
-        
+
         const ydoc = activeYDocs[fileId];
         if (ydoc) {
           file.yjsState = Buffer.from(Y.encodeStateAsUpdate(ydoc));
