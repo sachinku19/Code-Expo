@@ -1423,33 +1423,18 @@ export default function MainLayout({
                     className="ce-nav-action-btn active-call"
                     onClick={onLeaveCall}
                     title="In Meeting - Click to Open / Leave"
-                    style={{ backgroundColor: "#10b981", color: "#ffffff", fontWeight: 700, flexShrink: 0 }}
                   >
                     <Video size={13} />
                     <span>In Meeting</span>
                   </button>
                 ) : (
                   <button
-                    className={`ce-nav-action-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress-glow" : ""}`}
+                    className={`ce-nav-action-btn meeting-nav-btn ${activeCallUsers && activeCallUsers.length > 0 ? "call-in-progress" : ""}`}
                     onClick={() => onJoinCall("video")}
                     title="Google Meet Room - Join Workspace Meeting"
-                    style={{
-                      background: activeCallUsers && activeCallUsers.length > 0
-                        ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                        : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                      color: "#ffffff",
-                      border: "none",
-                      fontWeight: 700,
-                      padding: "6px 14px",
-                      borderRadius: "8px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      flexShrink: 0
-                    }}
                   >
-                    <Video size={14} color="#ffffff" />
-                    <span style={{ color: "#ffffff", fontWeight: 700 }}>
+                    <Video size={13} />
+                    <span>
                       {activeCallUsers && activeCallUsers.length > 0
                         ? `Join Meeting (${activeCallUsers.length})`
                         : "Meeting"}
@@ -1463,21 +1448,9 @@ export default function MainLayout({
                 className="ce-nav-action-btn invite-btn"
                 onClick={onOpenInvite || copyRoomId}
                 title="Invite Followers to Workspace"
-                style={{
-                  background: "linear-gradient(135deg, #a855f7 0%, #9333ea 100%)",
-                  color: "#ffffff",
-                  border: "none",
-                  fontWeight: 700,
-                  padding: "6px 14px",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  flexShrink: 0
-                }}
               >
-                <UserPlus size={14} color="#ffffff" />
-                <span style={{ color: "#ffffff", fontWeight: 700 }}>Invite</span>
+                <UserPlus size={13} />
+                <span>Invite</span>
               </button>
 
               {/* WORKSPACE ACTIONS DROPDOWN (IMMEDIATELY TO THE RIGHT OF INVITE BUTTON) */}
@@ -1497,24 +1470,8 @@ export default function MainLayout({
                   className={`ce-nav-action-btn sidebar-toggle-nav-btn ${rightSidebarCollapsed ? "collapsed" : ""}`}
                   onClick={onToggleRightSidebar}
                   title={rightSidebarCollapsed ? "Show Chat & Participants Panel" : "Hide Chat & Participants Panel"}
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    padding: 0,
-                    borderRadius: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: rightSidebarCollapsed
-                      ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
-                      : "rgba(255, 255, 255, 0.08)",
-                    color: "#ffffff",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    flexShrink: 0,
-                    cursor: "pointer"
-                  }}
                 >
-                  {rightSidebarCollapsed ? <PanelRightOpen size={16} color="#ffffff" /> : <PanelRightClose size={16} color="#ffffff" />}
+                  {rightSidebarCollapsed ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
                 </button>
               )}
 

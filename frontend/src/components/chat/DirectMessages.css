@@ -5,8 +5,8 @@
   --ce-primary-hover: #7c3aed;
   --ce-primary-glow: rgba(139, 92, 246, 0.2);
   display: flex;
-  height: calc(100vh - 56px) !important;
-  min-height: calc(100vh - 56px) !important;
+  height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
+  min-height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
   width: 100% !important;
   background: #090a0f;
   border: none !important;

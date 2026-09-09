@@ -36,7 +36,7 @@ body.feed-layout-active-body {
 
 .ce-layout-body:has(.feed-layout-active),
 .feed-layout-active-body .ce-layout-body {
-  height: calc(100vh - 56px) !important;
+  height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }
@@ -76,8 +76,8 @@ body.feed-layout-active-body {
   padding: 16px 24px !important;
   align-items: stretch !important;
   box-sizing: border-box !important;
-  height: calc(100vh - 56px) !important;
-  max-height: calc(100vh - 56px) !important;
+  height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
+  max-height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }

@@ -4009,62 +4009,90 @@ function Editor() {
   // Drag resizing for Monaco vs Whiteboard split
   const startWorkspaceResizing = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsResizing(true);
     document.body.classList.add("resizing-workspace");
+    const container = containerRef.current;
     const handleMouseMove = (moveEvent) => {
-      const container = containerRef.current;
+      moveEvent.preventDefault();
       if (!container) return;
       const rect = container.getBoundingClientRect();
       const newPercent = ((moveEvent.clientX - rect.left) / rect.width) * 100;
-      setSplitPercent(Math.max(20, Math.min(80, newPercent)));
+      setSplitPercent(Math.max(15, Math.min(85, newPercent)));
     };
     const handleMouseUp = () => {
       setIsResizing(false);
       document.body.classList.remove("resizing-workspace");
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove, true);
+      window.removeEventListener("mouseup", handleMouseUp, true);
     };
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove, true);
+    window.addEventListener("mouseup", handleMouseUp, true);
   };
 
-  // Drag resizing for bottom console height
+  // Drag resizing for bottom console height (robust delta calculation with window capture)
   const startConsoleResizing = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsResizing(true);
     document.body.classList.add("resizing-console");
+    const startY = e.clientY;
+    const initialHeight = isConsoleOpen ? (consoleHeight || 220) : 36;
+    const container = containerRef.current;
+
     const handleMouseMove = (moveEvent) => {
-      const newHeight = window.innerHeight - moveEvent.clientY;
-      setConsoleHeight(Math.max(100, Math.min(window.innerHeight * 0.75, newHeight)));
+      moveEvent.preventDefault();
+      const deltaY = startY - moveEvent.clientY;
+      const newHeight = initialHeight + deltaY;
+      const maxHeight = container
+        ? Math.max(120, container.getBoundingClientRect().height - 70)
+        : Math.max(120, window.innerHeight * 0.75);
+      const clamped = Math.max(45, Math.min(maxHeight, newHeight));
+      if (clamped > 50 && !isConsoleOpen) {
+        setIsConsoleOpen(true);
+      }
+      setConsoleHeight(clamped);
     };
+
     const handleMouseUp = () => {
       setIsResizing(false);
       document.body.classList.remove("resizing-console");
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove, true);
+      window.removeEventListener("mouseup", handleMouseUp, true);
     };
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+
+    window.addEventListener("mousemove", handleMouseMove, true);
+    window.addEventListener("mouseup", handleMouseUp, true);
   };
 
   // Drag resizing for left sidebar width
   const startSidebarResizing = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsResizing(true);
     document.body.classList.add("resizing-sidebar");
-    const bodyLeft = editorBodyRef.current ? editorBodyRef.current.getBoundingClientRect().left : 0;
+    const startX = e.clientX;
+    const initialWidth = leftSidebarCollapsed ? 44 : sidebarWidth;
+
     const handleMouseMove = (moveEvent) => {
-      const newWidth = moveEvent.clientX - bodyLeft;
-      setSidebarWidth(Math.max(180, Math.min(600, newWidth)));
+      moveEvent.preventDefault();
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = initialWidth + deltaX;
+      if (newWidth > 90 && leftSidebarCollapsed) {
+        setLeftSidebarCollapsed(false);
+      }
+      setSidebarWidth(Math.max(160, Math.min(window.innerWidth * 0.6, newWidth)));
     };
+
     const handleMouseUp = () => {
       setIsResizing(false);
       document.body.classList.remove("resizing-sidebar");
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove, true);
+      window.removeEventListener("mouseup", handleMouseUp, true);
     };
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+
+    window.addEventListener("mousemove", handleMouseMove, true);
+    window.addEventListener("mouseup", handleMouseUp, true);
   };
 
   // Filter & merge unique human participants from room participants and active socket clients
@@ -4846,9 +4874,7 @@ function Editor() {
             </div>
           </aside>
           {!leftSidebarCollapsed && (
-            <div className="sidebar-drag-divider" onMouseDown={startSidebarResizing}>
-              <div className="sidebar-drag-divider-bar" />
-            </div>
+            <div className="sidebar-drag-divider" onMouseDown={startSidebarResizing} />
           )}
 
           {/* 3. MAIN WORKSPACE CONTAINER */}
@@ -5187,13 +5213,11 @@ function Editor() {
 
             {/* Drag Resize Handle for bottom panel */}
             {isConsoleOpen && (
-              <div className="console-drag-handle" onMouseDown={startConsoleResizing}>
-                <div className="console-drag-handle-bar" />
-              </div>
+              <div className="console-drag-handle" onMouseDown={startConsoleResizing} />
             )}
 
             {/* 6. BOTTOM CONSOLE PANEL */}
-            <div className={`ce-console-panel ${editorTheme === "light" ? "light" : "dark"}`} style={{ height: isConsoleOpen ? `${consoleHeight}px` : "36px" }}>
+            <div className={`ce-console-panel ${editorTheme === "light" ? "light" : "dark"}`} style={{ height: isConsoleOpen ? `${consoleHeight}px` : "36px", flexShrink: 0 }}>
               <div className="console-tab-header">
                 <div className="console-tabs">
                   <button

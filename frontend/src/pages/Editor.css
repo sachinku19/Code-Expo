@@ -50,36 +50,58 @@
 .ce-editor-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px) !important;
-  max-height: calc(100vh - 56px) !important;
+  height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
+  max-height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
   width: 100%;
   overflow: hidden;
   background-color: var(--ce-bg-page);
 }
 
-/* Core Body Layout */
+/* Core Body Layout - Workbench Canvas */
 .ce-editor-body {
   display: flex;
   flex: 1;
   width: 100%;
   overflow: hidden;
   position: relative;
+  background-color: #090a10;
+  padding: 3px;
+  gap: 3px;
+  box-sizing: border-box;
 }
 
-/* 2. LEFT SIDEBAR (Collapsible) */
+.light .ce-editor-body,
+body.light .ce-editor-body,
+[data-theme-mode="light"] .ce-editor-body {
+  background-color: #eaedf2;
+}
+
+/* 2. LEFT SIDEBAR (Collapsible Boxed Card) */
 .ce-left-sidebar {
   display: flex;
   height: 100%;
-  background: var(--ce-bg-sidebar);
-  border-right: 1px solid var(--ce-border);
+  background: var(--ce-bg-sidebar, #12131c);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  border-radius: 0px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   transition: width var(--transition-fast);
   width: 320px;
   overflow: hidden;
   z-index: 20;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .ce-left-sidebar.collapsed {
   width: 44px;
+}
+
+.light .ce-left-sidebar,
+body.light .ce-left-sidebar,
+[data-theme-mode="light"] .ce-left-sidebar {
+  background-color: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.06);
 }
 
 .sidebar-tabs {
@@ -91,8 +113,15 @@
   align-items: center;
   padding-top: 8px;
   gap: 8px;
-  background: var(--ce-bg-sidebar);
-  border-right: 1px solid var(--ce-border);
+  background: rgba(0, 0, 0, 0.15);
+  border-right: 1px solid var(--ce-border, rgba(255, 255, 255, 0.06));
+}
+
+.light .sidebar-tabs,
+body.light .sidebar-tabs,
+[data-theme-mode="light"] .sidebar-tabs {
+  background: #f8fafc;
+  border-right-color: rgba(15, 23, 42, 0.08);
 }
 
 .sidebar-tab-btn {
@@ -611,9 +640,33 @@ body.light .room-history-action {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background-color: var(--ce-bg-page);
+  background: transparent;
+  gap: 3px;
   min-height: 0;
   min-width: 0;
+}
+
+/* 3.1 CODE EDITOR BOX (Enclosed Card with file tabs navbar + Monaco) */
+.ce-editor-box {
+  flex: 1 1 0 !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 0 !important;
+  min-width: 0;
+  background-color: var(--ce-bg-page, #12131c);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  border-radius: 0px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.light .ce-editor-box,
+body.light .ce-editor-box,
+[data-theme-mode="light"] .ce-editor-box {
+  background-color: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.06);
 }
 
 .workspace-editor-header {
@@ -624,8 +677,16 @@ body.light .room-history-action {
   align-items: stretch;
   background-color: #0e111a;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0px;
   padding: 0 8px 0 0;
   z-index: 10;
+}
+
+.light .workspace-editor-header,
+body.light .workspace-editor-header,
+[data-theme-mode="light"] .workspace-editor-header {
+  background-color: #f1f5f9;
+  border-bottom-color: rgba(15, 23, 42, 0.1);
 }
 
 .editor-controls-toolbar {
@@ -750,24 +811,52 @@ body.light .room-history-action {
 }
 
 .workspace-drag-divider {
-  width: 4px;
+  width: 3px;
+  min-width: 3px;
+  margin: 0 -3px;
   cursor: col-resize;
-  background-color: var(--ce-border);
+  background-color: transparent;
   position: relative;
   z-index: 30;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  user-select: none;
   transition: background-color var(--transition-fast);
 }
 
-.workspace-drag-divider:hover {
-  background-color: var(--ce-accent);
-}
-
-.divider-line {
+.workspace-drag-divider::before {
+  content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 1px;
+  left: -4px;
+  right: -4px;
+  z-index: 1;
+}
+
+.workspace-drag-divider::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background-color: var(--ce-border, rgba(255, 255, 255, 0.08));
+  transition: background-color 0.15s ease, width 0.15s ease, box-shadow 0.15s ease;
+  z-index: 2;
+}
+
+.workspace-drag-divider:hover::after,
+body.resizing-workspace .workspace-drag-divider::after {
+  background-color: var(--ce-accent, #6366f1);
   width: 2px;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.4);
+}
+
+.divider-line {
+  display: none;
 }
 
 .whiteboard-pane {
@@ -776,29 +865,69 @@ body.light .room-history-action {
   background-color: var(--ce-bg-page);
 }
 
-/* Drag Resize Handle for bottom panel */
+/* Drag Resize Handle for bottom panel - Thin professional line */
 .console-drag-handle {
-  height: 4px;
+  height: 3px;
+  min-height: 3px;
+  margin: -3px 0;
   cursor: row-resize;
-  background-color: var(--ce-border);
+  background-color: transparent;
   z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
   transition: background-color var(--transition-fast);
 }
 
-.console-drag-handle:hover {
-  background-color: var(--ce-accent);
+.console-drag-handle::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  bottom: -4px;
+  z-index: 1;
 }
 
-/* 6. BOTTOM CONSOLE PANEL */
+.console-drag-handle::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+  background-color: var(--ce-border, rgba(255, 255, 255, 0.08));
+  transition: background-color 0.15s ease, height 0.15s ease, box-shadow 0.15s ease;
+  z-index: 2;
+}
+
+.console-drag-handle:hover::after,
+body.resizing-console .console-drag-handle::after {
+  background-color: var(--ce-accent, #6366f1);
+  height: 2px;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.4);
+}
+
+/* 6. BOTTOM CONSOLE PANEL (Boxed Card) */
 .ce-console-panel {
   background-color: var(--ce-bg-nav, #0c0d14);
-  border-top: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  border-radius: 0px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 10;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   transition: background-color var(--transition-fast, 0.25s ease), border-color var(--transition-fast, 0.25s ease);
+  flex-shrink: 0 !important;
+  box-sizing: border-box;
+}
+
+.ce-console-panel .console-tab-header {
+  border-radius: 0px;
 }
 
 .console-tab-header {
@@ -1189,17 +1318,42 @@ body.light .ce-console-toggle-btn.collapsed-pulse:hover,
   color: #b45309;
 }
 
-/* Light mode Drag Resize Handle */
+/* Light mode Drag Resize Handles - Thin professional lines */
 .light .console-drag-handle,
 [data-theme-mode="light"] .console-drag-handle,
-body.light .console-drag-handle {
+body.light .console-drag-handle,
+.light .sidebar-drag-divider,
+[data-theme-mode="light"] .sidebar-drag-divider,
+body.light .sidebar-drag-divider,
+.light .workspace-drag-divider,
+[data-theme-mode="light"] .workspace-drag-divider,
+body.light .workspace-drag-divider {
+  background-color: transparent;
+}
+
+.light .console-drag-handle::after,
+[data-theme-mode="light"] .console-drag-handle::after,
+body.light .console-drag-handle::after,
+.light .sidebar-drag-divider::after,
+[data-theme-mode="light"] .sidebar-drag-divider::after,
+body.light .sidebar-drag-divider::after,
+.light .workspace-drag-divider::after,
+[data-theme-mode="light"] .workspace-drag-divider::after,
+body.light .workspace-drag-divider::after {
   background-color: rgba(15, 23, 42, 0.1);
 }
 
-.light .console-drag-handle:hover,
-[data-theme-mode="light"] .console-drag-handle:hover,
-body.light .console-drag-handle:hover {
-  background-color: var(--ce-accent, #8b5cf6);
+.light .console-drag-handle:hover::after,
+[data-theme-mode="light"] .console-drag-handle:hover::after,
+body.light .console-drag-handle:hover::after,
+.light .sidebar-drag-divider:hover::after,
+[data-theme-mode="light"] .sidebar-drag-divider:hover::after,
+body.light .sidebar-drag-divider:hover::after,
+.light .workspace-drag-divider:hover::after,
+[data-theme-mode="light"] .workspace-drag-divider:hover::after,
+body.light .workspace-drag-divider:hover::after {
+  background-color: #6366f1;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.35);
 }
 
 /* Light mode Terminal Output Body & Text */
@@ -1314,17 +1468,28 @@ body.light .console-stdin-textarea:focus,
   display: flex;
   height: 100%;
   width: 280px;
-  background-color: var(--ce-bg-sidebar);
-  border-left: 1px solid var(--ce-border);
-  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), border-left-color 280ms ease;
-  overflow: visible !important;
+  background-color: var(--ce-bg-sidebar, #12131c);
+  border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08));
+  border-radius: 0px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), border-color 280ms ease;
+  overflow: hidden !important;
   position: relative;
   will-change: transform;
+  box-sizing: border-box;
 }
 
 .ce-right-sidebar-wrapper.collapsed .ce-right-sidebar {
   transform: translateX(100%);
-  border-left-color: transparent;
+  border-color: transparent;
+}
+
+.light .ce-right-sidebar,
+body.light .ce-right-sidebar,
+[data-theme-mode="light"] .ce-right-sidebar {
+  background-color: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.06);
 }
 
 /* Mobile Slide-Over Backdrop Overlay */
@@ -4265,20 +4430,51 @@ body.light .chat-messages-container::-webkit-scrollbar-thumb {
   margin-top: 8px;
 }
 
-/* Resizable Left Sidebar Handle */
+/* Resizable Left Sidebar Handle - Thin professional line */
 .sidebar-drag-divider {
-  width: 4px;
-  min-width: 4px;
+  width: 3px;
+  min-width: 3px;
+  margin: 0 -3px;
   cursor: col-resize;
-  background-color: var(--ce-border);
+  background-color: transparent;
   position: relative;
   z-index: 30;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  user-select: none;
   transition: background-color var(--transition-fast, 0.15s ease);
   height: 100%;
 }
 
-.sidebar-drag-divider:hover {
-  background-color: var(--ce-accent);
+.sidebar-drag-divider::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+  z-index: 1;
+}
+
+.sidebar-drag-divider::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background-color: var(--ce-border, rgba(255, 255, 255, 0.08));
+  transition: background-color 0.15s ease, width 0.15s ease, box-shadow 0.15s ease;
+  z-index: 2;
+}
+
+.sidebar-drag-divider:hover::after,
+body.resizing-sidebar .sidebar-drag-divider::after {
+  background-color: var(--ce-accent, #6366f1);
+  width: 2px;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.4);
 }
 
 /* Styling during active resizing to ensure zero lag and correct cursor alignment */
@@ -5826,10 +6022,10 @@ body.light .monaco-editor .current-line {
 /* Layout Modes overrides */
 .ce-floating-call-panel.mode-docked {
   position: fixed !important;
-  top: 56px !important;
+  top: var(--ce-topnav-height, 46px) !important;
   right: 0 !important;
   width: 50vw !important;
-  height: calc(100vh - 56px) !important;
+  height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
   border-radius: 0 !important;
   border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-top: none !important;
@@ -5841,10 +6037,10 @@ body.light .monaco-editor .current-line {
 
 .ce-floating-call-panel.mode-fullscreen {
   position: fixed !important;
-  top: 56px !important;
+  top: var(--ce-topnav-height, 46px) !important;
   left: 0 !important;
   width: 100vw !important;
-  height: calc(100vh - 56px) !important;
+  height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
   border-radius: 0 !important;
   border: none !important;
   z-index: 1000;
@@ -5971,15 +6167,35 @@ body.light .monaco-editor .current-line {
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: var(--ce-bg-code-header, #1b1b1b);
-  border-bottom: 1px solid var(--ce-border, rgba(255, 255, 255, 0.06));
-  padding: 6px 16px;
-  font-size: 0.75rem;
+  background-color: var(--ce-bg-page, #12131c);
+  border-bottom: 1px solid var(--ce-border, rgba(255, 255, 255, 0.05));
+  padding: 5px 14px;
+  font-size: 0.74rem;
   color: var(--ce-text-muted, #8e9aa9);
   user-select: none;
   font-family: var(--font-family-mono, monospace);
   overflow-x: auto;
   white-space: nowrap;
+}
+
+.light .ce-breadcrumbs-bar,
+body.light .ce-breadcrumbs-bar,
+[data-theme-mode="light"] .ce-breadcrumbs-bar {
+  background-color: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: #64748b;
+}
+
+.light .ce-breadcrumbs-room,
+body.light .ce-breadcrumbs-room,
+[data-theme-mode="light"] .ce-breadcrumbs-room {
+  color: #1e293b;
+}
+
+.light .ce-breadcrumbs-separator,
+body.light .ce-breadcrumbs-separator,
+[data-theme-mode="light"] .ce-breadcrumbs-separator {
+  color: #94a3b8;
 }
 
 .ce-breadcrumbs-bar::-webkit-scrollbar {
@@ -8148,11 +8364,12 @@ textarea:focus-visible,
   gap: 7px;
   height: 35px;
   padding: 0 10px 0 14px;
-  background: #111420;
+  background: #181924;
   color: #8b949e;
   border: none;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  border-top: 2px solid transparent;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: none !important;
+  border-bottom: none !important;
   border-radius: 0;
   font-size: 0.8rem;
   font-weight: 400;
@@ -8166,15 +8383,17 @@ textarea:focus-visible,
 }
 
 .ce-editor-tab:hover {
-  background: #161928;
-  color: #d1d5db;
+  background: #1e202f;
+  color: #e2e8f0;
 }
 
 .ce-editor-tab.active {
-  background: #1c2033;
-  color: #ffffff;
-  border-top: 2px solid #6366f1;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #12131c;
+  color: #f8fafc;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: none !important;
+  border-bottom: none !important;
   font-weight: 500;
 }
 
@@ -8228,51 +8447,65 @@ textarea:focus-visible,
   background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Light Theme Overrides for Editor Tabs */
+/* Light Theme Overrides for Editor Tabs - Clean Professional VS Code Style */
 .light .workspace-editor-header,
-body.light .workspace-editor-header {
-  background: #f1f5f9;
-  border-bottom: 1px solid #e2e8f0;
+body.light .workspace-editor-header,
+[data-theme-mode="light"] .workspace-editor-header {
+  background: #f1f3f5;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .light .workspace-editor-tabs,
-body.light .workspace-editor-tabs {
+body.light .workspace-editor-tabs,
+[data-theme-mode="light"] .workspace-editor-tabs {
   background: transparent;
 }
 
 .light .ce-editor-tab,
-body.light .ce-editor-tab {
-  background: #e2e8f0;
+body.light .ce-editor-tab,
+[data-theme-mode="light"] .ce-editor-tab {
+  background: #f1f3f5;
   color: #64748b;
-  border-right: 1px solid #cbd5e1;
-  border-top: 2px solid transparent;
+  border: none;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: none !important;
+  border-bottom: none !important;
 }
 
 .light .ce-editor-tab:hover,
-body.light .ce-editor-tab:hover {
-  background: #edf2f7;
+body.light .ce-editor-tab:hover,
+[data-theme-mode="light"] .ce-editor-tab:hover {
+  background: #e9ecef;
   color: #1e293b;
 }
 
 .light .ce-editor-tab.active,
-body.light .ce-editor-tab.active {
+body.light .ce-editor-tab.active,
+[data-theme-mode="light"] .ce-editor-tab.active {
   background: #ffffff;
   color: #0f172a;
-  border-top: 2px solid #4f46e5;
-  border-right: 1px solid #cbd5e1;
-  font-weight: 600;
+  border: none;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: none !important;
+  border-bottom: none !important;
+  box-shadow: none;
+  font-weight: 500;
 }
 
-.light .ce-tab-close-btn {
+.light .ce-tab-close-btn,
+[data-theme-mode="light"] .ce-tab-close-btn {
   color: #94a3b8;
 }
 
 .light .ce-editor-tab:hover .ce-tab-close-btn,
-.light .ce-editor-tab.active .ce-tab-close-btn {
+.light .ce-editor-tab.active .ce-tab-close-btn,
+[data-theme-mode="light"] .ce-editor-tab:hover .ce-tab-close-btn,
+[data-theme-mode="light"] .ce-editor-tab.active .ce-tab-close-btn {
   color: #64748b;
 }
 
-.light .ce-tab-close-btn:hover {
+.light .ce-tab-close-btn:hover,
+[data-theme-mode="light"] .ce-tab-close-btn:hover {
   background: rgba(0, 0, 0, 0.08) !important;
   color: #0f172a !important;
 }

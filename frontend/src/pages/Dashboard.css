@@ -101,7 +101,7 @@
   font-family: var(--font-sans);
   color: var(--ce-text);
   background-color: var(--ce-bg);
-  min-height: calc(100vh - 56px);
+  min-height: calc(100vh - var(--ce-topnav-height, 46px));
   animation: fadeInDashboard 0.4s ease-out;
 }
 
@@ -110,8 +110,8 @@
   max-width: 100% !important;
   margin: 0 !important;
   width: 100% !important;
-  height: calc(100vh - 56px) !important;
-  min-height: calc(100vh - 56px) !important;
+  height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
+  min-height: calc(100vh - var(--ce-topnav-height, 46px)) !important;
   overflow: hidden !important;
 }
 
