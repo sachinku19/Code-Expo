@@ -2411,12 +2411,12 @@ function Dashboard() {
   };
 
   const triggerGateAndNavigate = (targetRoomId) => {
-    triggerGateTransition(`/editor/${targetRoomId}`, "Syncing with Workspace Grid...");
+    triggerGateTransition(`/editor/${targetRoomId}`, "Connecting to Workspace...");
   };
 
   const triggerResumeHistory = (targetRoomId) => {
     setResumingHistoryRoomId(targetRoomId);
-    triggerGateTransition(`/editor/${targetRoomId}`, "Resuming Session Sync...");
+    triggerGateTransition(`/editor/${targetRoomId}`, "Resuming Workspace Session...");
     setTimeout(() => {
       setResumingHistoryRoomId(null);
     }, 1000);

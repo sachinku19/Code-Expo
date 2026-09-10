@@ -48,6 +48,8 @@ import {
   Square,
   LogOut,
   Loader2,
+  RefreshCw,
+  ArrowLeft,
   DoorOpen,
   Trash2,
   PanelRightClose,
@@ -104,7 +106,7 @@ import {
   Image as ImageIcon
 } from "lucide-react";
 import "./Editor.css";
-import GateOverlay from "../components/GateOverlay";
+import WorkspaceLoadingScreen from "../components/WorkspaceLoadingScreen";
 
 const notificationAudio = new Audio("/code-Expo_notification_sound.mp3");
 notificationAudio.load();
@@ -217,20 +219,6 @@ function Editor() {
       return false;
     }
   }, []);
-  const fromTransition = location.state?.fromTransition && !isPageRefresh;
-  const [showGateOpenAnimation, setShowGateOpenAnimation] = useState(!fromTransition);
-
-  useEffect(() => {
-    if (!fromTransition) {
-      const timer = setTimeout(() => {
-        setShowGateOpenAnimation(false);
-      }, 650);
-      return () => clearTimeout(timer);
-    }
-  }, [fromTransition]);
-
-
-
   // Core MERN Room State
   const [room, setRoom] = useState(null);
   const [users, setUsers] = useState([]);
@@ -239,6 +227,20 @@ function Editor() {
   const [joinRequests, setJoinRequests] = useState([]);
   const [notification, setNotification] = useState("");
   const [roomNotifications, setRoomNotifications] = useState([]);
+
+  // Single butter-smooth workspace loading & reveal transition
+  const [workspaceReady, setWorkspaceReady] = useState(false);
+  const [isExitingLoading, setIsExitingLoading] = useState(false);
+
+  useEffect(() => {
+    if (room && !workspaceReady) {
+      setIsExitingLoading(true);
+      const timer = setTimeout(() => {
+        setWorkspaceReady(true);
+      }, 420);
+      return () => clearTimeout(timer);
+    }
+  }, [room, workspaceReady]);
 
   // Google Meet Call States
   const [showMeetLobby, setShowMeetLobby] = useState(false);
@@ -4284,52 +4286,19 @@ function Editor() {
   };
 
   if (!room) {
-    if (!fromTransition) {
-      return (
-        <div className="editor-simple-loading-screen">
-          <div className="simple-loading-spinner"></div>
-          <span className="simple-loading-text">Loading Workspace...</span>
-        </div>
-      );
-    }
-
     return (
-      <div className="editor-loading-screen">
-        <div className="tech-grid-overlay"></div>
-        <div className="hologram-container">
-          <div className="hologram-ring ring-outer"></div>
-          <div className="hologram-ring ring-middle"></div>
-          <div className="hologram-ring ring-inner"></div>
-          <div className="hologram-core"></div>
-        </div>
-        <h2 className="loading-status-text">Workspace is ready for you...</h2>
-
-        <div className="loading-progress-container">
-          <div className="loading-progress-bar">
-            <div className="loading-progress-fill"></div>
-          </div>
-          <span className="loading-progress-percentage">BOOTING ENVIRONMENT</span>
-        </div>
-
-        {/* Animated Boot Logs Terminal Console */}
-        <div className="tech-terminal-console">
-          <div className="console-header">
-            <span className="console-dot dot-red"></span>
-            <span className="console-dot dot-yellow"></span>
-            <span className="console-dot dot-green"></span>
-            <span className="console-title">system_connection_terminal</span>
-          </div>
-          <div className="console-body">
-            <div className="console-line line-1">&gt; INITIATING DEVI_ENVIRONMENT HANDSHAKE... SUCCESS</div>
-            <div className="console-line line-2">&gt; SPINNING UP MONACO EDITOR CONTROLLER... ONLINE</div>
-            <div className="console-line line-3">&gt; MOUNTING MULTI-USER DOCUMENT CONTEXT... ONLINE</div>
-            <div className="console-line line-4">&gt; SYNCING COLLABORATION SOCKET PIPELINE... ESTABLISHED</div>
-            <div className="console-line line-5">&gt; INITIALIZING WEBRTC AUDIO GRID ROUTING... READY</div>
-          </div>
-        </div>
-
-        <p className="loading-substatus-text">Configuring real-time socket signals & WebRTC audio nodes...</p>
-      </div>
+      <WorkspaceLoadingScreen
+        roomId={roomId}
+        exiting={false}
+        onRetry={() => {
+          if (typeof fetchRoom === "function") {
+            fetchRoom();
+          } else {
+            window.location.reload();
+          }
+        }}
+        onBack={() => navigate("/dashboard")}
+      />
     );
   }
 
@@ -4352,7 +4321,23 @@ function Editor() {
   const creatorUsername = activeFile?.createdBy?.username || "another member";
 
   return (
-    <MainLayout
+    <>
+      {!workspaceReady && (
+        <WorkspaceLoadingScreen
+          roomId={roomId}
+          exiting={isExitingLoading}
+          onRetry={() => {
+            if (typeof fetchRoom === "function") {
+              fetchRoom();
+            } else {
+              window.location.reload();
+            }
+          }}
+          onBack={() => navigate("/dashboard")}
+        />
+      )}
+      <div className={`ce-workspace-content-wrapper ${isExitingLoading ? "entering" : ""}`}>
+        <MainLayout
       roomId={roomId}
       roomTitle={room.title}
       isPrivate={room?.isPrivate}
@@ -6899,10 +6884,7 @@ function Editor() {
           </div>,
           document.body
         )}
-        {/* Futuristic Exit Gate Animation Overlay */}
-        {showGateOpenAnimation && (
-          <GateOverlay exiting statusText="Decryption Complete" />
-        )}
+
 
         {/* Invite Followers Modal */}
         {isInviteModalOpen && (
@@ -7284,6 +7266,8 @@ function Editor() {
         )}
       </div>
     </MainLayout>
+      </div>
+    </>
   );
 }
 

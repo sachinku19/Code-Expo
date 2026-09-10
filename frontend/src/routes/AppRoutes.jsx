@@ -45,24 +45,9 @@ export function GateTransitionProvider({ children }) {
   const [statusText, setStatusText] = useState("");
   const navigate = useNavigate();
 
-  const triggerGateTransition = (targetPath, customStatusText = "Connecting to Neural Grid...") => {
-    setStatusText(customStatusText);
-    setGateState("closing");
-
-    // 1. Wait for doors to slide shut (400ms)
-    setTimeout(() => {
-      // 2. Perform navigation, passing state so target page knows it is a transition
-      navigate(targetPath, { state: { fromTransition: true } });
-
-      // 3. Switch to opening state
-      setGateState("opening");
-      setStatusText("Decryption Complete");
-
-      // 4. Wait for unlocking sequence + doors sliding open (800ms)
-      setTimeout(() => {
-        setGateState("idle");
-      }, 800);
-    }, 400);
+  const triggerGateTransition = (targetPath) => {
+    // Navigate directly into target route without stacking duplicate transition overlays
+    navigate(targetPath, { state: { fromTransition: true } });
   };
 
   return (

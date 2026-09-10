@@ -1,0 +1,418 @@
+/* ==========================================================================
+   Professional SaaS Workspace Loading Screen
+   Full dynamic adaptability for both Dark and Light Themes
+   ========================================================================== */
+
+/* Dark Mode Variables (Default) */
+.ce-workspace-loading.dark {
+  --wsl-bg: #07080f;
+  --wsl-ambient-glow: radial-gradient(circle at 50% 38%, rgba(139, 92, 246, 0.16) 0%, rgba(6, 182, 212, 0.09) 35%, rgba(7, 8, 15, 0.98) 70%);
+  --wsl-card-bg: rgba(15, 17, 26, 0.85);
+  --wsl-card-border: rgba(255, 255, 255, 0.09);
+  --wsl-card-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), 0 0 40px rgba(139, 92, 246, 0.12);
+  --wsl-text: #f8fafc;
+  --wsl-text-muted: #94a3b8;
+  --wsl-accent: #8b5cf6;
+  --wsl-accent-glow: rgba(139, 92, 246, 0.35);
+  --wsl-accent-secondary: #06b6d4;
+  --wsl-grid-color: rgba(255, 255, 255, 0.035);
+  --wsl-track-bg: rgba(255, 255, 255, 0.07);
+  --wsl-chip-bg: rgba(255, 255, 255, 0.035);
+  --wsl-chip-border: rgba(255, 255, 255, 0.07);
+  --wsl-logo-bg: rgba(20, 24, 38, 0.9);
+  --wsl-logo-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Light Mode Variables */
+.ce-workspace-loading.light {
+  --wsl-bg: #f8fafc;
+  --wsl-ambient-glow: radial-gradient(circle at 50% 38%, rgba(99, 102, 241, 0.12) 0%, rgba(6, 182, 212, 0.06) 40%, rgba(248, 250, 252, 0.98) 75%);
+  --wsl-card-bg: rgba(255, 255, 255, 0.92);
+  --wsl-card-border: rgba(15, 23, 42, 0.09);
+  --wsl-card-shadow: 0 25px 60px rgba(15, 23, 42, 0.09), 0 0 30px rgba(99, 102, 241, 0.08);
+  --wsl-text: #0f172a;
+  --wsl-text-muted: #64748b;
+  --wsl-accent: #6366f1;
+  --wsl-accent-glow: rgba(99, 102, 241, 0.25);
+  --wsl-accent-secondary: #0284c7;
+  --wsl-grid-color: rgba(15, 23, 42, 0.035);
+  --wsl-track-bg: rgba(15, 23, 42, 0.06);
+  --wsl-chip-bg: rgba(15, 23, 42, 0.03);
+  --wsl-chip-border: rgba(15, 23, 42, 0.07);
+  --wsl-logo-bg: #ffffff;
+  --wsl-logo-border: rgba(15, 23, 42, 0.08);
+}
+
+/* Main Container */
+.ce-workspace-loading {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--wsl-bg);
+  animation: wsl-fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  font-family: var(--sans, 'Inter', system-ui, -apple-system, sans-serif);
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease;
+}
+
+/* Butter-Smooth Exit Animation */
+.ce-workspace-loading.exiting {
+  opacity: 0;
+  transform: scale(1.02);
+  pointer-events: none;
+}
+
+.workspace-loading-card.exiting {
+  opacity: 0;
+  transform: scale(1.03) translateY(-6px);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smooth Workspace Entry Wrapper */
+.ce-workspace-content-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ce-workspace-content-wrapper.entering {
+  animation: workspaceButterFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes workspaceButterFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.995);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
+/* Ambient Radial Glow */
+.workspace-loading-ambient {
+  position: absolute;
+  inset: 0;
+  background: var(--wsl-ambient-glow);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Precision Dot Matrix */
+.workspace-loading-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background-image: radial-gradient(circle, var(--wsl-grid-color) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+}
+
+/* Center Floating Glass Card */
+.workspace-loading-card {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--wsl-card-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--wsl-card-border);
+  border-radius: 20px;
+  padding: 38px 42px;
+  box-shadow: var(--wsl-card-shadow);
+  width: 90%;
+  max-width: 480px;
+  text-align: center;
+  animation: wsl-card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Emblem & Orbiting Rings */
+.workspace-loading-logo-wrapper {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.workspace-loading-orbit-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--wsl-accent);
+  border-right-color: var(--wsl-accent-secondary);
+  animation: wsl-spin-cw 2.4s linear infinite;
+  box-shadow: 0 0 16px var(--wsl-accent-glow);
+}
+
+.workspace-loading-orbit-ring-secondary {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-bottom-color: var(--wsl-accent);
+  border-left-color: var(--wsl-accent-secondary);
+  opacity: 0.6;
+  animation: wsl-spin-ccw 1.9s linear infinite;
+}
+
+.workspace-loading-logo-box {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  background: var(--wsl-logo-bg);
+  border: 1px solid var(--wsl-logo-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.workspace-loading-logo-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* Content Headings */
+.workspace-loading-header {
+  margin-bottom: 22px;
+  width: 100%;
+}
+
+.workspace-loading-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wsl-accent);
+  margin-bottom: 8px;
+}
+
+.workspace-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  animation: wsl-dot-pulse 1.6s ease-in-out infinite;
+}
+
+.workspace-loading-title {
+  font-family: var(--heading, 'Plus Jakarta Sans', system-ui, sans-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--wsl-text);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.workspace-loading-subtitle {
+  font-size: 0.84rem;
+  color: var(--wsl-text-muted);
+  margin: 0;
+  font-weight: 500;
+  min-height: 20px;
+}
+
+/* Progress Box & Track */
+.workspace-progress-box {
+  width: 100%;
+  margin-bottom: 22px;
+}
+
+.workspace-progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--wsl-track-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.workspace-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--wsl-accent) 0%, var(--wsl-accent-secondary) 100%);
+  border-radius: 999px;
+  box-shadow: 0 0 10px var(--wsl-accent);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.workspace-progress-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+}
+
+.progress-status-label {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--wsl-text-muted);
+  text-transform: uppercase;
+}
+
+.progress-value {
+  font-family: var(--mono, monospace);
+  font-weight: 700;
+  color: var(--wsl-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Telemetry Grid */
+.workspace-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+  padding-top: 18px;
+  border-top: 1px solid var(--wsl-card-border);
+}
+
+.workspace-telemetry-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--wsl-chip-bg);
+  border: 1px solid var(--wsl-chip-border);
+  border-radius: 8px;
+  padding: 6px 6px;
+}
+
+.telemetry-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--wsl-text-muted);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.telemetry-icon {
+  opacity: 0.7;
+}
+
+.telemetry-value {
+  font-family: var(--mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--wsl-text);
+  white-space: nowrap;
+}
+
+.telemetry-value.live {
+  color: #10b981;
+}
+
+/* Timeout / Slow connection alert */
+.workspace-timeout-box {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--wsl-card-border);
+  width: 100%;
+  animation: wsl-fade-in 0.3s ease;
+}
+
+.workspace-timeout-msg {
+  font-size: 0.8rem;
+  color: #f59e0b;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+
+.workspace-timeout-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.workspace-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.workspace-action-btn.primary {
+  background: var(--wsl-accent);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--wsl-accent-glow);
+}
+
+.workspace-action-btn.primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.workspace-action-btn.secondary {
+  background: var(--wsl-chip-bg);
+  border: 1px solid var(--wsl-chip-border);
+  color: var(--wsl-text);
+}
+
+.workspace-action-btn.secondary:hover {
+  background: var(--wsl-track-bg);
+}
+
+/* Keyframes */
+@keyframes wsl-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wsl-card-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes wsl-spin-cw {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes wsl-spin-ccw {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes wsl-dot-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@media (max-width: 540px) {
+  .workspace-loading-card {
+    padding: 28px 20px;
+  }
+  .workspace-telemetry-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+}

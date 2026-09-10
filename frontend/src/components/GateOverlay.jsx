@@ -6,10 +6,10 @@ export default function GateOverlay({ exiting = false, statusText = "Entering Wo
   const [progress, setProgress] = useState(0);
   const { resolvedTheme } = useTheme();
 
-  // Smooth progress counter synced with route transition timings
+  // Smooth progressive counter synced with route transition timings
   useEffect(() => {
     setProgress(0);
-    const duration = exiting ? 800 : 400;
+    const duration = exiting ? 500 : 380;
     const steps = 20;
     const stepTime = duration / steps;
     let currentStep = 0;
@@ -26,60 +26,64 @@ export default function GateOverlay({ exiting = false, statusText = "Entering Wo
     return () => clearInterval(interval);
   }, [exiting]);
 
-  // Dynamic professional statuses during load
-  const getDynamicStatusText = () => {
+  // Dynamic executive status during transition
+  const getDynamicSubtitle = () => {
     if (exiting) {
-      if (progress < 40) return "Syncing Workspace Grid...";
-      if (progress < 80) return "Loading IDE Components...";
-      return "Workspace Connected";
+      if (progress < 40) return "Resolving workspace route...";
+      if (progress < 85) return "Synchronizing real-time engine...";
+      return "Workspace connected";
     }
-    return statusText;
+    return "Initializing collaborative canvas...";
   };
 
   return (
     <div className={`ce-gate-overlay ${exiting ? "exiting" : ""} ${resolvedTheme}`}>
-      
-      {/* Subtle dotted background grid */}
+      {/* Ambient background glow & subtle dot matrix */}
+      <div className="gate-ambient-spotlight" />
       <div className="gate-grid-bg" />
 
-      {/* Modern glass panels */}
-      <div className="gate-doors-container">
-        <div className={`gate-door gate-door-left ${exiting ? "exiting" : ""}`} />
-        <div className={`gate-door gate-door-right ${exiting ? "exiting" : ""}`} />
-      </div>
-
-      {/* Minimalist central HUD console */}
-      <div className={`gate-core-portal ${exiting ? "exiting" : ""}`}>
-        <div className="gate-logo-container">
-          <img src="/logo.png" alt="CodeExpo Logo" className="gate-logo-img" />
-          <div className="logo-pulse-ring" />
+      {/* Floating Center Gateway Card */}
+      <div className={`gate-portal-card ${exiting ? "exiting" : ""}`}>
+        {/* Animated Emblem with Ambient Orbital Rings */}
+        <div className="gate-logo-wrapper">
+          <div className="gate-logo-orbit-ring" />
+          <div className="gate-logo-orbit-ring-secondary" />
+          <div className="gate-logo-box">
+            <img src="/logo.png" alt="CodeExpo" className="gate-logo-img" />
+          </div>
         </div>
 
-        <div className="gate-display-panel">
-          <h2 className="gate-status-title">{getDynamicStatusText()}</h2>
-          
-          {/* Snappy thin progress line */}
-          <div className="gate-loader-bar">
-            <div 
-              className="gate-loader-fill" 
-              style={{ width: `${progress}%` }} 
-            />
-          </div>
+        {/* Status Headings */}
+        <div className="gate-content-header">
+          <span className="gate-eyebrow-tag">
+            <span className="gate-live-dot" />
+            WORKSPACE GATEWAY
+          </span>
+          <h2 className="gate-status-title">{statusText || "Entering Workspace..."}</h2>
+          <p className="gate-status-subtitle">{getDynamicSubtitle()}</p>
+        </div>
 
-          {/* Minimalist status indicators */}
-          <div className="gate-details-row">
-            <div className="detail-item">
-              <span className="label">BRIDGE</span>
-              <span className="value active">SECURE</span>
-            </div>
-            <div className="detail-item">
-              <span className="label">DECRYPT</span>
-              <span className="value percent">{progress}%</span>
-            </div>
-            <div className="detail-item">
-              <span className="label">GRID</span>
-              <span className="value active">ONLINE</span>
-            </div>
+        {/* High-Precision Progress Bar */}
+        <div className="gate-progress-track">
+          <div
+            className="gate-progress-bar"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Telemetry Indicator Row */}
+        <div className="gate-telemetry-grid">
+          <div className="gate-telemetry-chip">
+            <span className="chip-label">NETWORK</span>
+            <span className="chip-value live">ONLINE</span>
+          </div>
+          <div className="gate-telemetry-chip">
+            <span className="chip-label">SYNC</span>
+            <span className="chip-value">P2P CRDT</span>
+          </div>
+          <div className="gate-telemetry-chip">
+            <span className="chip-label">SECURITY</span>
+            <span className="chip-value">TLS 1.3</span>
           </div>
         </div>
       </div>
