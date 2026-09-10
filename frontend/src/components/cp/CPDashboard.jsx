@@ -112,6 +112,7 @@ export default function CPDashboard({ user }) {
   const [leaderboardScope, setLeaderboardScope] = useState("global"); // global | country | college | friends
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview"); // overview | analytics | matrix | leaderboard | showcase
 
   // Connection Dialog state
   const [connectModalOpen, setConnectModalOpen] = useState(false);
@@ -553,27 +554,27 @@ export default function CPDashboard({ user }) {
 
   // Platform list config
   const PLATFORMS_CONFIG = {
-    leetcode: { 
-      name: "LeetCode", 
-      color: "#F89F1B", 
+    leetcode: {
+      name: "LeetCode",
+      color: "#F89F1B",
       logo: "https://upload.wikimedia.org/wikipedia/commons/1/19/LeetCode_logo_black.png",
       profileUrl: (username) => `https://leetcode.com/u/${username}`
     },
-    codeforces: { 
-      name: "Codeforces", 
-      color: "#3182CE", 
+    codeforces: {
+      name: "Codeforces",
+      color: "#3182CE",
       logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Codeforces_logo.svg/1200px-Codeforces_logo.svg.png",
       profileUrl: (username) => `https://codeforces.com/profile/${username}`
     },
-    codechef: { 
-      name: "CodeChef", 
-      color: "#5B4636", 
+    codechef: {
+      name: "CodeChef",
+      color: "#5B4636",
       logo: "https://cdn.jsdelivr.net/npm/simple-icons@11.12.0/icons/codechef.svg",
       profileUrl: (username) => `https://www.codechef.com/users/${username}`
     },
-    hackerrank: { 
-      name: "HackerRank", 
-      color: "#2EC866", 
+    hackerrank: {
+      name: "HackerRank",
+      color: "#2EC866",
       logo: "https://upload.wikimedia.org/wikipedia/commons/4/40/HackerRank_Icon-Green.svg",
       profileUrl: (username) => `https://www.hackerrank.com/profile/${username}`
     }
@@ -1094,40 +1095,92 @@ export default function CPDashboard({ user }) {
       <div className="cp-profile-header glass-panel">
         <div className="cp-header-cover" />
         <div className="cp-header-main">
-          <div className="cp-header-avatar">
+          <div className="cp-header-avatar-col">
             <ProfileAvatar />
           </div>
           <div className="cp-header-info">
             <div className="cp-name-row">
               <h2>{unifiedStats?.name || user?.username || "Developer"}</h2>
-              {unifiedStats && <span className="verified-badge"><CheckCircle2 size={12} fill="#10B981" color="#fff" /> Verified</span>}
+              <span className="cp-handle-sub">@{user?.username || "developer"}</span>
+              {unifiedStats && (
+                <span className="verified-badge">
+                  <CheckCircle2 size={12} /> Verified Dev
+                </span>
+              )}
             </div>
             <p className="cp-college-row">
-              <School size={14} /> {user?.college || "Global Coding Guild"} • <Globe size={14} /> {user?.location?.trim() || "Not Given"}
+              <School size={14} /> <span>{user?.college || "Global Coding Guild"}</span>
+              <span className="sep">•</span>
+              <Globe size={14} /> <span>{user?.location?.trim() || "Global"}</span>
             </p>
             <div className="cp-badge-tags">
-              <span className="cp-tag text-blue"><Trophy size={12} /> Rank: {unifiedStats?.currentRank || "Unranked"}</span>
-              <span className="cp-tag text-purple"><Award size={12} /> Connected: {unifiedStats?.connectedPlatforms?.length || 0} Platforms</span>
-              {lastUpdated && <span className="cp-tag text-muted"><Calendar size={12} /> Sync: {lastUpdated.toLocaleTimeString()}</span>}
+              <span className="cp-tag"><Trophy size={12} /> Standing: {unifiedStats?.currentRank || "Unranked"}</span>
+              <span className="cp-tag"><Award size={12} /> {unifiedStats?.connectedPlatforms?.length || 0} Platforms Synced</span>
+              {lastUpdated && (
+                <span className="cp-tag text-muted">
+                  <Calendar size={12} /> Synced {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
             </div>
           </div>
           <div className="cp-header-actions">
             {hasConnectedPlatforms && (
               <>
                 <button className="btn-linkedin-showcase" onClick={() => setLinkedinModalOpen(true)}>
-                  <LinkedInIcon size={14} /> LinkedIn Showcase
+                  <LinkedInIcon size={14} /> Passport
                 </button>
                 <button className={`btn-sync-all ${refreshing ? "spinning" : ""}`} onClick={handleFullRefresh} disabled={refreshing}>
-                  <RefreshCw size={14} /> {refreshing ? "Syncing..." : "Sync Platforms"}
+                  <RefreshCw size={14} /> {refreshing ? "Syncing..." : "Sync All"}
                 </button>
               </>
             )}
             <button className="btn-connect-new" onClick={() => { setSelectedPlatformToConnect("leetcode"); setConnectModalOpen(true); }}>
-              <Plus size={14} /> Connect Platform
+              <Plus size={14} /> Link Platform
             </button>
           </div>
         </div>
       </div>
+
+      {/* 2. Professional Navigation Tabs */}
+      {hasConnectedPlatforms && (
+        <div className="cp-nav-tabs-bar">
+          <button
+            className={`cp-tab-btn ${activeTab === "overview" ? "active" : ""}`}
+            onClick={() => setActiveTab("overview")}
+          >
+            <Activity size={15} />
+            <span>Overview</span>
+          </button>
+          <button
+            className={`cp-tab-btn ${activeTab === "analytics" ? "active" : ""}`}
+            onClick={() => setActiveTab("analytics")}
+          >
+            <TrendingUp size={15} />
+            <span>Analytics & Activity</span>
+          </button>
+          <button
+            className={`cp-tab-btn ${activeTab === "matrix" ? "active" : ""}`}
+            onClick={() => setActiveTab("matrix")}
+          >
+            <Target size={15} />
+            <span>Platform Matrix</span>
+          </button>
+          <button
+            className={`cp-tab-btn ${activeTab === "leaderboard" ? "active" : ""}`}
+            onClick={() => setActiveTab("leaderboard")}
+          >
+            <Trophy size={15} />
+            <span>Leaderboard</span>
+          </button>
+          <button
+            className={`cp-tab-btn ${activeTab === "showcase" ? "active" : ""}`}
+            onClick={() => setActiveTab("showcase")}
+          >
+            <Sparkles size={15} />
+            <span>Showcase & Export</span>
+          </button>
+        </div>
+      )}
 
       {!hasConnectedPlatforms ? (
         // Empty State Connect UI
@@ -1147,809 +1200,837 @@ export default function CPDashboard({ user }) {
         // Connected Layout
         <div className="cp-dashboard-grid">
 
-          {/* Connected platforms horizontal listing */}
-          <div className="cp-platforms-section">
-            <h3 className="section-title">Platforms Connected</h3>
-            <div className="platforms-row">
-              {Object.keys(PLATFORMS_CONFIG).map(key => {
-                const plat = platforms[key] || { username: "", syncStatus: "Not Connected", lastSynced: null, stats: null };
-                const cfg = PLATFORMS_CONFIG[key];
-                const isConnected = !!plat.username;
-
-                return (
-                  <div key={key} className={`platform-card glass-panel hover-elevation ${isConnected ? "connected" : "unconnected"}`}>
-                    <div className="card-header-row">
-                      <div 
-                        style={{ cursor: isConnected ? "pointer" : "default", display: "inline-flex" }}
-                        onClick={() => {
-                          if (isConnected && cfg.profileUrl) {
-                            window.open(cfg.profileUrl(plat.username), "_blank", "noopener,noreferrer");
-                          }
-                        }}
-                        title={isConnected ? `Visit ${cfg.name} Profile` : ""}
-                      >
-                        <PlatformLogo platformKey={key} size={32} className="platform-logo" />
-                      </div>
-                      <div className="status-indicator">
-                        <span className={`status-dot ${disconnectingPlatform === key
-                          ? "failed"
-                          : (connectingPlatform === key ? "syncing" : (plat.syncStatus?.toLowerCase().replace(/\s/g, "") || "notconnected"))
-                          }`} />
-                        <span className="status-lbl">
-                          {disconnectingPlatform === key
-                            ? "Disconnecting..."
-                            : (connectingPlatform === key ? "Connecting..." : (plat.syncStatus || (isConnected ? "Connected" : "Not Connected")))}
-                        </span>
-                      </div>
-                    </div>
-
-                    {isConnected ? (
-                      <div className="platform-body">
-                        <div className="body-header">
-                          <h4 className="platform-name">{cfg.name}</h4>
-                          <span className="verification-badge">Verified</span>
-                        </div>
-                        <p 
-                          className="handle" 
-                          style={{ 
-                            cursor: "pointer", 
-                            display: "inline-flex", 
-                            alignItems: "center", 
-                            gap: "4px", 
-                            color: "var(--ce-accent)"
-                          }}
-                          onClick={() => {
-                            if (cfg.profileUrl) {
-                              window.open(cfg.profileUrl(plat.username), "_blank", "noopener,noreferrer");
-                            }
-                          }}
-                          title={`Visit ${cfg.name} Profile`}
-                        >
-                          @{plat.username}
-                          <ExternalLink size={12} style={{ opacity: 0.7 }} />
-                        </p>
-
-                        <div className="platform-stats-grid">
-                          <div className="stat-item">
-                            <span className="stat-lbl">Rating</span>
-                            <strong className="stat-val">{plat.stats?.contestRating || "N/A"}</strong>
-                          </div>
-                          <div className="stat-item">
-                            <span className="stat-lbl">Solved</span>
-                            <strong className="stat-val">{plat.stats?.solvedStats?.total || 0}</strong>
-                          </div>
-                        </div>
-
-                        {plat.lastError && (
-                          <div className="sync-error-text" title={plat.lastError}>
-                            ⚠️ {plat.lastError.length > 25 ? plat.lastError.substring(0, 25) + "..." : plat.lastError}
-                          </div>
-                        )}
-
-                        <div className="card-footer-row">
-                          <span className="sync-time">
-                            Synced: {plat.lastSynced ? new Date(plat.lastSynced).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"}
-                          </span>
-                          <div className="action-buttons">
-                            <button className="btn-refresh" onClick={() => handleRefreshSingle(key)} disabled={plat.syncStatus === "Syncing" || disconnectingPlatform === key} title="Sync this platform">
-                              <RefreshCw size={12} className={plat.syncStatus === "Syncing" ? "spinning" : ""} />
-                            </button>
-                            <button className="btn-disconnect" onClick={() => handleDisconnectClick(key)} disabled={disconnectingPlatform === key} title="Disconnect platform">
-                              {disconnectingPlatform === key ? (
-                                <RefreshCw size={12} className="spinning" />
-                              ) : (
-                                <Trash2 size={12} />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="platform-body unconnected-body">
-                        <h4 className="platform-name">{cfg.name}</h4>
-                        <p className="status-muted">{connectingPlatform === key ? "Connecting..." : "Not Connected"}</p>
-
-                        <div className="connect-quick-input">
-                          <input
-                            type="text"
-                            placeholder="Username"
-                            id={`input-connect-${key}`}
-                            className="quick-username-input"
-                            disabled={connectingPlatform === key}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const val = e.target.value.trim();
-                                if (val !== "") {
-                                  handleConnect(key, val);
-                                }
-                              }
-                            }}
-                          />
-                          <button
-                            className="btn-quick-connect"
-                            disabled={connectingPlatform === key}
-                            onClick={() => {
-                              const input = document.getElementById(`input-connect-${key}`);
-                              if (input && input.value.trim() !== "") {
-                                handleConnect(key, input.value.trim());
-                              }
-                            }}
-                          >
-                            {connectingPlatform === key ? (
-                              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                <RefreshCw size={10} className="spinning" /> Connecting
-                              </span>
-                            ) : (
-                              "Connect"
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
+          {/* OVERVIEW TAB CONTENT */}
+          {activeTab === "overview" && (
+            <>
+              {/* Connected platforms horizontal listing */}
+              <div className="cp-platforms-section">
+                <div className="section-header-row">
+                  <div>
+                    <h3 className="section-title">Connected Platforms</h3>
+                    <p className="section-subtitle">Real-time telemetry and contest synchronization across competitive programming engines</p>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Unified score & metrics summary */}
-          <div className="metrics-column-layout">
-
-            {/* Overview cards */}
-            <div className="overview-stats-grid">
-              <div className="overview-card glass-panel">
-                <div className="card-header-icon bg-blue">
-                  <Activity size={18} />
+                  <span className="section-status-pill">
+                    <span className="status-dot-mini synced" />
+                    {Object.keys(PLATFORMS_CONFIG).filter(k => platforms[k]?.username).length} of {Object.keys(PLATFORMS_CONFIG).length} Linked
+                  </span>
                 </div>
-                <div className="card-val-box">
-                  <span className="card-label">Total Solved</span>
-                  <h3 className="counter">{unifiedStats?.overallSolved}</h3>
-                  <span className="sub-text">Across all profiles</span>
-                </div>
-              </div>
-              <div className="overview-card glass-panel">
-                <div className="card-header-icon bg-green">
-                  <Flame size={18} fill="#10B981" />
-                </div>
-                <div className="card-val-box">
-                  <span className="card-label">Active Streak</span>
-                  <h3 className="counter">{unifiedStats?.codingStreak} Days</h3>
-                  <span className="sub-text">Consistent solver</span>
-                </div>
-              </div>
-              <div className="overview-card glass-panel">
-                <div className="card-header-icon bg-purple">
-                  <Trophy size={18} />
-                </div>
-                <div className="card-val-box">
-                  <span className="card-label">Avg Rating</span>
-                  <h3 className="counter">{unifiedStats?.avgRating}</h3>
-                  <span className="sub-text">Contest difficulty index</span>
-                </div>
-              </div>
-              <div className="overview-card glass-panel">
-                <div className="card-header-icon bg-orange">
-                  <TrendingUp size={18} />
-                </div>
-                <div className="card-val-box">
-                  <span className="card-label">Global Rank</span>
-                  <h3 className="counter">Top {100 - (unifiedStats?.percentile || 95).toFixed(1)}%</h3>
-                  <span className="sub-text">Percentile standing</span>
-                </div>
-              </div>
-            </div>
-
-            {/* CodeExpo Score Meter */}
-            <div className="codeexpo-score-card glass-panel">
-              <div className="score-details-box">
-                <h4>CodeExpo Score</h4>
-                <div className="score-main-flex">
-                  <h2 className="score-big">{unifiedStats?.score}<span>/1000</span></h2>
-                  <span className={`tier-badge ${unifiedStats?.level?.toLowerCase()}`}>{unifiedStats?.level}</span>
-                </div>
-                <div className="score-progress-wrapper">
-                  <div className="progress-track">
-                    <div className="progress-bar" style={{ width: `${unifiedStats?.progress}%` }} />
-                  </div>
-                  <div className="progress-labels">
-                    <span>XP progress</span>
-                    <span>{unifiedStats?.pointsToNext > 0 ? `${unifiedStats.pointsToNext} points to next tier` : "Max Rank Achieved"}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="score-radial-visual">
-                {/* SVG Radial Meter */}
-                <svg width="100" height="100" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="40" stroke="var(--cp-track-bg)" strokeWidth="6" fill="none" />
-                  <circle cx="50" cy="50" r="40" stroke="var(--cp-blue)" strokeWidth="6" fill="none"
-                    strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * (unifiedStats?.score || 0)) / 1000}
-                    strokeLinecap="round" transform="rotate(-90 50 50)" />
-                  <text x="50" y="55" textAnchor="middle" fill="var(--text-h)" fontSize="16" fontWeight="bold">Lvl {Math.floor((unifiedStats?.score || 0) / 150) + 1}</text>
-                </svg>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Solved Distributions (Donut + Bar Charts) */}
-          <div className="charts-split-section">
-            <div className="donut-chart-box glass-panel">
-              <h3 className="card-title">Difficulty Distribution</h3>
-              <div className="donut-body-wrapper">
-                <div className="svg-donut-container">
-                  <svg width="180" height="180" viewBox="0 0 120 120">
-                    <defs>
-                      <linearGradient id="easy-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#10B981" />
-                        <stop offset="100%" stopColor="#059669" />
-                      </linearGradient>
-                      <linearGradient id="medium-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#F59E0B" />
-                        <stop offset="100%" stopColor="#D97706" />
-                      </linearGradient>
-                      <linearGradient id="hard-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#EF4444" />
-                        <stop offset="100%" stopColor="#DC2626" />
-                      </linearGradient>
-                      <radialGradient id="donut-center-glow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="rgba(255, 255, 255, 0.05)" />
-                        <stop offset="70%" stopColor="rgba(255, 255, 255, 0.02)" />
-                        <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
-                      </radialGradient>
-                    </defs>
-
-                    <circle cx="60" cy="60" r="50" stroke="var(--cp-track-bg)" strokeWidth="8" fill="none" />
-                    <circle cx="60" cy="60" r="42" fill="url(#donut-center-glow)" />
-
-                    {donutSegments.map((seg, idx) => {
-                      const gradId = seg.label === "Easy" ? "url(#easy-grad)" : seg.label === "Medium" ? "url(#medium-grad)" : "url(#hard-grad)";
-                      return (
-                        <circle key={seg.label} cx="60" cy="60" r="50" stroke={gradId} strokeWidth="10" fill="none"
-                          strokeDasharray={seg.strokeDasharray} strokeDashoffset={seg.strokeDashoffset}
-                          strokeLinecap="butt" transform="rotate(-90 60 60)"
-                          style={{
-                            transition: "stroke-width 0.2s ease, filter 0.2s ease",
-                            cursor: "pointer",
-                            filter: donutHoveredIndex === idx ? "brightness(1.1) drop-shadow(0 0 6px rgba(255,255,255,0.2))" : "none"
-                          }}
-                          onMouseEnter={() => setDonutHoveredIndex(idx)}
-                          onMouseLeave={() => setDonutHoveredIndex(null)} />
-                      );
-                    })}
-                    <text x="60" y="62" textAnchor="middle" fill="var(--text-h)" fontSize="13" fontWeight="bold">
-                      {unifiedStats?.overallSolved}
-                    </text>
-                    <text x="60" y="73" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="7" fontWeight="500" letterSpacing="0.5">
-                      SOLVED
-                    </text>
-                  </svg>
-                </div>
-                <div className="donut-legend-premium">
-                  {donutSegments.map((seg, idx) => (
-                    <div key={seg.label} className={`legend-card-premium ${seg.label.toLowerCase()}-card`}
-                      style={{ opacity: donutHoveredIndex === null || donutHoveredIndex === idx ? 1 : 0.4 }}
-                      onMouseEnter={() => setDonutHoveredIndex(idx)}
-                      onMouseLeave={() => setDonutHoveredIndex(null)}>
-                      <div className="card-top-row">
-                        <div className="card-lbl-wrapper">
-                          <span className={`card-indicator-dot ${seg.label.toLowerCase()}`} />
-                          <span className="card-lbl-text">{seg.label}</span>
-                        </div>
-                        <span className="card-lbl-percentage">{seg.percent.toFixed(1)}%</span>
-                      </div>
-                      <div className="progress-track-mini">
-                        <div className="progress-fill-mini" style={{ width: `${seg.percent}%`, background: seg.color }} />
-                      </div>
-                      <div className="card-bottom-row">
-                        <span className="card-val-text"><strong>{seg.count}</strong> solved</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="bar-chart-box glass-panel">
-              <h3 className="card-title">Platform-wise Breakdown</h3>
-              <div className="platform-breakdown-container-premium">
-                {Object.keys(unifiedStats?.platformWiseSolved || {})
-                  .filter(key => PLATFORMS_CONFIG[key])
-                  .map(key => {
-                    const solved = unifiedStats.platformWiseSolved[key] || 0;
+                <div className="platforms-row">
+                  {Object.keys(PLATFORMS_CONFIG).map(key => {
+                    const plat = platforms[key] || { username: "", syncStatus: "Not Connected", lastSynced: null, stats: null };
                     const cfg = PLATFORMS_CONFIG[key];
-                    const plat = platforms[key] || {};
-                    const maxVal = Math.max(...Object.values(unifiedStats.platformWiseSolved || {}).filter((_, idx) => {
-                      const k = Object.keys(unifiedStats.platformWiseSolved)[idx];
-                      return PLATFORMS_CONFIG[k];
-                    }), 1);
-                    const percent = (solved / maxVal) * 100;
+                    const isConnected = !!plat.username;
 
                     return (
-                      <div key={key} className="platform-progress-row-premium">
-                        <div className="platform-row-meta">
-                          <div className="platform-identity">
-                            <PlatformLogo platformKey={key} size={20} className="platform-icon-img" />
-                            <span className="platform-name-text">{cfg.name}</span>
+                      <div key={key} className={`platform-card glass-panel hover-elevation ${isConnected ? "connected" : "unconnected"}`}>
+                        <div className="card-header-row">
+                          <div
+                            className="platform-logo-box"
+                            style={{ cursor: isConnected ? "pointer" : "default", display: "inline-flex" }}
+                            onClick={() => {
+                              if (isConnected && cfg.profileUrl) {
+                                window.open(cfg.profileUrl(plat.username), "_blank", "noopener,noreferrer");
+                              }
+                            }}
+                            title={isConnected ? `Visit ${cfg.name} Profile` : ""}
+                          >
+                            <PlatformLogo platformKey={key} size={28} className="platform-logo" />
                           </div>
-                          <div className="platform-solved-badge">
-                            <strong>{solved}</strong> solved
+                          <div className="status-indicator">
+                            <span className={`status-dot ${disconnectingPlatform === key
+                              ? "failed"
+                              : (connectingPlatform === key ? "syncing" : (plat.syncStatus?.toLowerCase().replace(/\s/g, "") || "notconnected"))
+                              }`} />
+                            <span className="status-lbl">
+                              {disconnectingPlatform === key
+                                ? "Disconnecting..."
+                                : (connectingPlatform === key ? "Connecting..." : (isConnected ? "Synced" : "Not Linked"))}
+                            </span>
                           </div>
                         </div>
 
-                        <div className="platform-progress-bar-track-premium">
-                          <div className="platform-progress-bar-fill-premium" style={{
-                            width: `${percent}%`,
-                            background: `linear-gradient(90deg, ${cfg.color}88, ${cfg.color})`,
-                            boxShadow: `0 0 10px ${cfg.color}44`
-                          }} />
-                        </div>
+                        {isConnected ? (
+                          <div className="platform-body">
+                            <div className="body-header">
+                              <h4 className="platform-name">{cfg.name}</h4>
+                              <span className="verification-badge">Verified</span>
+                            </div>
+                            <p
+                              className="handle"
+                              onClick={() => {
+                                if (cfg.profileUrl) {
+                                  window.open(cfg.profileUrl(plat.username), "_blank", "noopener,noreferrer");
+                                }
+                              }}
+                              title={`Visit ${cfg.name} Profile`}
+                            >
+                              @{plat.username}
+                              <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                            </p>
 
-                        <div className="platform-row-footer">
-                          <span className="footer-stat">Rating: <strong>{plat.stats?.contestRating || "N/A"}</strong></span>
-                          <span className="footer-stat">Rank: <strong>{plat.stats?.currentRank || "N/A"}</strong></span>
-                        </div>
+                            <div className="platform-stats-grid">
+                              <div className="stat-item">
+                                <span className="stat-lbl">CONTEST RATING</span>
+                                <strong className="stat-val">{plat.stats?.contestRating ? Number(plat.stats.contestRating).toLocaleString() : "N/A"}</strong>
+                              </div>
+                              <div className="stat-item">
+                                <span className="stat-lbl">PROBLEMS SOLVED</span>
+                                <strong className="stat-val">{plat.stats?.solvedStats?.total ? Number(plat.stats.solvedStats.total).toLocaleString() : 0}</strong>
+                              </div>
+                            </div>
+
+                            {plat.lastError && (
+                              <div className="sync-error-text" title={plat.lastError}>
+                                ⚠️ {plat.lastError.length > 25 ? plat.lastError.substring(0, 25) + "..." : plat.lastError}
+                              </div>
+                            )}
+
+                            <div className="card-footer-row">
+                              <span className="sync-time">
+                                {plat.lastSynced ? `Synced ${new Date(plat.lastSynced).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "Not synced"}
+                              </span>
+                              <div className="action-buttons">
+                                <button className="btn-refresh" onClick={() => handleRefreshSingle(key)} disabled={plat.syncStatus === "Syncing" || disconnectingPlatform === key} title="Sync this platform">
+                                  <RefreshCw size={12} className={plat.syncStatus === "Syncing" ? "spinning" : ""} />
+                                </button>
+                                <button className="btn-disconnect" onClick={() => handleDisconnectClick(key)} disabled={disconnectingPlatform === key} title="Disconnect platform">
+                                  {disconnectingPlatform === key ? (
+                                    <RefreshCw size={12} className="spinning" />
+                                  ) : (
+                                    <Trash2 size={12} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="platform-body unconnected-body">
+                            <div className="body-header">
+                              <h4 className="platform-name">{cfg.name}</h4>
+                            </div>
+                            <p className="status-muted">Link your {cfg.name} handle</p>
+
+                            <div className="connect-quick-input">
+                              <input
+                                type="text"
+                                placeholder="Enter username"
+                                id={`input-connect-${key}`}
+                                className="quick-username-input"
+                                disabled={connectingPlatform === key}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    const val = e.target.value.trim();
+                                    if (val !== "") {
+                                      handleConnect(key, val);
+                                    }
+                                  }
+                                }}
+                              />
+                              <button
+                                className="btn-quick-connect"
+                                disabled={connectingPlatform === key}
+                                onClick={() => {
+                                  const input = document.getElementById(`input-connect-${key}`);
+                                  if (input && input.value.trim() !== "") {
+                                    handleConnect(key, input.value.trim());
+                                  }
+                                }}
+                              >
+                                {connectingPlatform === key ? (
+                                  <RefreshCw size={10} className="spinning" />
+                                ) : (
+                                  "Link"
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
-              </div>
-            </div>
-          </div>
-
-          {/* Interactive monthly area progress chart */}
-          <div className="area-progress-section glass-panel">
-            <div className="area-header">
-              <div className="title-and-tabs-row">
-                <h3 className="card-title">Monthly Progress Tracker</h3>
-                <div className="metric-tabs-premium">
-                  {[
-                    { key: "solved", label: "Problems Solved", color: "#8B5CF6" },
-                    { key: "rating", label: "Contest Rating", color: "#10B981" },
-                    { key: "contests", label: "Contest Count", color: "#06B6D4" }
-                  ].map(metric => (
-                    <button key={metric.key} className={`metric-tab-premium ${activeChartMetric === metric.key ? "active" : ""}`}
-                      style={{ "--metric-color": metric.color }}
-                      onClick={() => { setActiveChartMetric(metric.key); setHoveredPoint(null); }}>
-                      <span className="metric-dot" />
-                      <span className="metric-tab-lbl">{metric.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="zoom-toggle-row">
-                {["3M", "6M"].map(zoom => (
-                  <button key={zoom} className={`btn-zoom ${areaZoom === zoom ? "active" : ""}`} onClick={() => setAreaZoom(zoom)}>
-                    {zoom}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="area-body-svg-premium" style={{ position: "relative" }}>
-              <svg viewBox="0 0 500 150" width="100%" height="150" style={{ overflow: "visible" }}>
-                <defs>
-                  <linearGradient id="solvedGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.0" />
-                  </linearGradient>
-                  <linearGradient id="ratingGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10B981" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
-                  </linearGradient>
-                  <linearGradient id="contestsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-                {/* Horizontal grids */}
-                <line x1="0" y1="30" x2="500" y2="30" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="3 3" />
-                <line x1="0" y1="75" x2="500" y2="75" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="3 3" />
-                <line x1="0" y1="120" x2="500" y2="120" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="3 3" />
-
-                {/* Graph coordinates generator */}
-                {(() => {
-                  const pointsCount = areaChartPoints.length;
-                  const stepX = 500 / (pointsCount - 1 || 1);
-                  const maxVal = Math.max(...areaChartPoints.map(p => p[activeChartMetric] || 0), 1);
-
-                  // Construct line path
-                  const coords = areaChartPoints.map((item, idx) => {
-                    const x = idx * stepX;
-                    const val = item[activeChartMetric] || 0;
-                    const y = 130 - (val / maxVal) * 110;
-                    return { x, y, label: item.month, val };
-                  });
-
-                  const pathStr = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ");
-                  const fillStr = `${pathStr} L ${coords[coords.length - 1].x} 130 L ${coords[0].x} 130 Z`;
-                  const gradId = activeChartMetric === "solved" ? "url(#solvedGrad)" : activeChartMetric === "rating" ? "url(#ratingGrad)" : "url(#contestsGrad)";
-                  const strokeColor = activeChartMetric === "solved" ? "#8B5CF6" : activeChartMetric === "rating" ? "#10B981" : "#06B6D4";
-
-                  return (
-                    <>
-                      <path d={fillStr} fill={gradId} style={{ transition: "all 0.5s ease" }} />
-                      <path d={pathStr} fill="none" stroke={strokeColor} strokeWidth="3" style={{ transition: "all 0.5s ease" }} />
-                      {coords.map(c => (
-                        <g key={c.label}
-                          onMouseEnter={() => setHoveredPoint(c)}
-                          onMouseLeave={() => setHoveredPoint(null)}
-                          style={{ cursor: "pointer" }}>
-                          <circle cx={c.x} cy={c.y} r="5" fill={strokeColor} stroke="var(--bg)" strokeWidth="2"
-                            style={{ transition: "all 0.3s ease" }} />
-                          <text x={c.x} y="145" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="8.5" fontWeight="500">{c.label}</text>
-                        </g>
-                      ))}
-
-                      {/* Integrated Vector Tooltip */}
-                      {hoveredPoint && (
-                        <g style={{ pointerEvents: "none" }}>
-                          <rect x={Math.max(5, Math.min(385, hoveredPoint.x - 55))} y={Math.max(5, hoveredPoint.y - 48)} width="110" height="36" rx="8"
-                            fill="var(--cp-card-bg)" stroke={strokeColor} strokeWidth="1.5"
-                            style={{ filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))" }} />
-
-                          <text x={Math.max(5, Math.min(385, hoveredPoint.x - 55)) + 55} y={Math.max(5, hoveredPoint.y - 48) + 13} textAnchor="middle"
-                            fill="var(--cp-text-muted)" fontSize="7.5" fontWeight="bold" letterSpacing="0.5">
-                            {hoveredPoint.label.toUpperCase()}
-                          </text>
-
-                          <text x={Math.max(5, Math.min(385, hoveredPoint.x - 55)) + 55} y={Math.max(5, hoveredPoint.y - 48) + 27} textAnchor="middle"
-                            fill="var(--text-h)" fontSize="8.5" fontWeight="bold">
-                            {hoveredPoint.val} {activeChartMetric === "solved" ? "solves" : activeChartMetric === "rating" ? "rating" : "contests"}
-                          </text>
-                        </g>
-                      )}
-                    </>
-                  );
-                })()}
-              </svg>
-            </div>
-          </div>
-
-          {/* Submission Heatmap Grid */}
-          <div className="heatmap-section-premium glass-panel">
-            <div className="heatmap-header-premium">
-              <h3 className="card-title">LeetCode Submission Heatmap</h3>
-              <div className="heatmap-summary-badge-premium">
-                <span className="badge-title">Consistency:</span>
-                <span className="badge-value-premium">{heatmapStats.consistency}</span>
-              </div>
-            </div>
-
-            <div className="heatmap-dashboard-premium">
-              {/* Left hand stats grid */}
-              <div className="heatmap-stats-side-panel">
-                <div className="stat-card-mini glass-panel">
-                  <span className="stat-label">Total Submissions</span>
-                  <strong className="stat-value">{heatmapStats.total}</strong>
-                </div>
-                <div className="stat-card-mini glass-panel">
-                  <span className="stat-label">Active Days</span>
-                  <strong className="stat-value">{heatmapStats.activeDays} <span className="stat-sub">/ 364d</span></strong>
-                </div>
-                <div className="stat-card-mini glass-panel">
-                  <span className="stat-label">Peak Daily Solves</span>
-                  <strong className="stat-value">{heatmapStats.peak}</strong>
                 </div>
               </div>
 
-              {/* Right hand grid */}
-              <div className="heatmap-grid-container-premium">
-                <div className="heatmap-grid-scroll">
-                  <div className="heatmap-grid-body">
-                    {(() => {
-                      const now = new Date();
-                      const heatmapDays = [];
-                      for (let i = 363; i >= 0; i--) {
-                        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-                        const dateStr = date.toISOString().split("T")[0];
-                        const count = unifiedStats?.heatmap?.[dateStr] || 0;
-                        let colorClass = "heat-0";
-                        if (count > 0 && count <= 2) colorClass = "heat-1";
-                        else if (count > 2 && count <= 4) colorClass = "heat-2";
-                        else if (count > 4) colorClass = "heat-3";
+              {/* Unified score & metrics summary */}
+              <div className="metrics-column-layout">
 
-                        heatmapDays.push({
-                          date: dateStr,
-                          count,
-                          colorClass
-                        });
-                      }
-
-                      return (
-                        <div className="heatmap-days-row">
-                          {heatmapDays.map(day => (
-                            <div key={day.date} className={`heat-cell-premium ${day.colorClass}`} title={`${day.date}: ${day.count} solves`} />
-                          ))}
-                        </div>
-                      );
-                    })()}
+                {/* Overview cards */}
+                <div className="overview-stats-grid">
+                  <div className="overview-card glass-panel">
+                    <div className="card-header-icon bg-blue">
+                      <Activity size={18} />
+                    </div>
+                    <div className="card-val-box">
+                      <span className="card-label">Total Solved</span>
+                      <h3 className="counter">{unifiedStats?.overallSolved}</h3>
+                      <span className="sub-text">Across all profiles</span>
+                    </div>
+                  </div>
+                  <div className="overview-card glass-panel">
+                    <div className="card-header-icon bg-green">
+                      <Flame size={18} fill="#10B981" />
+                    </div>
+                    <div className="card-val-box">
+                      <span className="card-label">Active Streak</span>
+                      <h3 className="counter">{unifiedStats?.codingStreak} Days</h3>
+                      <span className="sub-text">Consistent solver</span>
+                    </div>
+                  </div>
+                  <div className="overview-card glass-panel">
+                    <div className="card-header-icon bg-purple">
+                      <Trophy size={18} />
+                    </div>
+                    <div className="card-val-box">
+                      <span className="card-label">Avg Rating</span>
+                      <h3 className="counter">{unifiedStats?.avgRating}</h3>
+                      <span className="sub-text">Contest difficulty index</span>
+                    </div>
+                  </div>
+                  <div className="overview-card glass-panel">
+                    <div className="card-header-icon bg-orange">
+                      <TrendingUp size={18} />
+                    </div>
+                    <div className="card-val-box">
+                      <span className="card-label">Global Rank</span>
+                      <h3 className="counter">Top {100 - (unifiedStats?.percentile || 95).toFixed(1)}%</h3>
+                      <span className="sub-text">Percentile standing</span>
+                    </div>
                   </div>
                 </div>
-                <div className="heatmap-footer-labels-premium">
-                  <span>Less</span>
-                  <span className="legend-cell-premium heat-0" title="0 solves" />
-                  <span className="legend-cell-premium heat-1" title="1-2 solves" />
-                  <span className="legend-cell-premium heat-2" title="3-4 solves" />
-                  <span className="legend-cell-premium heat-3" title="5+ solves" />
-                  <span>More</span>
+
+                {/* Developer Score Index Meter */}
+                <div className="codeexpo-score-card glass-panel">
+                  <div className="score-details-box">
+                    <span className="score-super-title">DEVELOPER RATING INDEX</span>
+                    <div className="score-main-flex">
+                      <h2 className="score-big">{unifiedStats?.score || 0}<span>/1000</span></h2>
+                      <span className={`tier-badge ${unifiedStats?.level?.toLowerCase() || "gold"}`}>
+                        {unifiedStats?.level || "Grandmaster"}
+                      </span>
+                    </div>
+                    <div className="score-progress-wrapper">
+                      <div className="progress-track">
+                        <div className="progress-bar" style={{ width: `${unifiedStats?.progress || 0}%` }} />
+                      </div>
+                      <div className="progress-labels">
+                        <span>Performance Rating</span>
+                        <span>{unifiedStats?.pointsToNext > 0 ? `${unifiedStats.pointsToNext} pts to next rank` : "Top Rating Standing"}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="score-radial-visual">
+                    <svg width="100" height="100" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="40" stroke="var(--cp-track-bg)" strokeWidth="6" fill="none" />
+                      <circle cx="50" cy="50" r="40" stroke="var(--cp-blue)" strokeWidth="6" fill="none"
+                        strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * (unifiedStats?.score || 0)) / 1000}
+                        strokeLinecap="round" transform="rotate(-90 50 50)" />
+                      <text x="50" y="55" textAnchor="middle" fill="var(--text-h)" fontSize="15" fontWeight="bold">
+                        {Math.round(((unifiedStats?.score || 0) / 1000) * 100)}%
+                      </text>
+                    </svg>
+                  </div>
                 </div>
+
               </div>
-            </div>
-          </div>
 
-          {/* Platform comparison table */}
-          <div className="comparison-table-section glass-panel">
-            <div className="table-header-row">
-              <h3 className="card-title">Platform Stats Matrix</h3>
-              <div className="search-bar-input">
-                <Search size={14} />
-                <input type="text" placeholder="Search handles..." value={compSearch} onChange={(e) => setCompSearch(e.target.value)} />
-              </div>
-            </div>
-            <div className="table-scroll-wrapper">
-              <table className="comparison-table">
-                <thead>
-                  <tr>
-                    <th>Platform</th>
-                    <th onClick={() => { setCompSortKey("solved"); setCompSortOrder(p => p === "asc" ? "desc" : "asc"); }}>Solved</th>
-                    <th onClick={() => { setCompSortKey("rating"); setCompSortOrder(p => p === "asc" ? "desc" : "asc"); }}>Rating</th>
-                    <th>Rank</th>
-                    <th>Badges</th>
-                    <th>Contests</th>
-                    <th>Languages</th>
-                    <th>Last Active</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonList.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" style={{ textAlign: "center", color: "var(--cp-text-muted)", padding: "20px" }}>No matching connections found</td>
-                    </tr>
-                  ) : (
-                    comparisonList.map(item => (
-                      <tr key={item.id}>
-                        <td className="pf-col">
-                          <PlatformLogo platformKey={item.id} size={20} />
-                          <span>{item.platform}</span>
-                        </td>
-                        <td>{item.solved}</td>
-                        <td className="rating-num">{item.rating || "N/A"}</td>
-                        <td>{item.rank}</td>
-                        <td>{item.badges}</td>
-                        <td>{item.contests}</td>
-                        <td className="langs-lbl">{item.languages}</td>
-                        <td className="time-lbl">{item.lastActivity}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+              {/* Solved Distributions (Donut + Bar Charts) */}
+              <div className="charts-split-section">
+                <div className="donut-chart-box glass-panel">
+                  <h3 className="card-title">Difficulty Distribution</h3>
+                  <div className="donut-body-wrapper">
+                    <div className="svg-donut-container">
+                      <svg width="180" height="180" viewBox="0 0 120 120">
+                        <defs>
+                          <linearGradient id="easy-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#10B981" />
+                            <stop offset="100%" stopColor="#059669" />
+                          </linearGradient>
+                          <linearGradient id="medium-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#F59E0B" />
+                            <stop offset="100%" stopColor="#D97706" />
+                          </linearGradient>
+                          <linearGradient id="hard-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#EF4444" />
+                            <stop offset="100%" stopColor="#DC2626" />
+                          </linearGradient>
+                          <radialGradient id="donut-center-glow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="rgba(255, 255, 255, 0.05)" />
+                            <stop offset="70%" stopColor="rgba(255, 255, 255, 0.02)" />
+                            <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
+                          </radialGradient>
+                        </defs>
 
-          {/* Skill Radar & Timeline splits */}
-          <div className="radar-timeline-splits">
+                        <circle cx="60" cy="60" r="50" stroke="var(--cp-track-bg)" strokeWidth="8" fill="none" />
+                        <circle cx="60" cy="60" r="42" fill="url(#donut-center-glow)" />
 
-            {/* Skill Radar Chart */}
-            <div className="radar-card glass-panel">
-              <h3 className="card-title">Skill Profiler</h3>
-              <div className="radar-svg-wrapper">
-                <svg width="240" height="240" viewBox="0 0 240 240">
-                  {/* Concentric octagons */}
-                  <polygon points="120,30 183,56 210,120 183,183 120,210 56,183 30,120 56,56" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
-                  <polygon points="120,60 151,78 165,120 151,161 120,180 88,161 75,120 88,78" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
-                  <polygon points="120,90 135,99 142,120 135,140 120,150 104,140 97,120 104,99" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
-
-                  {/* Skill Coordinate Fill Polygon */}
-                  {radarPoints && (
-                    <polygon points={radarPoints} fill="rgba(37,99,235,0.18)" stroke="var(--ce-accent)" strokeWidth="2" strokeLinejoin="round" />
-                  )}
-
-                  {/* Axis labels */}
-                  <text x="120" y="22" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="8">Algorithms</text>
-                  <text x="195" y="52" textAnchor="start" fill="var(--cp-text-muted)" fontSize="8">DP</text>
-                  <text x="220" y="122" textAnchor="start" fill="var(--cp-text-muted)" fontSize="8">Graphs</text>
-                  <text x="195" y="192" textAnchor="start" fill="var(--cp-text-muted)" fontSize="8">Trees</text>
-                  <text x="120" y="222" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="8">Math</text>
-                  <text x="45" y="192" textAnchor="end" fill="var(--cp-text-muted)" fontSize="8">Strings</text>
-                  <text x="20" y="122" textAnchor="end" fill="var(--cp-text-muted)" fontSize="8">Greedy</text>
-                  <text x="45" y="52" textAnchor="end" fill="var(--cp-text-muted)" fontSize="8">Binary Search</text>
-                </svg>
-              </div>
-            </div>
-
-            {/* Contest History vertical timeline */}
-            <div className="timeline-card glass-panel">
-              <h3 className="card-title">Contest milestones</h3>
-              <div className="timeline-scroll-box">
-                {unifiedStats?.contestHistory?.length === 0 ? (
-                  <p className="empty-timeline-text">No contest histories recorded.</p>
-                ) : (
-                  <div className="vertical-timeline-track">
-                    {unifiedStats.contestHistory.map((item, idx) => {
-                      const cfg = PLATFORMS_CONFIG[item.platform];
-                      return (
-                        <div key={idx} className="timeline-node">
-                          <div className="node-icon-logo">
-                            <PlatformLogo platformKey={item.platform} size={20} />
+                        {donutSegments.map((seg, idx) => {
+                          const gradId = seg.label === "Easy" ? "url(#easy-grad)" : seg.label === "Medium" ? "url(#medium-grad)" : "url(#hard-grad)";
+                          return (
+                            <circle key={seg.label} cx="60" cy="60" r="50" stroke={gradId} strokeWidth="10" fill="none"
+                              strokeDasharray={seg.strokeDasharray} strokeDashoffset={seg.strokeDashoffset}
+                              strokeLinecap="butt" transform="rotate(-90 60 60)"
+                              style={{
+                                transition: "stroke-width 0.2s ease, filter 0.2s ease",
+                                cursor: "pointer",
+                                filter: donutHoveredIndex === idx ? "brightness(1.1) drop-shadow(0 0 6px rgba(255,255,255,0.2))" : "none"
+                              }}
+                              onMouseEnter={() => setDonutHoveredIndex(idx)}
+                              onMouseLeave={() => setDonutHoveredIndex(null)} />
+                          );
+                        })}
+                        <text x="60" y="62" textAnchor="middle" fill="var(--text-h)" fontSize="13" fontWeight="bold">
+                          {unifiedStats?.overallSolved}
+                        </text>
+                        <text x="60" y="73" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="7" fontWeight="500" letterSpacing="0.5">
+                          SOLVED
+                        </text>
+                      </svg>
+                    </div>
+                    <div className="donut-legend-premium">
+                      {donutSegments.map((seg, idx) => (
+                        <div key={seg.label} className={`legend-card-premium ${seg.label.toLowerCase()}-card`}
+                          style={{ opacity: donutHoveredIndex === null || donutHoveredIndex === idx ? 1 : 0.4 }}
+                          onMouseEnter={() => setDonutHoveredIndex(idx)}
+                          onMouseLeave={() => setDonutHoveredIndex(null)}>
+                          <div className="card-top-row">
+                            <div className="card-lbl-wrapper">
+                              <span className={`card-indicator-dot ${seg.label.toLowerCase()}`} />
+                              <span className="card-lbl-text">{seg.label}</span>
+                            </div>
+                            <span className="card-lbl-percentage">{seg.percent.toFixed(1)}%</span>
                           </div>
-                          <div className="node-content">
-                            <div className="node-heading">
-                              <h4>{item.contestName}</h4>
-                              <span className={`node-rating-change ${item.ratingChange.startsWith("+") ? "gain" : "loss"}`}>
-                                {item.ratingChange}
-                              </span>
-                            </div>
-                            <div className="node-sub-row">
-                              <span>Rank: <strong>#{item.rank}</strong></span>
-                              <span>Solved: <strong>{item.problemsSolved}</strong></span>
-                              <span>Rating: <strong>{item.rating}</strong></span>
-                              <span className="date-lbl">{item.date}</span>
-                            </div>
+                          <div className="progress-track-mini">
+                            <div className="progress-fill-mini" style={{ width: `${seg.percent}%`, background: seg.color }} />
+                          </div>
+                          <div className="card-bottom-row">
+                            <span className="card-val-text"><strong>{seg.count}</strong> solved</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-          </div>
-
-
-
-
-          {/* AI Insights summary */}
-          {unifiedStats?.insights && (
-            <div className="ai-insights-card glass-panel">
-              <div className="ai-header-bar">
-                <Brain size={22} className={analyzing ? "ai-icon-pulse spinning" : "ai-icon-pulse"} />
-                <h3>ExpoAI Developer Diagnostics</h3>
-              </div>
-
-              {!hasAnalyzed && !analyzing && (
-                <div className="ai-cta-block" style={{ textAlign: "center", padding: "30px 20px" }}>
-                  <p style={{ color: "var(--cp-text-muted)", marginBottom: "20px", fontSize: "0.9rem" }}>
-                    ExpoAI can analyze your connected platform statistics to map your strengths, identify growth areas, and outline recommended study plans.
-                  </p>
-                  <button className="btn-connect-new" onClick={runDiagnostics}>
-                    Run ExpoAI Diagnostics
-                  </button>
-                </div>
-              )}
-
-              {analyzing && (
-                <div className="ai-loading-block" style={{ padding: "40px 20px", textAlign: "center" }}>
-                  <div className="spinner-progress-container" style={{ maxWidth: "300px", margin: "0 auto" }}>
-                    <div className="spinning-icon-wrapper" style={{ marginBottom: "15px" }}>
-                      <RefreshCw size={28} className="spinning" style={{ color: "var(--cp-blue)" }} />
-                    </div>
-                    <p style={{ fontSize: "0.9rem", color: "var(--text-h)", fontWeight: "500" }}>
-                      {STAGES[analysisStage]}
-                    </p>
-                    <div className="ai-progress-bar-track" style={{ height: "4px", background: "var(--cp-glass-border)", borderRadius: "2px", marginTop: "16px", overflow: "hidden" }}>
-                      <div className="ai-progress-bar-fill" style={{
-                        height: "100%",
-                        background: "var(--cp-blue)",
-                        width: `${(analysisStage + 1) * 33.3}%`,
-                        transition: "width 0.4s ease"
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {hasAnalyzed && !analyzing && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-                  <div className="ai-diagnostics-grid">
-                    <div className="diagnostic-block">
-                      <h5><CheckCircle2 size={12} className="icon-green" /> Core Strengths</h5>
-                      <p>{unifiedStats.insights.strengths}</p>
-                    </div>
-                    <div className="diagnostic-block">
-                      <h5><Info size={12} className="icon-orange" /> Growth Areas</h5>
-                      <p>{unifiedStats.insights.weaknesses}</p>
-                    </div>
-                    <div className="diagnostic-block">
-                      <h5><Users size={12} className="icon-blue" /> Contest Overview</h5>
-                      <p>{unifiedStats.insights.contestAnalysis}</p>
-                    </div>
-                    <div className="diagnostic-block">
-                      <h5><Target size={12} className="icon-purple" /> Consistency Score</h5>
-                      <p>{unifiedStats.insights.consistency}</p>
-                    </div>
-                  </div>
-                  <div className="recommended-bar">
-                    <span>Next study topics:</span>
-                    <div className="topic-pills-row">
-                      {unifiedStats.insights.recommendedTopics?.map(topic => (
-                        <span key={topic} className="topic-pill">{topic}</span>
                       ))}
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </div>
+                </div>
+
+                <div className="bar-chart-box glass-panel">
+                  <h3 className="card-title">Platform-wise Breakdown</h3>
+                  <div className="platform-breakdown-container-premium">
+                    {Object.keys(unifiedStats?.platformWiseSolved || {})
+                      .filter(key => PLATFORMS_CONFIG[key])
+                      .map(key => {
+                        const solved = unifiedStats.platformWiseSolved[key] || 0;
+                        const cfg = PLATFORMS_CONFIG[key];
+                        const plat = platforms[key] || {};
+                        const maxVal = Math.max(...Object.values(unifiedStats.platformWiseSolved || {}).filter((_, idx) => {
+                          const k = Object.keys(unifiedStats.platformWiseSolved)[idx];
+                          return PLATFORMS_CONFIG[k];
+                        }), 1);
+                        const percent = (solved / maxVal) * 100;
+
+                        return (
+                          <div key={key} className="platform-progress-row-premium">
+                            <div className="platform-row-meta">
+                              <div className="platform-identity">
+                                <PlatformLogo platformKey={key} size={20} className="platform-icon-img" />
+                                <span className="platform-name-text">{cfg.name}</span>
+                              </div>
+                              <div className="platform-solved-badge">
+                                <strong>{solved}</strong> solved
+                              </div>
+                            </div>
+
+                            <div className="platform-progress-bar-track-premium">
+                              <div className="platform-progress-bar-fill-premium" style={{
+                                width: `${percent}%`,
+                                background: `linear-gradient(90deg, ${cfg.color}88, ${cfg.color})`,
+                                boxShadow: `0 0 10px ${cfg.color}44`
+                              }} />
+                            </div>
+
+                            <div className="platform-row-footer">
+                              <span className="footer-stat">Rating: <strong>{plat.stats?.contestRating || "N/A"}</strong></span>
+                              <span className="footer-stat">Rank: <strong>{plat.stats?.currentRank || "N/A"}</strong></span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
-          {/* Leaderboard comparisons */}
-          <div className="leaderboard-section-card glass-panel">
-            <div className="table-header-row">
-              <h3 className="card-title">Developer Leaderboard</h3>
-              <div className="leaderboard-scopes-row">
-                {["global", "country", "college", "friends"].map(scope => (
-                  <button key={scope} className={`btn-scope ${leaderboardScope === scope ? "active" : ""}`} onClick={() => setLeaderboardScope(scope)}>
-                    {scope.charAt(0).toUpperCase() + scope.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="table-scroll-wrapper">
-              <table className="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Developer</th>
-                    <th>Tier</th>
-                    <th>CodeExpo Score</th>
-                    <th>Solved</th>
-                    <th>Highest Rating</th>
-                    <th>Platforms</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboardLoading ? (
-                    <tr>
-                      <td colSpan="7" style={{ textAlign: "center", color: "var(--cp-text-muted)", padding: "30px" }}>Loading Leaderboards...</td>
-                    </tr>
-                  ) : leaderboardData.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" style={{ textAlign: "center", color: "var(--cp-text-muted)", padding: "30px" }}>No relative coders recorded under this scope</td>
-                    </tr>
-                  ) : (
-                    leaderboardData.map(entry => (
-                      <tr key={entry.id} className={entry.id === user?.id || entry.id === user?._id ? "own-ranking-row" : ""}>
-                        <td className="rank-td">
-                          {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`}
-                        </td>
-                        <td className="user-td-cell">
-                          {entry.avatar ? <img src={entry.avatar} alt="" /> : <div className="fallback-sm">{entry.username?.charAt(0).toUpperCase()}</div>}
-                          <span>@{entry.username}</span>
-                        </td>
-                        <td>
-                          <span className={`tier-badge sm ${entry.level.toLowerCase()}`}>{entry.level}</span>
-                        </td>
-                        <td className="score-lbl">{entry.score}</td>
-                        <td>{entry.solved}</td>
-                        <td className="rating-num">{entry.maxRating || "N/A"}</td>
-                        <td>{entry.platformsCount}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* ANALYTICS TAB CONTENT */}
+          {activeTab === "analytics" && (
+            <>
+              {/* Interactive monthly area progress chart */}
+              <div className="area-progress-section glass-panel">
+                <div className="area-header">
+                  <div className="title-and-tabs-row">
+                    <h3 className="card-title">Monthly Progress Tracker</h3>
+                    <div className="metric-tabs-premium">
+                      {[
+                        { key: "solved", label: "Problems Solved", color: "#8B5CF6" },
+                        { key: "rating", label: "Contest Rating", color: "#10B981" },
+                        { key: "contests", label: "Contest Count", color: "#06B6D4" }
+                      ].map(metric => (
+                        <button key={metric.key} className={`metric-tab-premium ${activeChartMetric === metric.key ? "active" : ""}`}
+                          style={{ "--metric-color": metric.color }}
+                          onClick={() => { setActiveChartMetric(metric.key); setHoveredPoint(null); }}>
+                          <span className="metric-dot" />
+                          <span className="metric-tab-lbl">{metric.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="zoom-toggle-row">
+                    {["3M", "6M"].map(zoom => (
+                      <button key={zoom} className={`btn-zoom ${areaZoom === zoom ? "active" : ""}`} onClick={() => setAreaZoom(zoom)}>
+                        {zoom}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="area-body-svg-premium" style={{ position: "relative" }}>
+                  <svg viewBox="0 0 500 150" width="100%" height="150" style={{ overflow: "visible" }}>
+                    <defs>
+                      <linearGradient id="solvedGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.0" />
+                      </linearGradient>
+                      <linearGradient id="ratingGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10B981" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                      </linearGradient>
+                      <linearGradient id="contestsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    {/* Horizontal grids */}
+                    <line x1="0" y1="30" x2="500" y2="30" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="3 3" />
+                    <line x1="0" y1="75" x2="500" y2="75" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="3 3" />
+                    <line x1="0" y1="120" x2="500" y2="120" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="3 3" />
 
-          {/* Portfolio card sharing & exporting */}
-          <div className="share-profile-card glass-panel">
-            <h3 className="card-title">Share Developer Portfolio</h3>
-            <p>Generate shareable portfolio links or export your full CP diagnostics report to showcase on GitHub, LinkedIn, or send directly to recruiters.</p>
-            <div className="share-btn-row">
-              <button className="btn-share-linkedin-showcase" onClick={() => setLinkedinModalOpen(true)}>
-                <LinkedInIcon size={14} /> Create LinkedIn Card
-              </button>
-              <button className="btn-share-link" onClick={handleShare}>
-                {shareLinkCopied ? (
-                  <><Check size={14} /> Link Copied</>
-                ) : (
-                  <><Copy size={14} /> Copy Portfolio Link</>
-                )}
-              </button>
-              <button className="btn-export-pdf" onClick={exportPDF}>
-                <FileDown size={14} /> Export Profile PDF
-              </button>
-            </div>
-          </div>
+                    {/* Graph coordinates generator */}
+                    {(() => {
+                      const pointsCount = areaChartPoints.length;
+                      const stepX = 500 / (pointsCount - 1 || 1);
+                      const maxVal = Math.max(...areaChartPoints.map(p => p[activeChartMetric] || 0), 1);
+
+                      // Construct line path
+                      const coords = areaChartPoints.map((item, idx) => {
+                        const x = idx * stepX;
+                        const val = item[activeChartMetric] || 0;
+                        const y = 130 - (val / maxVal) * 110;
+                        return { x, y, label: item.month, val };
+                      });
+
+                      const pathStr = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ");
+                      const fillStr = `${pathStr} L ${coords[coords.length - 1].x} 130 L ${coords[0].x} 130 Z`;
+                      const gradId = activeChartMetric === "solved" ? "url(#solvedGrad)" : activeChartMetric === "rating" ? "url(#ratingGrad)" : "url(#contestsGrad)";
+                      const strokeColor = activeChartMetric === "solved" ? "#8B5CF6" : activeChartMetric === "rating" ? "#10B981" : "#06B6D4";
+
+                      return (
+                        <>
+                          <path d={fillStr} fill={gradId} style={{ transition: "all 0.5s ease" }} />
+                          <path d={pathStr} fill="none" stroke={strokeColor} strokeWidth="3" style={{ transition: "all 0.5s ease" }} />
+                          {coords.map(c => (
+                            <g key={c.label}
+                              onMouseEnter={() => setHoveredPoint(c)}
+                              onMouseLeave={() => setHoveredPoint(null)}
+                              style={{ cursor: "pointer" }}>
+                              <circle cx={c.x} cy={c.y} r="5" fill={strokeColor} stroke="var(--bg)" strokeWidth="2"
+                                style={{ transition: "all 0.3s ease" }} />
+                              <text x={c.x} y="145" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="8.5" fontWeight="500">{c.label}</text>
+                            </g>
+                          ))}
+
+                          {/* Integrated Vector Tooltip */}
+                          {hoveredPoint && (
+                            <g style={{ pointerEvents: "none" }}>
+                              <rect x={Math.max(5, Math.min(385, hoveredPoint.x - 55))} y={Math.max(5, hoveredPoint.y - 48)} width="110" height="36" rx="8"
+                                fill="var(--cp-card-bg)" stroke={strokeColor} strokeWidth="1.5"
+                                style={{ filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))" }} />
+
+                              <text x={Math.max(5, Math.min(385, hoveredPoint.x - 55)) + 55} y={Math.max(5, hoveredPoint.y - 48) + 13} textAnchor="middle"
+                                fill="var(--cp-text-muted)" fontSize="7.5" fontWeight="bold" letterSpacing="0.5">
+                                {hoveredPoint.label.toUpperCase()}
+                              </text>
+
+                              <text x={Math.max(5, Math.min(385, hoveredPoint.x - 55)) + 55} y={Math.max(5, hoveredPoint.y - 48) + 27} textAnchor="middle"
+                                fill="var(--text-h)" fontSize="8.5" fontWeight="bold">
+                                {hoveredPoint.val} {activeChartMetric === "solved" ? "solves" : activeChartMetric === "rating" ? "rating" : "contests"}
+                              </text>
+                            </g>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+              </div>
+
+              {/* Submission Heatmap Grid */}
+              <div className="heatmap-section-premium glass-panel">
+                <div className="heatmap-header-premium">
+                  <h3 className="card-title">LeetCode Submission Heatmap</h3>
+                  <div className="heatmap-summary-badge-premium">
+                    <span className="badge-title">Consistency:</span>
+                    <span className="badge-value-premium">{heatmapStats.consistency}</span>
+                  </div>
+                </div>
+
+                <div className="heatmap-dashboard-premium">
+                  {/* Left hand stats grid */}
+                  <div className="heatmap-stats-side-panel">
+                    <div className="stat-card-mini glass-panel">
+                      <span className="stat-label">Total Submissions</span>
+                      <strong className="stat-value">{heatmapStats.total}</strong>
+                    </div>
+                    <div className="stat-card-mini glass-panel">
+                      <span className="stat-label">Active Days</span>
+                      <strong className="stat-value">{heatmapStats.activeDays} <span className="stat-sub">/ 364d</span></strong>
+                    </div>
+                    <div className="stat-card-mini glass-panel">
+                      <span className="stat-label">Peak Daily Solves</span>
+                      <strong className="stat-value">{heatmapStats.peak}</strong>
+                    </div>
+                  </div>
+
+                  {/* Right hand grid */}
+                  <div className="heatmap-grid-container-premium">
+                    <div className="heatmap-grid-scroll">
+                      <div className="heatmap-grid-body">
+                        {(() => {
+                          const now = new Date();
+                          const heatmapDays = [];
+                          for (let i = 363; i >= 0; i--) {
+                            const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                            const dateStr = date.toISOString().split("T")[0];
+                            const count = unifiedStats?.heatmap?.[dateStr] || 0;
+                            let colorClass = "heat-0";
+                            if (count > 0 && count <= 2) colorClass = "heat-1";
+                            else if (count > 2 && count <= 4) colorClass = "heat-2";
+                            else if (count > 4) colorClass = "heat-3";
+
+                            heatmapDays.push({
+                              date: dateStr,
+                              count,
+                              colorClass
+                            });
+                          }
+
+                          return (
+                            <div className="heatmap-days-row">
+                              {heatmapDays.map(day => (
+                                <div key={day.date} className={`heat-cell-premium ${day.colorClass}`} title={`${day.date}: ${day.count} solves`} />
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    <div className="heatmap-footer-labels-premium">
+                      <span>Less</span>
+                      <span className="legend-cell-premium heat-0" title="0 solves" />
+                      <span className="legend-cell-premium heat-1" title="1-2 solves" />
+                      <span className="legend-cell-premium heat-2" title="3-4 solves" />
+                      <span className="legend-cell-premium heat-3" title="5+ solves" />
+                      <span>More</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Skill Radar & Timeline splits */}
+              <div className="radar-timeline-splits">
+
+                {/* Skill Radar Chart */}
+                <div className="radar-card glass-panel">
+                  <h3 className="card-title">Skill Profiler</h3>
+                  <div className="radar-svg-wrapper">
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                      {/* Concentric octagons */}
+                      <polygon points="120,30 183,56 210,120 183,183 120,210 56,183 30,120 56,56" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
+                      <polygon points="120,60 151,78 165,120 151,161 120,180 88,161 75,120 88,78" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
+                      <polygon points="120,90 135,99 142,120 135,140 120,150 104,140 97,120 104,99" fill="none" stroke="var(--cp-glass-border)" strokeWidth="0.5" />
+
+                      {/* Skill Coordinate Fill Polygon */}
+                      {radarPoints && (
+                        <polygon points={radarPoints} fill="rgba(37,99,235,0.18)" stroke="var(--ce-accent)" strokeWidth="2" strokeLinejoin="round" />
+                      )}
+
+                      {/* Axis labels */}
+                      <text x="120" y="22" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="8">Algorithms</text>
+                      <text x="195" y="52" textAnchor="start" fill="var(--cp-text-muted)" fontSize="8">DP</text>
+                      <text x="220" y="122" textAnchor="start" fill="var(--cp-text-muted)" fontSize="8">Graphs</text>
+                      <text x="195" y="192" textAnchor="start" fill="var(--cp-text-muted)" fontSize="8">Trees</text>
+                      <text x="120" y="222" textAnchor="middle" fill="var(--cp-text-muted)" fontSize="8">Math</text>
+                      <text x="45" y="192" textAnchor="end" fill="var(--cp-text-muted)" fontSize="8">Strings</text>
+                      <text x="20" y="122" textAnchor="end" fill="var(--cp-text-muted)" fontSize="8">Greedy</text>
+                      <text x="45" y="52" textAnchor="end" fill="var(--cp-text-muted)" fontSize="8">Binary Search</text>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Contest History vertical timeline */}
+                <div className="timeline-card glass-panel">
+                  <h3 className="card-title">Contest milestones</h3>
+                  <div className="timeline-scroll-box">
+                    {unifiedStats?.contestHistory?.length === 0 ? (
+                      <p className="empty-timeline-text">No contest histories recorded.</p>
+                    ) : (
+                      <div className="vertical-timeline-track">
+                        {unifiedStats.contestHistory.map((item, idx) => {
+                          const cfg = PLATFORMS_CONFIG[item.platform];
+                          return (
+                            <div key={idx} className="timeline-node">
+                              <div className="node-icon-logo">
+                                <PlatformLogo platformKey={item.platform} size={20} />
+                              </div>
+                              <div className="node-content">
+                                <div className="node-heading">
+                                  <h4>{item.contestName}</h4>
+                                  <span className={`node-rating-change ${item.ratingChange.startsWith("+") ? "gain" : "loss"}`}>
+                                    {item.ratingChange}
+                                  </span>
+                                </div>
+                                <div className="node-sub-row">
+                                  <span>Rank: <strong>#{item.rank}</strong></span>
+                                  <span>Solved: <strong>{item.problemsSolved}</strong></span>
+                                  <span>Rating: <strong>{item.rating}</strong></span>
+                                  <span className="date-lbl">{item.date}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </>
+          )}
+
+          {/* PLATFORM MATRIX TAB CONTENT */}
+          {activeTab === "matrix" && (
+            <>
+              {/* Platform comparison table */}
+              <div className="comparison-table-section glass-panel">
+                <div className="table-header-row">
+                  <h3 className="card-title">Platform Stats Matrix</h3>
+                  <div className="search-bar-input">
+                    <Search size={14} />
+                    <input type="text" placeholder="Search handles..." value={compSearch} onChange={(e) => setCompSearch(e.target.value)} />
+                  </div>
+                </div>
+                <div className="table-scroll-wrapper">
+                  <table className="comparison-table">
+                    <thead>
+                      <tr>
+                        <th>Platform</th>
+                        <th onClick={() => { setCompSortKey("solved"); setCompSortOrder(p => p === "asc" ? "desc" : "asc"); }}>Solved</th>
+                        <th onClick={() => { setCompSortKey("rating"); setCompSortOrder(p => p === "asc" ? "desc" : "asc"); }}>Rating</th>
+                        <th>Rank</th>
+                        <th>Badges</th>
+                        <th>Contests</th>
+                        <th>Languages</th>
+                        <th>Last Active</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {comparisonList.length === 0 ? (
+                        <tr>
+                          <td colSpan="8" style={{ textAlign: "center", color: "var(--cp-text-muted)", padding: "20px" }}>No matching connections found</td>
+                        </tr>
+                      ) : (
+                        comparisonList.map(item => (
+                          <tr key={item.id}>
+                            <td className="pf-col">
+                              <PlatformLogo platformKey={item.id} size={20} />
+                              <span>{item.platform}</span>
+                            </td>
+                            <td>{item.solved}</td>
+                            <td className="rating-num">{item.rating || "N/A"}</td>
+                            <td>{item.rank}</td>
+                            <td>{item.badges}</td>
+                            <td>{item.contests}</td>
+                            <td className="langs-lbl">{item.languages}</td>
+                            <td className="time-lbl">{item.lastActivity}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* LEADERBOARD TAB CONTENT */}
+          {activeTab === "leaderboard" && (
+            <>
+              {/* Leaderboard comparisons */}
+              <div className="leaderboard-section-card glass-panel">
+                <div className="table-header-row">
+                  <h3 className="card-title">Developer Leaderboard</h3>
+                  <div className="leaderboard-scopes-row">
+                    {["global", "country", "college", "friends"].map(scope => (
+                      <button key={scope} className={`btn-scope ${leaderboardScope === scope ? "active" : ""}`} onClick={() => setLeaderboardScope(scope)}>
+                        {scope.charAt(0).toUpperCase() + scope.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="table-scroll-wrapper">
+                  <table className="leaderboard-table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Developer</th>
+                        <th>Tier</th>
+                        <th>CodeExpo Score</th>
+                        <th>Solved</th>
+                        <th>Highest Rating</th>
+                        <th>Platforms</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboardLoading ? (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: "center", color: "var(--cp-text-muted)", padding: "30px" }}>Loading Leaderboards...</td>
+                        </tr>
+                      ) : leaderboardData.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: "center", color: "var(--cp-text-muted)", padding: "30px" }}>No relative coders recorded under this scope</td>
+                        </tr>
+                      ) : (
+                        leaderboardData.map(entry => (
+                          <tr key={entry.id} className={entry.id === user?.id || entry.id === user?._id ? "own-ranking-row" : ""}>
+                            <td className="rank-td">
+                              {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`}
+                            </td>
+                            <td className="user-td-cell">
+                              {entry.avatar ? <img src={entry.avatar} alt="" /> : <div className="fallback-sm">{entry.username?.charAt(0).toUpperCase()}</div>}
+                              <span>@{entry.username}</span>
+                            </td>
+                            <td>
+                              <span className={`tier-badge sm ${entry.level.toLowerCase()}`}>{entry.level}</span>
+                            </td>
+                            <td className="score-lbl">{entry.score}</td>
+                            <td>{entry.solved}</td>
+                            <td className="rating-num">{entry.maxRating || "N/A"}</td>
+                            <td>{entry.platformsCount}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* SHOWCASE & EXPORT TAB CONTENT */}
+          {activeTab === "showcase" && (
+            <>
+              {/* AI Insights summary */}
+              {unifiedStats?.insights && (
+                <div className="ai-insights-card glass-panel">
+                  <div className="ai-header-bar">
+                    <Brain size={22} className={analyzing ? "ai-icon-pulse spinning" : "ai-icon-pulse"} />
+                    <h3>ExpoAI Developer Diagnostics</h3>
+                  </div>
+
+                  {!hasAnalyzed && !analyzing && (
+                    <div className="ai-cta-block" style={{ textAlign: "center", padding: "30px 20px" }}>
+                      <p style={{ color: "var(--cp-text-muted)", marginBottom: "20px", fontSize: "0.9rem" }}>
+                        ExpoAI can analyze your connected platform statistics to map your strengths, identify growth areas, and outline recommended study plans.
+                      </p>
+                      <button className="btn-connect-new" onClick={runDiagnostics}>
+                        Run ExpoAI Diagnostics
+                      </button>
+                    </div>
+                  )}
+
+                  {analyzing && (
+                    <div className="ai-loading-block" style={{ padding: "40px 20px", textAlign: "center" }}>
+                      <div className="spinner-progress-container" style={{ maxWidth: "300px", margin: "0 auto" }}>
+                        <div className="spinning-icon-wrapper" style={{ marginBottom: "15px" }}>
+                          <RefreshCw size={28} className="spinning" style={{ color: "var(--cp-blue)" }} />
+                        </div>
+                        <p style={{ fontSize: "0.9rem", color: "var(--text-h)", fontWeight: "500" }}>
+                          {STAGES[analysisStage]}
+                        </p>
+                        <div className="ai-progress-bar-track" style={{ height: "4px", background: "var(--cp-glass-border)", borderRadius: "2px", marginTop: "16px", overflow: "hidden" }}>
+                          <div className="ai-progress-bar-fill" style={{
+                            height: "100%",
+                            background: "var(--cp-blue)",
+                            width: `${(analysisStage + 1) * 33.3}%`,
+                            transition: "width 0.4s ease"
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {hasAnalyzed && !analyzing && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+                      <div className="ai-diagnostics-grid">
+                        <div className="diagnostic-block">
+                          <h5><CheckCircle2 size={12} className="icon-green" /> Core Strengths</h5>
+                          <p>{unifiedStats.insights.strengths}</p>
+                        </div>
+                        <div className="diagnostic-block">
+                          <h5><Info size={12} className="icon-orange" /> Growth Areas</h5>
+                          <p>{unifiedStats.insights.weaknesses}</p>
+                        </div>
+                        <div className="diagnostic-block">
+                          <h5><Users size={12} className="icon-blue" /> Contest Overview</h5>
+                          <p>{unifiedStats.insights.contestAnalysis}</p>
+                        </div>
+                        <div className="diagnostic-block">
+                          <h5><Target size={12} className="icon-purple" /> Consistency Score</h5>
+                          <p>{unifiedStats.insights.consistency}</p>
+                        </div>
+                      </div>
+                      <div className="recommended-bar">
+                        <span>Next study topics:</span>
+                        <div className="topic-pills-row">
+                          {unifiedStats.insights.recommendedTopics?.map(topic => (
+                            <span key={topic} className="topic-pill">{topic}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              )}
+
+              {/* Portfolio card sharing & exporting */}
+              <div className="share-profile-card glass-panel">
+                <h3 className="card-title">Share Developer Portfolio</h3>
+                <p>Generate shareable portfolio links or export your full CP diagnostics report to showcase on GitHub, LinkedIn, or send directly to recruiters.</p>
+                <div className="share-btn-row">
+                  <button className="btn-share-linkedin-showcase" onClick={() => setLinkedinModalOpen(true)}>
+                    <LinkedInIcon size={14} /> Create LinkedIn Card
+                  </button>
+                  <button className="btn-share-link" onClick={handleShare}>
+                    {shareLinkCopied ? (
+                      <><Check size={14} /> Link Copied</>
+                    ) : (
+                      <><Copy size={14} /> Copy Portfolio Link</>
+                    )}
+                  </button>
+                  <button className="btn-export-pdf" onClick={exportPDF}>
+                    <FileDown size={14} /> Export Profile PDF
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
         </div>
       )}
