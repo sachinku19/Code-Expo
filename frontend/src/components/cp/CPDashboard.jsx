@@ -66,13 +66,6 @@ const CodeChefLogo = ({ size = 24, className = "" }) => (
   </svg>
 );
 
-const AtCoderLogo = ({ size = 24, className = "" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M12 2L2 20h20L12 2zm0 5l6 11H6l6-11z" fill="#64748B" />
-    <circle cx="12" cy="14" r="2.5" fill="#2563EB" />
-  </svg>
-);
-
 const HackerRankLogo = ({ size = 24, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
     <rect x="2" y="2" width="20" height="20" rx="4" fill="#2EC866" />
@@ -85,7 +78,6 @@ const PlatformLogo = ({ platformKey, size = 24, className = "" }) => {
   if (key === "leetcode") return <LeetCodeLogo size={size} className={className} />;
   if (key === "codeforces") return <CodeforcesLogo size={size} className={className} />;
   if (key === "codechef") return <CodeChefLogo size={size} className={className} />;
-  if (key === "atcoder") return <AtCoderLogo size={size} className={className} />;
   if (key === "hackerrank") return <HackerRankLogo size={size} className={className} />;
 
   return (
@@ -578,12 +570,6 @@ export default function CPDashboard({ user }) {
       color: "#5B4636", 
       logo: "https://cdn.jsdelivr.net/npm/simple-icons@11.12.0/icons/codechef.svg",
       profileUrl: (username) => `https://www.codechef.com/users/${username}`
-    },
-    atcoder: { 
-      name: "AtCoder", 
-      color: "#111111", 
-      logo: "https://img.atcoder.jp/assets/logo.png",
-      profileUrl: (username) => `https://atcoder.jp/users/${username}`
     },
     hackerrank: { 
       name: "HackerRank", 
