@@ -9,11 +9,10 @@
   --gate-ambient-glow: radial-gradient(circle at 50% 40%, rgba(139, 92, 246, 0.16) 0%, rgba(6, 182, 212, 0.08) 35%, rgba(7, 8, 15, 0.98) 70%);
   --gate-card-bg: rgba(15, 17, 26, 0.82);
   --gate-card-border: rgba(255, 255, 255, 0.09);
-  --gate-card-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 40px rgba(139, 92, 246, 0.12);
+  --gate-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
   --gate-text: #f8fafc;
   --gate-text-muted: #94a3b8;
   --gate-accent: #8b5cf6;
-  --gate-accent-glow: rgba(139, 92, 246, 0.3);
   --gate-accent-secondary: #06b6d4;
   --gate-grid-color: rgba(255, 255, 255, 0.035);
   --gate-track-bg: rgba(255, 255, 255, 0.06);
@@ -27,11 +26,10 @@
   --gate-ambient-glow: radial-gradient(circle at 50% 40%, rgba(99, 102, 241, 0.1) 0%, rgba(6, 182, 212, 0.05) 40%, rgba(248, 250, 252, 0.98) 75%);
   --gate-card-bg: rgba(255, 255, 255, 0.9);
   --gate-card-border: rgba(15, 23, 42, 0.08);
-  --gate-card-shadow: 0 25px 60px rgba(15, 23, 42, 0.08), 0 0 30px rgba(99, 102, 241, 0.06);
+  --gate-card-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
   --gate-text: #0f172a;
   --gate-text-muted: #64748b;
   --gate-accent: #6366f1;
-  --gate-accent-glow: rgba(99, 102, 241, 0.2);
   --gate-accent-secondary: #0284c7;
   --gate-grid-color: rgba(15, 23, 42, 0.03);
   --gate-track-bg: rgba(15, 23, 42, 0.06);
@@ -125,7 +123,6 @@
   border-top-color: var(--gate-accent);
   border-right-color: var(--gate-accent-secondary);
   animation: gate-spin-cw 2.2s linear infinite;
-  box-shadow: 0 0 16px var(--gate-accent-glow);
 }
 
 .gate-logo-orbit-ring-secondary {
@@ -214,7 +211,6 @@
   height: 100%;
   background: linear-gradient(90deg, var(--gate-accent) 0%, var(--gate-accent-secondary) 100%);
   border-radius: 999px;
-  box-shadow: 0 0 10px var(--gate-accent);
   transition: width 0.12s linear;
 }
 

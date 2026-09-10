@@ -73,7 +73,8 @@ import {
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
   Megaphone, Wrench, Award, Compass, MessageSquare, LayoutGrid, Image, Play, MapPin, MoreVertical, Trash2, Edit3,
-  Volume2, VolumeX, Radio, GitPullRequest, Send, DoorOpen, FileText, Video
+  Volume2, VolumeX, Radio, GitPullRequest, Send, DoorOpen, FileText, Video,
+  Rss
 } from "lucide-react";
 import {
   toggleFollowUser,
@@ -5137,6 +5138,43 @@ function Dashboard() {
                             <h4 className="quick-action-title">Join Room</h4>
                             <p className="quick-action-description">Join with room ID or invite link</p>
                             <p className="quick-action-sub-description">Quickly enter an active room</p>
+                          </div>
+                          <ChevronRight size={16} className="quick-action-arrow" />
+                        </div>
+
+                        {/* Feed Quick Action Card */}
+                        <div
+                          className="quick-action-card feed-action-card majestic-feed-card"
+                          onClick={() => setActiveSection("feed")}
+                        >
+                          {/* Majestic Cosmic Nebula & Constellation Background */}
+                          <div className="majestic-bg-wrapper" aria-hidden="true">
+                            <div className="majestic-nebula-glow" />
+                            <svg className="majestic-constellation-svg" viewBox="0 0 240 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M130 18 L165 32 L195 20 L220 48 L185 68 L145 52 Z" stroke="rgba(34, 211, 238, 0.35)" strokeWidth="0.8" strokeDasharray="3 3" />
+                              <path d="M165 32 L185 68" stroke="rgba(99, 102, 241, 0.3)" strokeWidth="0.6" />
+                              <path d="M130 18 L185 68" stroke="rgba(56, 189, 248, 0.2)" strokeWidth="0.5" strokeDasharray="2 2" />
+                              <circle cx="130" cy="18" r="1.8" fill="#22d3ee" />
+                              <circle cx="165" cy="32" r="2.2" fill="#38bdf8" />
+                              <circle cx="195" cy="20" r="1.8" fill="#818cf8" />
+                              <circle cx="220" cy="48" r="2.2" fill="#a5b4fc" />
+                              <circle cx="185" cy="68" r="2" fill="#22d3ee" />
+                              <circle cx="145" cy="52" r="1.5" fill="#67e8f9" />
+                              {/* Stellar dust nodes */}
+                              <circle cx="115" cy="42" r="0.9" fill="#ffffff" opacity="0.45" />
+                              <circle cx="180" cy="12" r="1" fill="#ffffff" opacity="0.6" />
+                              <circle cx="208" cy="72" r="0.8" fill="#ffffff" opacity="0.4" />
+                              <circle cx="152" cy="78" r="1" fill="#ffffff" opacity="0.5" />
+                            </svg>
+                          </div>
+
+                          <div className="quick-action-icon-wrapper cyan-bg">
+                            <Compass size={18} className="quick-action-icon" />
+                          </div>
+                          <div className="quick-action-details">
+                            <h4 className="quick-action-title">Feed</h4>
+                            <p className="quick-action-description">Community stream</p>
+                            <p className="quick-action-sub-description">Explore posts & snippets</p>
                           </div>
                           <ChevronRight size={16} className="quick-action-arrow" />
                         </div>

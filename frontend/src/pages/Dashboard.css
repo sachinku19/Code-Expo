@@ -13190,7 +13190,7 @@ tier-badge.master {
 /* Quick Actions Dashboard Component */
 .quick-actions-cards-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 2fr 2fr 1fr;
   gap: 12px;
   width: 100%;
   margin-top: 10px;
@@ -13207,6 +13207,81 @@ tier-badge.master {
   overflow: hidden;
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.feed-action-card {
+  padding: 12px 14px;
+}
+
+/* Majestic Feed Card Background */
+.majestic-feed-card {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(130% 120% at 90% 10%, rgba(6, 182, 212, 0.12) 0%, rgba(59, 130, 246, 0.05) 45%, rgba(99, 102, 241, 0.02) 70%, var(--ce-surface, #12131a) 100%) !important;
+  border: 1px solid rgba(6, 182, 212, 0.2) !important;
+}
+
+.majestic-feed-card:hover {
+  background: radial-gradient(130% 120% at 90% 10%, rgba(6, 182, 212, 0.18) 0%, rgba(59, 130, 246, 0.08) 45%, rgba(99, 102, 241, 0.04) 70%, var(--ce-surface-hover, rgba(255, 255, 255, 0.04)) 100%) !important;
+  border-color: rgba(6, 182, 212, 0.38) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+}
+
+.majestic-bg-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.majestic-nebula-glow {
+  position: absolute;
+  top: -25px;
+  right: -25px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.22) 0%, rgba(59, 130, 246, 0.08) 50%, transparent 75%);
+  filter: blur(14px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.majestic-feed-card:hover .majestic-nebula-glow {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.majestic-constellation-svg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 78%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.majestic-feed-card:hover .majestic-constellation-svg {
+  opacity: 0.95;
+  transform: translateX(-2px) scale(1.02);
+}
+
+.feed-action-card .quick-action-details {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.feed-action-card .quick-action-title,
+.feed-action-card .quick-action-description,
+.feed-action-card .quick-action-sub-description {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Card background bubbles */
@@ -13260,14 +13335,16 @@ tier-badge.master {
 
 /* Professional Quick Action Card Styling */
 .create-room-card,
-.join-room-card {
+.join-room-card,
+.feed-action-card {
   background: var(--ce-surface, #12131a) !important;
   border: 1px solid var(--ce-border, rgba(255, 255, 255, 0.08)) !important;
   transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, transform 0.2s ease !important;
 }
 
 .create-room-card:hover,
-.join-room-card:hover {
+.join-room-card:hover,
+.feed-action-card:hover {
   background: var(--ce-surface-hover, rgba(255, 255, 255, 0.035)) !important;
   border-color: var(--ce-border-hover, rgba(255, 255, 255, 0.18)) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.15) !important;
@@ -13311,6 +13388,13 @@ tier-badge.master {
   color: #60a5fa;
 }
 
+.quick-action-icon-wrapper.cyan-bg {
+  border-radius: 50%;
+  background: rgba(6, 182, 212, 0.18);
+  border: 1px solid rgba(6, 182, 212, 0.38);
+  color: #22d3ee;
+}
+
 .quick-action-icon {
   transition: all 0.3s ease;
 }
@@ -13348,10 +13432,23 @@ tier-badge.master {
 
 
 /* Responsive Styling */
-@media (max-width: 768px) {
+@media (max-width: 960px) {
+  .quick-actions-cards-container {
+    grid-template-columns: 1fr 1fr;
+  }
+  .feed-action-card {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
   .quick-actions-cards-container {
     grid-template-columns: 1fr;
-    gap: 15px;
+    gap: 10px;
+  }
+
+  .feed-action-card {
+    grid-column: span 1;
   }
 
   .section-subtitle-inline {
@@ -13362,7 +13459,7 @@ tier-badge.master {
   }
 
   .quick-action-card {
-    padding: 18px 22px;
+    padding: 12px 16px;
   }
 }
 
@@ -13377,7 +13474,8 @@ tier-badge.master {
 }
 
 .light .create-room-card,
-.light .join-room-card {
+.light .join-room-card,
+.light .feed-action-card {
   background: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
@@ -13385,7 +13483,8 @@ tier-badge.master {
 }
 
 .light .create-room-card:hover,
-.light .join-room-card:hover {
+.light .join-room-card:hover,
+.light .feed-action-card:hover {
   background: #f8fafc !important;
   border-color: rgba(0, 0, 0, 0.16) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
@@ -13405,6 +13504,13 @@ tier-badge.master {
   color: #1d4ed8 !important;
 }
 
+.light .quick-action-icon-wrapper.cyan-bg {
+  border-radius: 50%;
+  background: rgba(6, 182, 212, 0.12) !important;
+  border-color: rgba(6, 182, 212, 0.3) !important;
+  color: #0891b2 !important;
+}
+
 .light .quick-action-title {
   color: #0f172a;
 }
@@ -13419,6 +13525,36 @@ tier-badge.master {
 
 .light .join-room-card .quick-action-arrow {
   color: #1d4ed8;
+}
+
+.light .feed-action-card .quick-action-arrow {
+  color: #0891b2 !important;
+}
+
+.light .majestic-feed-card {
+  background: radial-gradient(130% 120% at 90% 10%, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.04) 50%, #ffffff 100%) !important;
+  border-color: rgba(6, 182, 212, 0.22) !important;
+}
+
+.light .majestic-feed-card:hover {
+  background: radial-gradient(130% 120% at 90% 10%, rgba(6, 182, 212, 0.16) 0%, rgba(59, 130, 246, 0.07) 50%, #f8fafc 100%) !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+
+.light .majestic-nebula-glow {
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.16) 0%, rgba(59, 130, 246, 0.06) 50%, transparent 75%);
+}
+
+.light .majestic-constellation-svg {
+  opacity: 0.45;
+}
+
+.light .majestic-constellation-svg path {
+  stroke: rgba(6, 182, 212, 0.45);
+}
+
+.light .majestic-constellation-svg circle {
+  fill: #0891b2;
 }
 
 .light .section-subtitle-inline {
@@ -13530,6 +13666,14 @@ select option {
 
 .join-room-card:hover .quick-action-arrow {
   color: #dbeafe;
+}
+
+.feed-action-card .quick-action-arrow {
+  color: #22d3ee;
+}
+
+.feed-action-card:hover .quick-action-arrow {
+  color: #67e8f9;
 }
 
 /* Quick action sub descriptions styling */
