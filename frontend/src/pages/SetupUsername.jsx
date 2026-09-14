@@ -16,6 +16,7 @@ import {
   Loader2
 } from "lucide-react";
 import "./SetupUsername.css";
+import Logo from "../components/shared/Logo";
 
 const SetupUsername = () => {
   const navigate = useNavigate();
@@ -196,8 +197,7 @@ const SetupUsername = () => {
         {/* LEFT HERO SECTION */}
         <div className="ob-hero-side">
           <div className="ob-hero-header">
-            <img src="/logo.png" alt="CodeExpo Logo" className="ob-brand-logo-img" />
-            <span className="ob-brand-title">CodeExpo</span>
+            <Logo size={34} showText={true} forceTheme="dark" />
           </div>
 
           <div className="ob-hero-content">

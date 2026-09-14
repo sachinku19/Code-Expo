@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { IconGithub, IconTwitter, IconLinkedin, IconDiscord } from "./SocialIcons";
 import { useSmartNavbar } from "../../hooks/useSmartNavbar";
+import Logo from "../shared/Logo";
 import "./MobileNavbar.css";
 
 export default function MobileNavbar({ user, theme, toggleTheme }) {
@@ -78,10 +79,7 @@ export default function MobileNavbar({ user, theme, toggleTheme }) {
           </div>
 
           {/* Logo on Right Side */}
-          <div className="mobile-nav-logo right-aligned" onClick={() => handleNavClick("hero")}>
-            <img src="/logo.png" alt="CodeExpo" className="mobile-nav-logo-img" />
-            <span className="mobile-nav-logo-text">CodeExpo</span>
-          </div>
+          <Logo size={28} showText={true} className="mobile-nav-logo right-aligned" onClick={() => handleNavClick("hero")} />
         </div>
       </header>
 
@@ -107,10 +105,7 @@ export default function MobileNavbar({ user, theme, toggleTheme }) {
             >
               {/* Drawer Header */}
               <div className="drawer-header">
-                <div className="drawer-logo" onClick={() => handleNavClick("hero")}>
-                  <img src="/logo.png" alt="CodeExpo" className="mobile-nav-logo-img" />
-                  <span className="mobile-nav-logo-text">CodeExpo</span>
-                </div>
+                <Logo size={28} showText={true} className="drawer-logo" onClick={() => handleNavClick("hero")} />
                 <div className="drawer-header-actions">
                   <button
                     className="mobile-icon-btn"

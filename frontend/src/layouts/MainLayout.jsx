@@ -909,7 +909,6 @@ export default function MainLayout({
   ];
 
   const secondaryNavItems = [
-    { id: "profile", label: "Profile", icon: User, path: user?.username ? `/u/${user.username}` : "/dashboard/profile" },
     { id: "settings", label: "Settings", icon: Settings, path: "/dashboard/settings" },
   ];
 
@@ -1329,6 +1328,8 @@ export default function MainLayout({
       badgeCount = joinRequests.length;
     }
 
+    const displayCount = badgeCount > 99 ? "99+" : badgeCount;
+
     return (
       <button
         key={item.id}
@@ -1339,16 +1340,13 @@ export default function MainLayout({
       >
         <div className="sidebar-nav-icon-wrapper">
           <Icon size={isSubItem ? 17 : 18} className="sidebar-nav-icon-inner" />
-          {!sidebarExpanded && badgeCount > 0 && (
-            <span className="sidebar-badge-dot-collapsed" />
+          {badgeCount > 0 && (
+            <span className="sidebar-icon-badge" aria-label={`${badgeCount} unread`}>
+              {displayCount}
+            </span>
           )}
         </div>
         <span className="btn-label">{item.label}</span>
-        {sidebarExpanded && badgeCount > 0 && (
-          <span className="sidebar-nav-badge">
-            {badgeCount}
-          </span>
-        )}
       </button>
     );
   };
@@ -1366,6 +1364,8 @@ export default function MainLayout({
       badgeCount = joinRequests.length;
     }
 
+    const displayCount = badgeCount > 99 ? "99+" : badgeCount;
+
     return (
       <button
         key={item.id}
@@ -1377,13 +1377,13 @@ export default function MainLayout({
       >
         <div className="drawer-nav-icon-wrapper">
           <Icon size={isSubItem ? 17 : 18} />
+          {badgeCount > 0 && (
+            <span className="sidebar-icon-badge drawer-icon-badge" aria-label={`${badgeCount} unread`}>
+              {displayCount}
+            </span>
+          )}
         </div>
         <span className="btn-label">{item.label}</span>
-        {badgeCount > 0 && (
-          <span className="sidebar-nav-badge drawer-badge">
-            {badgeCount}
-          </span>
-        )}
       </button>
     );
   };

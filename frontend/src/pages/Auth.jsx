@@ -14,6 +14,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useGateTransition } from "../routes/AppRoutes";
 import { ArrowLeft, Eye, EyeOff, Sun, Moon, Key, Mail, ShieldCheck, Lock, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Logo from "../components/shared/Logo";
 import "./Auth.css";
 
 
@@ -451,9 +452,8 @@ function Auth({ mode }) {
             <div className="auth-info-mesh-bg" />
             <div className="auth-info-content">
               {/* Brand Top Header */}
-              <div className="auth-brand-logo-container">
-                <img src="/logo.png" alt="CodeExpo Logo" className="auth-brand-logo-img" />
-                <span className="auth-brand-logo-text">CodeExpo</span>
+              <div className="auth-brand-logo-container" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+                <Logo size={34} showText={true} forceTheme="dark" />
               </div>
 
               {/* Tagline Center Section */}

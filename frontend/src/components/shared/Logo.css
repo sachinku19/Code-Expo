@@ -4,7 +4,7 @@
   gap: 8px;
   cursor: pointer;
   user-select: none;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .logo-container:active {
@@ -16,38 +16,79 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .logo-img-src {
   display: block;
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s ease;
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s ease;
 }
 
-.logo-container:hover .logo-img-src {
-  transform: rotate(5deg) scale(1.08);
-  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.6));
+/* Dark mode icon pop & ambient depth */
+.logo-container.dark .logo-img-src,
+.ce-layout-wrapper.dark .logo-img-src,
+body:not(.light) .logo-img-src {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.2)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+.logo-container.dark:hover .logo-img-src,
+.ce-layout-wrapper.dark .logo-container:hover .logo-img-src,
+body:not(.light) .logo-container:hover .logo-img-src {
+  transform: scale(1.06);
+  filter: drop-shadow(0 0 14px rgba(252, 148, 0, 0.6)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.35));
+}
+
+/* Light mode icon styling */
+.logo-container.light .logo-img-src,
+.ce-layout-wrapper.light .logo-img-src,
+body.light .logo-img-src {
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.12));
+}
+
+.logo-container.light:hover .logo-img-src,
+.ce-layout-wrapper.light .logo-container:hover .logo-img-src,
+body.light .logo-container:hover .logo-img-src {
+  transform: scale(1.06);
+  filter: drop-shadow(0 0 12px rgba(252, 148, 0, 0.45));
 }
 
 /* Text styles */
 .logo-text-wrapper {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  font-size: 1.45rem;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  color: var(--text-primary, var(--text-h));
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #ffffff;
   display: flex;
   align-items: center;
-  transition: color 0.3s ease;
-  margin-left: 0px;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+/* Light mode text color: apply only when logo container is explicitly light and not overridden */
+.logo-container.light:not(.dark) .logo-text-wrapper,
+body.light .logo-container.light:not(.dark) .logo-text-wrapper,
+.light .logo-container.light:not(.dark) .logo-text-wrapper {
+  color: #0f172a;
+}
+
+/* Dark mode text color: ensure white text on dark backgrounds & dark-forced containers */
+.logo-container.dark .logo-text-wrapper,
+.auth-brand-logo-container .logo-text-wrapper,
+.ob-hero-header .logo-text-wrapper,
+.dark .logo-text-wrapper,
+body:not(.light) .logo-text-wrapper {
+  color: #ffffff !important;
 }
 
 .logo-text-highlight {
   font-weight: 800;
-  color: #ffa116;
-  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #fd3d09 0%, #fc9400 50%, #fcae01 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: filter 0.3s ease;
 }
 
 .logo-container:hover .logo-text-highlight {
-  color: #ffb84d;
-  text-shadow: 0 0 8px rgba(255, 161, 22, 0.3);
+  filter: drop-shadow(0 0 8px rgba(252, 148, 0, 0.45));
 }

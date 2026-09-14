@@ -1553,7 +1553,7 @@ body.light .ce-sidebar.is-unpinned.expanded {
   justify-content: center;
   gap: 7px;
   padding: 0 14px;
-  background-color: #6366f1;
+  background-color: var(--ce-primary, #aa3bff);
   color: #ffffff !important;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
@@ -1567,14 +1567,14 @@ body.light .ce-sidebar.is-unpinned.expanded {
 }
 
 .sidebar-create-btn:hover {
-  background-color: #4f46e5;
+  background-color: #9333ea;
   border-color: rgba(255, 255, 255, 0.25);
   box-shadow: none !important;
   transform: none !important;
 }
 
 .sidebar-create-btn:active {
-  background-color: #4338ca;
+  background-color: #7e22ce;
   transform: none !important;
 }
 
@@ -1618,7 +1618,7 @@ body.light .ce-sidebar.is-unpinned.expanded {
 .light-mode .sidebar-create-btn,
 .light-theme .sidebar-create-btn,
 body.light .sidebar-create-btn {
-  background-color: #6366f1;
+  background-color: var(--ce-primary, #aa3bff);
   color: #ffffff !important;
   border: 1px solid rgba(15, 23, 42, 0.12);
   box-shadow: none !important;
@@ -1628,7 +1628,7 @@ body.light .sidebar-create-btn {
 .light-mode .sidebar-create-btn:hover,
 .light-theme .sidebar-create-btn:hover,
 body.light .sidebar-create-btn:hover {
-  background-color: #4f46e5;
+  background-color: #9333ea;
 }
 
 .pin-btn {
@@ -1946,7 +1946,67 @@ body.light .sidebar-create-btn:hover {
   display: none;
 }
 
-/* Right-aligned Badge Pills */
+/* Professional Corner Count Badge on Sidebar Nav Icon (Matches Open Workspace Electric Purple #aa3bff) */
+.sidebar-icon-badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4.5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #c084fc 0%, #aa3bff 55%, #9333ea 100%);
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -0.02em;
+  box-shadow: 0 0 0 2px var(--ce-surface, #0c0d14), 0 2px 8px rgba(170, 59, 255, 0.6);
+  pointer-events: none;
+  z-index: 3;
+  animation: ce-badge-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  transform-origin: center center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@keyframes ce-badge-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  80% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.sidebar-nav-btn:hover .sidebar-icon-badge {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px var(--ce-surface, #0c0d14), 0 3px 12px rgba(170, 59, 255, 0.85);
+}
+
+.light .sidebar-icon-badge {
+  background: linear-gradient(135deg, #c084fc 0%, #aa3bff 55%, #8b5cf6 100%);
+  box-shadow: 0 0 0 2px #ffffff, 0 2px 8px rgba(170, 59, 255, 0.45);
+}
+
+.light .sidebar-nav-btn:hover .sidebar-icon-badge {
+  box-shadow: 0 0 0 2px #ffffff, 0 3px 12px rgba(170, 59, 255, 0.65);
+}
+
+.drawer-icon-badge {
+  top: -4px;
+  right: -6px;
+}
+
+/* Fallback legacy badges */
 .sidebar-nav-badge {
   margin-left: auto;
   padding: 1px 7px;
@@ -1969,21 +2029,6 @@ body.light .sidebar-create-btn:hover {
 
 .drawer-badge {
   margin-left: auto;
-}
-
-.sidebar-badge-dot-collapsed {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: #ef4444;
-  box-shadow: 0 0 0 2px var(--ce-surface, #0b0b0f);
-}
-
-.light .sidebar-badge-dot-collapsed {
-  box-shadow: 0 0 0 2px #ffffff;
 }
 
 /* Sidebar Divider */
@@ -2013,7 +2058,7 @@ body.light .sidebar-create-btn:hover {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: #6366f1;
+  background-color: var(--ce-primary, #aa3bff);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
@@ -2024,7 +2069,7 @@ body.light .sidebar-create-btn:hover {
 }
 
 .drawer-create-btn:hover {
-  background-color: #4f46e5;
+  background-color: #9333ea;
 }
 
 .drawer-create-btn .create-icon {

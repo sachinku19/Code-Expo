@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Logo from "../shared/Logo";
 import "./MobileFooter.css";
 
 export default function MobileFooter() {
@@ -29,10 +30,7 @@ export default function MobileFooter() {
       <div className="mobile-footer-container">
         {/* Logo & Branding (Exact desktop branding) */}
         <div className="footer-brand">
-          <div className="footer-logo" onClick={() => navigate("/")}>
-            <img src="/logo.png" alt="CodeExpo" className="footer-logo-img" />
-            <span className="footer-logo-text">CodeExpo</span>
-          </div>
+          <Logo size={26} showText={true} className="footer-logo" onClick={() => navigate("/")} />
           <p className="footer-brand-desc">
             The ultimate workspace for collaborative coding, real-time shared whiteboards, and developer feeds.
           </p>

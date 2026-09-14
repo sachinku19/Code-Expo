@@ -73,6 +73,7 @@ import {
   Layers
 } from "lucide-react";
 import "./Home.css";
+import Logo from "../components/shared/Logo";
 import NetworkFeedShowcase from "../components/landing/NetworkFeedShowcase";
 import RoomCollaborationShowcase from "../components/landing/RoomCollaborationShowcase";
 
@@ -2203,10 +2204,7 @@ const FooterSection = React.memo(({ navigate }) => {
         <div className="ce-footer-grid">
           {/* Branding Column */}
           <div className="ce-footer-branding">
-            <div className="ce-footer-logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
-              <img src="/logo.png" alt="CodeExpo" loading="lazy" decoding="async" style={{ height: "24px", width: "24px" }} />
-              <span style={{ fontWeight: 700, fontSize: "16px", color: "var(--text-primary)" }}>CodeExpo</span>
-            </div>
+            <Logo size={28} showText={true} className="ce-footer-logo" onClick={() => navigate("/")} />
             <p className="ce-footer-desc">
               The ultimate workspace for collaborative coding, real-time shared whiteboards, and developer feeds.
             </p>
@@ -2599,7 +2597,9 @@ function Home() {
         }`}
       >
         <div className="ce-container ce-navbar-container">
-          <div
+          <Logo
+            size={30}
+            showText={true}
             className="ce-nav-logo"
             onClick={() => navigate("/")}
             role="link"
@@ -2610,10 +2610,7 @@ function Home() {
               }
             }}
             aria-label="CodeExpo homepage"
-          >
-            <img src="/logo.png" alt="CodeExpo" fetchpriority="high" decoding="async" className="ce-nav-logo-img" />
-            <span className="ce-nav-logo-text">CodeExpo</span>
-          </div>
+          />
 
           <nav className="ce-nav-links">
             <a
