@@ -612,8 +612,13 @@ const parseMarkdown = (text) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
+  // Headings
+  html = html.replace(/^### (.*$)/gim, '<h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ce-text-h, #0f172a); margin: 4px 0 4px 0;">$1</h4>');
+  html = html.replace(/^## (.*$)/gim, '<h3 style="font-size: 1.05rem; font-weight: 700; color: var(--ce-text-h, #0f172a); margin: 6px 0 4px 0;">$1</h3>');
+  html = html.replace(/^# (.*$)/gim, '<h2 style="font-size: 1.15rem; font-weight: 700; color: var(--ce-text-h, #0f172a); margin: 8px 0 6px 0;">$1</h2>');
+
   // Bold/Italics
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--ce-text-h, #0f172a); font-weight: 700;">$1</strong>');
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
   // Code block
@@ -2192,18 +2197,22 @@ function Dashboard() {
       if (urlTab === "feed-action") urlTab = "trust-safety";
       if (urlTab === "live-rooms") urlTab = "liverooms";
       if (urlTab === "myrooms") urlTab = "myrooms";
+      if (urlTab === "dashboard") urlTab = "dashboard";
       return urlTab;
     }
     if (path.startsWith("/dashboard/")) {
       const section = path.substring("/dashboard/".length);
-      if (!section) return "dashboard";
+      if (!section) return "feed";
+      if (section === "progress" || section === "dashboard") return "dashboard";
+      if (section === "feed") return "feed";
       if (section === "live-rooms") return "liverooms";
-      if (section === "my-rooms") return "myrooms";
+      if (section === "my-rooms" || section === "myrooms") return "myrooms";
+      if (section === "explore") return "following";
       if (section === "trust-safety" || section === "feed-action") return "trust-safety";
       if (section.startsWith("profile")) return "profile";
       return section;
     }
-    return "dashboard";
+    return "feed";
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -2225,9 +2234,10 @@ function Dashboard() {
     if (newSection === "liverooms") segment = "live-rooms";
     if (newSection === "myrooms") segment = "my-rooms";
     if (newSection === "trust-safety") segment = "trust-safety";
+    if (newSection === "dashboard") segment = "progress";
 
     let path = "/dashboard";
-    if (newSection !== "dashboard") {
+    if (newSection !== "feed") {
       path = `/dashboard/${segment}`;
     }
 
@@ -2246,6 +2256,26 @@ function Dashboard() {
   const [selectedRoomDetails, setSelectedRoomDetails] = useState(null);
   const [selectedRoomLikes, setSelectedRoomLikes] = useState([]);
   const [isLoadingRoomLikes, setIsLoadingRoomLikes] = useState(false);
+
+  const [showQuickCreateModal, setShowQuickCreateModal] = useState(false);
+  const [showQuickJoinModal, setShowQuickJoinModal] = useState(false);
+
+  useEffect(() => {
+    const handleOpenCreateModal = () => setShowQuickCreateModal(true);
+    window.addEventListener("ce:open-create-room", handleOpenCreateModal);
+
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get("create") === "true") {
+      setShowQuickCreateModal(true);
+      searchParams.delete("create");
+      const searchStr = searchParams.toString();
+      navigate(`${location.pathname}${searchStr ? `?${searchStr}` : ""}`, { replace: true });
+    }
+
+    return () => {
+      window.removeEventListener("ce:open-create-room", handleOpenCreateModal);
+    };
+  }, [location.search, location.pathname, navigate]);
 
   useEffect(() => {
     if (selectedRoomDetails?.roomId || selectedRoomDetails?._id) {
@@ -2270,8 +2300,6 @@ function Dashboard() {
     }
   }, [selectedRoomDetails?.roomId, selectedRoomDetails?._id]);
 
-  const [showQuickCreateModal, setShowQuickCreateModal] = useState(false);
-  const [showQuickJoinModal, setShowQuickJoinModal] = useState(false);
   const [recentJoinedCodes, setRecentJoinedCodes] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("ce_recent_joined_codes") || "[]");
@@ -5022,7 +5050,7 @@ function Dashboard() {
                       {/* Card 1: Developer Rank Gamification */}
                       <div className="compact-stat-card gamification-card">
                         <div className={`stat-card-icon-wrapper rank-icon-wrapper ${rank.badgeClass}`}>
-                          <Trophy size={18} />
+                          <Trophy size={17} />
                         </div>
                         <div className="stat-card-info gamification-info">
                           <span className="stat-card-label">Developer Tier</span>
@@ -5044,17 +5072,17 @@ function Dashboard() {
                       {/* Card 2: Rooms Created Breakdown */}
                       <div className="compact-stat-card created-rooms-card">
                         <div className="stat-card-icon-wrapper blue-theme-wrapper">
-                          <FolderGit size={18} />
+                          <FolderGit size={17} />
                         </div>
                         <div className="stat-card-info">
                           <span className="stat-card-label">Rooms Created</span>
                           <span className="stat-card-val">{stats.totalCreated}</span>
                           <div className="sub-breakdown-row">
                             <span className="sub-badge public-badge">
-                              <Globe size={10} /> {stats.publicCreatedCount} Public
+                              <Globe size={9} /> {stats.publicCreatedCount} Public
                             </span>
                             <span className="sub-badge private-badge">
-                              <Lock size={10} /> {stats.privateCreatedCount} Private
+                              <Lock size={9} /> {stats.privateCreatedCount} Private
                             </span>
                           </div>
                         </div>
@@ -5063,7 +5091,7 @@ function Dashboard() {
                       {/* Card 3: Joined Workspaces */}
                       <div className="compact-stat-card joined-rooms-card">
                         <div className="stat-card-icon-wrapper green-theme-wrapper">
-                          <Users size={18} />
+                          <Users size={17} />
                         </div>
                         <div className="stat-card-info">
                           <span className="stat-card-label">Rooms Joined</span>
@@ -5075,19 +5103,21 @@ function Dashboard() {
                       {/* Card 4: Compiler Executions */}
                       <div className="compact-stat-card executions-card">
                         <div className="stat-card-icon-wrapper purple-theme-wrapper">
-                          <Activity size={18} />
+                          <Activity size={17} />
                         </div>
                         <div className="stat-card-info">
                           <span className="stat-card-label">Code Runs</span>
                           <span className="stat-card-val">{stats.executions.toLocaleString()}</span>
-                          <span className="stat-card-subtitle">{formatCodingTime(stats.codingHours, stats.codingMinutes)}</span>
+                          <span className="stat-card-subtitle">
+                            <Clock size={11} style={{ opacity: 0.7 }} /> {formatCodingTime(stats.codingHours, stats.codingMinutes)}
+                          </span>
                         </div>
                       </div>
 
                       {/* Card 5: MyVerse Points */}
                       <div className="compact-stat-card myverse-points-card">
                         <div className="stat-card-icon-wrapper amber-theme-wrapper">
-                          <Flame size={18} />
+                          <Flame size={17} />
                         </div>
                         <div className="stat-card-info">
                           <span className="stat-card-label">MyVerse Points</span>

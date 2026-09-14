@@ -223,12 +223,12 @@
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--ce-border);
   border-radius: var(--border-radius);
-  padding: 20px 24px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   box-shadow: var(--ce-card-shadow);
-  transition: background-color var(--transition-smooth);
+  transition: background-color var(--transition-smooth), border-color var(--transition-smooth);
   position: relative;
   overflow: hidden;
 }
@@ -239,8 +239,8 @@
 }
 
 .stat-card-icon-wrapper {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   /* Circle icon wrapper matching Google standard style */
   display: grid;
@@ -255,23 +255,39 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
+  justify-content: center;
 }
 
 .stat-card-label {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--ce-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-card-val {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--ce-text-h);
-  line-height: 1.15;
-  margin-top: 3px;
+  line-height: 1.2;
+  margin-top: 2px;
   letter-spacing: -0.01em;
+}
+
+.rank-title-text {
+  font-size: 1.12rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Gamification Tier Styling */
@@ -286,14 +302,14 @@
 }
 
 .tier-progress-container {
-  margin-top: 8px;
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .tier-progress-track {
-  height: 6px;
+  height: 4px;
   background-color: var(--ce-surface-card);
   border-radius: 9999px;
   overflow: hidden;
@@ -306,28 +322,32 @@
 }
 
 .tier-progress-label {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: var(--ce-text-muted);
   font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .sub-breakdown-row {
   display: flex;
-  gap: 6px;
-  margin-top: 6px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
   flex-wrap: wrap;
 }
 
 .sub-badge {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 1.5px 7px;
   border-radius: 9999px;
   /* Capsule shape badge */
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3.5px;
   border: 1px solid var(--ce-border);
+  line-height: 1.2;
 }
 
 .sub-badge.public-badge {
@@ -375,10 +395,15 @@
 }
 
 .stat-card-subtitle {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--ce-text-muted);
   font-weight: 500;
   margin-top: 4px;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 /* Active Room Workspaces Cards styling */
@@ -3486,9 +3511,8 @@
   }
 
   .compact-stat-card {
-    padding: 14px 16px;
-    gap: 14px;
-    min-height: 90px;
+    padding: 10px 14px;
+    gap: 12px;
   }
 
   .stat-card-val {
@@ -10236,9 +10260,11 @@ tier-badge.master {
   border-radius: 3px;
 }
 
+.post-title,
 .post-title-text {
-  font-size: 0.65rem;
-  color: var(--ce-text-muted);
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--ce-text-h, var(--feed-text, #0f172a));
   display: block;
 }
 
@@ -10969,12 +10995,38 @@ tier-badge.master {
 }
 
 .light .post-username,
+.light .post-title,
+.light .post-title-text,
+.light .post-md-h1,
+.light .post-md-h2,
+.light .post-md-h3,
+.light .post-md-bold,
+.light-mode .post-title,
+.light-mode .post-title-text,
+.light-mode .post-md-h1,
+.light-mode .post-md-h2,
+.light-mode .post-md-h3,
+.light-mode .post-md-bold,
+body.light .post-title,
+body.light .post-title-text,
+body.light .post-md-h1,
+body.light .post-md-h2,
+body.light .post-md-h3,
+body.light .post-md-bold,
+html.light .post-title,
+html.light .post-title-text,
+html.light .post-md-h1,
+html.light .post-md-h2,
+html.light .post-md-h3,
+html.light .post-md-bold,
+[data-theme-mode="light"] .post-title,
+[data-theme-mode="light"] .post-title-text,
 .light .widget-header h4,
 .light .chart-header-row h5,
 .light .comment-username,
 .light .online-username,
 .light .story-username {
-  color: var(--ce-text) !important;
+  color: #0f172a !important;
 }
 
 .light .comment-username {

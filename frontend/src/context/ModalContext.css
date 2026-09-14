@@ -388,34 +388,155 @@
 }
 
 /* Light Mode Support for Modals */
-.light .ce-custom-modal-overlay {
-  background: rgba(240, 240, 245, 0.45);
+.light .ce-custom-modal-overlay,
+.light-mode .ce-custom-modal-overlay,
+.light-theme .ce-custom-modal-overlay,
+body.light .ce-custom-modal-overlay,
+html.light .ce-custom-modal-overlay,
+[data-theme-mode="light"] .ce-custom-modal-overlay {
+  background: rgba(15, 23, 42, 0.38) !important;
+  backdrop-filter: blur(8px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(160%) !important;
 }
 
-.light .ce-custom-modal-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(243, 244, 246, 0.98) 100%);
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  color: #374151;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06), 0 20px 40px rgba(0, 0, 0, 0.08);
+.light .ce-custom-modal-card,
+.light-mode .ce-custom-modal-card,
+.light-theme .ce-custom-modal-card,
+body.light .ce-custom-modal-card,
+html.light .ce-custom-modal-card,
+[data-theme-mode="light"] .ce-custom-modal-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(15, 23, 42, 0.04) !important;
 }
 
-.light .ce-modal-title {
-  color: #111827;
+.light .ce-modal-title,
+.light-mode .ce-modal-title,
+.light-theme .ce-modal-title,
+body.light .ce-modal-title,
+html.light .ce-modal-title,
+[data-theme-mode="light"] .ce-modal-title {
+  color: #0f172a !important;
 }
 
-.light .ce-modal-body {
-  color: #4b5563;
+.light .ce-modal-body,
+.light-mode .ce-modal-body,
+.light-theme .ce-modal-body,
+body.light .ce-modal-body,
+html.light .ce-modal-body,
+[data-theme-mode="light"] .ce-modal-body {
+  color: #475569 !important;
 }
 
-.light .ce-modal-btn-cancel {
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  color: #374151;
+.light .ce-modal-btn-cancel,
+.light-mode .ce-modal-btn-cancel,
+.light-theme .ce-modal-btn-cancel,
+body.light .ce-modal-btn-cancel,
+html.light .ce-modal-btn-cancel,
+[data-theme-mode="light"] .ce-modal-btn-cancel {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
 }
 
-.light .ce-modal-btn-cancel:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #111827;
+.light .ce-modal-btn-cancel:hover,
+.light-mode .ce-modal-btn-cancel:hover,
+.light-theme .ce-modal-btn-cancel:hover,
+body.light .ce-modal-btn-cancel:hover,
+html.light .ce-modal-btn-cancel:hover,
+[data-theme-mode="light"] .ce-modal-btn-cancel:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* Light Mode: Exit Workspace & Logout Modal Card */
+.light .ce-logout-modal-card,
+.light-mode .ce-logout-modal-card,
+.light-theme .ce-logout-modal-card,
+body.light .ce-logout-modal-card,
+html.light .ce-logout-modal-card,
+[data-theme-mode="light"] .ce-logout-modal-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.16), 0 8px 16px -4px rgba(15, 23, 42, 0.06) !important;
+}
+
+.light .ce-exit-modal-icon-badge,
+.light-mode .ce-exit-modal-icon-badge,
+.light-theme .ce-exit-modal-icon-badge,
+body.light .ce-exit-modal-icon-badge,
+html.light .ce-exit-modal-icon-badge,
+[data-theme-mode="light"] .ce-exit-modal-icon-badge {
+  background: #fef2f2 !important;
+  border: 1px solid #fee2e2 !important;
+  color: #ef4444 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1) !important;
+}
+
+.light .ce-exit-modal-title,
+.light-mode .ce-exit-modal-title,
+.light-theme .ce-exit-modal-title,
+body.light .ce-exit-modal-title,
+html.light .ce-exit-modal-title,
+[data-theme-mode="light"] .ce-exit-modal-title {
+  color: #0f172a !important;
+}
+
+.light .ce-exit-modal-body,
+.light-mode .ce-exit-modal-body,
+.light-theme .ce-exit-modal-body,
+body.light .ce-exit-modal-body,
+html.light .ce-exit-modal-body,
+[data-theme-mode="light"] .ce-exit-modal-body {
+  color: #475569 !important;
+}
+
+.light .ce-exit-btn-cancel,
+.light-mode .ce-exit-btn-cancel,
+.light-theme .ce-exit-btn-cancel,
+body.light .ce-exit-btn-cancel,
+html.light .ce-exit-btn-cancel,
+[data-theme-mode="light"] .ce-exit-btn-cancel {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: none !important;
+}
+
+.light .ce-exit-btn-cancel:hover,
+.light-mode .ce-exit-btn-cancel:hover,
+.light-theme .ce-exit-btn-cancel:hover,
+body.light .ce-exit-btn-cancel:hover,
+html.light .ce-exit-btn-cancel:hover,
+[data-theme-mode="light"] .ce-exit-btn-cancel:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+.light .ce-exit-btn-confirm,
+.light-mode .ce-exit-btn-confirm,
+.light-theme .ce-exit-btn-confirm,
+body.light .ce-exit-btn-confirm,
+html.light .ce-exit-btn-confirm,
+[data-theme-mode="light"] .ce-exit-btn-confirm {
+  background: #dc2626 !important;
+  border: 1px solid #b91c1c !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25) !important;
+}
+
+.light .ce-exit-btn-confirm:hover,
+.light-mode .ce-exit-btn-confirm:hover,
+.light-theme .ce-exit-btn-confirm:hover,
+body.light .ce-exit-btn-confirm:hover,
+html.light .ce-exit-btn-confirm:hover,
+[data-theme-mode="light"] .ce-exit-btn-confirm:hover {
+  background: #b91c1c !important;
+  border-color: #991b1b !important;
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35) !important;
 }
 
 /* Light Theme Type Borders & Glows */

@@ -169,6 +169,8 @@ const AppRoutes = () => {
                     {/* Protected Dashboard Nested Layout Routes */}
                     <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
                       <Route index element={<React.Fragment />} />
+                      <Route path="progress" element={<React.Fragment />} />
+                      <Route path="my-rooms" element={<React.Fragment />} />
                       <Route path="cp" element={<React.Fragment />} />
                       <Route path="rooms" element={<React.Fragment />} />
                       <Route path="live-rooms" element={<React.Fragment />} />

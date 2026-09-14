@@ -1703,12 +1703,12 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     });
 
     // Headings
-    html = html.replace(/^### (.*$)/gim, '<h4 style="margin:8px 0; color:#ffffff;">$1</h4>');
-    html = html.replace(/^## (.*$)/gim, '<h3 style="margin:10px 0; color:#ffffff;">$1</h3>');
-    html = html.replace(/^# (.*$)/gim, '<h2 style="margin:12px 0; color:#ffffff;">$1</h2>');
+    html = html.replace(/^### (.*$)/gim, '<h4 style="margin:8px 0; color:var(--ce-text-h, #0f172a); font-weight:700;">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 style="margin:10px 0; color:var(--ce-text-h, #0f172a); font-weight:700;">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 style="margin:12px 0; color:var(--ce-text-h, #0f172a); font-weight:700;">$1</h2>');
 
     // Bold/Italics
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--ce-text-h, #0f172a); font-weight:700;">$1</strong>');
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
     // Inline Code
@@ -1745,10 +1745,10 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
 
     return (
       <div className="premium-poll-display-card" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", padding: "14px", margin: "12px 14px" }}>
-        <h5 style={{ margin: "0 0 10px 0", color: "#fff", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
+        <h5 style={{ margin: "0 0 10px 0", color: "var(--ce-text-h, #0f172a)", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
           <BarChart3 size={14} style={{ color: "#3b82f6" }} /> Developer Poll
         </h5>
-        <p style={{ margin: "0 0 12px 0", color: "#e2e8f0", fontSize: "0.85rem", fontWeight: "600" }}>{question}</p>
+        <p style={{ margin: "0 0 12px 0", color: "var(--ce-text, #334155)", fontSize: "0.85rem", fontWeight: "600" }}>{question}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {opts.map((opt, idx) => {
             const votesPct = activeVote ? (idx === 0 ? "54%" : idx === 1 ? "32%" : "7%") : null;
@@ -1764,7 +1764,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
                 style={{
                   background: activeVote === idx ? "rgba(99, 102, 241, 0.15)" : "rgba(255,255,255,0.04)",
                   border: activeVote === idx ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.08)",
-                  color: "#fff",
+                  color: activeVote === idx ? "#6366f1" : "var(--ce-text, #0f172a)",
                   padding: "10px",
                   borderRadius: "6px",
                   fontSize: "0.78rem",
@@ -1834,7 +1834,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
       <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: "10px", padding: "14px", margin: "12px 14px", display: "flex", alignItems: "center", gap: "12px" }}>
         <Calendar size={18} style={{ color: "#818cf8" }} />
         <div>
-          <h6 style={{ margin: 0, color: "#fff", fontSize: "0.85rem", fontWeight: "700" }}>{title}</h6>
+          <h6 style={{ margin: 0, color: "var(--ce-text, #0f172a)", fontSize: "0.85rem", fontWeight: "700" }}>{title}</h6>
           <span style={{ fontSize: "0.72rem", color: "#a5b4fc" }}>📆 Event Date: {date}</span>
         </div>
       </div>

@@ -1081,13 +1081,13 @@ export const PostCard = ({
         <div style={{ margin: "4px 0 2px 0" }}>
           <span
             style={{
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
+              background: "var(--ce-surface-card, rgba(255, 255, 255, 0.05))",
+              border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.08))",
               borderRadius: "8px",
               padding: "4px 10px",
               fontSize: "0.78rem",
               fontWeight: "600",
-              color: "#ffffff",
+              color: "var(--ce-text-h, #0f172a)",
               display: "inline-flex",
               alignItems: "center",
               gap: "6px"
@@ -1100,7 +1100,7 @@ export const PostCard = ({
 
       {/* Post Title */}
       {postTitle && (
-        <h3 className="post-title-text">
+        <h3 className="post-title-text" style={{ color: "var(--ce-text-h, var(--feed-text, #0f172a))" }}>
           {postTitle}
         </h3>
       )}

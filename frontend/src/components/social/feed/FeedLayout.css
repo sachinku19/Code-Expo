@@ -376,11 +376,12 @@ body.light,
   border-color: rgba(255, 255, 255, 0.25);
 }
 
+.post-title,
 .post-title-text {
   font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   font-size: 0.98rem !important;
   font-weight: 700 !important;
-  color: #ffffff !important;
+  color: var(--feed-text, var(--ce-text-h, #ffffff)) !important;
   margin: 6px 0 4px 0 !important;
   line-height: 1.45 !important;
   letter-spacing: -0.012em !important;
@@ -401,7 +402,7 @@ body.light,
 .post-text-body b {
   font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   font-weight: 700 !important;
-  color: #ffffff !important;
+  color: var(--ce-text, #ffffff) !important;
 }
 
 .post-media-box {
@@ -537,26 +538,26 @@ body.light,
 .post-md-h1 {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--ce-text, #ffffff);
   margin: 8px 0 6px 0;
 }
 
 .post-md-h2 {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--ce-text, #ffffff);
   margin: 6px 0 4px 0;
 }
 
 .post-md-h3 {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--ce-text, #ffffff);
   margin: 4px 0 4px 0;
 }
 
 .post-md-bold {
-  color: #ffffff;
+  color: var(--ce-text, #ffffff);
   font-weight: 700;
 }
 
@@ -666,7 +667,40 @@ body.light .rebuilt-feed-root {
 .light .post-author-name,
 .light .right-card-title,
 .light .stories-header-title,
+.light .post-title,
 .light .post-title-text,
+.light-mode .post-title,
+.light-mode .post-title-text,
+.light-theme .post-title,
+.light-theme .post-title-text,
+body.light .post-title,
+body.light .post-title-text,
+html.light .post-title,
+html.light .post-title-text,
+[data-theme-mode="light"] .post-title,
+[data-theme-mode="light"] .post-title-text,
+.light .post-md-h1,
+.light .post-md-h2,
+.light .post-md-h3,
+.light .post-md-bold,
+.light-mode .post-md-h1,
+.light-mode .post-md-h2,
+.light-mode .post-md-h3,
+.light-mode .post-md-bold,
+body.light .post-md-h1,
+body.light .post-md-h2,
+body.light .post-md-h3,
+body.light .post-md-bold,
+html.light .post-md-h1,
+html.light .post-md-h2,
+html.light .post-md-h3,
+html.light .post-md-bold,
+.light .post-text-body strong,
+.light .post-text-body b,
+.light-mode .post-text-body strong,
+.light-mode .post-text-body b,
+body.light .post-text-body strong,
+body.light .post-text-body b,
 .light .feed-premium-card span,
 .light .feed-premium-card div,
 .light .feed-premium-card p,
@@ -682,7 +716,7 @@ body.light .rebuilt-feed-root {
 }
 
 .light .post-text-body {
-  color: #334155 !important;
+  color: #1e293b !important;
 }
 
 /* Inputs & Search Boxes in Light Mode */

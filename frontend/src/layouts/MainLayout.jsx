@@ -10,7 +10,7 @@ import {
   FolderOpen, BookOpen, Activity, Phone, Video, Star, Shield, HelpCircle, ShieldAlert,
   Globe, Bookmark, UserCheck, Trophy, Award, MessageSquare, Mail, Radio, CreditCard,
   Gem, Sparkles, FolderKanban, NotebookPen, PanelRightOpen, PanelRightClose, Edit3, Lock, GitPullRequest,
-  Newspaper, Rss, Compass
+  Newspaper, Rss, Compass, Home, Plus, BarChart3
 } from "lucide-react";
 import socket from "../socket/socket";
 import * as workspaceService from "../services/workspaceService";
@@ -131,9 +131,9 @@ export default function MainLayout({
     if (location.pathname.startsWith("/editor/")) {
       if (path !== location.pathname && !path.startsWith(location.pathname + "?") && !path.startsWith(location.pathname + "#")) {
         const confirmExit = await window.showConfirm(
-          "Are you sure you want to exit this workspace?",
+          "Are you sure you want to exit this workspace? Any unsaved edits will be lost.",
           "Exit Workspace",
-          "warning"
+          "exit-workspace"
         );
         if (!confirmExit) return;
       }
@@ -879,24 +879,50 @@ export default function MainLayout({
 
   const lastRoomId = localStorage.getItem("ceLastActiveRoomId") || "default";
 
-  const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { id: "explore-rooms", label: "Explore Rooms", icon: Compass, path: "/dashboard/rooms?subtab=explore" },
-    { id: "liverooms", label: "Live Rooms", icon: Radio, path: "/dashboard/live-rooms" },
-    { id: "room-requests", label: "Room Requests", icon: GitPullRequest, path: "/dashboard/room-requests" },
-    { id: "feed", label: "Network Feed", icon: Newspaper, path: "/dashboard/feed" },
-    { id: "following", label: "Following", icon: UserCheck, path: "/dashboard/following" },
+  const [roomsExpanded, setRoomsExpanded] = useState(true);
+
+  const handleCreateClick = () => {
+    setIsDrawerOpen(false);
+    if (location.pathname.startsWith("/editor/")) {
+      navigate("/dashboard?create=true");
+    } else {
+      window.dispatchEvent(new CustomEvent("ce:open-create-room"));
+    }
+  };
+
+  const primaryNavItems = [
+    { id: "home", label: "Home", icon: Home, path: "/dashboard" },
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard/progress" },
+    { id: "explore", label: "Explore", icon: Compass, path: "/dashboard/following" },
+  ];
+
+  const roomsNavItems = [
+    { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard/my-rooms" },
+    { id: "rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard/rooms" },
+    { id: "liverooms", label: "Live Now", icon: Radio, path: "/dashboard/live-rooms" },
+    { id: "room-requests", label: "Requests", icon: GitPullRequest, path: "/dashboard/room-requests" },
+  ];
+
+  const networkNavItems = [
     { id: "messages", label: "Messages", icon: MessageSquare, path: "/dashboard/messages" },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/dashboard/notifications" },
-    { id: "cp", label: "MyVerse", icon: SquareCode, path: "/dashboard/cp" },
-    { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/dashboard/leaderboard" },
-    { id: "achievements", label: "Achievements", icon: Award, path: "/dashboard/achievements" },
-    { id: "helpdesk", label: "Help Desk", icon: HelpCircle, path: "/dashboard/helpdesk" },
+  ];
+
+  const secondaryNavItems = [
+    { id: "profile", label: "Profile", icon: User, path: user?.username ? `/u/${user.username}` : "/dashboard/profile" },
+    { id: "settings", label: "Settings", icon: Settings, path: "/dashboard/settings" },
   ];
 
   if (user && user.role === "admin") {
-    menuItems.push({ id: "admin", label: "Admin Panel", icon: Shield, path: "/admin" });
+    secondaryNavItems.push({ id: "admin", label: "Admin Panel", icon: Shield, path: "/admin" });
   }
+
+  const menuItems = [
+    ...primaryNavItems,
+    ...roomsNavItems,
+    ...networkNavItems,
+    ...secondaryNavItems
+  ];
 
   const [localActiveItem, setLocalActiveItem] = useState(null);
 
@@ -933,53 +959,56 @@ export default function MainLayout({
     // Check paths under /dashboard/
     if (path.startsWith("/dashboard/")) {
       const section = path.substring("/dashboard/".length);
-      if (section === "rooms") return "explore-rooms";
+      if (section === "feed" || !section) return "home";
+      if (section === "progress" || section === "dashboard") return "dashboard";
+      if (section === "following" || section === "explore") return "explore";
+      if (section === "my-rooms" || section === "myrooms") return "myrooms";
+      if (section === "rooms") return "rooms";
       if (section === "live-rooms") return "liverooms";
       if (section === "room-requests") return "room-requests";
-      if (section === "trust-safety" || section === "feed-action") return "trust-safety";
-      if (section === "settings") return "settings";
-      if (section === "history" || section === "whiteboards" || section === "bookmarks" || section === "trust-safety") return section;
-      if (section === "cp") return "cp";
-      if (section === "feed") return "feed";
-      if (section === "following") return "following";
       if (section === "messages") return "messages";
       if (section === "notifications") return "notifications";
+      if (section === "settings") return "settings";
+      if (section === "profile") return "profile";
+      if (section === "cp") return "cp";
+      if (section === "trust-safety" || section === "feed-action") return "trust-safety";
+      if (section === "history" || section === "whiteboards" || section === "bookmarks") return section;
       if (section === "leaderboard") return "leaderboard";
       if (section === "achievements") return "achievements";
       if (section === "helpdesk") return "helpdesk";
       if (section === "planner") return "planner";
+      return section;
     }
 
-    if (rawTab === "settings") {
-      return "settings";
-    }
-    if (rawTab === "history" || rawTab === "whiteboards" || rawTab === "bookmarks" || rawTab === "trust-safety") {
+    if (rawTab) {
+      if (rawTab === "feed") return "home";
+      if (rawTab === "dashboard" || rawTab === "progress") return "dashboard";
+      if (rawTab === "following" || rawTab === "explore") return "explore";
+      if (rawTab === "myrooms") return "myrooms";
+      if (rawTab === "rooms" || rawTab === "explore-rooms") return "rooms";
+      if (rawTab === "liverooms" || rawTab === "live-rooms") return "liverooms";
+      if (rawTab === "room-requests") return "room-requests";
+      if (rawTab === "messages") return "messages";
+      if (rawTab === "notifications") return "notifications";
+      if (rawTab === "settings") return "settings";
       return rawTab;
     }
-    if (rawTab === "rooms" || rawTab === "explore-rooms") {
-      return "explore-rooms";
-    }
-    if (rawTab === "liverooms") return "liverooms";
-    if (rawTab === "room-requests") return "room-requests";
-    if (rawTab === "feed") return "feed";
-    if (rawTab === "following") return "following";
-    if (rawTab === "planner") return "planner";
-    if (rawTab === "messages") return "messages";
-    if (rawTab === "notifications") return "notifications";
-    if (rawTab === "cp") return "cp";
-    if (rawTab === "leaderboard") return "leaderboard";
-    if (rawTab === "achievements") return "achievements";
-    if (rawTab === "helpdesk") return "helpdesk";
 
-    if (path === "/dashboard" && (!rawTab || rawTab === "dashboard")) {
-      return "dashboard";
+    if (path === "/dashboard") {
+      return "home";
     }
 
-    return rawTab || "none";
+    return "home";
   };
 
   const activeItem = localActiveItem || getActiveItem();
   const sidebarExpanded = isPinned || isHovered;
+
+  useEffect(() => {
+    if (["myrooms", "rooms", "liverooms", "room-requests"].includes(activeItem)) {
+      setRoomsExpanded(true);
+    }
+  }, [activeItem]);
 
   const formatTime = (timeVal) => {
     if (!timeVal) return "";
@@ -1285,6 +1314,78 @@ export default function MainLayout({
     setTourMode(roomId && roomId !== "default" ? "room" : "dashboard");
     setTourStep(0);
     setShowTour(true);
+  };
+
+  const renderNavBtn = (item, isSubItem = false) => {
+    const Icon = item.icon;
+    const isActive = activeItem === item.id;
+
+    let badgeCount = 0;
+    if (item.id === "messages") {
+      badgeCount = unreadMessageCount;
+    } else if (item.id === "notifications") {
+      badgeCount = unreadNotifCount;
+    } else if (item.id === "room-requests") {
+      badgeCount = joinRequests.length;
+    }
+
+    return (
+      <button
+        key={item.id}
+        onClick={() => handleMenuClick(item)}
+        className={`sidebar-nav-btn ${isSubItem ? "sidebar-nav-sub-btn" : ""} ${isActive ? "active" : ""}`}
+        data-tooltip={badgeCount > 0 ? `${item.label} (${badgeCount})` : item.label}
+        title={!sidebarExpanded ? item.label : undefined}
+      >
+        <div className="sidebar-nav-icon-wrapper">
+          <Icon size={isSubItem ? 17 : 18} className="sidebar-nav-icon-inner" />
+          {!sidebarExpanded && badgeCount > 0 && (
+            <span className="sidebar-badge-dot-collapsed" />
+          )}
+        </div>
+        <span className="btn-label">{item.label}</span>
+        {sidebarExpanded && badgeCount > 0 && (
+          <span className="sidebar-nav-badge">
+            {badgeCount}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const renderDrawerNavBtn = (item, isSubItem = false) => {
+    const Icon = item.icon;
+    const isActive = activeItem === item.id;
+
+    let badgeCount = 0;
+    if (item.id === "messages") {
+      badgeCount = unreadMessageCount;
+    } else if (item.id === "notifications") {
+      badgeCount = unreadNotifCount;
+    } else if (item.id === "room-requests") {
+      badgeCount = joinRequests.length;
+    }
+
+    return (
+      <button
+        key={item.id}
+        onClick={() => {
+          setIsDrawerOpen(false);
+          handleMenuClick(item);
+        }}
+        className={`drawer-nav-btn ${isSubItem ? "drawer-nav-sub-btn" : ""} ${isActive ? "active" : ""}`}
+      >
+        <div className="drawer-nav-icon-wrapper">
+          <Icon size={isSubItem ? 17 : 18} />
+        </div>
+        <span className="btn-label">{item.label}</span>
+        {badgeCount > 0 && (
+          <span className="sidebar-nav-badge drawer-badge">
+            {badgeCount}
+          </span>
+        )}
+      </button>
+    );
   };
 
   return (
@@ -1832,11 +1933,22 @@ export default function MainLayout({
       <div className="ce-layout-body">
         {/* COLLAPSIBLE SIDEBAR */}
         <aside
-          className={`ce-sidebar ${isRoomActive ? "room-active" : (sidebarExpanded ? "expanded" : "collapsed")}`}
+          className={`ce-sidebar ${isRoomActive ? "room-active" : (sidebarExpanded ? "expanded" : "collapsed")} ${isPinned ? "is-pinned" : "is-unpinned"}`}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className="sidebar-header-new">
+          {/* Top Actions Row: + Create & Pin Button in one row */}
+          <div className="sidebar-top-action-row">
+            <button
+              type="button"
+              className="sidebar-create-btn"
+              onClick={handleCreateClick}
+              title="Create Workspace / Room"
+              data-tooltip="Create Room"
+            >
+              <Plus size={15} strokeWidth={2.2} className="create-icon" />
+              <span className="btn-label">Create</span>
+            </button>
             <button
               className={`pin-btn ${isPinned ? "pinned" : ""}`}
               onClick={handlePinToggle}
@@ -1848,41 +1960,44 @@ export default function MainLayout({
             </button>
           </div>
 
+          {/* Scrollable Navigation Menu */}
           <nav className="sidebar-nav-menu">
-            {menuItems
-              .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk" && item.id !== "cp")
-              .map(item => {
-                const Icon = item.icon;
-                const isActive = activeItem === item.id;
+            {/* PRIMARY: Home, Explore */}
+            <div className="sidebar-nav-section">
+              {primaryNavItems.map(item => renderNavBtn(item))}
+            </div>
 
-                let badgeCount = 0;
-                if (item.id === "messages") {
-                  badgeCount = unreadMessageCount;
-                } else if (item.id === "notifications") {
-                  badgeCount = unreadNotifCount;
-                } else if (item.id === "room-requests") {
-                  badgeCount = joinRequests.length;
-                }
+            {/* ROOMS GROUP */}
+            <div className="sidebar-nav-section sidebar-nav-group">
+              {sidebarExpanded && (
+                <div className="sidebar-group-header static">
+                  <span className="sidebar-group-title">ROOMS</span>
+                </div>
+              )}
+              <div className="sidebar-group-items">
+                {roomsNavItems.map(item => renderNavBtn(item))}
+              </div>
+            </div>
 
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleMenuClick(item)}
-                    className={`sidebar-nav-btn ${isActive ? "active" : ""}`}
-                    data-tooltip={item.label}
-                  >
-                    <div className="sidebar-nav-icon-wrapper">
-                      <Icon size={20} className="sidebar-nav-icon-inner" />
-                      {badgeCount > 0 && (
-                        <span className="sidebar-badge-count-red">
-                          {badgeCount}
-                        </span>
-                      )}
-                    </div>
-                    <span className="btn-label">{item.label}</span>
-                  </button>
-                );
-              })}
+            {/* NETWORK GROUP */}
+            <div className="sidebar-nav-section sidebar-nav-group">
+              {sidebarExpanded && (
+                <div className="sidebar-group-header static">
+                  <span className="sidebar-group-title">NETWORK</span>
+                </div>
+              )}
+              <div className="sidebar-group-items">
+                {networkNavItems.map(item => renderNavBtn(item))}
+              </div>
+            </div>
+
+            {/* DIVIDER */}
+            <div className="sidebar-nav-divider" />
+
+            {/* ACCOUNT & UTILITY: Profile, Settings, Admin */}
+            <div className="sidebar-nav-section">
+              {secondaryNavItems.map(item => renderNavBtn(item))}
+            </div>
           </nav>
 
           {/* Custom MyVerse Square Box at the very bottom */}
@@ -1893,9 +2008,12 @@ export default function MainLayout({
               data-tooltip="MyVerse"
             >
               <div className="myverse-card-icon-wrapper">
-                <SquareCode size={20} />
+                <SquareCode size={18} />
               </div>
-              <span className="btn-label">MyVerse</span>
+              <div className="myverse-card-info">
+                <span className="btn-label myverse-title">MyVerse</span>
+                <span className="btn-label myverse-subtitle">Workspace</span>
+              </div>
             </button>
           </div>
         </aside>
@@ -1932,7 +2050,7 @@ export default function MainLayout({
           className="drawer-user-card"
           onClick={() => {
             setIsDrawerOpen(false);
-            handleConfirmNavigate(user?.username ? `/u/${user.username}` : "/dashboard?tab=profile");
+            handleConfirmNavigate(user?.username ? `/u/${user.username}` : "/dashboard/profile");
           }}
           role="button"
           tabIndex={0}
@@ -1940,7 +2058,7 @@ export default function MainLayout({
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setIsDrawerOpen(false);
-              handleConfirmNavigate(user?.username ? `/u/${user.username}` : "/dashboard?tab=profile");
+              handleConfirmNavigate(user?.username ? `/u/${user.username}` : "/dashboard/profile");
             }
           }}
         >
@@ -1958,43 +2076,51 @@ export default function MainLayout({
           <ChevronRight size={16} className="drawer-arrow-icon" />
         </div>
 
+        {/* + Create in Drawer */}
+        <div className="drawer-create-container" style={{ padding: "10px 16px 6px 16px" }}>
+          <button
+            type="button"
+            className="drawer-create-btn"
+            onClick={handleCreateClick}
+          >
+            <Plus size={18} />
+            <span>Create</span>
+          </button>
+        </div>
+
         <nav className="drawer-nav-menu">
-          {menuItems
-            .filter(item => item.id !== "leaderboard" && item.id !== "achievements" && item.id !== "helpdesk" && item.id !== "cp")
-            .map(item => {
-              const Icon = item.icon;
-              const isActive = activeItem === item.id;
+          {/* Primary */}
+          <div className="drawer-nav-section">
+            {primaryNavItems.map(item => renderDrawerNavBtn(item))}
+          </div>
 
-              let badgeCount = 0;
-              if (item.id === "messages") {
-                badgeCount = unreadMessageCount;
-              } else if (item.id === "notifications") {
-                badgeCount = unreadNotifCount;
-              } else if (item.id === "room-requests") {
-                badgeCount = joinRequests.length;
-              }
+          {/* Rooms Group */}
+          <div className="drawer-nav-section drawer-nav-group">
+            <div className="drawer-group-header static" style={{ padding: "10px 16px 4px 16px" }}>
+              <span className="drawer-group-title" style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--ce-text-muted)", letterSpacing: "0.08em" }}>ROOMS</span>
+            </div>
+            <div className="drawer-group-items">
+              {roomsNavItems.map(item => renderDrawerNavBtn(item))}
+            </div>
+          </div>
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setIsDrawerOpen(false);
-                    handleMenuClick(item);
-                  }}
-                  className={`drawer-nav-btn ${isActive ? "active" : ""}`}
-                >
-                  <div className="drawer-nav-icon-wrapper">
-                    <Icon size={20} />
-                    {badgeCount > 0 && (
-                      <span className="sidebar-badge-count-red">
-                        {badgeCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className="btn-label">{item.label}</span>
-                </button>
-              );
-            })}
+          {/* Network Group */}
+          <div className="drawer-nav-section drawer-nav-group">
+            <div className="drawer-group-header static" style={{ padding: "10px 16px 4px 16px" }}>
+              <span className="drawer-group-title" style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--ce-text-muted)", letterSpacing: "0.08em" }}>NETWORK</span>
+            </div>
+            <div className="drawer-group-items">
+              {networkNavItems.map(item => renderDrawerNavBtn(item))}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="drawer-nav-divider" style={{ height: "1px", background: "var(--ce-border)", margin: "8px 16px" }} />
+
+          {/* Account & Settings */}
+          <div className="drawer-nav-section">
+            {secondaryNavItems.map(item => renderDrawerNavBtn(item))}
+          </div>
         </nav>
 
         {/* Draw MyVerse at the bottom of the drawer menu list */}

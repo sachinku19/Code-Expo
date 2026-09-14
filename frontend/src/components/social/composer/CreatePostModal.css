@@ -1487,6 +1487,27 @@ body.light .preview-text-content {
   color: #0f172a !important;
 }
 
+.light .preview-text-content h1,
+.light .preview-text-content h2,
+.light .preview-text-content h3,
+.light .preview-text-content h4,
+.light .preview-text-content strong,
+.light .preview-text-content b,
+.light-mode .preview-text-content h1,
+.light-mode .preview-text-content h2,
+.light-mode .preview-text-content h3,
+.light-mode .preview-text-content h4,
+.light-mode .preview-text-content strong,
+.light-mode .preview-text-content b,
+body.light .preview-text-content h1,
+body.light .preview-text-content h2,
+body.light .preview-text-content h3,
+body.light .preview-text-content h4,
+body.light .preview-text-content strong,
+body.light .preview-text-content b {
+  color: #0f172a !important;
+}
+
 .light .preview-placeholder-text,
 .light-mode .preview-placeholder-text,
 .light-theme .preview-placeholder-text,
