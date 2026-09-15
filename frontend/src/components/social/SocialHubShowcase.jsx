@@ -305,7 +305,7 @@ stream.getTracks().forEach(track => pc.addTrack(track, stream));`,
                         <div className="comments-list">
                           {post.comments.map((comment, idx) => (
                             <div key={idx} className="comment-item">
-                              <span className="commenter-name">@{comment.sender.toLowerCase()}:</span>
+                              <span className="commenter-name">@{String(comment.sender || "dev").toLowerCase()}:</span>
                               <span className="commenter-text">{comment.text}</span>
                               <span className="comment-time">{comment.time}</span>
                             </div>

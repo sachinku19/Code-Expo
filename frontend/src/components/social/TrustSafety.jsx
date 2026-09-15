@@ -144,7 +144,7 @@ export default function TrustSafety({ user, addToast }) {
     .filter((item) => {
       // Action type filter
       if (actionFilter !== "all") {
-        const type = item.actionType.toLowerCase();
+        const type = String(item.actionType || "").toLowerCase();
         if (actionFilter === "hidden" && !type.includes("hidden")) return false;
         if (actionFilter === "restored" && !type.includes("restored") && !type.includes("reactivated")) return false;
         if (actionFilter === "deleted" && !type.includes("delete")) return false;
@@ -156,10 +156,10 @@ export default function TrustSafety({ user, addToast }) {
       // Search query filter (search by content text, title, or reason)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const reason = (item.reason || "").toLowerCase();
-        const action = item.actionType.toLowerCase();
-        const postText = item.postId?.text ? item.postId.text.toLowerCase() : "";
-        const postTitle = item.postId?.title ? item.postId.title.toLowerCase() : "";
+        const reason = String(item.reason || "").toLowerCase();
+        const action = String(item.actionType || "").toLowerCase();
+        const postText = item.postId?.text ? String(item.postId.text).toLowerCase() : "";
+        const postTitle = item.postId?.title ? String(item.postId.title).toLowerCase() : "";
 
         return reason.includes(query) || action.includes(query) || postText.includes(query) || postTitle.includes(query);
       }

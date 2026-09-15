@@ -58,25 +58,27 @@ body.light .logo-container:hover .logo-img-src {
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.025em;
-  color: #ffffff;
   display: flex;
   align-items: center;
   line-height: 1;
   transition: color 0.2s ease;
 }
 
-/* Light mode text color: apply only when logo container is explicitly light and not overridden */
-.logo-container.light:not(.dark) .logo-text-wrapper,
-body.light .logo-container.light:not(.dark) .logo-text-wrapper,
-.light .logo-container.light:not(.dark) .logo-text-wrapper {
-  color: #0f172a;
+/* Light mode text color */
+.logo-container.light .logo-text-wrapper,
+.light .logo-container .logo-text-wrapper,
+.light .logo-text-wrapper,
+.light .auth-brand-logo-container .logo-text-wrapper,
+body.light .logo-text-wrapper {
+  color: #0f172a !important;
 }
 
-/* Dark mode text color: ensure white text on dark backgrounds & dark-forced containers */
+/* Dark mode text color */
 .logo-container.dark .logo-text-wrapper,
-.auth-brand-logo-container .logo-text-wrapper,
-.ob-hero-header .logo-text-wrapper,
+.dark .logo-container .logo-text-wrapper,
 .dark .logo-text-wrapper,
+.dark .auth-brand-logo-container .logo-text-wrapper,
+.ob-hero-header .logo-text-wrapper,
 body:not(.light) .logo-text-wrapper {
   color: #ffffff !important;
 }

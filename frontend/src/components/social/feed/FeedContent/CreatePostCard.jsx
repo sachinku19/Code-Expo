@@ -88,7 +88,7 @@ export const CreatePostCard = ({ user, onSubmitPost, onOpenComposer }) => {
             className="create-option-btn"
             onClick={() => onOpenComposer ? onOpenComposer() : setPostType("code")}
           >
-            <Code size={14} color="#7C5CFF" />
+            <Code size={14} color="#a855f7" />
             <span>Code</span>
           </button>
 
@@ -124,9 +124,9 @@ export const CreatePostCard = ({ user, onSubmitPost, onOpenComposer }) => {
           type="button"
           className="create-post-submit-btn"
           onClick={handleSubmit}
-          style={{ opacity: content.trim() ? 1 : 0.8, cursor: "pointer" }}
+          style={{ cursor: "pointer" }}
         >
-          {content.trim() ? "Post" : "Create"}
+          Create
         </button>
       </div>
     </div>

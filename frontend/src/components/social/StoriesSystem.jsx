@@ -1525,9 +1525,9 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                     onTouchStart={(e) => e.stopPropagation()}
                     onTouchEnd={(e) => e.stopPropagation()}
                   >
-                    {(activeStoryGroup.username?.toLowerCase() === user?.username?.toLowerCase() ||
-                      String(activeStoryGroup.userId) === String(user?._id || user?.id) ||
-                      String(currentActiveStory?.user) === String(user?._id || user?.id)) && (
+                    {((activeStoryGroup?.username && user?.username && String(activeStoryGroup.username).toLowerCase() === String(user.username).toLowerCase()) ||
+                      String(activeStoryGroup?.userId || "") === String(user?._id || user?.id || "") ||
+                      String(currentActiveStory?.user || "") === String(user?._id || user?.id || "")) && (
                       <button
                         onClick={(e) => handleDeleteStoryClick(currentActiveStory?._id, e)}
                         onMouseDown={(e) => e.stopPropagation()}
@@ -1775,9 +1775,9 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                     // Dynamic comments view (Privacy Filtered: Owner sees all replies, viewer sees only their own reply)
                     (() => {
                       const isOwner = (
-                        activeStoryGroup.username?.toLowerCase() === user?.username?.toLowerCase() ||
-                        String(activeStoryGroup.userId) === String(user?._id || user?.id) ||
-                        String(currentActiveStory?.user) === String(user?._id || user?.id)
+                        (activeStoryGroup?.username && user?.username && String(activeStoryGroup.username).toLowerCase() === String(user.username).toLowerCase()) ||
+                        String(activeStoryGroup?.userId || "") === String(user?._id || user?.id || "") ||
+                        String(currentActiveStory?.user || "") === String(user?._id || user?.id || "")
                       );
 
                       const allComments = currentActiveStory.comments || [];
@@ -1785,9 +1785,9 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                         if (isOwner) return true;
                         const cUserId = String(c.user?._id || c.user?.id || c.user || c.userId || "");
                         const currentId = String(user?._id || user?.id || "");
-                        const cUsername = (c.username || c.user?.username || "").toLowerCase();
-                        const currentUsername = (user?.username || "").toLowerCase();
-                        return (cUserId && cUserId === currentId) || (cUsername && cUsername === currentUsername);
+                        const cUsername = String(c.username || c.user?.username || "").toLowerCase();
+                        const currentUsername = String(user?.username || "").toLowerCase();
+                        return (cUserId && cUserId === currentId) || (cUsername && currentUsername && cUsername === currentUsername);
                       });
 
                       return (

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Heart, Share2, Send, Trash2, Code, Plus, Sparkles, Image, Eye, EyeOff, CheckCircle2, Bookmark, X, ChevronLeft, ChevronRight, BarChart3, Calendar, ShieldCheck, Flame, GitFork, Star, Smile, Bell, Play, Search, MoreVertical, Copy, ChevronDown, ChevronUp, Edit3, Trophy, Repeat, FileText } from "lucide-react";
-import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost, searchUsers, getStories } from "../../services/socialService";
+import { createPost, getPosts, toggleLikePost, addCommentPost, deletePost, searchUsers, getStories, getDeveloperSuggestions } from "../../services/socialService";
 import { toggleLikeOptimistic, subscribeToLikes, isEntityLiked } from "../../services/likeEngine";
 import { createPortal } from "react-dom";
 import socket from "../../socket/socket";
@@ -704,7 +704,14 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
   const searchInputRef = useRef(null);
   const [posts, setPosts] = useState([]);
   const [stories, setStories] = useState([]);
+  const [localSuggestions, setLocalSuggestions] = useState(suggestions || []);
   const [visiblePosts, setVisiblePosts] = useState(6);
+
+  useEffect(() => {
+    if (Array.isArray(suggestions) && suggestions.length > 0) {
+      setLocalSuggestions(suggestions);
+    }
+  }, [suggestions]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1106,6 +1113,16 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         }
       } catch (sErr) {
         console.error("Error fetching stories:", sErr);
+      }
+      if (!suggestions || suggestions.length === 0) {
+        try {
+          const sugRes = await getDeveloperSuggestions(10);
+          if (sugRes && sugRes.success && sugRes.suggestions) {
+            setLocalSuggestions(sugRes.suggestions);
+          }
+        } catch (sugErr) {
+          console.error("Error fetching suggestions in feed:", sugErr);
+        }
       }
     } catch (err) {
       console.error("Error fetching posts:", err);
@@ -2004,7 +2021,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         posts={filteredPostsList}
         stories={stories}
         onlineUsers={onlineUsers}
-        suggestedUsers={suggestions}
+        suggestedUsers={localSuggestions.length > 0 ? localSuggestions : suggestions}
         followingList={followingList}
         isLoading={isLoading}
         onCreatePost={(data) => {

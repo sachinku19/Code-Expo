@@ -329,7 +329,7 @@ export default function PersonalDashboard({ stats, onSelectTask, onStartTimer, a
                       borderRadius: "1px",
                       position: "absolute",
                       bottom: "3px",
-                      background: d.isToday ? "#ffffff" : (dayTasks.some(t => t.priority === "Critical" || t.priority === "High") ? "#f87171" : "#818cf8")
+                      background: d.isToday ? "#ffffff" : (dayTasks.some(t => t.priority === "Critical" || t.priority === "High") ? "#f87171" : "#f59e0b")
                     }}
                   />
                 )}
@@ -352,7 +352,7 @@ export default function PersonalDashboard({ stats, onSelectTask, onStartTimer, a
               </span>
             ) : (
               selectedDateTasks.map(t => {
-                let pColor = "var(--tp-accent, #6366f1)";
+                let pColor = "var(--tp-accent, #f59e0b)";
                 if (t.priority === "Critical" || t.priority === "High") pColor = "#ef4444";
                 else if (t.priority === "Medium") pColor = "#fbbf24";
                 else if (t.priority === "Low") pColor = "#4ade80";

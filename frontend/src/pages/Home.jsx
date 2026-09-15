@@ -85,20 +85,27 @@ const MobileLandingPage = lazy(() => import("../components/mobile/MobileLandingP
 const HeroSection = React.memo(({ totalUser, dbStats, navigate, user }) => {
   return (
     <section id="hero" className="ce-hero" aria-labelledby="hero-title">
+      {/* Background ambient watermarks & dot matrices */}
+      <div className="ce-hero-ambient-grid left" aria-hidden="true" />
+      <div className="ce-hero-ambient-grid right" aria-hidden="true" />
+      <div className="ce-hero-code-watermark left" aria-hidden="true">&lt;/&gt;</div>
+      <div className="ce-hero-code-watermark right" aria-hidden="true">&lt;/&gt;</div>
+
       <div className="ce-container">
-        <div className="ce-hero-badge">
+        <div className="ce-hero-badge" onClick={() => navigate(user ? "/dashboard" : "/register")} style={{ cursor: "pointer" }}>
           <span className="ce-hero-badge-pulse" />
           <span className="ce-hero-badge-text">
-            {totalUser > 0 ? `${totalUser} developers online coding right now` : "Developers hub online"}
+            {totalUser > 0 ? `${totalUser} developers online coding right now` : "1 developers online coding right now"}
           </span>
+          <ChevronRight size={13} className="ce-hero-badge-arrow" />
         </div>
 
         <h1 id="hero-title" className="ce-hero-title">
-          Where developers collaborate, code, and share in real time.
+          Where <span className="ce-hero-highlight-amber">developers</span> collaborate, code, and share in real time.
         </h1>
 
         <p className="ce-hero-subtitle">
-          A professional multiplayer editor with integrated audio/video rooms, shared whiteboards, AI pair programming, and developer profiles.
+          A professional multiplayer editor with integrated audio/video rooms, shared whiteboards, AI pair-programming, and developer profiles.
         </p>
 
         <div className="ce-hero-ctas">
@@ -114,27 +121,27 @@ const HeroSection = React.memo(({ totalUser, dbStats, navigate, user }) => {
         {/* Core Live Stats Row */}
         <div className="ce-hero-stats">
           {/* Developers Stat */}
-          <div className="ce-stat-item devs" style={{ "--stat-color": "#3b82f6" }}>
+          <div className="ce-stat-item devs" style={{ "--stat-color": "#f59e0b" }}>
             <div className="ce-stat-header">
-              <span className="ce-stat-lbl">Developers</span>
+              <span className="ce-stat-lbl">DEVELOPERS</span>
               <div className="ce-stat-icon-wrapper">
-                <Users size={15} />
+                <Users size={16} />
               </div>
             </div>
             <div className="ce-stat-body">
               <span className="ce-stat-val">
-                {dbStats.developers > 0 ? dbStats.developers.toLocaleString() : "1,200+"}
+                {dbStats.developers > 0 ? dbStats.developers.toLocaleString() : "7"}
               </span>
               <div className="ce-stat-badge">
-                <span className="ce-badge-dot"></span>
-                +14.8%
+                <span className="ce-stat-badge-arrow">↑</span>
+                <span>+14.8%</span>
               </div>
             </div>
             <div className="ce-stat-footer">
               <div className="ce-stat-chart">
                 <svg viewBox="0 0 100 25" width="100%" height="25" preserveAspectRatio="none">
-                  <path d="M0,20 Q15,5 30,15 T60,8 T90,2" fill="none" stroke="var(--stat-color)" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M0,20 Q15,5 30,15 T60,8 T90,2 L100,2 L100,25 L0,25 Z" fill="url(#sparkline-grad-devs)" opacity="0.05" />
+                  <path d="M0,20 Q15,5 30,15 T60,8 T90,2" fill="none" stroke="var(--stat-color)" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M0,20 Q15,5 30,15 T60,8 T90,2 L100,2 L100,25 L0,25 Z" fill="url(#sparkline-grad-devs)" opacity="0.15" />
                   <defs>
                     <linearGradient id="sparkline-grad-devs" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--stat-color)" />
@@ -148,27 +155,27 @@ const HeroSection = React.memo(({ totalUser, dbStats, navigate, user }) => {
           </div>
 
           {/* Active Rooms Stat */}
-          <div className="ce-stat-item rooms" style={{ "--stat-color": "#10b981" }}>
+          <div className="ce-stat-item rooms" style={{ "--stat-color": "#f59e0b" }}>
             <div className="ce-stat-header">
-              <span className="ce-stat-lbl">Active Rooms</span>
+              <span className="ce-stat-lbl">ACTIVE ROOMS</span>
               <div className="ce-stat-icon-wrapper">
-                <Compass size={15} />
+                <Radio size={16} />
               </div>
             </div>
             <div className="ce-stat-body">
               <span className="ce-stat-val">
-                {dbStats.rooms > 0 ? dbStats.rooms.toLocaleString() : "850+"}
+                {dbStats.rooms > 0 ? dbStats.rooms.toLocaleString() : "14"}
               </span>
-              <div className="ce-stat-badge pulse">
+              <div className="ce-stat-badge live-badge">
                 <span className="ce-badge-dot blinking"></span>
-                Live
+                <span>Live</span>
               </div>
             </div>
             <div className="ce-stat-footer">
               <div className="ce-stat-chart">
                 <svg viewBox="0 0 100 25" width="100%" height="25" preserveAspectRatio="none">
-                  <path d="M0,18 Q15,22 30,12 T60,16 T90,5 L100,2" fill="none" stroke="var(--stat-color)" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M0,18 Q15,22 30,12 T60,16 T90,5 L100,2 L100,25 L0,25 Z" fill="url(#sparkline-grad-rooms)" opacity="0.05" />
+                  <path d="M0,18 Q15,22 30,12 T60,16 T90,5 L100,2" fill="none" stroke="var(--stat-color)" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M0,18 Q15,22 30,12 T60,16 T90,5 L100,2 L100,25 L0,25 Z" fill="url(#sparkline-grad-rooms)" opacity="0.15" />
                   <defs>
                     <linearGradient id="sparkline-grad-rooms" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--stat-color)" />
@@ -177,32 +184,32 @@ const HeroSection = React.memo(({ totalUser, dbStats, navigate, user }) => {
                   </defs>
                 </svg>
               </div>
-              <span className="ce-stat-trend">Realtime collaborations</span>
+              <span className="ce-stat-trend">Real-time collaborations</span>
             </div>
           </div>
 
           {/* Executions Stat */}
-          <div className="ce-stat-item executions" style={{ "--stat-color": "#a855f7" }}>
+          <div className="ce-stat-item executions" style={{ "--stat-color": "#f59e0b" }}>
             <div className="ce-stat-header">
-              <span className="ce-stat-lbl">Executions</span>
+              <span className="ce-stat-lbl">EXECUTIONS</span>
               <div className="ce-stat-icon-wrapper">
-                <Zap size={15} />
+                <Zap size={16} />
               </div>
             </div>
             <div className="ce-stat-body">
               <span className="ce-stat-val">
-                {dbStats.executions > 0 ? dbStats.executions.toLocaleString() : "10,000+"}
+                {dbStats.executions > 0 ? dbStats.executions.toLocaleString() : "22"}
               </span>
-              <div className="ce-stat-badge secure">
-                <span className="ce-badge-dot"></span>
-                99.9%
+              <div className="ce-stat-badge">
+                <span className="ce-stat-badge-arrow">↑</span>
+                <span>+99.9%</span>
               </div>
             </div>
             <div className="ce-stat-footer">
               <div className="ce-stat-chart">
                 <svg viewBox="0 0 100 25" width="100%" height="25" preserveAspectRatio="none">
-                  <path d="M0,22 L10,8 L20,18 L30,5 L40,20 L50,8 L60,22 L70,12 L80,24 L90,5 L100,2" fill="none" stroke="var(--stat-color)" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M0,22 L10,8 L20,18 L30,5 L40,20 L50,8 L60,22 L70,12 L80,24 L90,5 L100,2 L100,25 L0,25 Z" fill="url(#sparkline-grad-execs)" opacity="0.05" />
+                  <path d="M0,22 L10,8 L20,18 L30,5 L40,20 L50,8 L60,22 L70,12 L80,24 L90,5 L100,2" fill="none" stroke="var(--stat-color)" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M0,22 L10,8 L20,18 L30,5 L40,20 L50,8 L60,22 L70,12 L80,24 L90,5 L100,2 L100,25 L0,25 Z" fill="url(#sparkline-grad-execs)" opacity="0.15" />
                   <defs>
                     <linearGradient id="sparkline-grad-execs" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--stat-color)" />

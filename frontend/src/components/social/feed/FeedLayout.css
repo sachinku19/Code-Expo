@@ -1,13 +1,13 @@
 /* Design System Tokens for Rebuilt Feed Page */
 :root {
-  --feed-bg: #09090B;
-  --feed-card-bg: #111114;
-  --feed-card-border: rgba(255, 255, 255, 0.07);
-  --feed-primary: #7C5CFF;
+  --feed-bg: #0a0c10;
+  --feed-card-bg: #0d0f17;
+  --feed-card-border: rgba(255, 255, 255, 0.08);
+  --feed-primary: #f59e0b;
   --feed-text: #FFFFFF;
-  --feed-text-secondary: rgba(255, 255, 255, 0.65);
-  --feed-radius: 14px;
-  --feed-radius-sm: 10px;
+  --feed-text-secondary: #94a3b8;
+  --feed-radius: 12px;
+  --feed-radius-sm: 8px;
   --feed-radius-xs: 6px;
 }
 
@@ -17,8 +17,8 @@ body.light,
 [data-theme="light"] {
   --feed-bg: #f8fafc;
   --feed-card-bg: #ffffff;
-  --feed-card-border: #e2e8f0;
-  --feed-primary: #6366f1;
+  --feed-card-border: rgba(15, 23, 42, 0.08);
+  --feed-primary: #f59e0b;
   --feed-text: #0f172a;
   --feed-text-secondary: #64748b;
 }
@@ -86,7 +86,7 @@ body.light,
 }
 
 .feed-premium-card:hover {
-  border-color: rgba(124, 92, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .mobile-stories-wrapper {
@@ -130,7 +130,7 @@ body.light,
   height: 40px;
   border-radius: 50%;
   padding: 2px;
-  background: linear-gradient(135deg, var(--feed-primary), #8b5cf6);
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
   flex-shrink: 0;
 }
 
@@ -200,7 +200,7 @@ body.light,
 }
 
 .create-post-input:focus {
-  border-color: var(--feed-primary);
+  border-color: rgba(245, 158, 11, 0.5);
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -238,19 +238,19 @@ body.light,
 }
 
 .create-post-submit-btn {
-  background: var(--feed-primary);
-  color: #ffffff;
+  background: #f59e0b;
+  color: #0a0c10 !important;
   border: none;
   border-radius: var(--feed-radius-xs);
-  padding: 6px 16px;
+  padding: 6px 18px;
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.1s ease;
+  transition: background 0.2s ease, transform 0.1s ease;
 }
 
 .create-post-submit-btn:hover {
-  opacity: 0.9;
+  background: #fbbf24;
 }
 
 /* Feed Tabs & Search Filter */
@@ -261,40 +261,55 @@ body.light,
   margin-bottom: 16px;
   gap: 12px;
   flex-wrap: wrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 0px;
 }
 
 .feed-tabs-list {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 20px;
 }
 
 .feed-tab-btn {
-  padding: 5px 12px;
-  border-radius: 16px;
+  padding: 6px 2px 10px 2px;
   background: transparent;
   border: none;
-  color: var(--feed-text-secondary);
-  font-size: 0.82rem;
+  border-bottom: 2.5px solid transparent;
+  border-radius: 0;
+  color: #94a3b8;
+  font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.feed-tab-btn:hover {
+  color: #ffffff;
 }
 
 .feed-tab-btn.active {
-  background: var(--feed-primary);
   color: #ffffff;
+  border-bottom: 2.5px solid #f59e0b;
+  font-weight: 700;
 }
 
 .feed-search-input-box {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--feed-card-bg);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--feed-card-border);
-  border-radius: 16px;
-  padding: 5px 12px;
-  width: 200px;
+  border-radius: 8px;
+  padding: 6px 12px;
+  width: 220px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.feed-search-input-box:focus-within {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .feed-search-input-box input {
@@ -308,15 +323,15 @@ body.light,
 
 /* Rebuilt Post Card */
 .rebuilt-post-card {
-  background: rgba(16, 17, 25, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 5px;
-  padding: 13px 12px;
-  margin-bottom: 12px;
+  background: var(--feed-card-bg);
+  border: 1px solid var(--feed-card-border);
+  border-radius: var(--feed-radius);
+  padding: 16px;
+  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  gap: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
   content-visibility: auto;
   contain-intrinsic-size: 1px 320px;
@@ -748,8 +763,18 @@ body.light .post-text-body b,
 
 .light .create-option-btn:hover {
   background: #f1f5f9 !important;
-  color: #4f46e5 !important;
+  color: #0f172a !important;
   border-color: #cbd5e1 !important;
+}
+
+.light .create-post-submit-btn {
+  background: #f59e0b !important;
+  color: #0a0c10 !important;
+  font-weight: 700 !important;
+}
+
+.light .create-post-submit-btn:hover {
+  background: #fbbf24 !important;
 }
 
 .light .post-action-btn {
@@ -763,8 +788,19 @@ body.light .post-text-body b,
 
 .light .post-action-btn:hover {
   background: rgba(0, 0, 0, 0.05) !important;
-  color: #4f46e5 !important;
+  color: #0f172a !important;
   border: none !important;
+}
+
+.light .post-follow-btn {
+  background: #f59e0b !important;
+  color: #0a0c10 !important;
+  font-weight: 700 !important;
+  border: none !important;
+}
+
+.light .post-follow-btn:hover {
+  background: #fbbf24 !important;
 }
 
 /* Tabs in Light Mode */
@@ -773,8 +809,9 @@ body.light .post-text-body b,
 }
 
 .light .feed-tab-btn.active {
-  color: #4f46e5 !important;
-  background: rgba(99, 102, 241, 0.12) !important;
+  color: #0f172a !important;
+  background: transparent !important;
+  border-bottom: 2.5px solid #f59e0b !important;
 }
 
 /* Right Sidebar Items in Light Mode */
@@ -790,12 +827,13 @@ body.light .post-text-body b,
 .light .tag-chip {
   background: #f1f5f9 !important;
   border: 1px solid #cbd5e1 !important;
-  color: #4f46e5 !important;
+  color: #334155 !important;
 }
 
 .light .tag-chip:hover {
-  background: rgba(99, 102, 241, 0.12) !important;
-  border-color: #6366f1 !important;
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-color: #f59e0b !important;
+  color: #d97706 !important;
 }
 
 /* Popup Modals in Light Mode */

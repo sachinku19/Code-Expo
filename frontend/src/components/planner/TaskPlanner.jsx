@@ -655,7 +655,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
           <div style={{
             width: "100%",
             height: "100%",
-            background: "var(--tp-accent, #6366f1)",
+            background: "var(--tp-accent, #f59e0b)",
             position: "relative",
             overflow: "hidden"
           }}>
@@ -774,7 +774,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
                               <span>📅 Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                             )}
                             {task.recurring !== "None" && (
-                              <span style={{ color: "#818cf8" }}>🔄 {task.recurring}</span>
+                              <span style={{ color: "#fbbf24" }}>🔄 {task.recurring}</span>
                             )}
                           </div>
                         </div>
@@ -792,7 +792,7 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
                           {task.priority}
                         </span>
                         
-                        <span style={{ fontSize: "0.8rem", color: "#818cf8", fontWeight: "700" }}>{task.progress}%</span>
+                        <span style={{ fontSize: "0.8rem", color: "#fbbf24", fontWeight: "700" }}>{task.progress}%</span>
                       </div>
                     </div>
                   ))
@@ -995,9 +995,9 @@ export default function TaskPlanner({ roomId: editorRoomId }) {
                               }
                             }}
                             style={{
-                              background: isSelected ? "rgba(99, 102, 241, 0.25)" : "rgba(255,255,255,0.05)",
-                              border: `1px solid ${isSelected ? "#6366f1" : "var(--tp-glass-border)"}`,
-                              color: isSelected ? "#fff" : "#9ca3af",
+                              background: isSelected ? "rgba(245, 158, 11, 0.2)" : "rgba(255,255,255,0.05)",
+                              border: `1px solid ${isSelected ? "#f59e0b" : "var(--tp-glass-border)"}`,
+                              color: isSelected ? "#f59e0b" : "#9ca3af",
                               padding: "4px 8px",
                               borderRadius: "4px",
                               fontSize: "0.7rem",

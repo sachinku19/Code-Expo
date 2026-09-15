@@ -64,6 +64,9 @@ const DashboardLinkedinIcon = ({ size = 13 }) => (
 import ReportUserModal from "../components/social/ReportUserModal";
 import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
 import EditRoomModal from "../components/modals/EditRoomModal";
+import RoomDetailsModal from "../components/modals/RoomDetailsModal";
+import { BadgeInsignia, RankingCrest } from "../components/badges/BadgeInsignia";
+import BadgeInspectModal from "../components/badges/BadgeInspectModal";
 import { getPersonalDashboard } from "../services/plannerService";
 import {
   Plus, LogIn, History as HistoryIcon, User,
@@ -502,7 +505,7 @@ const ProfilePostCard = ({ post, onOpen, user, onDelete, onReport }) => {
             {author.avatar ? (
               <img src={author.avatar} alt={author.username} className="profile-card-avatar" />
             ) : (
-              <div className="profile-card-avatar-fallback" style={{ backgroundColor: "#aa3bff" }}>
+              <div className="profile-card-avatar-fallback" style={{ backgroundColor: "#f59e0b" }}>
                 {(author.username || "D").charAt(0).toUpperCase()}
               </div>
             )}
@@ -1554,6 +1557,7 @@ function Dashboard() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifFilter, setNotifFilter] = useState("all");
   const [toasts, setToasts] = useState([]);
+  const [inspectingBadge, setInspectingBadge] = useState(null);
 
   // Viewed user states
   const [viewingUserProfile, setViewingUserProfile] = useState(null);
@@ -2317,6 +2321,9 @@ function Dashboard() {
 
   const [publicRooms, setPublicRooms] = useState(() => loadFromCache("ce_cache_publicRooms", []));
   const [publicRoomsSearch, setPublicRoomsSearch] = useState("");
+  const [liveSubTab, setLiveSubTab] = useState("live");
+  const [showLiveHowItWorks, setShowLiveHowItWorks] = useState(false);
+  const [liveRoomsSearch, setLiveRoomsSearch] = useState("");
   const [showAllPublicRooms, setShowAllPublicRooms] = useState(false);
   const [roomsTab, setRoomsTab] = useState(() => localStorage.getItem("ce_roomsTab") || "public");
   useEffect(() => {
@@ -2358,7 +2365,9 @@ function Dashboard() {
     const uMatch = path.match(/^\/u\/([a-zA-Z0-9_-]+)/);
     if (uMatch && uMatch[1]) {
       const target = uMatch[1];
-      if (target && target.toLowerCase() !== user?.username?.toLowerCase() && target !== user?._id && target !== user?.id) {
+      const targetLower = String(target || "").toLowerCase();
+      const userLower = String(user?.username || "").toLowerCase();
+      if (target && targetLower !== userLower && target !== user?._id && target !== user?.id) {
         return target;
       }
     }
@@ -2366,7 +2375,9 @@ function Dashboard() {
     // 2. Try matching /dashboard/profile/:userId
     if (path.startsWith("/dashboard/profile/")) {
       const target = path.substring("/dashboard/profile/".length);
-      if (target && target.toLowerCase() !== user?.username?.toLowerCase() && target !== user?._id && target !== user?.id) {
+      const targetLower = String(target || "").toLowerCase();
+      const userLower = String(user?.username || "").toLowerCase();
+      if (target && targetLower !== userLower && target !== user?._id && target !== user?.id) {
         return target;
       }
     }
@@ -2374,8 +2385,12 @@ function Dashboard() {
     // 3. Fallback to search query parameters
     const params = new URLSearchParams(location.search);
     const target = params.get("user") || params.get("username") || params.get("userId");
-    if (target && target.toLowerCase() !== user?.username?.toLowerCase() && target !== user?._id && target !== user?.id) {
-      return target;
+    if (target) {
+      const targetLower = String(target || "").toLowerCase();
+      const userLower = String(user?.username || "").toLowerCase();
+      if (targetLower !== userLower && target !== user?._id && target !== user?.id) {
+        return target;
+      }
     }
 
     return null;
@@ -2457,13 +2472,13 @@ function Dashboard() {
   useEffect(() => {
     const handleMatch = location.pathname.match(/^\/u\/([a-zA-Z0-9_]+)/);
     if (handleMatch && handleMatch[1]) {
-      const routeHandle = handleMatch[1].toLowerCase();
-      const isOwnProfile = user && user.username && user.username.toLowerCase() === routeHandle;
+      const routeHandle = String(handleMatch[1] || "").toLowerCase();
+      const isOwnProfile = user && user.username && String(user.username).toLowerCase() === routeHandle;
       if (isOwnProfile) {
         setViewingUserProfile(null);
         setViewingUserStats(null);
         fetchProfilePosts(user.id || user._id);
-      } else if (!viewingUserProfile || viewingUserProfile.username?.toLowerCase() !== routeHandle) {
+      } else if (!viewingUserProfile || String(viewingUserProfile.username || "").toLowerCase() !== routeHandle) {
         handleViewUserProfile(routeHandle);
       }
       return;
@@ -2476,7 +2491,7 @@ function Dashboard() {
       }
 
       if (userId) {
-        const isOwnProfile = user && (String(userId) === String(user.id) || String(userId) === String(user._id) || (user.username && user.username.toLowerCase() === String(userId).toLowerCase()));
+        const isOwnProfile = user && (String(userId) === String(user.id) || String(userId) === String(user._id) || (user.username && String(user.username).toLowerCase() === String(userId).toLowerCase()));
         if (isOwnProfile) {
           setViewingUserProfile(null);
           setViewingUserStats(null);
@@ -2484,7 +2499,7 @@ function Dashboard() {
           if (user.username) {
             navigate(`/u/${user.username}`, { replace: true });
           }
-        } else if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId) && viewingUserProfile.username?.toLowerCase() !== String(userId).toLowerCase())) {
+        } else if (!viewingUserProfile || (String(viewingUserProfile._id) !== String(userId) && String(viewingUserProfile.id) !== String(userId) && String(viewingUserProfile.username || "").toLowerCase() !== String(userId).toLowerCase())) {
           handleViewUserProfile(userId);
         }
       } else {
@@ -3295,9 +3310,9 @@ function Dashboard() {
   useEffect(() => {
     window.handleGlobalProfileNav = (targetUserId, targetUsername) => {
       // 1. If own profile
-      const isOwnProfile = user && (String(targetUserId) === String(user.id) || String(targetUserId) === String(user._id) || (targetUsername && targetUsername.toLowerCase() === user.username?.toLowerCase()));
+      const isOwnProfile = user && (String(targetUserId) === String(user.id) || String(targetUserId) === String(user._id) || (targetUsername && String(targetUsername).toLowerCase() === String(user.username || "").toLowerCase()));
       if (isOwnProfile) {
-        const isCurrentOwnPath = location.pathname === "/dashboard/profile" || (user?.username && location.pathname.toLowerCase() === `/u/${user.username.toLowerCase()}`);
+        const isCurrentOwnPath = location.pathname === "/dashboard/profile" || (user?.username && location.pathname.toLowerCase() === `/u/${String(user.username).toLowerCase()}`);
         if (isCurrentOwnPath) {
           window.scrollTo({ top: 0, behavior: "smooth" });
           const scrollEl = document.querySelector(".ce-dashboard-main-content") || document.querySelector(".ce-dashboard-container");
@@ -3311,7 +3326,7 @@ function Dashboard() {
       }
 
       // 2. If already viewing this public profile
-      const isAlreadyViewing = viewingUserProfile && (String(targetUserId) === String(viewingUserProfile._id) || String(targetUserId) === String(viewingUserProfile.id) || (targetUsername && targetUsername.toLowerCase() === viewingUserProfile.username?.toLowerCase()));
+      const isAlreadyViewing = viewingUserProfile && (String(targetUserId) === String(viewingUserProfile._id) || String(targetUserId) === String(viewingUserProfile.id) || (targetUsername && String(targetUsername).toLowerCase() === String(viewingUserProfile.username || "").toLowerCase()));
       if (isAlreadyViewing) {
         window.scrollTo({ top: 0, behavior: "smooth" });
         const scrollEl = document.querySelector(".ce-dashboard-main-content") || document.querySelector(".ce-dashboard-container");
@@ -5010,7 +5025,7 @@ function Dashboard() {
                     {activeAnnouncements
                       .filter(ann => !dismissedAnnouncements.includes(ann._id))
                       .map((ann) => (
-                        <div key={ann._id} className={`ce-announcement-card severity-${ann.severity.toLowerCase()}`}>
+                        <div key={ann._id} className={`ce-announcement-card severity-${String(ann.severity || "info").toLowerCase()}`}>
                           <div className="announcement-content-row">
                             <div className="announcement-icon-box">
                               {ann.severity === "WARNING" && <Wrench size={16} />}
@@ -5664,7 +5679,7 @@ function Dashboard() {
                           {/* LEFT COLUMN: DAILY CODING QUEST */}
                           <div className="bottom-highlight-card daily-quest-card">
                             <div className="highlight-card-header">
-                              <Sparkles size={16} className="quest-sparkle-icon" style={{ color: "#a855f7" }} />
+                              <Sparkles size={16} className="quest-sparkle-icon" style={{ color: "var(--ce-primary)" }} />
                               <h4>Daily Coding Quest</h4>
                             </div>
                             <div className="quest-content">
@@ -5674,7 +5689,7 @@ function Dashboard() {
                                 <p className="quest-desc">{todayQuest.desc}</p>
                               </div>
                               <div className="quest-solving-banner">
-                                <BookOpen size={14} className="banner-icon" style={{ color: "#c084fc" }} />
+                                <BookOpen size={14} className="banner-icon" style={{ color: "var(--ce-primary)" }} />
                                 <span>You should solve this challenge!</span>
                               </div>
                             </div>
@@ -5689,7 +5704,7 @@ function Dashboard() {
                           >
                             <div className="highlight-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <Trophy size={16} className="leaderboard-trophy-icon" style={{ color: "#eab308" }} />
+                                <Trophy size={16} className="leaderboard-trophy-icon" style={{ color: "#f59e0b" }} />
                                 <h4>Weekly Champions</h4>
                               </div>
                               <ChevronRight size={14} style={{ color: "var(--ce-text-muted)", opacity: 0.7 }} />
@@ -5796,7 +5811,7 @@ function Dashboard() {
                           {/* RIGHT COLUMN: DEVELOPER DNA / LANGUAGE MASTERY */}
                           <div className="bottom-highlight-card coding-dna-card">
                             <div className="highlight-card-header">
-                              <Activity size={16} className="dna-activity-icon" style={{ color: "#3b82f6" }} />
+                              <Activity size={16} className="dna-activity-icon" style={{ color: "var(--ce-primary)" }} />
                               <h4>Developer DNA</h4>
                             </div>
                             <div className="dna-content">
@@ -6435,229 +6450,150 @@ function Dashboard() {
                 transition={{ duration: 0.22, ease: "easeInOut" }}
                 style={{ width: "100%", height: "100%" }}
               >
-                <div className="room-requests-section-container" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                <div className="room-requests-section-container">
+                  {/* 1. TOP HEADER SECTION */}
+                  <div className="ce-live-header-section">
+                    <div className="ce-live-header-left">
+                      <h2 className="ce-live-title">Room Requests & Workspaces</h2>
+                      <p className="ce-live-subtitle">Manage workspace permissions, review developer join requests, and track your sent requests.</p>
+                    </div>
+                    <div className="ce-live-header-right">
+                      <button
+                        className="ce-live-launch-btn"
+                        onClick={() => {
+                          setFormData({ title: "", language: "javascript", isPrivate: false });
+                          setShowQuickCreateModal(true);
+                        }}
+                        type="button"
+                      >
+                        <Plus size={16} />
+                        <span>Create Workspace</span>
+                      </button>
+                    </div>
+                  </div>
 
-
-                  {/* Stats Header for Rooms - Redesigned as Hanging Lamps (No shadows/glows) */}
-                  <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "6px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "40px", flexWrap: "wrap", zIndex: 10 }}>
-                    {/* The horizontal stick support */}
-                    <div className="ce-lamp-support-stick" style={{
-                      position: "absolute",
-                      top: "0px",
-                      left: "0%",
-                      width: "100%",
-                      height: "6px",
-                      background: "linear-gradient(to right, #2d3748, #4a5568, #718096, #4a5568, #2d3748)",
-                      borderRadius: "0px",
-                      boxShadow: "none",
-                      zIndex: 1
-                    }} />
-
-                    {/* Lamp 1: My Workspaces */}
-                    <div className="ce-hanging-lamp-card-wrapper">
-                      <div className="ce-lamp-rope" style={{
-                        width: "3px",
-                        height: "40px",
-                        background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
-                        boxShadow: "none"
-                      }} />
-                      <div className="ce-lamp-cap" style={{
-                        width: "20px",
-                        height: "8px",
-                        background: "#4a5568",
-                        borderRadius: "4px 4px 0 0",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        boxShadow: "none",
-                        marginBottom: "-1px"
-                      }} />
-                      <div className="ce-hanging-lamp-card purple-lamp">
-                        <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
-                          <FolderGit size={18} />
-                        </div>
-                        <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>My Workspaces</span>
-                        <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#a78bfa", marginTop: "4px", zIndex: 1 }}>{ownedRooms.length}</span>
-                        <span className="stat-card-subtitle" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", marginTop: "6px", textAlign: "center", opacity: 0.85, zIndex: 1 }}>Total workspaces created by you</span>
+                  {/* 2. STATS CARDS GRID (4 HORIZONTAL CARDS) */}
+                  <div className="ce-req-stats-grid">
+                    {/* Card 1: My Workspaces */}
+                    <div className="ce-live-stat-card">
+                      <div className="ce-live-stat-icon-wrap purple">
+                        <FolderGit size={20} />
+                      </div>
+                      <div className="ce-live-stat-content">
+                        <span className="ce-live-stat-label">My Workspaces</span>
+                        <span className="ce-live-stat-val">{ownedRooms.length}</span>
+                        <span className="ce-live-stat-sub">Total rooms created by you</span>
                       </div>
                     </div>
 
-                    {/* Lamp 2: Pending Access Requests */}
-                    <div className="ce-hanging-lamp-card-wrapper">
-                      <div className="ce-lamp-rope" style={{
-                        width: "3px",
-                        height: "40px",
-                        background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
-                        boxShadow: "none"
-                      }} />
-                      <div className="ce-lamp-cap" style={{
-                        width: "20px",
-                        height: "8px",
-                        background: "#4a5568",
-                        borderRadius: "4px 4px 0 0",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        boxShadow: "none",
-                        marginBottom: "-1px"
-                      }} />
-                      <div className="ce-hanging-lamp-card yellow-lamp">
-                        <div className="stat-card-icon-wrapper amber-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
-                          <ShieldAlert size={18} />
-                        </div>
-                        <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Pending Requests</span>
-                        <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#fbbf24", marginTop: "4px", zIndex: 1 }}>{joinRequests.length}</span>
-                        <span className="stat-card-subtitle" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", marginTop: "6px", textAlign: "center", opacity: 0.85, zIndex: 1 }}>Requests waiting for your approval</span>
+                    {/* Card 2: Pending Requests */}
+                    <div className="ce-live-stat-card">
+                      <div className="ce-live-stat-icon-wrap yellow">
+                        <ShieldAlert size={20} />
+                      </div>
+                      <div className="ce-live-stat-content">
+                        <span className="ce-live-stat-label">Pending Requests</span>
+                        <span className="ce-live-stat-val">{joinRequests.length}</span>
+                        <span className="ce-live-stat-sub">Requests waiting for approval</span>
                       </div>
                     </div>
 
-                    {/* Lamp 3: Private Rooms */}
-                    <div className="ce-hanging-lamp-card-wrapper">
-                      <div className="ce-lamp-rope" style={{
-                        width: "3px",
-                        height: "40px",
-                        background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
-                        boxShadow: "none"
-                      }} />
-                      <div className="ce-lamp-cap" style={{
-                        width: "20px",
-                        height: "8px",
-                        background: "#4a5568",
-                        borderRadius: "4px 4px 0 0",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        boxShadow: "none",
-                        marginBottom: "-1px"
-                      }} />
-                      <div className="ce-hanging-lamp-card purple-lamp" style={{ borderColor: "rgba(168, 85, 247, 0.25)" }}>
-                        <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
-                          <Lock size={18} />
-                        </div>
-                        <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Private Rooms</span>
-                        <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#c084fc", marginTop: "4px", zIndex: 1 }}>{ownedRooms.filter(r => r.isPrivate).length}</span>
-                        <span className="stat-card-subtitle" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", marginTop: "6px", textAlign: "center", opacity: 0.85, zIndex: 1 }}>Private rooms created by you</span>
+                    {/* Card 3: Private Rooms */}
+                    <div className="ce-live-stat-card">
+                      <div className="ce-live-stat-icon-wrap indigo">
+                        <Lock size={20} />
+                      </div>
+                      <div className="ce-live-stat-content">
+                        <span className="ce-live-stat-label">Private Rooms</span>
+                        <span className="ce-live-stat-val">{ownedRooms.filter(r => r.isPrivate).length}</span>
+                        <span className="ce-live-stat-sub">Rooms with access control</span>
                       </div>
                     </div>
 
-                    {/* Lamp 4: Live Active Rooms */}
-                    <div className="ce-hanging-lamp-card-wrapper">
-                      <div className="ce-lamp-rope" style={{
-                        width: "3px",
-                        height: "40px",
-                        background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
-                        boxShadow: "none"
-                      }} />
-                      <div className="ce-lamp-cap" style={{
-                        width: "20px",
-                        height: "8px",
-                        background: "#4a5568",
-                        borderRadius: "4px 4px 0 0",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        boxShadow: "none",
-                        marginBottom: "-1px"
-                      }} />
-                      <div className="ce-hanging-lamp-card green-lamp">
-                        <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
-                          <Radio size={18} />
-                        </div>
-                        <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Live Active Rooms</span>
-                        <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#34d399", marginTop: "4px", zIndex: 1 }}>{ownedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}</span>
-                        <span className="stat-card-subtitle" style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", marginTop: "6px", textAlign: "center", opacity: 0.85, zIndex: 1 }}>Rooms currently live and active</span>
+                    {/* Card 4: Live Active Rooms */}
+                    <div className="ce-live-stat-card">
+                      <div className="ce-live-stat-icon-wrap green">
+                        <Radio size={20} />
+                      </div>
+                      <div className="ce-live-stat-content">
+                        <span className="ce-live-stat-label">Live Active Rooms</span>
+                        <span className="ce-live-stat-val">
+                          {ownedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}
+                        </span>
+                        <span className="ce-live-stat-sub">Rooms currently active</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Tab Navigation Pill Bar */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid var(--ce-border)", paddingBottom: "16px", marginBottom: "16px" }}>
-                    <div className="ce-segmented-control" style={{ display: "flex", gap: "6px", background: activeTheme === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)", border: "1px solid var(--ce-border)", padding: "4px", borderRadius: "12px" }}>
+                  {/* 3. TABS & SEARCH BAR */}
+                  <div className="ce-live-tabs-bar">
+                    <div className="ce-live-tab-buttons">
                       <button
-                        className={`ce-pill-btn ${roomRequestsTab === "myrooms" ? "active" : ""}`}
+                        className={`ce-live-tab-btn ${roomRequestsTab === "myrooms" ? "active" : ""}`}
                         onClick={() => setRoomRequestsTab("myrooms")}
-                        style={{
-                          padding: "8px 18px",
-                          borderRadius: "10px",
-                          border: "none",
-                          background: roomRequestsTab === "myrooms" ? "linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%)" : "transparent",
-                          color: roomRequestsTab === "myrooms" ? "#fff" : "var(--ce-text-muted)",
-                          boxShadow: roomRequestsTab === "myrooms" ? "0 4px 12px var(--ce-primary-glow)" : "none",
-                          fontWeight: "700",
-                          fontSize: "0.82rem",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          transition: "all 0.2s ease"
-                        }}
+                        type="button"
                       >
-                        <FolderGit size={14} /> My Created Rooms ({ownedRooms.length})
+                        <FolderGit size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                        My Created Rooms
+                        <span className="ce-tab-badge">{ownedRooms.length}</span>
                       </button>
                       <button
-                        className={`ce-pill-btn ${roomRequestsTab === "incoming" ? "active" : ""}`}
+                        className={`ce-live-tab-btn ${roomRequestsTab === "incoming" ? "active" : ""}`}
                         onClick={() => setRoomRequestsTab("incoming")}
-                        style={{
-                          padding: "8px 18px",
-                          borderRadius: "10px",
-                          border: "none",
-                          background: roomRequestsTab === "incoming" ? "linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%)" : "transparent",
-                          color: roomRequestsTab === "incoming" ? "#fff" : "var(--ce-text-muted)",
-                          boxShadow: roomRequestsTab === "incoming" ? "0 4px 12px var(--ce-primary-glow)" : "none",
-                          fontWeight: "700",
-                          fontSize: "0.82rem",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          transition: "all 0.2s ease"
-                        }}
+                        type="button"
                       >
-                        <ShieldAlert size={14} /> Incoming Requests ({joinRequests.length})
-                        {joinRequests.length > 0 && (
-                          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-                        )}
+                        <ShieldAlert size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                        Incoming Requests
+                        <span className={`ce-tab-badge ${joinRequests.length > 0 ? "highlight" : ""}`}>
+                          {joinRequests.length}
+                        </span>
                       </button>
                       <button
-                        className={`ce-pill-btn ${roomRequestsTab === "sent" ? "active" : ""}`}
+                        className={`ce-live-tab-btn ${roomRequestsTab === "sent" ? "active" : ""}`}
                         onClick={() => setRoomRequestsTab("sent")}
-                        style={{
-                          padding: "8px 18px",
-                          borderRadius: "10px",
-                          border: "none",
-                          background: roomRequestsTab === "sent" ? "linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%)" : "transparent",
-                          color: roomRequestsTab === "sent" ? "#fff" : "var(--ce-text-muted)",
-                          boxShadow: roomRequestsTab === "sent" ? "0 4px 12px var(--ce-primary-glow)" : "none",
-                          fontWeight: "700",
-                          fontSize: "0.82rem",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          transition: "all 0.2s ease"
-                        }}
+                        type="button"
                       >
-                        <Send size={14} /> Sent Requests ({mySentRequests.length})
+                        <Send size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                        Sent Requests
+                        <span className="ce-tab-badge">{mySentRequests.length}</span>
                       </button>
                     </div>
 
-                    {roomRequestsTab === "myrooms" && (
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <div className="section-search-container" style={{ minWidth: "240px", marginBottom: 0, padding: "6px 14px", borderRadius: "9999px" }}>
-                          <Search size={14} className="section-search-icon" />
-                          <input
-                            type="text"
-                            placeholder="Search my rooms..."
-                            value={roomRequestsSearch}
-                            onChange={(e) => setRoomRequestsSearch(e.target.value)}
-                            className="section-search-input"
-                          />
-                        </div>
+                    <div className="ce-live-controls-right">
+                      <div className="ce-live-search-box">
+                        <Search size={14} color="#64748b" />
+                        <input
+                          type="text"
+                          placeholder={
+                            roomRequestsTab === "myrooms"
+                              ? "Search my rooms..."
+                              : roomRequestsTab === "incoming"
+                              ? "Search incoming requests..."
+                              : "Search sent requests..."
+                          }
+                          value={roomRequestsTab === "incoming" ? manageRequestSearch : roomRequestsSearch}
+                          onChange={(e) => {
+                            if (roomRequestsTab === "incoming") {
+                              setManageRequestSearch(e.target.value);
+                              setManageRequestLimit(10);
+                            } else {
+                              setRoomRequestsSearch(e.target.value);
+                            }
+                          }}
+                          className="ce-live-search-input"
+                        />
                       </div>
-                    )}
+                    </div>
                   </div>
 
-                  {/* TAB CONTENT: MY CREATED ROOMS */}
+                  {/* TAB 1: MY CREATED ROOMS */}
                   {roomRequestsTab === "myrooms" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
-                      {/* Filter Quick Pills */}
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                        <span style={{ fontSize: "0.78rem", fontWeight: "600", color: "var(--ce-text-muted)", marginRight: "4px" }}>Filter:</span>
+                      {/* Filter Chips */}
+                      <div className="ce-req-filter-chips-wrap">
+                        <span style={{ fontSize: "0.78rem", fontWeight: "600", color: "#94a3b8", marginRight: "4px" }}>Filter:</span>
                         {[
-                          { id: "all", label: "All Rooms" },
+                          { id: "all", label: `All Rooms (${ownedRooms.length})` },
                           { id: "pending", label: `Pending Requests (${joinRequests.length})` },
                           { id: "private", label: "Private Only" },
                           { id: "public", label: "Public Only" }
@@ -6665,16 +6601,8 @@ function Dashboard() {
                           <button
                             key={f.id}
                             onClick={() => setRoomRequestsFilter(f.id)}
-                            style={{
-                              padding: "4px 12px",
-                              borderRadius: "16px",
-                              fontSize: "0.75rem",
-                              fontWeight: "600",
-                              border: roomRequestsFilter === f.id ? "1px solid var(--ce-primary)" : "1px solid var(--ce-border)",
-                              background: roomRequestsFilter === f.id ? "rgba(139, 92, 246, 0.15)" : "transparent",
-                              color: roomRequestsFilter === f.id ? "var(--ce-primary)" : "var(--ce-text-muted)",
-                              cursor: "pointer"
-                            }}
+                            className={`ce-req-filter-chip ${roomRequestsFilter === f.id ? "active" : ""}`}
+                            type="button"
                           >
                             {f.label}
                           </button>
@@ -6682,15 +6610,25 @@ function Dashboard() {
                       </div>
 
                       {ownedRooms.length === 0 ? (
-                        <div className="empty-state-card" style={{ padding: "48px 24px", textAlign: "center" }}>
-                          <FolderGit size={36} className="empty-state-icon" style={{ color: "var(--ce-primary)", marginBottom: "16px" }} />
-                          <h3 style={{ margin: "0 0 8px 0", color: "var(--ce-text-h)", fontSize: "1.1rem" }}>No Workspaces Created Yet</h3>
-                          <p style={{ margin: "0 0 20px 0", color: "var(--ce-text-muted)", fontSize: "0.85rem" }}>
+                        <div className="ce-live-empty-card">
+                          <div className="ce-live-empty-graphic">
+                            <div className="ce-graphic-topbar">
+                              <span className="ce-graphic-dot" />
+                              <span className="ce-graphic-dot" />
+                              <span className="ce-graphic-dot" />
+                            </div>
+                            <span className="ce-graphic-code-brackets">&lt;/&gt;</span>
+                            <div className="ce-graphic-users-badge">
+                              <FolderGit size={14} />
+                            </div>
+                          </div>
+                          <h3 className="ce-live-empty-title">No Workspaces Created Yet</h3>
+                          <p className="ce-live-empty-desc">
                             Create your first collaborative code room to start inviting developers and receiving join requests!
                           </p>
                           <button
-                            className="ce-btn-primary"
-                            style={{ margin: "0 auto", padding: "10px 20px" }}
+                            className="ce-live-launch-btn"
+                            type="button"
                             onClick={() => {
                               setFormData({ title: "", language: "javascript", isPrivate: false });
                               setShowQuickCreateModal(true);
@@ -6700,12 +6638,12 @@ function Dashboard() {
                           </button>
                         </div>
                       ) : filteredOwnedRooms.length === 0 ? (
-                        <div className="empty-state-card" style={{ padding: "32px", textAlign: "center" }}>
-                          <Search size={24} className="empty-state-icon" style={{ marginBottom: "8px" }} />
-                          <p style={{ color: "var(--ce-text-muted)", margin: 0 }}>No rooms match your filter or search criteria.</p>
+                        <div className="ce-live-empty-card" style={{ padding: "36px" }}>
+                          <Search size={28} color="#64748b" style={{ marginBottom: 10 }} />
+                          <p style={{ color: "#94a3b8", margin: 0, fontSize: "0.9rem" }}>No rooms match your filter or search criteria.</p>
                         </div>
                       ) : (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
+                        <div className="ce-req-rooms-grid">
                           {filteredOwnedRooms.map(room => {
                             const roomPendingRequests = joinRequests.filter(req => req.roomId === room.roomId);
                             const liveRoomObj = liveRooms.find(lr => lr.roomId === room.roomId);
@@ -6719,73 +6657,44 @@ function Dashboard() {
                             const isJava = lang === "java";
                             const isHtml = lang === "html";
 
-                            const langColor = isJS ? "#f59e0b" : isPy ? "#3b82f6" : isCpp ? "#06b6d4" : isJava ? "#ef4444" : isHtml ? "#f97316" : "var(--ce-primary)";
-                            const langBg = isJS ? "rgba(245, 158, 11, 0.12)" : isPy ? "rgba(59, 130, 246, 0.12)" : isCpp ? "rgba(6, 182, 212, 0.12)" : isJava ? "rgba(239, 68, 68, 0.12)" : isHtml ? "rgba(249, 115, 22, 0.12)" : "rgba(139, 92, 246, 0.12)";
-                            const langBorder = isJS ? "1px solid rgba(245, 158, 11, 0.25)" : isPy ? "1px solid rgba(59, 130, 246, 0.25)" : isCpp ? "1px solid rgba(6, 182, 212, 0.25)" : isJava ? "1px solid rgba(239, 68, 68, 0.25)" : isHtml ? "1px solid rgba(249, 115, 22, 0.25)" : "1px solid rgba(139, 92, 246, 0.25)";
+                            const langColor = isJS ? "#f59e0b" : isPy ? "#3b82f6" : isCpp ? "#06b6d4" : isJava ? "#ef4444" : isHtml ? "#f97316" : "#a855f7";
+                            const langBg = isJS ? "rgba(245, 158, 11, 0.12)" : isPy ? "rgba(59, 130, 246, 0.12)" : isCpp ? "rgba(6, 182, 212, 0.12)" : isJava ? "rgba(239, 68, 68, 0.12)" : isHtml ? "rgba(249, 115, 22, 0.12)" : "rgba(168, 85, 247, 0.12)";
+                            const langBorder = isJS ? "1px solid rgba(245, 158, 11, 0.25)" : isPy ? "1px solid rgba(59, 130, 246, 0.25)" : isCpp ? "1px solid rgba(6, 182, 212, 0.25)" : isJava ? "1px solid rgba(239, 68, 68, 0.25)" : isHtml ? "1px solid rgba(249, 115, 22, 0.25)" : "1px solid rgba(168, 85, 247, 0.25)";
 
                             return (
                               <div
                                 key={room.roomId || room._id}
-                                className="ce-my-room-card"
-                                style={{
-                                  background: activeTheme === "light"
-                                    ? "linear-gradient(135deg, #ffffff 0%, rgba(245, 245, 255, 0.4) 100%)"
-                                    : "linear-gradient(135deg, var(--ce-surface-card) 0%, rgba(255, 255, 255, 0.01) 100%)",
-                                  border: roomPendingRequests.length > 0 ? "1.5px solid #f59e0b" : "1px solid var(--ce-border)",
-                                  borderRadius: "14px",
-                                  padding: "20px",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "16px",
-                                  position: "relative",
-                                  boxShadow: roomPendingRequests.length > 0 ? "0 8px 24px rgba(245, 158, 11, 0.12)" : "0 4px 15px rgba(0,0,0,0.06)",
-                                  transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.transform = "translateY(-4px)";
-                                  e.currentTarget.style.boxShadow = roomPendingRequests.length > 0
-                                    ? "0 12px 30px rgba(245, 158, 11, 0.22)"
-                                    : "0 12px 30px rgba(139, 92, 246, 0.12)";
-                                  if (roomPendingRequests.length === 0) {
-                                    e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.45)";
-                                  }
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.transform = "translateY(0)";
-                                  e.currentTarget.style.boxShadow = roomPendingRequests.length > 0
-                                    ? "0 8px 24px rgba(245, 158, 11, 0.12)"
-                                    : "0 4px 15px rgba(0,0,0,0.06)";
-                                  e.currentTarget.style.borderColor = roomPendingRequests.length > 0 ? "#f59e0b" : "var(--ce-border)";
-                                }}
+                                className={`ce-req-room-card ${roomPendingRequests.length > 0 ? "has-pending" : ""}`}
                               >
                                 {/* Card Header */}
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-                                  <div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
-                                      <h3 style={{ fontSize: "1.08rem", fontWeight: "800", color: "var(--ce-text-h)", margin: 0 }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "6px" }}>
+                                      <h3 style={{ fontSize: "1.05rem", fontWeight: "800", color: "var(--ce-text-h, #ffffff)", margin: 0 }}>
                                         {room.title}
                                       </h3>
                                       <span style={{ fontSize: "0.68rem", fontWeight: "700", textTransform: "uppercase", padding: "2px 8px", borderRadius: "6px", background: langBg, color: langColor, border: langBorder }}>
                                         {room.language || "javascript"}
                                       </span>
                                     </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", color: "var(--ce-text-muted)" }}>
-                                      <span>ID: <code style={{ background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: "4px", color: "var(--ce-text)" }}>{room.roomId}</code></span>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", color: "#94a3b8" }}>
+                                      <span>ID: <code style={{ background: "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: "4px", color: "#cbd5e1" }}>{room.roomId}</code></span>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           navigator.clipboard.writeText(room.roomId);
                                           addToast("Room ID copied to clipboard!", "success");
                                         }}
-                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--ce-primary)", display: "flex", alignItems: "center" }}
+                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#f59e0b", display: "flex", alignItems: "center" }}
                                         title="Copy Room ID"
+                                        type="button"
                                       >
                                         <Copy size={12} />
                                       </button>
                                     </div>
                                   </div>
 
-                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0 }}>
                                     {room.isPrivate ? (
                                       <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "3px 8px", borderRadius: "12px", background: "rgba(239, 68, 68, 0.12)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.22)", display: "flex", alignItems: "center", gap: "4px" }}>
                                         <Lock size={11} /> Private
@@ -6796,8 +6705,8 @@ function Dashboard() {
                                       </span>
                                     )}
 
-                                    <span style={{ fontSize: "0.72rem", fontWeight: "600", color: isLive ? "#10b981" : "var(--ce-text-muted)", display: "flex", alignItems: "center", gap: "5px" }}>
-                                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isLive ? "#10b981" : "#9ca3af" }} />
+                                    <span style={{ fontSize: "0.72rem", fontWeight: "600", color: isLive ? "#10b981" : "#64748b", display: "flex", alignItems: "center", gap: "5px" }}>
+                                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isLive ? "#10b981" : "#64748b" }} />
                                       {isLive ? `${activeCount} Online` : "Idle"}
                                     </span>
                                   </div>
@@ -6805,18 +6714,19 @@ function Dashboard() {
 
                                 {/* Room Code Info for Private Rooms */}
                                 {room.isPrivate && room.joinCode && (
-                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(139, 92, 246, 0.04)", border: "1px dashed rgba(139, 92, 246, 0.25)", borderRadius: "8px", padding: "8px 12px" }}>
-                                    <span style={{ fontSize: "0.75rem", color: "var(--ce-text-muted)", fontWeight: "600" }}>Private Join Code:</span>
+                                  <div className="ce-req-code-box">
+                                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: "600" }}>Private Join Code:</span>
                                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                      <code style={{ fontSize: "0.82rem", fontWeight: "700", color: "var(--ce-primary)", letterSpacing: "1px" }}>{room.joinCode}</code>
+                                      <code style={{ fontSize: "0.82rem", fontWeight: "700", color: "#f59e0b", letterSpacing: "1px" }}>{room.joinCode}</code>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           navigator.clipboard.writeText(room.joinCode);
                                           addToast("Private code copied!", "success");
                                         }}
-                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--ce-primary)", display: "flex" }}
+                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#f59e0b", display: "flex" }}
                                         title="Copy Join Code"
+                                        type="button"
                                       >
                                         <Copy size={12} />
                                       </button>
@@ -6825,28 +6735,11 @@ function Dashboard() {
                                 )}
 
                                 {/* Action Buttons Footer */}
-                                <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "6px" }}>
+                                <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "4px" }}>
                                   <button
                                     onClick={() => proceedJoinRoom(room.roomId)}
-                                    style={{
-                                      flex: 1,
-                                      padding: "8px 14px",
-                                      borderRadius: "8px",
-                                      background: "linear-gradient(135deg, var(--ce-primary) 0%, #7c3aed 100%)",
-                                      color: "#fff",
-                                      border: "none",
-                                      fontSize: "0.82rem",
-                                      fontWeight: "750",
-                                      cursor: "pointer",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      gap: "6px",
-                                      boxShadow: "0 4px 12px var(--ce-primary-glow)",
-                                      transition: "transform 0.15s ease"
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
-                                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                    className="ce-req-btn-enter"
+                                    type="button"
                                   >
                                     <DoorOpen size={14} /> Enter Room
                                   </button>
@@ -6856,23 +6749,8 @@ function Dashboard() {
                                         setManageRequestsRoomId(room.roomId);
                                         setRoomRequestsTab("incoming");
                                       }}
-                                      style={{
-                                        padding: "8px 12px",
-                                        borderRadius: "8px",
-                                        background: roomPendingRequests.length > 0 ? "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" : "rgba(139, 92, 246, 0.06)",
-                                        color: roomPendingRequests.length > 0 ? "#fff" : "var(--ce-text)",
-                                        border: roomPendingRequests.length > 0 ? "none" : "1px solid var(--ce-border)",
-                                        boxShadow: roomPendingRequests.length > 0 ? "0 4px 12px rgba(245, 158, 11, 0.25)" : "none",
-                                        fontSize: "0.8rem",
-                                        fontWeight: "700",
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        transition: "all 0.15s ease"
-                                      }}
-                                      onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
-                                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                      className={`ce-req-btn-badge ${roomPendingRequests.length > 0 ? "highlight" : ""}`}
+                                      type="button"
                                       title="Manage Pending Access Requests"
                                     >
                                       <ShieldAlert size={14} /> Requests ({roomPendingRequests.length})
@@ -6880,22 +6758,8 @@ function Dashboard() {
                                   )}
                                   <button
                                     onClick={() => setSelectedRoomDetails(room)}
-                                    style={{
-                                      padding: "8px 12px",
-                                      borderRadius: "8px",
-                                      background: activeTheme === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                                      color: "var(--ce-text)",
-                                      border: "1px solid var(--ce-border)",
-                                      fontSize: "0.8rem",
-                                      fontWeight: "600",
-                                      cursor: "pointer",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "4px",
-                                      transition: "all 0.15s ease"
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
-                                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                    className="ce-req-btn-secondary"
+                                    type="button"
                                     title="View Members & Details"
                                   >
                                     <SettingsIcon size={14} /> Manage
@@ -6909,7 +6773,7 @@ function Dashboard() {
                     </div>
                   )}
 
-                  {/* TAB CONTENT: INCOMING REQUESTS */}
+                  {/* TAB 2: INCOMING REQUESTS */}
                   {roomRequestsTab === "incoming" && (() => {
                     const filteredRequests = joinRequests
                       .filter(req => {
@@ -6970,64 +6834,37 @@ function Dashboard() {
 
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
                         {/* Go Back Link if viewing room requests for a specific room */}
                         {manageRequestsRoomId && (
-                          <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "4px", marginBottom: "10px" }}>
+                          <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "4px" }}>
                             <button
                               onClick={() => {
                                 setManageRequestsRoomId(null);
                                 setRoomRequestsTab("myrooms");
                               }}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                background: "none",
-                                border: "none",
-                                color: "var(--ce-primary)",
-                                fontWeight: "700",
-                                fontSize: "0.85rem",
-                                cursor: "pointer",
-                                padding: 0,
-                                transition: "color 0.2s ease"
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = "var(--ce-text-h)"}
-                              onMouseLeave={(e) => e.currentTarget.style.color = "var(--ce-primary)"}
+                              className="ce-req-back-btn"
+                              type="button"
                             >
-                              <ArrowLeft size={16} /> Back to My Workspaces
+                              <ArrowLeft size={15} /> Back to My Workspaces
                             </button>
                           </div>
                         )}
 
                         {/* Banner Card Header */}
-                        <div style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                          gap: "16px",
-                          background: activeTheme === "light"
-                            ? "linear-gradient(135deg, rgba(139, 92, 246, 0.04) 0%, rgba(139, 92, 246, 0.01) 100%)"
-                            : "linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(139, 92, 246, 0.01) 100%)",
-                          border: "1px solid var(--ce-border)",
-                          borderRadius: "14px",
-                          padding: "18px 24px",
-                          boxShadow: "0 4px 15px rgba(0, 0, 0, 0.03)"
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "rgba(139, 92, 246, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ce-primary)", boxShadow: "0 0 10px rgba(139, 92, 246, 0.15)" }}>
+                        <div className="ce-req-banner">
+                          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                            <div className="ce-live-stat-icon-wrap yellow" style={{ width: 42, height: 42 }}>
                               <ShieldAlert size={20} />
                             </div>
                             <div>
-                              <h3 style={{ fontSize: "1.15rem", fontWeight: "800", color: "var(--ce-text-h)", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                              <h3 style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--ce-text-h, #ffffff)", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
                                 Pending Access Requests
-                                <span style={{ fontSize: "0.78rem", fontWeight: "750", background: "var(--ce-primary)", color: "#fff", padding: "2px 8px", borderRadius: "12px", boxShadow: "0 2px 6px var(--ce-primary-glow)" }}>
+                                <span style={{ fontSize: "0.76rem", fontWeight: "800", background: "#f59e0b", color: "#000000", padding: "2px 8px", borderRadius: "12px" }}>
                                   {filteredRequests.length}
                                 </span>
                               </h3>
-                              <p style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)", margin: "2px 0 0 0" }}>
-                                Manage and review developers who want to join your workspace sessions.
+                              <p style={{ fontSize: "0.8rem", color: "#94a3b8", margin: "3px 0 0 0" }}>
+                                Manage and review developers requesting access to your private workspaces.
                               </p>
                             </div>
                           </div>
@@ -7036,13 +6873,15 @@ function Dashboard() {
                             <div style={{ display: "flex", gap: "8px" }}>
                               <button
                                 onClick={handleRejectAll}
-                                style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", fontSize: "0.82rem", fontWeight: "700", cursor: "pointer" }}
+                                className="ce-req-btn-danger-outline"
+                                type="button"
                               >
                                 <X size={14} /> Decline All
                               </button>
                               <button
                                 onClick={handleAcceptAll}
-                                style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px", background: "var(--ce-primary)", color: "#fff", border: "none", fontSize: "0.82rem", fontWeight: "700", cursor: "pointer" }}
+                                className="ce-req-btn-success"
+                                type="button"
                               >
                                 <Check size={14} /> Approve All
                               </button>
@@ -7051,51 +6890,27 @@ function Dashboard() {
                         </div>
 
                         {joinRequests.length === 0 ? (
-                          <div className="empty-state-card" style={{ padding: "48px 24px", textAlign: "center" }}>
-                            <Check size={32} className="empty-state-icon" style={{ color: "#10b981", marginBottom: "12px" }} />
-                            <h3 style={{ margin: "0 0 6px 0", color: "var(--ce-text-h)" }}>No Pending Join Requests</h3>
-                            <p style={{ margin: 0, color: "var(--ce-text-muted)", fontSize: "0.84rem" }}>
+                          <div className="ce-live-empty-card">
+                            <Check size={36} color="#10b981" style={{ marginBottom: 12 }} />
+                            <h3 className="ce-live-empty-title">No Pending Join Requests</h3>
+                            <p className="ce-live-empty-desc">
                               All access requests for your private rooms have been processed!
                             </p>
                           </div>
                         ) : filteredRequests.length === 0 ? (
-                          <div className="empty-state-card" style={{ padding: "32px", textAlign: "center" }}>
-                            <Search size={24} className="empty-state-icon" style={{ marginBottom: "8px" }} />
-                            <p style={{ color: "var(--ce-text-muted)", margin: 0 }}>No pending requests match your search filter.</p>
+                          <div className="ce-live-empty-card" style={{ padding: "36px" }}>
+                            <Search size={28} color="#64748b" style={{ marginBottom: 8 }} />
+                            <p style={{ color: "#94a3b8", margin: 0, fontSize: "0.9rem" }}>No pending requests match your search filter.</p>
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
                             {/* Search and Sort Toolbar */}
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                                <div className="section-search-container" style={{ minWidth: "240px", marginBottom: 0, padding: "6px 12px" }}>
-                                  <Search size={14} className="section-search-icon" />
-                                  <input
-                                    type="text"
-                                    placeholder="Search users..."
-                                    value={manageRequestSearch}
-                                    onChange={(e) => {
-                                      setManageRequestSearch(e.target.value);
-                                      setManageRequestLimit(10);
-                                    }}
-                                    className="section-search-input"
-                                    aria-label="Search users by username"
-                                  />
-                                </div>
                                 <select
                                   value={manageRequestSort}
                                   onChange={(e) => setManageRequestSort(e.target.value)}
-                                  style={{
-                                    padding: "6px 12px",
-                                    borderRadius: "9999px",
-                                    border: "1px solid var(--ce-border)",
-                                    background: activeTheme === "light" ? "#fff" : "var(--ce-surface-card)",
-                                    color: "var(--ce-text)",
-                                    fontSize: "0.78rem",
-                                    outline: "none",
-                                    cursor: "pointer"
-                                  }}
+                                  className="ce-req-select-sort"
                                   aria-label="Sort join requests list"
                                 >
                                   <option value="newest">Newest First</option>
@@ -7103,14 +6918,13 @@ function Dashboard() {
                                 </select>
                               </div>
 
-                              <div style={{ fontSize: "0.82rem", color: "var(--ce-text-muted)" }}>
+                              <div style={{ fontSize: "0.82rem", color: "#94a3b8" }}>
                                 Showing 1-{Math.min(manageRequestLimit, filteredRequests.length)} of {filteredRequests.length} requests
                               </div>
                             </div>
 
                             {/* Split Layout: Left List vs Right Detail Panel */}
-                            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "24px" }} className="manage-requests-split-layout">
-
+                            <div className="ce-req-split-layout">
                               {/* Left Column: Requests Cards List */}
                               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                                 {filteredRequests.slice(0, manageRequestLimit).map(req => {
@@ -7119,22 +6933,7 @@ function Dashboard() {
                                     <div
                                       key={req.requestId}
                                       onClick={() => setSelectedRequestId(req.requestId)}
-                                      style={{
-                                        background: isActive
-                                          ? (activeTheme === "light" ? "rgba(139, 92, 246, 0.05)" : "rgba(139, 92, 246, 0.08)")
-                                          : (activeTheme === "light" ? "#fff" : "var(--ce-surface-card)"),
-                                        border: isActive ? "1.5px solid var(--ce-primary)" : "1px solid var(--ce-border)",
-                                        borderLeft: isActive ? "4px solid var(--ce-primary)" : "1px solid var(--ce-border)",
-                                        borderRadius: "12px",
-                                        padding: "16px",
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        cursor: "pointer",
-                                        boxShadow: isActive ? "0 4px 16px rgba(139, 92, 246, 0.12)" : "none",
-                                        transform: isActive ? "translateX(4px)" : "none",
-                                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
-                                      }}
+                                      className={`ce-req-user-item ${isActive ? "active" : ""}`}
                                     >
                                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                                         <div style={{ width: "40px", height: "40px", borderRadius: "50%", overflow: "hidden", background: req.user?.avatar ? "transparent" : getAvatarColor(req.username || req.user?.username || "D"), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "700", fontSize: "0.95rem" }}>
@@ -7145,13 +6944,13 @@ function Dashboard() {
                                           )}
                                         </div>
                                         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                                          <span style={{ fontSize: "0.9rem", fontWeight: "700", color: "var(--ce-text-h)" }}>
+                                          <span style={{ fontSize: "0.9rem", fontWeight: "700", color: "var(--ce-text-h, #ffffff)" }}>
                                             {req.username || req.user?.username}
                                           </span>
-                                          <span style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)" }}>
-                                            Room: <strong>{req.roomTitle}</strong>
+                                          <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+                                            Room: <strong style={{ color: "#cbd5e1" }}>{req.roomTitle}</strong>
                                           </span>
-                                          <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)" }}>
+                                          <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
                                             Requested {timeAgo(req.createdAt)}
                                           </span>
                                         </div>
@@ -7160,19 +6959,17 @@ function Dashboard() {
                                       <div style={{ display: "flex", gap: "6px" }} onClick={(e) => e.stopPropagation()}>
                                         <button
                                           onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "accept")}
-                                          style={{ width: "30px", height: "30px", borderRadius: "8px", background: "#10b981", color: "#fff", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "transform 0.15s ease" }}
+                                          className="ce-req-mini-btn-accept"
                                           title="Accept Request"
-                                          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.08)"}
-                                          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                          type="button"
                                         >
                                           <Check size={14} />
                                         </button>
                                         <button
                                           onClick={() => handleRespondRequest(req.roomId, req.user?._id || req.user, "reject")}
-                                          style={{ width: "30px", height: "30px", borderRadius: "8px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "transform 0.15s ease" }}
+                                          className="ce-req-mini-btn-reject"
                                           title="Reject Request"
-                                          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.08)"}
-                                          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                          type="button"
                                         >
                                           <X size={14} />
                                         </button>
@@ -7181,24 +6978,11 @@ function Dashboard() {
                                   );
                                 })}
 
-                                {/* Load More Pagination Controls */}
                                 {filteredRequests.length > manageRequestLimit && (
                                   <button
                                     onClick={() => setManageRequestLimit(prev => prev + 10)}
-                                    style={{
-                                      width: "100%",
-                                      padding: "12px",
-                                      borderRadius: "10px",
-                                      background: "transparent",
-                                      border: "1px dashed var(--ce-border)",
-                                      color: "var(--ce-primary)",
-                                      fontWeight: "600",
-                                      fontSize: "0.82rem",
-                                      cursor: "pointer",
-                                      textAlign: "center",
-                                      marginTop: "4px",
-                                      transition: "all 0.2s ease"
-                                    }}
+                                    className="ce-req-load-more-btn"
+                                    type="button"
                                   >
                                     Load More Requests ↓
                                   </button>
@@ -7208,139 +6992,125 @@ function Dashboard() {
                               {/* Right Column: Requester Detailed Info Inspector Card */}
                               <div>
                                 {activeRequest ? (
-                                  <div
-                                    style={{
-                                      background: activeTheme === "light" ? "#fff" : "var(--ce-surface-card)",
-                                      border: "1px solid var(--ce-border)",
-                                      borderRadius: "14px",
-                                      padding: "24px",
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "20px",
-                                      position: "sticky",
-                                      top: "20px",
-                                      boxShadow: "0 8px 30px rgba(0, 0, 0, 0.05)"
-                                    }}
-                                  >
+                                  <div className="ce-req-inspector">
                                     {/* Big Header Avatar Stack */}
                                     <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                                       <div style={{ position: "relative" }}>
-                                        <div style={{ width: "64px", height: "64px", borderRadius: "50%", overflow: "hidden", background: activeRequest.user?.avatar ? "transparent" : getAvatarColor(activeRequest.username || activeRequest.user?.username || "D"), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.6rem", fontWeight: "700" }}>
+                                        <div style={{ width: "60px", height: "60px", borderRadius: "50%", overflow: "hidden", background: activeRequest.user?.avatar ? "transparent" : getAvatarColor(activeRequest.username || activeRequest.user?.username || "D"), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.5rem", fontWeight: "700" }}>
                                           {activeRequest.user?.avatar ? (
                                             <img src={activeRequest.user.avatar} alt={activeRequest.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                           ) : (
                                             (activeRequest.username || activeRequest.user?.username || "D").charAt(0).toUpperCase()
                                           )}
                                         </div>
-                                        <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#10b981", border: "2px solid var(--ce-surface-card)", position: "absolute", bottom: "2px", right: "2px" }} />
+                                        <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#10b981", border: "2px solid #0b0f19", position: "absolute", bottom: "2px", right: "2px" }} />
                                       </div>
                                       <div style={{ display: "flex", flexDirection: "column" }}>
-                                        <span style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--ce-text-h)" }}>
+                                        <span style={{ fontSize: "1.15rem", fontWeight: "800", color: "var(--ce-text-h, #ffffff)" }}>
                                           {activeRequest.username || activeRequest.user?.username}
                                         </span>
-                                        <span style={{ fontSize: "0.85rem", color: "var(--ce-text-muted)" }}>
+                                        <span style={{ fontSize: "0.82rem", color: "#94a3b8" }}>
                                           {activeRequest.user?.email || `${activeRequest.username || "developer"}@codeexpo.com`}
                                         </span>
                                       </div>
                                     </div>
 
                                     {/* Detailed Properties Grid */}
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: activeTheme === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.01)", border: "1px solid var(--ce-border)", padding: "18px", borderRadius: "10px" }}>
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
-                                          <Code size={14} style={{ color: "var(--ce-primary)" }} />
+                                    <div className="ce-req-details-grid">
+                                      <div className="ce-req-detail-row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
+                                          <Code size={14} color="#f59e0b" />
                                           <span>Requested Room</span>
                                         </div>
-                                        <span style={{ fontWeight: "700", color: "var(--ce-text-h)" }}>{activeRequest.roomTitle}</span>
+                                        <span style={{ fontWeight: "700", color: "var(--ce-text-h, #ffffff)" }}>{activeRequest.roomTitle}</span>
                                       </div>
 
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
-                                          <Clock size={14} style={{ color: "#3b82f6" }} />
+                                      <div className="ce-req-detail-row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
+                                          <Clock size={14} color="#3b82f6" />
                                           <span>Requested At</span>
                                         </div>
-                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h)" }}>
+                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h, #ffffff)" }}>
                                           {timeAgo(activeRequest.createdAt)}
                                         </span>
                                       </div>
 
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
-                                          <Activity size={14} style={{ color: "#10b981" }} />
+                                      <div className="ce-req-detail-row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
+                                          <Activity size={14} color="#10b981" />
                                           <span>User Status</span>
                                         </div>
                                         <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "2px 8px", borderRadius: "10px", background: "rgba(16, 185, 129, 0.12)", color: "#10b981", textTransform: "uppercase" }}>Online</span>
                                       </div>
 
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
-                                          <User size={14} style={{ color: "#f59e0b" }} />
+                                      <div className="ce-req-detail-row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
+                                          <User size={14} color="#f59e0b" />
                                           <span>User Role</span>
                                         </div>
                                         <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "2px 8px", borderRadius: "10px", background: "rgba(59, 130, 246, 0.12)", color: "#3b82f6", textTransform: "uppercase" }}>User</span>
                                       </div>
 
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
-                                          <Globe size={14} style={{ color: "#06b6d4" }} />
+                                      <div className="ce-req-detail-row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
+                                          <Globe size={14} color="#06b6d4" />
                                           <span>IP Address</span>
                                         </div>
-                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h)" }}>{getMockIP(activeRequest.user?._id || activeRequest.user)}</span>
+                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h, #ffffff)" }}>{getMockIP(activeRequest.user?._id || activeRequest.user)}</span>
                                       </div>
 
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
-                                          <Laptop size={14} style={{ color: "#8b5cf6" }} />
+                                      <div className="ce-req-detail-row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
+                                          <Laptop size={14} color="#a855f7" />
                                           <span>Device</span>
                                         </div>
-                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h)" }}>{getMockDevice(activeRequest.user?._id || activeRequest.user)}</span>
+                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h, #ffffff)" }}>{getMockDevice(activeRequest.user?._id || activeRequest.user)}</span>
                                       </div>
 
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ce-text-muted)" }}>
-                                          <Calendar size={14} style={{ color: "#ec4899" }} />
+                                      <div className="ce-req-detail-row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
+                                          <Calendar size={14} color="#ec4899" />
                                           <span>Member Since</span>
                                         </div>
-                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h)" }}>{getMockMemberSince(activeRequest.user)}</span>
+                                        <span style={{ fontWeight: "600", color: "var(--ce-text-h, #ffffff)" }}>{getMockMemberSince(activeRequest.user)}</span>
                                       </div>
                                     </div>
 
                                     {/* Additional Info Section */}
-                                    <div style={{ borderTop: "1px solid var(--ce-border)", paddingTop: "12px" }}>
-                                      <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--ce-text-muted)", textTransform: "uppercase" }}>Additional Info</span>
-                                      <p style={{ fontSize: "0.82rem", color: "var(--ce-text)", margin: "4px 0 0 0", fontStyle: "italic" }}>
+                                    <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: "12px" }}>
+                                      <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase" }}>Additional Info</span>
+                                      <p style={{ fontSize: "0.82rem", color: "#cbd5e1", margin: "4px 0 0 0", fontStyle: "italic" }}>
                                         No additional information available for this user request.
                                       </p>
                                     </div>
 
                                     {/* Action Buttons Footer inside inspector */}
-                                    <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+                                    <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
                                       <button
                                         onClick={() => handleRespondRequest(activeRequest.roomId, activeRequest.user?._id || activeRequest.user, "accept")}
-                                        style={{ flex: 1, padding: "12px 18px", borderRadius: "10px", background: "#10b981", color: "#fff", border: "none", fontWeight: "700", fontSize: "0.84rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)", transition: "transform 0.15s ease" }}
-                                        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                                        className="ce-req-btn-success"
+                                        style={{ flex: 1, padding: "11px 16px", borderRadius: "8px", fontSize: "0.84rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                                        type="button"
                                       >
-                                        <Check size={16} /> Accept Request
+                                        <Check size={15} /> Accept Request
                                       </button>
                                       <button
                                         onClick={() => handleRespondRequest(activeRequest.roomId, activeRequest.user?._id || activeRequest.user, "reject")}
-                                        style={{ flex: 1, padding: "12px 18px", borderRadius: "10px", background: "#ef4444", color: "#fff", border: "none", fontWeight: "700", fontSize: "0.84rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)", transition: "transform 0.15s ease" }}
-                                        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                                        className="ce-req-btn-danger"
+                                        style={{ flex: 1, padding: "11px 16px", borderRadius: "8px", fontSize: "0.84rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                                        type="button"
                                       >
-                                        <X size={16} /> Reject Request
+                                        <X size={15} /> Reject Request
                                       </button>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "240px", border: "1px dashed var(--ce-border)", borderRadius: "12px", padding: "32px", color: "var(--ce-text-muted)" }}>
-                                    <ShieldAlert size={28} style={{ marginBottom: "8px" }} />
-                                    <p style={{ margin: 0, fontSize: "0.82rem", textAlign: "center" }}>Select an incoming request to view detailed profile metadata</p>
+                                  <div className="ce-live-empty-card" style={{ padding: "32px", height: "240px" }}>
+                                    <ShieldAlert size={28} color="#64748b" style={{ marginBottom: "8px" }} />
+                                    <p style={{ margin: 0, fontSize: "0.82rem", color: "#94a3b8", textAlign: "center" }}>Select an incoming request to view detailed profile metadata</p>
                                   </div>
                                 )}
                               </div>
-
                             </div>
                           </div>
                         )}
@@ -7348,14 +7118,14 @@ function Dashboard() {
                     );
                   })()}
 
-                  {/* TAB CONTENT: SENT REQUESTS */}
+                  {/* TAB 3: SENT REQUESTS */}
                   {roomRequestsTab === "sent" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                       {mySentRequests.length === 0 ? (
-                        <div className="empty-state-card" style={{ padding: "48px 24px", textAlign: "center" }}>
-                          <Send size={32} className="empty-state-icon" style={{ color: "var(--ce-primary)", marginBottom: "12px" }} />
-                          <h3 style={{ margin: "0 0 6px 0", color: "var(--ce-text-h)" }}>No Sent Access Requests</h3>
-                          <p style={{ margin: 0, color: "var(--ce-text-muted)", fontSize: "0.84rem" }}>
+                        <div className="ce-live-empty-card">
+                          <Send size={36} color="#f59e0b" style={{ marginBottom: 12 }} />
+                          <h3 className="ce-live-empty-title">No Sent Access Requests</h3>
+                          <p className="ce-live-empty-desc">
                             You haven't submitted join requests to any private workspaces recently.
                           </p>
                         </div>
@@ -7364,25 +7134,15 @@ function Dashboard() {
                           {mySentRequests.map(req => (
                             <div
                               key={req.roomId}
-                              style={{
-                                background: activeTheme === "light" ? "#fff" : "var(--ce-surface-card)",
-                                border: "1px solid var(--ce-border)",
-                                borderRadius: "10px",
-                                padding: "16px",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                flexWrap: "wrap",
-                                gap: "16px"
-                              }}
+                              className="ce-req-sent-card"
                             >
                               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                  <span style={{ fontSize: "0.95rem", fontWeight: "700", color: "var(--ce-text-h)" }}>{req.title}</span>
-                                  <span style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", background: "rgba(139, 92, 246, 0.12)", color: "var(--ce-primary)", fontWeight: "700", textTransform: "uppercase" }}>{req.language}</span>
+                                  <span style={{ fontSize: "0.95rem", fontWeight: "700", color: "var(--ce-text-h, #ffffff)" }}>{req.title}</span>
+                                  <span style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", background: "rgba(245, 158, 11, 0.12)", color: "#f59e0b", fontWeight: "700", textTransform: "uppercase" }}>{req.language}</span>
                                 </div>
-                                <span style={{ fontSize: "0.8rem", color: "var(--ce-text-muted)" }}>
-                                  Room Owner: <strong>{req.createdBy?.username || "Owner"}</strong> ({req.createdBy?.email})
+                                <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+                                  Room Owner: <strong style={{ color: "#cbd5e1" }}>{req.createdBy?.username || "Owner"}</strong> {req.createdBy?.email && `(${req.createdBy.email})`}
                                 </span>
                               </div>
 
@@ -7400,7 +7160,9 @@ function Dashboard() {
                                 {req.status === "accepted" && (
                                   <button
                                     onClick={() => proceedJoinRoom(req.roomId)}
-                                    style={{ padding: "6px 16px", borderRadius: "8px", background: "#10b981", color: "#fff", border: "none", fontSize: "0.8rem", fontWeight: "700", cursor: "pointer" }}
+                                    className="ce-req-btn-success"
+                                    style={{ padding: "6px 16px", borderRadius: "8px", fontSize: "0.8rem" }}
+                                    type="button"
                                   >
                                     Enter Approved Room
                                   </button>
@@ -7429,179 +7191,248 @@ function Dashboard() {
               style={{ width: "100%", height: "100%" }}
             >
               <div className="liverooms-section-container">
-                {/* Stats Header for Live Rooms - Redesigned as Hanging Lamps (No shadows/glows) */}
-                <div className="ce-lamp-hanger-container" style={{ position: "relative", width: "100%", padding: "6px 0 30px 0", marginBottom: "24px", display: "flex", justifyContent: "center", gap: "50px", flexWrap: "wrap", zIndex: 10 }}>
-
-                  {/* The horizontal wooden/metallic stick support */}
-                  <div className="ce-lamp-support-stick" style={{
-                    position: "absolute",
-                    top: "0px",
-                    left: "0%",
-                    width: "100%",
-                    height: "6px",
-                    background: "linear-gradient(to right, #2d3748, #4a5568, #718096, #4a5568, #2d3748)",
-                    borderRadius: "0px",
-                    boxShadow: "none",
-                    zIndex: 1
-                  }} />
-
-                  {/* Lamp 1: Active Live Rooms */}
-                  <div className="ce-hanging-lamp-card-wrapper">
-                    {/* The rope */}
-                    <div className="ce-lamp-rope" style={{
-                      width: "3px",
-                      height: "40px",
-                      background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
-                      boxShadow: "none"
-                    }} />
-                    {/* The metal fixture/cap at the top of the lamp */}
-                    <div className="ce-lamp-cap" style={{
-                      width: "20px",
-                      height: "8px",
-                      background: "#4a5568",
-                      borderRadius: "4px 4px 0 0",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      boxShadow: "none",
-                      marginBottom: "-1px"
-                    }} />
-                    {/* The card body (lamp itself) */}
-                    <div className="ce-hanging-lamp-card green-lamp">
-                      <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
-                        <Activity size={18} />
-                      </div>
-                      <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Active Rooms</span>
-                      <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#34d399", marginTop: "4px", zIndex: 1 }}>{liveRooms.length}</span>
-                    </div>
+                {/* 1. TOP HEADER SECTION */}
+                <div className="ce-live-header-section">
+                  <div className="ce-live-header-left">
+                    <h2 className="ce-live-title">Live Workspace</h2>
+                    <p className="ce-live-subtitle">Join an active coding room or launch your own to collaborate in real-time.</p>
                   </div>
-
-                  {/* Lamp 2: Active Developers Online */}
-                  <div className="ce-hanging-lamp-card-wrapper">
-                    {/* The rope */}
-                    <div className="ce-lamp-rope" style={{
-                      width: "3px",
-                      height: "40px",
-                      background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
-                      boxShadow: "none"
-                    }} />
-                    {/* The metal fixture/cap at the top of the lamp */}
-                    <div className="ce-lamp-cap" style={{
-                      width: "20px",
-                      height: "8px",
-                      background: "#4a5568",
-                      borderRadius: "4px 4px 0 0",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      boxShadow: "none",
-                      marginBottom: "-1px"
-                    }} />
-                    {/* The card body (lamp itself) */}
-                    <div className="ce-hanging-lamp-card yellow-lamp">
-                      <div className="stat-card-icon-wrapper amber-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
-                        <Users size={18} />
-                      </div>
-                      <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Active Developers</span>
-                      <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#fbbf24", marginTop: "4px", zIndex: 1 }}>
-                        {liveRooms.reduce((acc, r) => acc + (r.activeUsersCount || 0), 0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Lamp 3: Total Rooms Created */}
-                  <div className="ce-hanging-lamp-card-wrapper">
-                    {/* The rope */}
-                    <div className="ce-lamp-rope" style={{
-                      width: "3px",
-                      height: "40px",
-                      background: "linear-gradient(to bottom, #4a5568, #1a202c, #718096)",
-                      boxShadow: "none"
-                    }} />
-                    {/* The metal fixture/cap at the top of the lamp */}
-                    <div className="ce-lamp-cap" style={{
-                      width: "20px",
-                      height: "8px",
-                      background: "#4a5568",
-                      borderRadius: "4px 4px 0 0",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      boxShadow: "none",
-                      marginBottom: "-1px"
-                    }} />
-                    {/* The card body (lamp itself) */}
-                    <div className="ce-hanging-lamp-card purple-lamp">
-                      <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ marginBottom: "12px", zIndex: 1 }}>
-                        <FolderGit size={18} />
-                      </div>
-                      <span className="stat-card-label" style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--ce-text-muted)", zIndex: 1 }}>Total Rooms Created</span>
-                      <span className="stat-card-val" style={{ fontSize: "1.8rem", fontWeight: "800", color: "#a78bfa", marginTop: "4px", zIndex: 1 }}>
-                        {historyRooms.filter(r => r.createdBy?._id === user?.id || r.createdBy === user?.id || r.createdBy?._id === user?._id || r.createdBy === user?._id).length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap", marginBottom: "0px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <h3 className="section-title" style={{ color: "#10b981", fontSize: "1.1rem", fontWeight: "600", margin: "0 0 -4px" }}>Live Workspace</h3>
-                  </div>
-                  <div className="section-search-container">
-                    <Search size={13} className="section-search-icon" />
-                    <input
-                      type="text"
-                      placeholder="Search live rooms..."
-                      value={publicRoomsSearch}
-                      onChange={(e) => setPublicRoomsSearch(e.target.value)}
-                      className="section-search-input"
-                    />
-                  </div>
-                </div>
-
-                {liveRooms.length === 0 ? (
-                  <div className="ce-empty-workspace-card">
-                    <div className="ce-radar-container">
-                      <div className="ce-radar-ring ring-1" />
-                      <div className="ce-radar-ring ring-2" />
-                      <div className="ce-radar-ring ring-3" />
-                      <div className="ce-radar-center">
-                        <Terminal size={28} className="ce-radar-icon" />
-                      </div>
-                    </div>
-
-                    <h3 className="ce-empty-title">No Active Workspaces Found</h3>
-
-
+                  <div className="ce-live-header-right">
                     <button
-                      className="ce-premium-create-room-btn"
-                      onClick={() => {
-                        setFormData({ title: "", language: "javascript", isPrivate: false });
-                        setShowQuickCreateModal(true);
-                      }}
+                      className="ce-how-it-works-btn"
+                      onClick={() => setShowLiveHowItWorks(true)}
+                      type="button"
                     >
-                      <Plus size={16} />
-                      <span>Launch Your Room</span>
+                      <HelpCircle size={15} />
+                      <span>How it works?</span>
                     </button>
                   </div>
-                ) : (() => {
-                  const filteredLive = (liveRooms || []).filter(room => {
+                </div>
+
+                {/* 2. STATS CARDS GRID (3 HORIZONTAL CARDS) */}
+                <div className="ce-live-stats-grid">
+                  {/* Card 1: Active Rooms */}
+                  <div className="ce-live-stat-card">
+                    <div className="ce-live-stat-icon-wrap green">
+                      <Users size={20} />
+                    </div>
+                    <div className="ce-live-stat-content">
+                      <span className="ce-live-stat-label">Active Rooms</span>
+                      <span className="ce-live-stat-val">{liveRooms.length}</span>
+                      <span className="ce-live-stat-sub">Rooms currently live</span>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Active Developers */}
+                  <div className="ce-live-stat-card">
+                    <div className="ce-live-stat-icon-wrap yellow">
+                      <Users size={20} />
+                    </div>
+                    <div className="ce-live-stat-content">
+                      <span className="ce-live-stat-label">Active Developers</span>
+                      <span className="ce-live-stat-val">
+                        {liveRooms.reduce((acc, r) => acc + (r.activeUsersCount || (Array.isArray(r.activeUsers) ? r.activeUsers.length : 0) || 0), 0)}
+                      </span>
+                      <span className="ce-live-stat-sub">Developers online right now</span>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Total Rooms Created */}
+                  <div className="ce-live-stat-card">
+                    <div className="ce-live-stat-icon-wrap gold">
+                      <FolderGit size={20} />
+                    </div>
+                    <div className="ce-live-stat-content">
+                      <span className="ce-live-stat-label">Total Rooms Created</span>
+                      <span className="ce-live-stat-val">
+                        {historyRooms.length || publicRooms.length || 0}
+                      </span>
+                      <span className="ce-live-stat-sub">Rooms created on CodeExpo</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. TABS & CONTROLS BAR */}
+                <div className="ce-live-tabs-bar">
+                  <div className="ce-live-tab-buttons">
+                    <button
+                      className={`ce-live-tab-btn ${liveSubTab === "live" ? "active" : ""}`}
+                      onClick={() => setLiveSubTab("live")}
+                      type="button"
+                    >
+                      Live Workspace
+                    </button>
+                    <button
+                      className={`ce-live-tab-btn ${liveSubTab === "ended" ? "active" : ""}`}
+                      onClick={() => setLiveSubTab("ended")}
+                      type="button"
+                    >
+                      Recently Ended
+                    </button>
+                  </div>
+
+                  <div className="ce-live-controls-right">
+                    <div className="ce-live-search-box">
+                      <Search size={14} color="#64748b" />
+                      <input
+                        type="text"
+                        placeholder="Search live rooms..."
+                        value={liveRoomsSearch}
+                        onChange={(e) => setLiveRoomsSearch(e.target.value)}
+                        className="ce-live-search-input"
+                      />
+                    </div>
+                    <button
+                      className="ce-live-filter-btn"
+                      title="Filter Rooms"
+                      type="button"
+                    >
+                      <SlidersHorizontal size={15} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. CONTENT (EMPTY STATE OR ROOMS GRID) */}
+                {(() => {
+                  const targetList = liveSubTab === "live"
+                    ? (liveRooms || [])
+                    : (historyRooms || []).slice(0, 12);
+
+                  const filteredList = targetList.filter(room => {
                     if (!room) return false;
-                    const term = (publicRoomsSearch || "").toLowerCase();
+                    const term = (liveRoomsSearch || "").toLowerCase().trim();
+                    if (!term) return true;
                     const title = (room.title || "").toLowerCase();
                     const roomId = (room.roomId || "").toLowerCase();
-                    return title.includes(term) || roomId.includes(term);
+                    const lang = (room.language || "").toLowerCase();
+                    return title.includes(term) || roomId.includes(term) || lang.includes(term);
                   });
 
-                  if (filteredLive.length === 0) {
+                  if (filteredList.length === 0) {
+                    if (liveRoomsSearch.trim() && targetList.length > 0) {
+                      return (
+                        <div className="ce-live-empty-card">
+                          <Search size={28} color="#f59e0b" style={{ marginBottom: "12px" }} />
+                          <h3 className="ce-live-empty-title">No Rooms Found</h3>
+                          <p className="ce-live-empty-desc">No workspaces match your search term "{liveRoomsSearch}".</p>
+                        </div>
+                      );
+                    }
+
                     return (
-                      <div className="empty-state-card" style={{ padding: "32px" }}>
-                        <Search size={24} className="empty-state-icon" />
-                        <p>No active live rooms match search term "{publicRoomsSearch}".</p>
+                      <div className="ce-live-empty-card">
+                        <div className="ce-live-empty-graphic">
+                          <div className="ce-graphic-topbar">
+                            <span className="ce-graphic-dot" />
+                            <span className="ce-graphic-dot" />
+                            <span className="ce-graphic-dot" />
+                          </div>
+                          <span className="ce-graphic-code-brackets">&lt;/&gt;</span>
+                          <div className="ce-graphic-users-badge">
+                            <Users size={14} />
+                          </div>
+                        </div>
+
+                        <h3 className="ce-live-empty-title">
+                          {liveSubTab === "live" ? "No Active Workspaces Found" : "No Recently Ended Rooms"}
+                        </h3>
+                        <p className="ce-live-empty-desc" style={{ whiteSpace: "pre-line" }}>
+                          {liveSubTab === "live"
+                            ? "There are no live coding rooms at the moment.\nBe the first to start a room and invite others to collaborate!"
+                            : "You haven't participated in any rooms recently.\nLaunch a room or join a live session to get started!"}
+                        </p>
+
+                        <button
+                          className="ce-live-launch-btn"
+                          type="button"
+                          onClick={() => {
+                            setFormData({ title: "", language: "javascript", isPrivate: false });
+                            setShowQuickCreateModal(true);
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Launch Your Room</span>
+                        </button>
+
+                        <div className="ce-live-empty-footer-subtext">
+                          <div className="ce-live-subtext-line" />
+                          <span className="ce-live-subtext-label">Real-time coding &bull; Share ideas &bull; Build together</span>
+                          <div className="ce-live-subtext-line" />
+                        </div>
                       </div>
                     );
                   }
 
                   return (
                     <div className="rooms-grid-explore">
-                      {filteredLive.map(room => renderRoomCard(room))}
+                      {filteredList.map(room => renderRoomCard(room))}
                     </div>
                   );
                 })()}
+
+                {/* 5. "HOW IT WORKS" MODAL */}
+                {showLiveHowItWorks && createPortal(
+                  <div className="ce-hiw-modal-overlay" onClick={() => setShowLiveHowItWorks(false)}>
+                    <div className="ce-hiw-dialog" onClick={(e) => e.stopPropagation()}>
+                      <div className="ce-hiw-header">
+                        <h3 className="ce-hiw-title">
+                          <HelpCircle size={18} color="#f59e0b" />
+                          <span>How Live Workspaces Work</span>
+                        </h3>
+                        <button className="ce-hiw-close-btn" onClick={() => setShowLiveHowItWorks(false)} type="button">
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      <div className="ce-hiw-steps">
+                        <div className="ce-hiw-step-item">
+                          <div className="ce-hiw-step-num">1</div>
+                          <div className="ce-hiw-step-body">
+                            <h4>Create or Join a Room</h4>
+                            <p>Launch a public or private room in your preferred language (JS, Python, C++, Rust, etc.) with a single click.</p>
+                          </div>
+                        </div>
+
+                        <div className="ce-hiw-step-item">
+                          <div className="ce-hiw-step-num">2</div>
+                          <div className="ce-hiw-step-body">
+                            <h4>Real-Time Collaborative Coding</h4>
+                            <p>Code simultaneously with live multiplayer cursors, synchronized typing, and instant Monaco code execution.</p>
+                          </div>
+                        </div>
+
+                        <div className="ce-hiw-step-item">
+                          <div className="ce-hiw-step-num">3</div>
+                          <div className="ce-hiw-step-body">
+                            <h4>Built-In Video, Voice & Chat</h4>
+                            <p>Communicate seamlessly with peers using integrated high-performance WebRTC video/voice calls and live chat.</p>
+                          </div>
+                        </div>
+
+                        <div className="ce-hiw-step-item">
+                          <div className="ce-hiw-step-num">4</div>
+                          <div className="ce-hiw-step-body">
+                            <h4>Auto-Synced History & Social Feed</h4>
+                            <p>Your rooms, task boards, and code changes are automatically synced and can be shared to your developer portfolio.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        className="ce-hiw-cta-btn"
+                        type="button"
+                        onClick={() => {
+                          setShowLiveHowItWorks(false);
+                          setFormData({ title: "", language: "javascript", isPrivate: false });
+                          setShowQuickCreateModal(true);
+                        }}
+                      >
+                        + Launch Your Room Now
+                      </button>
+                    </div>
+                  </div>,
+                  document.body
+                )}
               </div>
             </motion.div>
           )}
@@ -8477,7 +8308,7 @@ function Dashboard() {
                 ) : (
                   (() => {
                     let filteredList = leaderboardData.filter(item =>
-                      item.username.toLowerCase().includes(leaderboardSearch.toLowerCase())
+                      item && String(item.username || "").toLowerCase().includes(String(leaderboardSearch || "").toLowerCase())
                     );
 
                     // Apply tab filters
@@ -8607,11 +8438,13 @@ function Dashboard() {
                 id: "creator_pro",
                 title: "Creator Pro",
                 description: "Create 5 or more rooms",
+                rarity: "COMMON",
                 icon: FolderGit,
-                color: "#3b82f6",
+                color: "#f59e0b",
                 condition: (stats.totalCreated || 0) >= 5,
                 current: stats.totalCreated || 0,
                 target: 5,
+                unit: "Rooms",
                 category: "Development",
                 xpReward: 150,
                 tip: "To complete this achievement, use the 'Create Workspace Room' form in the Rooms tab and initialize 5 separate workspaces."
@@ -8620,11 +8453,13 @@ function Dashboard() {
                 id: "team_player",
                 title: "Team Player",
                 description: "Join and collaborate in 3 or more rooms",
+                rarity: "RARE",
                 icon: Users,
-                color: "#10b981",
+                color: "#fbbf24",
                 condition: (stats.totalJoined || 0) >= 3,
                 current: stats.totalJoined || 0,
                 target: 3,
+                unit: "Rooms",
                 category: "Collaboration",
                 xpReward: 120,
                 tip: "Browse through active Live Rooms and join at least 3 distinct workspaces hosted by other developers."
@@ -8633,11 +8468,13 @@ function Dashboard() {
                 id: "script_master",
                 title: "Script Master",
                 description: "Execute compilation script 10 or more times",
+                rarity: "COMMON",
                 icon: Terminal,
                 color: "#f59e0b",
                 condition: (stats.executions || 0) >= 10,
                 current: stats.executions || 0,
                 target: 10,
+                unit: "Runs",
                 category: "Activity",
                 xpReward: 80,
                 tip: "Open the code editor in any of your workspaces and press the compile/run button 10 times to test your scripts."
@@ -8646,11 +8483,13 @@ function Dashboard() {
                 id: "marathoner",
                 title: "Code Marathoner",
                 description: "Log 5 hours of active development time",
+                rarity: "EPIC",
                 icon: Clock,
-                color: "#8b5cf6",
+                color: "#f59e0b",
                 condition: (stats.codingHours || 0) >= 5,
                 current: stats.codingHours || 0,
                 target: 5,
+                unit: "Hours",
                 category: "Milestones",
                 xpReward: 200,
                 tip: "Spend a cumulative total of 5 hours active in the workspace code editor collaborating or compiling programs."
@@ -8659,11 +8498,13 @@ function Dashboard() {
                 id: "social_coder",
                 title: "Social Coder",
                 description: "Like or Bookmark 5 or more workspaces",
+                rarity: "COMMON",
                 icon: Heart,
-                color: "#ec4899",
+                color: "#fbbf24",
                 condition: (likedRooms.length + savedRooms.length) >= 5,
                 current: likedRooms.length + savedRooms.length,
                 target: 5,
+                unit: "Spaces",
                 category: "Social",
                 xpReward: 50,
                 tip: "Go to Live Rooms or other developers' shared spaces and like/bookmark at least 5 different workspaces."
@@ -8672,11 +8513,13 @@ function Dashboard() {
                 id: "polyglot",
                 title: "Polyglot Developer",
                 description: "Create workspaces in 3 different languages",
+                rarity: "RARE",
                 icon: Code,
-                color: "#06b6d4",
-                condition: new Set(historyRooms.filter(r => r.language).map(r => r.language.toLowerCase())).size >= 3,
-                current: new Set(historyRooms.filter(r => r.language).map(r => r.language.toLowerCase())).size,
+                color: "#f59e0b",
+                condition: new Set(historyRooms.filter(r => r && r.language).map(r => String(r.language).toLowerCase())).size >= 3,
+                current: new Set(historyRooms.filter(r => r && r.language).map(r => String(r.language).toLowerCase())).size,
                 target: 3,
+                unit: "Languages",
                 category: "Development",
                 xpReward: 150,
                 tip: "Launch workspaces choosing 3 different languages (e.g. JavaScript, Python, C++) when configuring room creation settings."
@@ -8685,11 +8528,13 @@ function Dashboard() {
                 id: "rising_star",
                 title: "Rising Star",
                 description: "Earn 100 or more developer points",
+                rarity: "EPIC",
                 icon: Sparkles,
-                color: "#f43f5e",
+                color: "#fbbf24",
                 condition: (stats.totalPoints || 0) >= 100,
                 current: stats.totalPoints || 0,
                 target: 100,
+                unit: "XP",
                 category: "Milestones",
                 xpReward: 100,
                 tip: "Collect 100 XP points. Points are earned by coding, hosting collaborative sessions, and getting followers."
@@ -8698,11 +8543,13 @@ function Dashboard() {
                 id: "elite_architect",
                 title: "Elite Architect",
                 description: "Reach Antigravity Architect tier (400+ points)",
+                rarity: "LEGENDARY",
                 icon: Trophy,
-                color: "#e11d48",
+                color: "#ffd700",
                 condition: (stats.totalPoints || 0) >= 400,
                 current: stats.totalPoints || 0,
                 target: 400,
+                unit: "XP",
                 category: "Milestones",
                 xpReward: 300,
                 tip: "Gather 400 XP points to earn the most prestigious badge on CodeExpo, proving you are an elite engineering generalist."
@@ -8745,21 +8592,22 @@ function Dashboard() {
                 transition={{ duration: 0.22, ease: "easeInOut" }}
                 className="achievements-section-container"
               >
-                {/* Upgraded Level & Career Dashboard Banner */}
+                {/* Upgraded Level & Career Dashboard Banner with Ranking Crest */}
                 <div className="achievements-dashboard-header">
                   <div className="achievements-dashboard-left">
-                    <div className={`rank-avatar-badge ${rank.badgeClass}`} style={{ color: rank.color, border: `3px solid ${rank.color}` }}>
-                      <Award size={30} />
-                      <span className="rank-badge-glow" style={{ backgroundColor: rank.color }} />
-                    </div>
+                    <RankingCrest
+                      points={stats.totalPoints || 0}
+                      tierName={rank.title}
+                      size={72}
+                    />
                     <div className="rank-dashboard-details">
                       <span className="rank-sub-title">Current Development Standing</span>
-                      <h2 className="rank-main-title" style={{ color: rank.color }}>
+                      <h2 className="rank-main-title">
                         {rank.title}
                       </h2>
                       <div className="rank-progress-bar-container">
                         <div className="rank-progress-bar-track">
-                          <div className="rank-progress-bar-fill" style={{ width: `${progressPercent}%`, backgroundColor: rank.color }} />
+                          <div className="rank-progress-bar-fill" style={{ width: `${progressPercent}%` }} />
                         </div>
                         <div className="rank-progress-labels">
                           <span><strong>{stats.totalPoints || 0}</strong> XP Total</span>
@@ -8774,7 +8622,7 @@ function Dashboard() {
                         <circle className="progress-ring-circle-bg" stroke="var(--ce-border)" strokeWidth="3.5" fill="transparent" r={radius} cx="36" cy="36" />
                         <circle
                           className="progress-ring-circle"
-                          stroke={rank.color}
+                          stroke="#f59e0b"
                           strokeWidth="3.5"
                           strokeDasharray={`${circumference}`}
                           strokeDashoffset={`${strokeDashoffset}`}
@@ -8839,36 +8687,53 @@ function Dashboard() {
                   className="achievements-grid"
                 >
                   {filteredAchievements.map((ach) => {
-                    const Icon = ach.icon;
                     const progressVal = Math.min(100, Math.max(0, (ach.current / ach.target) * 100));
                     const isExpanded = expandedAchievementId === ach.id;
-                    const categoryClass = ach.category ? ach.category.toLowerCase() : "general";
+                    const categoryClass = ach && ach.category ? String(ach.category).toLowerCase() : "general";
 
                     return (
                       <motion.div
                         variants={itemVariants}
                         key={ach.id}
-                        onClick={() => setExpandedAchievementId(isExpanded ? null : ach.id)}
-                        className={`achievement-card-detailed ${ach.condition ? "unlocked" : "locked"} cat-${categoryClass} ${isExpanded ? "expanded" : ""}`}
-                        style={{
-                          borderColor: ach.condition ? ach.color : "var(--ce-border)",
-                          "--ach-accent": ach.color
-                        }}
+                        onClick={() => setInspectingBadge({
+                          id: ach.id,
+                          title: ach.title,
+                          desc: ach.description,
+                          rarity: ach.rarity,
+                          condition: ach.condition,
+                          points: ach.xpReward,
+                          category: ach.category,
+                          progress: {
+                            current: ach.current,
+                            target: ach.target,
+                            unit: ach.unit
+                          }
+                        })}
+                        className={`achievement-card-detailed ${ach.condition ? "unlocked" : "locked"} rarity-${(ach.rarity || "common").toLowerCase()} cat-${categoryClass} ${isExpanded ? "expanded" : ""}`}
                       >
                         {/* Floating XP badge */}
-                        <div className="achievement-xp-badge" style={{ backgroundColor: ach.condition ? ach.color : "var(--ce-border)" }}>
+                        <div className="achievement-xp-badge">
                           +{ach.xpReward} XP
                         </div>
 
                         <div className="achievement-card-main">
-                          <div className="achievement-icon-wrapper" style={{ backgroundColor: ach.condition ? `${ach.color}15` : "var(--ce-hover)", color: ach.condition ? ach.color : "var(--ce-text-muted)" }}>
-                            {ach.condition ? <Icon size={24} /> : <Lock size={20} />}
+                          {/* High-fidelity Vector Insignia Badge */}
+                          <div className="achievement-insignia-container">
+                            <BadgeInsignia
+                              id={ach.id}
+                              rarity={ach.rarity}
+                              isUnlocked={ach.condition}
+                              size={56}
+                            />
                           </div>
 
                           <div className="achievement-details-col">
                             <div className="achievement-name-row">
-                              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                                <span className={`achievement-category-pill ${categoryClass}`}>{ach.category}</span>
+                              <div className="achievement-title-group">
+                                <div className="achievement-tags-row">
+                                  <span className={`achievement-category-pill ${categoryClass}`}>{ach.category}</span>
+                                  <span className={`badge-rarity-pill ${(ach.rarity || "common").toLowerCase()}`}>{ach.rarity}</span>
+                                </div>
                                 <h4 className="achievement-title">{ach.title}</h4>
                               </div>
                               {ach.condition ? (
@@ -8881,11 +8746,47 @@ function Dashboard() {
 
                             <div className="achievement-progress-row">
                               <div className="achievement-progress-bar-track">
-                                <div className="achievement-progress-bar-fill" style={{ width: `${progressVal}%`, backgroundColor: ach.condition ? ach.color : "var(--ce-text-muted)" }} />
+                                <div className="achievement-progress-bar-fill" style={{ width: `${progressVal}%` }} />
                               </div>
                               <span className="achievement-progress-text">
                                 {ach.current} / {ach.target}
                               </span>
+                            </div>
+
+                            <div className="achievement-card-actions-row">
+                              <button
+                                type="button"
+                                className="achievement-inspect-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectingBadge({
+                                    id: ach.id,
+                                    title: ach.title,
+                                    desc: ach.description,
+                                    rarity: ach.rarity,
+                                    condition: ach.condition,
+                                    points: ach.xpReward,
+                                    category: ach.category,
+                                    progress: {
+                                      current: ach.current,
+                                      target: ach.target,
+                                      unit: ach.unit
+                                    }
+                                  });
+                                }}
+                              >
+                                Inspect Badge
+                              </button>
+                              <button
+                                type="button"
+                                className="achievement-tip-toggle-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedAchievementId(isExpanded ? null : ach.id);
+                                }}
+                              >
+                                {isExpanded ? "Hide Guide" : "How to Unlock"}
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -8913,6 +8814,13 @@ function Dashboard() {
                     );
                   })}
                 </motion.div>
+
+                {/* Inspect Modal Dialog */}
+                <BadgeInspectModal
+                  badge={inspectingBadge}
+                  isOpen={!!inspectingBadge}
+                  onClose={() => setInspectingBadge(null)}
+                />
               </motion.div>
             );
           })()}
@@ -9055,7 +8963,7 @@ function Dashboard() {
                       <div className="mobile-popup-card glass-panel" onClick={(e) => e.stopPropagation()}>
                         <div className="mobile-popup-header">
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <Plus size={18} style={{ color: "#aa3bff" }} />
+                            <Plus size={18} style={{ color: "#f59e0b" }} />
                             <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--ce-text-h)" }}>Create Workspace Room</h3>
                           </div>
                           <button type="button" className="mobile-popup-close" onClick={() => setShowMobileCreateModal(false)}>
@@ -9202,6 +9110,7 @@ function Dashboard() {
                               value={publicRoomsSearch}
                               onChange={(e) => setPublicRoomsSearch(e.target.value)}
                               className="section-search-input"
+                              style={{ outline: "none", boxShadow: "none" }}
                             />
                           </div>
                         )}
@@ -9215,6 +9124,7 @@ function Dashboard() {
                               value={myRoomsTabSearch}
                               onChange={(e) => setMyRoomsTabSearch(e.target.value)}
                               className="section-search-input"
+                              style={{ outline: "none", boxShadow: "none" }}
                             />
                           </div>
                         )}
@@ -9285,8 +9195,8 @@ function Dashboard() {
                           </div>
                         ) : (() => {
                           const filteredPublic = publicRooms.filter(room => {
-                            const term = publicRoomsSearch.toLowerCase();
-                            return (room.title || "").toLowerCase().includes(term) || (room.roomId || "").toLowerCase().includes(term);
+                            const term = String(publicRoomsSearch || "").toLowerCase();
+                            return (room?.title || "").toLowerCase().includes(term) || (room?.roomId || "").toLowerCase().includes(term);
                           });
 
                           if (filteredPublic.length === 0) {
@@ -9353,8 +9263,8 @@ function Dashboard() {
                           }
 
                           const filteredOwned = ownedRooms.filter(room => {
-                            const term = myRoomsTabSearch.toLowerCase();
-                            return (room.title || "").toLowerCase().includes(term) || (room.roomId || "").toLowerCase().includes(term);
+                            const term = String(myRoomsTabSearch || "").toLowerCase();
+                            return (room?.title || "").toLowerCase().includes(term) || (room?.roomId || "").toLowerCase().includes(term);
                           });
 
                           if (filteredOwned.length === 0) {
@@ -9525,13 +9435,13 @@ function Dashboard() {
                                         style={{
                                           padding: "6px 16px",
                                           fontSize: "0.78rem",
-                                          fontWeight: "600",
+                                          fontWeight: "700",
                                           background: "var(--ce-primary)",
-                                          color: "#fff",
+                                          color: "#000000",
                                           border: "none",
                                           borderRadius: "6px",
                                           cursor: "pointer",
-                                          boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)"
+                                          boxShadow: "0 2px 8px rgba(245, 158, 11, 0.35)"
                                         }}
                                       >
                                         Join Workspace
@@ -9609,13 +9519,13 @@ function Dashboard() {
                                             style={{
                                               padding: "6px 16px",
                                               fontSize: "0.78rem",
-                                              fontWeight: "600",
+                                              fontWeight: "700",
                                               background: "var(--ce-primary)",
-                                              color: "#fff",
+                                              color: "#000000",
                                               border: "none",
                                               borderRadius: "6px",
                                               cursor: "pointer",
-                                              boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)"
+                                              boxShadow: "0 2px 8px rgba(245, 158, 11, 0.35)"
                                             }}
                                           >
                                             Resume
@@ -9816,11 +9726,11 @@ function Dashboard() {
               <div className="history-section-container">
                 <div className="section-header" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Bell size={16} className="brand-logo" />
+                    <Bell size={16} style={{ color: "var(--ce-primary)" }} />
                     <h3 className="section-title">System & Social Notifications</h3>
                   </div>
                   {unreadNotificationsCount > 0 && (
-                    <button onClick={handleMarkAllNotificationsRead} className="history-resume-btn" style={{ fontSize: "0.75rem", padding: "4px 10px" }}>
+                    <button onClick={handleMarkAllNotificationsRead} className="history-resume-btn" style={{ fontSize: "0.75rem", padding: "4px 12px", background: "rgba(245, 158, 11, 0.12)", color: "var(--ce-primary)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: "6px", cursor: "pointer" }}>
                       Mark all as read
                     </button>
                   )}
@@ -9867,10 +9777,10 @@ function Dashboard() {
                 <div className="notifications-list">
                   {/* Render Action Required / Pending Join Requests at the top if All or Workspaces is selected */}
                   {(notifFilter === "all" || notifFilter === "workspaces") && joinRequests.length > 0 && joinRequests.map(req => (
-                    <div key={req.requestId} className="notification-item join-request-pending notif-type-join-pending" style={{ borderColor: "var(--ce-warning)", borderLeft: "3px solid var(--ce-warning)" }}>
+                    <div key={req.requestId} className="notification-item join-request-pending notif-type-join-pending" style={{ borderColor: "rgba(245, 158, 11, 0.4)", borderLeft: "4px solid var(--ce-primary)" }}>
                       <div className="notif-left-content">
                         <div className="notif-category-icon-container">
-                          <ShieldAlert size={16} style={{ color: "var(--ce-warning)" }} />
+                          <ShieldAlert size={16} style={{ color: "var(--ce-primary)" }} />
                         </div>
                         <div className="notif-main-info">
                           <div className="notif-text-message">
@@ -9953,7 +9863,7 @@ function Dashboard() {
                           const roomTitle = notif.targetRoom?.title || "workspace";
                           const roomLink = notif.targetRoom?.roomId;
 
-                          let notifIcon = <Bell size={14} />;
+                          let notifIcon = <Bell size={14} style={{ color: "var(--ce-primary)" }} />;
                           let actionText = "";
                           let typeClass = "notif-type-general";
 
@@ -9967,28 +9877,28 @@ function Dashboard() {
                               actionText = `liked your post "${getPostSnippet(notif.targetPost)}"`;
                               typeClass = "notif-type-like";
                             } else {
-                              notifIcon = <Heart size={14} style={{ color: "#10b981" }} />;
+                              notifIcon = <Heart size={14} style={{ color: "var(--ce-primary)" }} />;
                               actionText = `liked your room "${roomTitle}"`;
                               typeClass = "notif-type-room-like";
                             }
                           } else if (notif.type === "COMMENT") {
-                            notifIcon = <MessageSquare size={14} style={{ color: "var(--ce-accent)" }} />;
+                            notifIcon = <MessageSquare size={14} style={{ color: "var(--ce-primary)" }} />;
                             actionText = `commented on your post "${getPostSnippet(notif.targetPost)}"`;
                             typeClass = "notif-type-comment";
                           } else if (notif.type === "BOOKMARK") {
-                            notifIcon = <Bookmark size={14} style={{ color: "#10b981" }} />;
+                            notifIcon = <Bookmark size={14} style={{ color: "var(--ce-primary)" }} />;
                             actionText = `bookmarked your room "${roomTitle}"`;
                             typeClass = "notif-type-bookmark";
                           } else if (notif.type === "JOIN") {
-                            notifIcon = <ShieldAlert size={14} style={{ color: "#10b981" }} />;
+                            notifIcon = <ShieldAlert size={14} style={{ color: "var(--ce-primary)" }} />;
                             actionText = `wants to join "${roomTitle}"`;
                             typeClass = "notif-type-join";
                           } else if (notif.type === "INVITE") {
-                            notifIcon = <Mail size={14} style={{ color: "#10b981" }} />;
+                            notifIcon = <Mail size={14} style={{ color: "var(--ce-primary)" }} />;
                             actionText = `invited you to join workspace "${roomTitle}"`;
                             typeClass = "notif-type-invite";
                           } else if (notif.type === "JOIN_APPROVED") {
-                            notifIcon = <ShieldCheck size={14} style={{ color: "#10b981" }} />;
+                            notifIcon = <ShieldCheck size={14} style={{ color: "var(--ce-primary)" }} />;
                             actionText = `approved your join request to "${roomTitle}"`;
                             typeClass = "notif-type-invite";
                           } else if (notif.type === "MODERATION_ACTION") {
@@ -10069,9 +9979,9 @@ function Dashboard() {
                                             fontSize: "0.68rem",
                                             padding: "3px 8px",
                                             borderRadius: "6px",
-                                            background: "rgba(59, 130, 246, 0.12)",
+                                            background: "rgba(245, 158, 11, 0.12)",
                                             color: "var(--ce-primary)",
-                                            border: "1px solid rgba(59, 130, 246, 0.25)",
+                                            border: "1px solid rgba(245, 158, 11, 0.3)",
                                             cursor: "pointer",
                                             display: "inline-flex",
                                             alignItems: "center",
@@ -10547,7 +10457,7 @@ function Dashboard() {
                                   ))}
                                   {/* Cities */}
                                   {INDIA_CITIES.map(city => {
-                                    const isSelected = locationInput.toLowerCase().includes(city.name.toLowerCase());
+                                    const isSelected = String(locationInput || "").toLowerCase().includes(String(city?.name || "").toLowerCase());
                                     return (
                                       <g key={city.name} style={{ cursor: "pointer" }} onClick={() => setLocationInput(`${city.name}, India`)}>
                                         <circle
@@ -11706,7 +11616,7 @@ function Dashboard() {
                           <div className="toggle-info">
                             <div className="toggle-title-with-icon" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               {notifSoundEnabled ? (
-                                <Volume2 className={`toggle-icon-audio ${isSoundTesting ? "audio-pulse" : ""}`} size={18} style={{ color: "var(--ce-accent, #aa3bff)" }} />
+                                <Volume2 className={`toggle-icon-audio ${isSoundTesting ? "audio-pulse" : ""}`} size={18} style={{ color: "var(--ce-accent, #f59e0b)" }} />
                               ) : (
                                 <VolumeX className="toggle-icon-audio muted" size={18} style={{ color: "var(--ce-text-muted, #9ca3af)" }} />
                               )}
@@ -11746,7 +11656,7 @@ function Dashboard() {
                           <div className="toggle-info">
                             <div className="toggle-title-with-icon" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               {sendMessageNotification ? (
-                                <Volume2 className="toggle-icon-audio" size={18} style={{ color: "var(--ce-accent, #aa3bff)" }} />
+                                <Volume2 className="toggle-icon-audio" size={18} style={{ color: "var(--ce-accent, #f59e0b)" }} />
                               ) : (
                                 <VolumeX className="toggle-icon-audio muted" size={18} style={{ color: "var(--ce-text-muted, #9ca3af)" }} />
                               )}
@@ -12094,345 +12004,52 @@ function Dashboard() {
         </AnimatePresence>
 
         {/* Room Details Modal */}
-        {selectedRoomDetails && createPortal(
-          <div className="ce-modal-overlay" onClick={() => setSelectedRoomDetails(null)}>
-            <button className="modal-close-btn-outside" onClick={(e) => { e.stopPropagation(); setSelectedRoomDetails(null); }} title="Close Details" aria-label="Close details modal">
-              <X size={18} />
-            </button>
-            <div className="ce-modal-card room-details-modal-card" onClick={(e) => e.stopPropagation()}>
-
-              <div className="modal-header-new">
-                <span className="modal-label-tag">Room Overview</span>
-                <h3 className="modal-title-new"><Terminal size={18} style={{ marginRight: "8px", color: "var(--ce-accent)", verticalAlign: "middle" }} />{selectedRoomDetails.title}</h3>
-              </div>
-
-              <div className="modal-details-body-layout">
-                {/* LEFT SIDE: Existing room information */}
-                <div className="modal-details-left-side">
-                  <div className="modal-details-grid">
-                    <div className="modal-detail-item">
-                      <span className="modal-detail-label">
-                        <Terminal size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Room ID
-                      </span>
-                      <div className="modal-detail-value-wrapper">
-                        <span className="modal-detail-value mono-text">{selectedRoomDetails.roomId}</span>
-                        <button
-                          onClick={(e) => handleCopyId(e, selectedRoomDetails.roomId)}
-                          className="modal-copy-btn"
-                          title="Copy Room ID"
-                          aria-label="Copy Room ID"
-                        >
-                          {copiedId === selectedRoomDetails.roomId ? <Check size={12} style={{ color: "var(--ce-success)" }} /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="modal-detail-item">
-                      <span className="modal-detail-label">
-                        <Code size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Language
-                      </span>
-                      <span className="modal-detail-value lang-badge-new">{selectedRoomDetails.language?.toUpperCase()}</span>
-                    </div>
-
-                    <div className="modal-detail-item">
-                      <span className="modal-detail-label">
-                        {selectedRoomDetails.isPrivate ? <Lock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> : <Globe size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} />} Visibility
-                      </span>
-                      <span className="modal-detail-value privacy-badge-new">
-                        {selectedRoomDetails.isPrivate ? "Private Room" : "Public Room"}
-                      </span>
-                    </div>
-
-                    <div className="modal-detail-item">
-                      <span className="modal-detail-label">
-                        <User size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Owner
-                      </span>
-                      <div className="modal-owner-badge">
-                        {selectedRoomDetails.createdBy?.avatar ? (
-                          <img
-                            src={selectedRoomDetails.createdBy.avatar}
-                            alt="Owner"
-                            className="modal-owner-avatar-img"
-                          />
-                        ) : (
-                          <div
-                            className="modal-owner-avatar-placeholder"
-                            style={{ backgroundColor: getAvatarColor(selectedRoomDetails.createdBy?.username || "Owner") }}
-                          >
-                            {(selectedRoomDetails.createdBy?.username || "O").charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="owner-name-new">
-                          {selectedRoomDetails.createdBy?.username || "Collaborator"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="modal-detail-item">
-                      <span className="modal-detail-label">
-                        <Clock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Last Active
-                      </span>
-                      <span className="modal-detail-value last-active-time">
-                        {formatLastActive(selectedRoomDetails.lastActivity || selectedRoomDetails.updatedAt)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="modal-members-section">
-                    <h4 className="members-title-new">
-                      Members ({selectedRoomDetails.participants?.length || 0})
-                    </h4>
-                    <div className="members-list-scrollable">
-                      {(() => {
-                        const onlineUserIds = new Set((selectedRoomDetails.activeUsers || []).map(u => String(u.userId)));
-                        const isCurrentUserOwner = String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id);
-                        return (selectedRoomDetails.participants || []).map((m, i) => {
-                          const userObj = m.user && typeof m.user === 'object' ? m.user : null;
-                          const uId = userObj ? userObj._id : (m.user || m._id || m);
-                          const username = userObj ? userObj.username : (m.username || "Collaborator");
-                          const avatar = userObj ? userObj.avatar : m.avatar;
-                          const role = m.role || "MEMBER";
-
-                          const isOnline = onlineUserIds.has(String(uId)) || (selectedRoomDetails.activeUsers || []).some(au => au.username === username);
-                          const isOwner = String(uId) === String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy);
-                          const isSelf = String(uId) === String(user?.id);
-
-                          return (
-                            <div key={i} className="modal-member-card">
-                              <div className="member-avatar-wrapper-mini">
-                                {avatar ? (
-                                  <img src={avatar} alt={username} className="member-avatar-img-mini" />
-                                ) : (
-                                  <div className="member-avatar-initials-mini" style={{ backgroundColor: getAvatarColor(username) }}>
-                                    {(username || "C").charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                                <span className={`presence-indicator-dot-mini ${isOnline ? "online" : "offline"}`} />
-                              </div>
-                              <div className="modal-member-info">
-                                <span className="modal-member-name">{username}</span>
-                                <span className={`member-role-badge ${String(role).toLowerCase()}`}>
-                                  {role}
-                                </span>
-                              </div>
-                              <span className={`presence-text-badge-mini ${isOnline ? "online" : "offline"}`}>
-                                {isOnline ? "Online" : "Offline"}
-                              </span>
-                              {isCurrentUserOwner && !isOwner && !isSelf && (
-                                <button
-                                  onClick={() => handleRemoveUser(selectedRoomDetails.roomId, uId, username)}
-                                  className="modal-kick-member-btn"
-                                  title="Kick user from room"
-                                >
-                                  Kick
-                                </button>
-                              )}
-                              {!isSelf && (
-                                <div style={{ position: "relative", marginLeft: "6px" }}>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveRoomMemberMenuId(activeRoomMemberMenuId === uId ? null : uId);
-                                    }}
-                                    className="modal-kick-member-btn"
-                                    style={{ background: "none", border: "1px solid var(--ce-border)", color: "var(--ce-text-muted)", padding: "2px 6px", display: "flex", alignItems: "center" }}
-                                    title="Options"
-                                  >
-                                    <MoreVertical size={12} />
-                                  </button>
-                                  {activeRoomMemberMenuId === uId && (
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        right: 0,
-                                        top: "calc(100% + 4px)",
-                                        background: "rgba(10, 10, 18, 0.96)",
-                                        backdropFilter: "blur(16px)",
-                                        border: "1px solid var(--ce-border)",
-                                        borderRadius: "4px",
-                                        boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
-                                        zIndex: 1000,
-                                        minWidth: "135px",
-                                        width: "max-content",
-                                        whiteSpace: "nowrap",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        padding: "4px",
-                                        gap: "2px"
-                                      }}
-                                    >
-                                      <button
-                                        onClick={() => {
-                                          setActiveRoomMemberMenuId(null);
-                                          setReportedTargetUser({ _id: uId, username });
-                                          setReportEvidenceType("ROOM");
-                                          setReportEvidenceId(selectedRoomDetails._id || selectedRoomDetails.roomId);
-                                          setReportModalOpen(true);
-                                        }}
-                                        style={{
-                                          background: "transparent",
-                                          border: "none",
-                                          color: "#ef4444",
-                                          fontSize: "0.74rem",
-                                          fontWeight: "600",
-                                          padding: "8px 12px",
-                                          textAlign: "left",
-                                          cursor: "pointer",
-                                          width: "100%",
-                                          borderRadius: "4px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          transition: "background 0.2s ease"
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                                      >
-                                        ⚠️ Report User
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Liked By Section */}
-                  <div className="modal-likes-section">
-                    <h4 className="modal-likes-title">
-                      <Heart size={13} fill="var(--ce-danger, #f85149)" color="var(--ce-danger, #f85149)" />
-                      Liked By ({selectedRoomLikes.length})
-                    </h4>
-                    {isLoadingRoomLikes ? (
-                      <div className="modal-likes-loader">Loading likes...</div>
-                    ) : selectedRoomLikes.length === 0 ? (
-                      <p className="modal-likes-empty">No likes yet. Be the first to like this room!</p>
-                    ) : (
-                      <div className="likes-list-scrollable">
-                        {selectedRoomLikes.map((u, idx) => {
-                          const userObj = typeof u === "object" ? u : {};
-                          const username = userObj.username || "Collaborator";
-                          const avatar = userObj.avatar;
-                          const uId = userObj._id || idx;
-
-                          return (
-                            <div key={uId} className="modal-like-card">
-                              <div className="modal-like-user-info">
-                                {avatar ? (
-                                  <img
-                                    src={avatar}
-                                    alt={username}
-                                    className="member-avatar-img-mini"
-                                  />
-                                ) : (
-                                  <div
-                                    className="member-avatar-initials-mini"
-                                    style={{ backgroundColor: getAvatarColor(username) }}
-                                  >
-                                    {username.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                                <div className="modal-like-details">
-                                  <span className="modal-member-name">{username}</span>
-                                  {userObj.bio ? (
-                                    <span className="modal-like-subtext">{userObj.bio}</span>
-                                  ) : userObj.email ? (
-                                    <span className="modal-like-subtext">{userObj.email}</span>
-                                  ) : null}
-                                </div>
-                              </div>
-                              <Heart size={12} fill="var(--ce-danger, #f85149)" color="var(--ce-danger, #f85149)" style={{ opacity: 0.85 }} />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* RIGHT SIDE: Dedicated Room Description Card */}
-                <div className="modal-details-right-side">
-                  <div className="modal-room-description-card">
-                    <div className="modal-room-desc-header">
-                      <div className="modal-room-desc-title-group">
-                        <FileText size={14} className="modal-room-desc-icon" />
-                        <h4 className="modal-room-desc-heading">ROOM DESCRIPTION</h4>
-                      </div>
-                      {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id) && selectedRoomDetails.description && selectedRoomDetails.description.trim() ? (
-                        <button
-                          type="button"
-                          className="modal-room-desc-edit-link"
-                          onClick={() => {
-                            const target = selectedRoomDetails;
-                            setSelectedRoomDetails(null);
-                            setEditingRoomTarget(target);
-                          }}
-                          title="Edit Description"
-                        >
-                          <Edit3 size={11} />
-                          <span>Edit</span>
-                        </button>
-                      ) : null}
-                    </div>
-
-                    {selectedRoomDetails.description && selectedRoomDetails.description.trim() ? (
-                      <>
-                        <div className="modal-room-desc-body">
-                          <p className="modal-room-desc-text">
-                            {selectedRoomDetails.description}
-                          </p>
-                        </div>
-                        <div className="modal-room-desc-footer">
-                          <span className="modal-room-desc-length">
-                            {selectedRoomDetails.description.length} / 1000 characters
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="modal-room-desc-empty">
-                        <div className="modal-room-desc-empty-icon">
-                          <FileText size={22} />
-                        </div>
-                        <p className="modal-room-desc-empty-msg">
-                          {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id)
-                            ? "No description has been added yet."
-                            : "Description hasn't been added yet."}
-                        </p>
-                        {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?.id) && (
-                          <button
-                            type="button"
-                            className="modal-room-desc-add-btn"
-                            onClick={() => {
-                              const target = selectedRoomDetails;
-                              setSelectedRoomDetails(null);
-                              setEditingRoomTarget(target);
-                            }}
-                          >
-                            <Plus size={13} />
-                            <span>Add Description</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="modal-actions-new">
-                <button onClick={() => {
-                  handleJoinRoomDirect(selectedRoomDetails.roomId);
-                  setSelectedRoomDetails(null);
-                }} className="modal-join-btn-new">
-                  Enter Workspace
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
+        {selectedRoomDetails && (
+          <RoomDetailsModal
+            isOpen={!!selectedRoomDetails}
+            room={selectedRoomDetails}
+            currentUser={user}
+            onClose={() => setSelectedRoomDetails(null)}
+            onEnterWorkspace={(roomId) => {
+              handleJoinRoomDirect(roomId);
+              setSelectedRoomDetails(null);
+            }}
+            onEditRoom={(room) => {
+              setSelectedRoomDetails(null);
+              setEditingRoomTarget(room);
+            }}
+            onRoomUpdated={(updatedRoom) => {
+              if (updatedRoom) {
+                setSelectedRoomDetails(prev => (prev ? { ...prev, ...updatedRoom } : updatedRoom));
+                setHistoryRooms(prev => prev.map(r => (r.roomId === updatedRoom.roomId || r._id === updatedRoom._id ? { ...r, ...updatedRoom } : r)));
+                setLiveRooms(prev => prev.map(r => (r.roomId === updatedRoom.roomId || r._id === updatedRoom._id ? { ...r, ...updatedRoom } : r)));
+              }
+            }}
+            onKickMember={(roomId, uId, username) => {
+              handleRemoveUser(roomId, uId, username);
+            }}
+            onReportMember={(uId, username, room) => {
+              setSelectedRoomDetails(null);
+              setReportedTargetUser({ _id: uId, username });
+              setReportEvidenceType("ROOM");
+              setReportEvidenceId(room._id || room.roomId);
+              setReportModalOpen(true);
+            }}
+            onReportRoom={(room) => {
+              setSelectedRoomDetails(null);
+              setReportedTargetUser(room.createdBy || { username: "Room Owner" });
+              setReportEvidenceType("ROOM");
+              setReportEvidenceId(room._id || room.roomId);
+              setReportModalOpen(true);
+            }}
+            likesList={selectedRoomLikes}
+            isLoadingLikes={isLoadingRoomLikes}
+            onToast={(msg, type) => {
+              setAlertMessage(msg);
+              setAlertType(type || "success");
+              setShowAlert(true);
+            }}
+          />
         )}
 
         {/* Quick Create Room Modal */}

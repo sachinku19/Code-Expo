@@ -435,30 +435,41 @@ function Auth({ mode }) {
   return (
     <div className={`auth-page ${resolvedTheme} page-fade-in`}>
       {/* Floating Back Home Button */}
-      <button onClick={() => navigate("/")} className="btn-back-home">
-        <ArrowLeft size={14} className="btn-back-home-arrow" />
+      <button onClick={() => navigate("/")} className="btn-back-home" title="Back to Homepage">
+        <ArrowLeft size={15} className="btn-back-home-arrow" />
         <span>Home</span>
       </button>
 
-
+      {/* Floating Theme Toggle Button */}
+      <button
+        onClick={toggleTheme}
+        className="btn-theme-toggle"
+        title={`Switch to ${resolvedTheme === "light" ? "dark" : "light"} mode`}
+        aria-label="Toggle color theme"
+      >
+        {resolvedTheme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+      </button>
 
       {/* Centered Panel Wrapper */}
       <div className="auth-form-panel">
-        {/* Double-Panel Split Layout Card */}
+        {/* Dual-Pane Modern Card */}
         <div className="auth-card-split">
 
-          {/* LEFT PANEL: Branding & Info (Deep Space Gradient & Mesh) */}
+          {/* LEFT PANEL: Branding & Value Proposition */}
           <div className="auth-info-column">
             <div className="auth-info-mesh-bg" />
             <div className="auth-info-content">
               {/* Brand Top Header */}
               <div className="auth-brand-logo-container" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
-                <Logo size={34} showText={true} forceTheme="dark" />
+                <Logo size={36} showText={true} />
               </div>
 
               {/* Tagline Center Section */}
               <div className="auth-info-center-group">
-                <h2 className="auth-info-headline">The stage for collaborative coding.</h2>
+                <h1 className="auth-info-headline">
+                  The stage for<br />
+                  <span className="auth-highlight-orange">collaborative</span> coding.
+                </h1>
                 <p className="auth-info-desc">
                   Step into live sandboxes, showcase your snippets to the community, and build your developer presence in real-time.
                 </p>
@@ -473,14 +484,7 @@ function Auth({ mode }) {
             </div>
           </div>
 
-          {/* Diary Spiral Binder Seam */}
-          <div className="diary-spiral-binder">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="diary-spiral-ring" />
-            ))}
-          </div>
-
-          {/* RIGHT PANEL: Form inputs (White background) */}
+          {/* RIGHT PANEL: Form Column */}
           <div className="auth-form-column">
             <AnimatePresence mode="wait" initial={false} custom={direction}>
               {isForgotPassword ? (
@@ -497,12 +501,12 @@ function Auth({ mode }) {
                     <h2 className="auth-form-title">
                       {recoveryVerifiedToken
                         ? "Identity Verified"
-                        : "Forgot your password?"}
+                        : "Forgot Password"}
                     </h2>
                     <p className="auth-form-subtitle-small">
                       {recoveryVerifiedToken
                         ? "Create a new secure password to regain access."
-                        : "Choose how you'd like to recover access to your CodeExpo account."}
+                        : "Choose how you'd like to recover access to your account."}
                     </p>
                   </div>
 
@@ -563,21 +567,22 @@ function Auth({ mode }) {
                             value={forgotEmail}
                             onChange={(e) => setForgotEmail(e.target.value)}
                             required
-                            className="form-input-underline"
+                            className="form-input-box"
                             autoComplete="email"
                           />
-                          {isForgotEmailValid && <span className="input-valid-tick">✓</span>}
+                          <Mail size={18} className="input-trailing-icon" />
+                          {isForgotEmailValid && <span className="input-valid-tick with-icon">✓</span>}
                         </div>
                       </div>
 
                       <div className="auth-action-row">
-                        <button type="submit" className="btn-capsule-filled" disabled={forgotLoading}>
+                        <button type="submit" className="btn-auth-primary" disabled={forgotLoading}>
                           {forgotLoading ? "Sending..." : "Send Link"}
                         </button>
                         <button
                           type="button"
                           onClick={resetForgotFlow}
-                          className="btn-capsule-outlined"
+                          className="btn-auth-secondary"
                         >
                           Back
                         </button>
@@ -598,10 +603,11 @@ function Auth({ mode }) {
                             value={recoveryIdentifier}
                             onChange={(e) => setRecoveryIdentifier(e.target.value)}
                             required
-                            className="form-input-underline"
+                            className="form-input-box"
                             autoComplete="username"
                           />
-                          {recoveryIdentifier.trim().length >= 3 && <span className="input-valid-tick">✓</span>}
+                          <Mail size={18} className="input-trailing-icon" />
+                          {recoveryIdentifier.trim().length >= 3 && <span className="input-valid-tick with-icon">✓</span>}
                         </div>
                       </div>
 
@@ -615,12 +621,13 @@ function Auth({ mode }) {
                             value={recoveryKeyInput}
                             onChange={handleRecoveryKeyInputChange}
                             required
-                            className="form-input-underline font-monospace"
+                            className="form-input-box font-monospace"
                             autoComplete="off"
                             spellCheck="false"
                             maxLength={24}
                           />
-                          {recoveryKeyInput.replace(/[^A-Za-z0-9]/g, "").length >= 20 && <span className="input-valid-tick">✓</span>}
+                          <Key size={18} className="input-trailing-icon" />
+                          {recoveryKeyInput.replace(/[^A-Za-z0-9]/g, "").length >= 20 && <span className="input-valid-tick with-icon">✓</span>}
                         </div>
                         <span className="field-hint-text">
                           Enter your 20-character offline recovery key.
@@ -628,13 +635,13 @@ function Auth({ mode }) {
                       </div>
 
                       <div className="auth-action-row">
-                        <button type="submit" className="btn-capsule-filled" disabled={forgotLoading}>
-                          {forgotLoading ? "Verifying..." : "Verify Recovery Key"}
+                        <button type="submit" className="btn-auth-primary" disabled={forgotLoading}>
+                          {forgotLoading ? "Verifying..." : "Verify Key"}
                         </button>
                         <button
                           type="button"
                           onClick={resetForgotFlow}
-                          className="btn-capsule-outlined"
+                          className="btn-auth-secondary"
                         >
                           Back
                         </button>
@@ -662,15 +669,16 @@ function Auth({ mode }) {
                             value={recoveryNewPassword}
                             onChange={(e) => setRecoveryNewPassword(e.target.value)}
                             required
-                            className="form-input-underline"
+                            className="form-input-box"
                             autoComplete="new-password"
                           />
                           <button
                             type="button"
                             className="input-icon-right-toggle"
                             onClick={() => setShowRecoveryNewPass(!showRecoveryNewPass)}
+                            aria-label="Toggle password visibility"
                           >
-                            {showRecoveryNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                            {showRecoveryNewPass ? <EyeOff size={18} /> : <Eye size={18} />}
                           </button>
                           {recoveryNewPassword.length >= 6 && <span className="input-valid-tick with-icon">✓</span>}
                         </div>
@@ -686,15 +694,16 @@ function Auth({ mode }) {
                             value={recoveryConfirmPassword}
                             onChange={(e) => setRecoveryConfirmPassword(e.target.value)}
                             required
-                            className="form-input-underline"
+                            className="form-input-box"
                             autoComplete="new-password"
                           />
                           <button
                             type="button"
                             className="input-icon-right-toggle"
                             onClick={() => setShowRecoveryConfirmPass(!showRecoveryConfirmPass)}
+                            aria-label="Toggle confirm password visibility"
                           >
-                            {showRecoveryConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                            {showRecoveryConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
                           </button>
                           {recoveryConfirmPassword && recoveryNewPassword === recoveryConfirmPassword && (
                             <span className="input-valid-tick with-icon">✓</span>
@@ -705,7 +714,7 @@ function Auth({ mode }) {
                       <div className="auth-action-row">
                         <button
                           type="submit"
-                          className="btn-capsule-filled"
+                          className="btn-auth-primary"
                           disabled={forgotLoading || recoveryNewPassword.length < 6 || recoveryNewPassword !== recoveryConfirmPassword}
                         >
                           {forgotLoading ? "Resetting..." : "Reset Password"}
@@ -713,7 +722,7 @@ function Auth({ mode }) {
                         <button
                           type="button"
                           onClick={resetForgotFlow}
-                          className="btn-capsule-outlined"
+                          className="btn-auth-secondary"
                         >
                           Cancel
                         </button>
@@ -761,10 +770,11 @@ function Auth({ mode }) {
                           value={loginData.email}
                           onChange={handleLoginChange}
                           required
-                          className="form-input-underline"
+                          className="form-input-box"
                           autoComplete="email"
                         />
-                        {isLoginEmailValid && <span className="input-valid-tick">✓</span>}
+                        <Mail size={18} className="input-trailing-icon" />
+                        {isLoginEmailValid && <span className="input-valid-tick with-icon">✓</span>}
                       </div>
                     </div>
 
@@ -779,15 +789,16 @@ function Auth({ mode }) {
                           value={loginData.password}
                           onChange={handleLoginChange}
                           required
-                          className="form-input-underline"
+                          className="form-input-box"
                           autoComplete="current-password"
                         />
                         <button
                           type="button"
                           className="input-icon-right-toggle"
                           onClick={() => setShowLoginPassword(!showLoginPassword)}
+                          aria-label="Toggle password visibility"
                         >
-                          {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
                         {loginData.password.length >= 6 && <span className="input-valid-tick with-icon">✓</span>}
                       </div>
@@ -803,13 +814,13 @@ function Auth({ mode }) {
                     </div>
 
                     <div className="auth-action-row">
-                      <button type="submit" className="btn-capsule-filled" disabled={activeLoading}>
-                        {activeLoading ? "Sign In..." : "Sign In"}
+                      <button type="submit" className="btn-auth-primary" disabled={activeLoading}>
+                        {activeLoading ? "Signing In..." : "Sign In"}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSwitchMode("register")}
-                        className="btn-capsule-outlined"
+                        className="btn-auth-secondary"
                       >
                         Sign Up
                       </button>
@@ -826,7 +837,7 @@ function Auth({ mode }) {
                         onClick={handleGoogleLogin}
                         disabled={activeLoading}
                       >
-                        <svg viewBox="0 0 24 24" width="18" height="18">
+                        <svg viewBox="0 0 24 24" width="18" height="18" className="google-icon-svg">
                           <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.58c-.28 1.45-1.11 2.69-2.35 3.51v2.91h3.79c2.22-2.05 3.5-5.07 3.5-8.37z" />
                           <path fill="#34A853" d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.79-2.91c-1.05.7-2.4 1.12-4.17 1.12-3.21 0-5.93-2.17-6.9-5.1H1.31v3.01C3.29 21.16 7.37 24 12 24z" />
                           <path fill="#FBBC05" d="M5.1 14.2c-.25-.75-.39-1.55-.39-2.38s.14-1.63.39-2.38V6.43H1.31C.48 8.09 0 9.97 0 12s.48 3.91 1.31 5.57l3.79-3.37z" />
@@ -860,7 +871,7 @@ function Auth({ mode }) {
 
                   <form className="auth-form-main" onSubmit={handleRegisterSubmit}>
                     <div className="form-group">
-                      <label htmlFor="username" className="form-label">Name</label>
+                      <label htmlFor="username" className="form-label">Full Name</label>
                       <div className="input-container">
                         <input
                           id="username"
@@ -870,7 +881,7 @@ function Auth({ mode }) {
                           value={registerData.username}
                           onChange={handleRegisterChange}
                           required
-                          className="form-input-underline"
+                          className="form-input-box"
                           minLength={3}
                           maxLength={30}
                           autoComplete="username"
@@ -890,10 +901,11 @@ function Auth({ mode }) {
                           value={registerData.email}
                           onChange={handleRegisterChange}
                           required
-                          className="form-input-underline"
+                          className="form-input-box"
                           autoComplete="email"
                         />
-                        {isRegisterEmailValid && <span className="input-valid-tick">✓</span>}
+                        <Mail size={18} className="input-trailing-icon" />
+                        {isRegisterEmailValid && <span className="input-valid-tick with-icon">✓</span>}
                       </div>
                     </div>
 
@@ -908,15 +920,16 @@ function Auth({ mode }) {
                           value={registerData.password}
                           onChange={handleRegisterChange}
                           required
-                          className="form-input-underline"
+                          className="form-input-box"
                           autoComplete="new-password"
                         />
                         <button
                           type="button"
                           className="input-icon-right-toggle"
                           onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                          aria-label="Toggle password visibility"
                         >
-                          {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
                         {registerData.password.length >= 6 && <span className="input-valid-tick with-icon">✓</span>}
                       </div>
@@ -953,13 +966,13 @@ function Auth({ mode }) {
                     </div>
 
                     <div className="auth-action-row">
-                      <button type="submit" className="btn-capsule-filled" disabled={activeLoading}>
+                      <button type="submit" className="btn-auth-primary" disabled={activeLoading}>
                         {activeLoading ? "Signing Up..." : "Sign Up"}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSwitchMode("login")}
-                        className="btn-capsule-outlined"
+                        className="btn-auth-secondary"
                       >
                         Sign In
                       </button>
@@ -976,7 +989,7 @@ function Auth({ mode }) {
                         onClick={handleGoogleLogin}
                         disabled={activeLoading}
                       >
-                        <svg viewBox="0 0 24 24" width="18" height="18">
+                        <svg viewBox="0 0 24 24" width="18" height="18" className="google-icon-svg">
                           <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.58c-.28 1.45-1.11 2.69-2.35 3.51v2.91h3.79c2.22-2.05 3.5-5.07 3.5-8.37z" />
                           <path fill="#34A853" d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.79-2.91c-1.05.7-2.4 1.12-4.17 1.12-3.21 0-5.93-2.17-6.9-5.1H1.31v3.01C3.29 21.16 7.37 24 12 24z" />
                           <path fill="#FBBC05" d="M5.1 14.2c-.25-.75-.39-1.55-.39-2.38s.14-1.63.39-2.38V6.43H1.31C.48 8.09 0 9.97 0 12s.48 3.91 1.31 5.57l3.79-3.37z" />

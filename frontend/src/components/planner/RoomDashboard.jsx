@@ -74,7 +74,7 @@ export default function RoomDashboard({ stats, onSelectTask, currentUser }) {
         <div className="db-card">
           <div className="db-card-header">
             <h2>Member Contributions</h2>
-            <span style={{ fontSize: "0.75rem", color: "#818cf8" }}>Productivity index</span>
+            <span style={{ fontSize: "0.75rem", color: "#fbbf24" }}>Productivity index</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {productivityByMember.map(p => (
@@ -102,8 +102,8 @@ export default function RoomDashboard({ stats, onSelectTask, currentUser }) {
                         width: "28px",
                         height: "28px",
                         borderRadius: "50%",
-                        background: "#312e81",
-                        color: "#a5b4fc",
+                        background: "rgba(245, 158, 11, 0.2)",
+                        color: "#fbbf24",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -125,9 +125,9 @@ export default function RoomDashboard({ stats, onSelectTask, currentUser }) {
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#818cf8" }}>{p.productivity}%</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#fbbf24" }}>{p.productivity}%</div>
                   <div style={{ width: "60px", height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", overflow: "hidden", marginTop: "4px" }}>
-                    <div style={{ width: `${p.productivity}%`, height: "100%", background: "#818cf8" }} />
+                    <div style={{ width: `${p.productivity}%`, height: "100%", background: "#f59e0b" }} />
                   </div>
                 </div>
               </div>
@@ -197,7 +197,7 @@ export default function RoomDashboard({ stats, onSelectTask, currentUser }) {
                         Due: {new Date(t.dueDate).toLocaleDateString()}
                       </span>
                     )}
-                    <span style={{ fontSize: "0.7rem", color: t.priority === "Critical" ? "#f87171" : "var(--tp-accent, #6366f1)" }}>
+                    <span style={{ fontSize: "0.7rem", color: t.priority === "Critical" ? "#f87171" : "var(--tp-accent, #f59e0b)" }}>
                       {t.priority}
                     </span>
                   </div>

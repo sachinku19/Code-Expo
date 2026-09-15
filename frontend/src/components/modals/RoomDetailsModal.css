@@ -1,0 +1,1727 @@
+/* Room Details Modal - Premium Design System */
+
+.rdm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 16px;
+  animation: rdm-fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes rdm-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.rdm-dialog-card {
+  width: 980px;
+  max-width: 96vw;
+  max-height: 90vh;
+  background: #0b0f19;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(245, 158, 11, 0.05);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 28px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  color: #f1f5f9;
+  font-family: inherit;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Sleek Scrollbar */
+.rdm-dialog-card::-webkit-scrollbar,
+.rdm-members-list-scrollable::-webkit-scrollbar,
+.rdm-likes-list-scrollable::-webkit-scrollbar,
+.rdm-description-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.rdm-dialog-card::-webkit-scrollbar-track,
+.rdm-members-list-scrollable::-webkit-scrollbar-track,
+.rdm-likes-list-scrollable::-webkit-scrollbar-track,
+.rdm-description-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rdm-dialog-card::-webkit-scrollbar-thumb,
+.rdm-members-list-scrollable::-webkit-scrollbar-thumb,
+.rdm-likes-list-scrollable::-webkit-scrollbar-thumb,
+.rdm-description-body::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+.rdm-dialog-card::-webkit-scrollbar-thumb:hover,
+.rdm-members-list-scrollable::-webkit-scrollbar-thumb:hover,
+.rdm-likes-list-scrollable::-webkit-scrollbar-thumb:hover,
+.rdm-description-body::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(245, 158, 11, 0.5);
+}
+
+/* 1. TOP HEADER BAR */
+.rdm-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.rdm-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rdm-back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: translateX(-2px);
+}
+
+.rdm-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rdm-menu-wrapper {
+  position: relative;
+}
+
+.rdm-icon-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rdm-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.rdm-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #0f1522;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.7);
+  min-width: 170px;
+  padding: 6px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  animation: rdm-dropdown-pop 0.15s ease-out;
+}
+
+@keyframes rdm-dropdown-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rdm-dropdown-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+
+.rdm-dropdown-menu button:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+}
+
+.rdm-dropdown-menu .rdm-menu-danger {
+  color: #ef4444;
+}
+
+.rdm-dropdown-menu .rdm-menu-danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.rdm-share-room-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rdm-share-room-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* 2. HERO HEADER */
+.rdm-hero-section {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 4px;
+}
+
+.rdm-hero-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rdm-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #f59e0b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  width: fit-content;
+}
+
+.rdm-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.rdm-terminal-prompt {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #f59e0b;
+  line-height: 1.25;
+  flex-shrink: 0;
+}
+
+.rdm-room-title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.rdm-hero-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 0.88rem;
+  color: #94a3b8;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.rdm-hero-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.rdm-hero-visual-stack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 84px;
+  width: 175px;
+}
+
+.rdm-stack-layer {
+  position: absolute;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.rdm-layer-1 {
+  right: 104px;
+  width: 44px;
+  height: 46px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0%, rgba(245, 158, 11, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  opacity: 0.45;
+  transform: rotate(-3deg) translateY(3px);
+}
+
+.rdm-layer-2 {
+  right: 58px;
+  width: 58px;
+  height: 60px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(245, 158, 11, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  opacity: 0.72;
+  transform: rotate(-1.5deg) translateY(1px);
+}
+
+.rdm-layer-3 {
+  right: 18px;
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(245, 158, 11, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0.9;
+}
+
+.rdm-glowing-gold-card {
+  position: relative;
+  z-index: 2;
+  width: 78px;
+  height: 78px;
+  border-radius: 18px;
+  background: radial-gradient(circle at 45% 35%, rgba(245, 158, 11, 0.22) 0%, rgba(13, 18, 29, 0.96) 100%);
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.32), inset 0 0 16px rgba(245, 158, 11, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.rdm-glowing-gold-card:hover {
+  transform: scale(1.02);
+}
+
+.rdm-gold-users-icon {
+  color: #f59e0b;
+  filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.4));
+}
+
+/* 3. 2x2 GRID SECTION */
+.rdm-2x2-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.rdm-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.rdm-card:hover {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rdm-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.rdm-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.rdm-icon-gold {
+  color: #f59e0b;
+}
+
+.rdm-icon-red {
+  color: #ef4444;
+}
+
+/* Edit & Invite Top-Right Action Buttons inside Cards */
+.rdm-edit-btn,
+.rdm-invite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rdm-edit-btn:hover,
+.rdm-invite-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Subgrid inside Room Details Card */
+.rdm-details-subgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.rdm-subbox {
+  background: #080c14;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.rdm-subbox-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rdm-hash {
+  font-weight: 800;
+  color: #64748b;
+}
+
+.rdm-subbox-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.rdm-subbox-value {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rdm-subbox-value.mono {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.82rem;
+  color: #f1f5f9;
+}
+
+.rdm-mini-copy-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.rdm-mini-copy-btn:hover {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.rdm-chevron-muted {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.rdm-lang-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rdm-lang-tag {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+}
+
+.rdm-lang-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.rdm-owner-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rdm-owner-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.rdm-owner-avatar-fallback {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rdm-owner-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rdm-subbox-value-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rdm-date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rdm-calendar-icon {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.rdm-date-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.rdm-relative-time {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 500;
+  padding-left: 19px;
+}
+
+/* CARD 2: ROOM DESCRIPTION */
+.rdm-description-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.rdm-description-body {
+  flex: 1;
+  min-height: 80px;
+  max-height: 120px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.rdm-description-text {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #cbd5e1;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.rdm-description-fallback {
+  color: #94a3b8;
+  font-style: normal;
+  opacity: 0.9;
+}
+
+.rdm-empty-description-owner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  padding: 4px 0;
+  height: 100%;
+}
+
+.rdm-empty-desc-text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.rdm-add-description-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  color: #f59e0b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rdm-add-description-btn:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+
+/* INLINE DESCRIPTION EDITOR */
+.rdm-inline-desc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.rdm-inline-desc-textarea {
+  width: 100%;
+  background: #080c14;
+  border: 1.5px solid rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 68px;
+  max-height: 120px;
+  outline: none;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.12);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rdm-inline-desc-textarea:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25);
+}
+
+.rdm-inline-desc-textarea::placeholder {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.rdm-desc-error-msg {
+  color: #ef4444;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.rdm-inline-desc-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rdm-desc-char-counter {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-family: var(--font-mono, monospace);
+}
+
+.rdm-inline-desc-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rdm-inline-cancel-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rdm-inline-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.rdm-inline-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f59e0b;
+  border: 1px solid #f59e0b;
+  color: #000000;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
+  transition: all 0.15s ease;
+}
+
+.rdm-inline-save-btn:hover:not(:disabled) {
+  background: #fbbf24;
+}
+
+.rdm-inline-save-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.rdm-spin-icon {
+  animation: rdm-spin 1s linear infinite;
+}
+
+@keyframes rdm-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rdm-tags-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rdm-tag-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.rdm-tag-pill:hover {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #f59e0b;
+}
+
+/* CARD 3: MEMBERS & CARD 4: LIKED BY */
+.rdm-members-list-scrollable,
+.rdm-likes-list-scrollable {
+  max-height: 155px;
+  min-height: 110px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.rdm-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #080c14;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  gap: 10px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.rdm-member-row:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #0c111c;
+}
+
+.rdm-member-avatar-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.rdm-member-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.rdm-member-avatar-initials {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rdm-presence-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #080c14;
+}
+
+.rdm-presence-dot.online {
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.rdm-presence-dot.offline {
+  background-color: #64748b;
+}
+
+.rdm-member-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rdm-member-username {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rdm-role-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.rdm-role-badge.owner {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #f59e0b;
+}
+
+.rdm-role-badge.member {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.rdm-presence-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rdm-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.rdm-status-dot.online {
+  background: #10b981;
+}
+
+.rdm-status-dot.offline {
+  background: #ef4444;
+}
+
+.rdm-status-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.rdm-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rdm-kick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rdm-kick-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.rdm-status-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 5px;
+}
+
+.rdm-member-menu-rel {
+  position: relative;
+}
+
+.rdm-member-more-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  border-radius: 4px;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rdm-member-more-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.rdm-member-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: #0f1522;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  padding: 4px;
+  min-width: 130px;
+}
+
+.rdm-member-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #ef4444;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rdm-member-dropdown button:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* LIKED BY CARD ROWS */
+.rdm-like-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #080c14;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  gap: 10px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.rdm-like-row:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #0c111c;
+}
+
+.rdm-like-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rdm-like-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.rdm-like-avatar-initials {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rdm-like-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rdm-like-username {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rdm-like-subtext {
+  font-size: 0.72rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rdm-like-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.rdm-likes-empty,
+.rdm-likes-loading {
+  font-size: 0.8rem;
+  color: #64748b;
+  text-align: center;
+  padding: 24px 12px;
+}
+
+/* 4. BOTTOM ACTION & COLLABORATION PROMPT */
+.rdm-bottom-action-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.rdm-enter-workspace-btn {
+  width: 100%;
+  height: 48px;
+  background: #f59e0b;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #000000;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.96rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rdm-enter-workspace-btn:hover {
+  background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+}
+
+.rdm-enter-workspace-btn:active {
+  transform: translateY(1px);
+}
+
+.rdm-bottom-subtext {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.rdm-subtext-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rdm-subtext-label {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+/* RESPONSIVE BREAKPOINTS */
+@media (max-width: 860px) {
+  .rdm-2x2-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rdm-dialog-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 580px) {
+  .rdm-details-subgrid {
+    grid-template-columns: 1fr;
+  }
+
+  .rdm-hero-section {
+    flex-direction: column-reverse;
+    gap: 14px;
+  }
+
+  .rdm-hero-right {
+    align-self: flex-start;
+  }
+
+  .rdm-hero-visual-stack {
+    height: 64px;
+    width: 140px;
+  }
+
+  .rdm-layer-1 {
+    right: 84px;
+    width: 36px;
+    height: 38px;
+  }
+
+  .rdm-layer-2 {
+    right: 48px;
+    width: 48px;
+    height: 50px;
+  }
+
+  .rdm-layer-3 {
+    right: 14px;
+    width: 58px;
+    height: 58px;
+  }
+
+  .rdm-glowing-gold-card {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+  }
+
+  .rdm-gold-users-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .rdm-room-title {
+    font-size: 1.2rem;
+  }
+}
+
+/* ==========================================================
+   LIGHT MODE THEME STYLING FOR ROOM DETAILS MODAL
+   ========================================================== */
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-modal-overlay,
+.rdm-modal-overlay.light,
+.rdm-modal-overlay[data-theme="light"] {
+  background-color: rgba(15, 23, 42, 0.55);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-dialog-card,
+.rdm-dialog-card.light,
+.rdm-dialog-card[data-theme="light"] {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 25px 65px -15px rgba(0, 0, 0, 0.14), 0 0 35px rgba(245, 158, 11, 0.08);
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-dialog-card::-webkit-scrollbar-thumb,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-members-list-scrollable::-webkit-scrollbar-thumb,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-likes-list-scrollable::-webkit-scrollbar-thumb,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-description-body::-webkit-scrollbar-thumb,
+.rdm-dialog-card.light ::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-dialog-card::-webkit-scrollbar-thumb:hover,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-members-list-scrollable::-webkit-scrollbar-thumb:hover,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-likes-list-scrollable::-webkit-scrollbar-thumb:hover,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-description-body::-webkit-scrollbar-thumb:hover,
+.rdm-dialog-card.light ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(245, 158, 11, 0.6);
+}
+
+/* Header Buttons in Light Mode */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-back-btn,
+.rdm-dialog-card.light .rdm-back-btn {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-back-btn:hover,
+.rdm-dialog-card.light .rdm-back-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-icon-btn,
+.rdm-dialog-card.light .rdm-icon-btn {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-icon-btn:hover,
+.rdm-dialog-card.light .rdm-icon-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-dropdown-menu,
+.rdm-dialog-card.light .rdm-dropdown-menu {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-dropdown-menu button,
+.rdm-dialog-card.light .rdm-dropdown-menu button {
+  color: #334155;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-dropdown-menu button:hover,
+.rdm-dialog-card.light .rdm-dropdown-menu button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-share-room-btn,
+.rdm-dialog-card.light .rdm-share-room-btn {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-share-room-btn:hover,
+.rdm-dialog-card.light .rdm-share-room-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+/* Hero Section in Light Mode */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-badge-pill,
+.rdm-dialog-card.light .rdm-badge-pill {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #b45309;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-terminal-prompt,
+.rdm-dialog-card.light .rdm-terminal-prompt {
+  color: #d97706;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-room-title,
+.rdm-dialog-card.light .rdm-room-title {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-hero-subtitle,
+.rdm-dialog-card.light .rdm-hero-subtitle {
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-layer-1,
+.rdm-dialog-card.light .rdm-layer-1 {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(254, 243, 199, 0.4) 100%);
+  border-color: rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-layer-2,
+.rdm-dialog-card.light .rdm-layer-2 {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(253, 230, 138, 0.45) 100%);
+  border-color: rgba(203, 213, 225, 0.9);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-layer-3,
+.rdm-dialog-card.light .rdm-layer-3 {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(252, 211, 77, 0.5) 100%);
+  border-color: rgba(203, 213, 225, 0.9);
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.12);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-glowing-gold-card,
+.rdm-dialog-card.light .rdm-glowing-gold-card {
+  background: radial-gradient(circle at 45% 35%, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.25), inset 0 0 12px rgba(255, 255, 255, 0.8);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-gold-users-icon,
+.rdm-dialog-card.light .rdm-gold-users-icon {
+  color: #b45309;
+  filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.3));
+}
+
+/* 2x2 Grid Cards in Light Mode */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-card,
+.rdm-dialog-card.light .rdm-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-card:hover,
+.rdm-dialog-card.light .rdm-card:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-card-title,
+.rdm-dialog-card.light .rdm-card-title {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-edit-btn,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-invite-btn,
+.rdm-dialog-card.light .rdm-edit-btn,
+.rdm-dialog-card.light .rdm-invite-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-edit-btn:hover,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-invite-btn:hover,
+.rdm-dialog-card.light .rdm-edit-btn:hover,
+.rdm-dialog-card.light .rdm-invite-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* Subbox in Room Details */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-subbox,
+.rdm-dialog-card.light .rdm-subbox {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-subbox-label,
+.rdm-dialog-card.light .rdm-subbox-label {
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-subbox-value,
+.rdm-dialog-card.light .rdm-subbox-value {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-subbox-value.mono,
+.rdm-dialog-card.light .rdm-subbox-value.mono {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-mini-copy-btn,
+.rdm-dialog-card.light .rdm-mini-copy-btn {
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-mini-copy-btn:hover,
+.rdm-dialog-card.light .rdm-mini-copy-btn:hover {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-chevron-muted,
+.rdm-dialog-card.light .rdm-chevron-muted {
+  color: #94a3b8;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-lang-name,
+.rdm-dialog-card.light .rdm-lang-name {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-owner-avatar,
+.rdm-dialog-card.light .rdm-owner-avatar {
+  border-color: #cbd5e1;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-owner-name,
+.rdm-dialog-card.light .rdm-owner-name {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-calendar-icon,
+.rdm-dialog-card.light .rdm-calendar-icon {
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-date-text,
+.rdm-dialog-card.light .rdm-date-text {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-relative-time,
+.rdm-dialog-card.light .rdm-relative-time {
+  color: #64748b;
+}
+
+/* Room Description in Light Mode */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-description-text,
+.rdm-dialog-card.light .rdm-description-text {
+  color: #334155;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-description-fallback,
+.rdm-dialog-card.light .rdm-description-fallback {
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-empty-desc-text,
+.rdm-dialog-card.light .rdm-empty-desc-text {
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-add-description-btn,
+.rdm-dialog-card.light .rdm-add-description-btn {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #b45309;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-add-description-btn:hover,
+.rdm-dialog-card.light .rdm-add-description-btn:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #d97706;
+  color: #92400e;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-inline-desc-textarea,
+.rdm-dialog-card.light .rdm-inline-desc-textarea {
+  background: #ffffff;
+  border-color: #f59e0b;
+  color: #0f172a;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.12);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-inline-desc-textarea::placeholder,
+.rdm-dialog-card.light .rdm-inline-desc-textarea::placeholder {
+  color: #94a3b8;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-inline-cancel-btn,
+.rdm-dialog-card.light .rdm-inline-cancel-btn {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-inline-cancel-btn:hover,
+.rdm-dialog-card.light .rdm-inline-cancel-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-tags-footer,
+.rdm-dialog-card.light .rdm-tags-footer {
+  border-top-color: #e2e8f0;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-tag-pill,
+.rdm-dialog-card.light .rdm-tag-pill {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-tag-pill:hover,
+.rdm-dialog-card.light .rdm-tag-pill:hover {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #b45309;
+}
+
+/* Members Card in Light Mode */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-member-row,
+.rdm-dialog-card.light .rdm-member-row {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-member-row:hover,
+.rdm-dialog-card.light .rdm-member-row:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-member-avatar,
+.rdm-dialog-card.light .rdm-member-avatar {
+  border-color: #cbd5e1;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-presence-dot,
+.rdm-dialog-card.light .rdm-presence-dot {
+  border-color: #ffffff;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-member-username,
+.rdm-dialog-card.light .rdm-member-username {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-role-badge.owner,
+.rdm-dialog-card.light .rdm-role-badge.owner {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #b45309;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-role-badge.member,
+.rdm-dialog-card.light .rdm-role-badge.member {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-presence-dot.offline,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-status-dot.offline,
+.rdm-dialog-card.light .rdm-presence-dot.offline,
+.rdm-dialog-card.light .rdm-status-dot.offline {
+  background-color: #94a3b8;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-status-label,
+.rdm-dialog-card.light .rdm-status-label {
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-status-pill,
+.rdm-dialog-card.light .rdm-status-pill {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-member-more-btn,
+.rdm-dialog-card.light .rdm-member-more-btn {
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-member-more-btn:hover,
+.rdm-dialog-card.light .rdm-member-more-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-member-dropdown,
+.rdm-dialog-card.light .rdm-member-dropdown {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+/* Liked By Card in Light Mode */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-like-row,
+.rdm-dialog-card.light .rdm-like-row {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-like-row:hover,
+.rdm-dialog-card.light .rdm-like-row:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-like-avatar,
+.rdm-dialog-card.light .rdm-like-avatar {
+  border-color: #cbd5e1;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-like-username,
+.rdm-dialog-card.light .rdm-like-username {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-like-subtext,
+.rdm-dialog-card.light .rdm-like-subtext {
+  color: #64748b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-likes-empty,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-likes-loading,
+.rdm-dialog-card.light .rdm-likes-empty,
+.rdm-dialog-card.light .rdm-likes-loading {
+  color: #64748b;
+}
+
+/* Bottom Actions in Light Mode */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-enter-workspace-btn,
+.rdm-dialog-card.light .rdm-enter-workspace-btn {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.28);
+  color: #000000;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-enter-workspace-btn:hover,
+.rdm-dialog-card.light .rdm-enter-workspace-btn:hover {
+  background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-subtext-line,
+.rdm-dialog-card.light .rdm-subtext-line {
+  background: #e2e8f0;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-subtext-label,
+.rdm-dialog-card.light .rdm-subtext-label {
+  color: #64748b;
+}

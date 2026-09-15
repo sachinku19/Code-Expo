@@ -305,14 +305,14 @@ body.light .section-header-title,
 }
 
 .section-icon {
-  color: #a78bfa;
+  color: #fbbf24;
 }
 
 .light .section-icon,
 html.light .section-icon,
 body.light .section-icon,
 [data-theme-mode="light"] .section-icon {
-  color: #7c3aed;
+  color: #f59e0b;
 }
 
 .section-optional-badge {
@@ -386,7 +386,7 @@ body.light .account-label,
 }
 
 .account-input:focus {
-  border-color: var(--ce-primary, #7c3aed);
+  border-color: var(--ce-primary, #f59e0b);
 }
 
 .account-input:disabled {
@@ -410,7 +410,7 @@ html.light .account-input:focus,
 body.light .account-input:focus,
 [data-theme-mode="light"] .account-input:focus {
   background: #ffffff;
-  border-color: #7c3aed;
+  border-color: #f59e0b;
 }
 
 .light .account-input:disabled,
@@ -450,7 +450,7 @@ body.light .account-input::placeholder,
 }
 
 .account-textarea:focus {
-  border-color: var(--ce-primary, #7c3aed);
+  border-color: var(--ce-primary, #f59e0b);
 }
 
 .light .account-textarea,
@@ -467,7 +467,7 @@ html.light .account-textarea:focus,
 body.light .account-textarea:focus,
 [data-theme-mode="light"] .account-textarea:focus {
   background: #ffffff;
-  border-color: #7c3aed;
+  border-color: #f59e0b;
 }
 
 .field-hint-small {
@@ -495,7 +495,7 @@ body.light .account-textarea:focus,
 }
 
 .tags-input-box:focus-within {
-  border-color: var(--ce-primary, #7c3aed);
+  border-color: var(--ce-primary, #f59e0b);
 }
 
 .light .tags-input-box,
@@ -511,7 +511,7 @@ html.light .tags-input-box:focus-within,
 body.light .tags-input-box:focus-within,
 [data-theme-mode="light"] .tags-input-box:focus-within {
   background: #ffffff;
-  border-color: #7c3aed;
+  border-color: #f59e0b;
 }
 
 .tag-badge-item {
@@ -520,9 +520,9 @@ body.light .tags-input-box:focus-within,
   gap: 5px;
   padding: 3px 8px;
   border-radius: 4px;
-  background: rgba(124, 58, 237, 0.12);
-  border: 1px solid rgba(124, 58, 237, 0.25);
-  color: #c4b5fd;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
   font-size: 0.74rem;
   font-weight: 500;
 }
@@ -531,9 +531,9 @@ body.light .tags-input-box:focus-within,
 html.light .tag-badge-item,
 body.light .tag-badge-item,
 [data-theme-mode="light"] .tag-badge-item {
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-  color: #6d28d9;
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #d97706;
 }
 
 .tag-remove-x {
@@ -613,8 +613,8 @@ body.light .tag-native-input::placeholder,
 }
 
 .visibility-card-option.active {
-  border-color: #7c3aed;
-  background: rgba(124, 58, 237, 0.04);
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.04);
 }
 
 .light .visibility-card-option,
@@ -629,8 +629,8 @@ body.light .visibility-card-option,
 html.light .visibility-card-option.active,
 body.light .visibility-card-option.active,
 [data-theme-mode="light"] .visibility-card-option.active {
-  border-color: #7c3aed;
-  background: #f5f3ff;
+  border-color: #f59e0b;
+  background: #fffbeb;
 }
 
 .visibility-radio-indicator {
@@ -646,14 +646,14 @@ body.light .visibility-card-option.active,
 }
 
 .visibility-card-option.active .visibility-radio-indicator {
-  border-color: #7c3aed;
+  border-color: #f59e0b;
 }
 
 .radio-dot-inner {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #7c3aed;
+  background: #f59e0b;
 }
 
 .visibility-meta {
@@ -766,8 +766,8 @@ body.light .visibility-desc,
   height: 38px;
   padding: 0 20px;
   border-radius: var(--border-radius-sm, 6px);
-  background: #7c3aed;
-  border: 1px solid #6d28d9;
+  background: #f59e0b;
+  border: 1px solid #d97706;
   color: #ffffff;
   font-size: 0.82rem;
   font-weight: 600;
@@ -777,7 +777,7 @@ body.light .visibility-desc,
 }
 
 .account-save-btn:hover:not(:disabled) {
-  background: #6d28d9;
+  background: #d97706;
 }
 
 .account-save-btn:disabled {

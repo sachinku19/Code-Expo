@@ -25,8 +25,8 @@ import {
   LayoutGrid, Activity, Trash2, Code, User, Edit3, FileText
 } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
-import SecurityDeleteRoomModal from "../components/modals/SecurityDeleteRoomModal";
 import EditRoomModal from "../components/modals/EditRoomModal";
+import RoomDetailsModal from "../components/modals/RoomDetailsModal";
 import { getAvatarColor, getAvatarInitial } from "../utils/avatarUtils";
 import "./Profile.css";
 
@@ -784,7 +784,7 @@ const Profile = () => {
                         </text>
                       ))}
                       {INDIA_CITIES.map(city => {
-                        const isSelected = locationInput.toLowerCase().includes(city.name.toLowerCase());
+                        const isSelected = String(locationInput || "").toLowerCase().includes(String(city?.name || "").toLowerCase());
                         return (
                           <g key={city.name} style={{ cursor: "pointer" }} onClick={() => setLocationInput(`${city.name}, India`)}>
                             <circle
@@ -1625,153 +1625,35 @@ const Profile = () => {
         room={editingRoomTarget}
       />
 
-      {/* Simplified Room Details Modal for Profile Page */}
-      {selectedRoomDetails && createPortal(
-        <div className="ce-modal-overlay" onClick={() => setSelectedRoomDetails(null)}>
-          <button className="modal-close-btn-outside" onClick={(e) => { e.stopPropagation(); setSelectedRoomDetails(null); }} title="Close Details">
-            <X size={18} />
-          </button>
-          <div className="ce-modal-card room-details-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-new">
-              <span className="modal-label-tag">Room Overview</span>
-              <h3 className="modal-title-new"><Terminal size={18} style={{ marginRight: "8px", color: "var(--ce-accent)", verticalAlign: "middle" }} />{selectedRoomDetails.title}</h3>
-            </div>
-
-            <div className="modal-details-body-layout">
-              {/* LEFT SIDE: Existing room information */}
-              <div className="modal-details-left-side">
-                <div className="modal-details-grid">
-                  <div className="modal-detail-item">
-                    <span className="modal-detail-label">
-                      <Terminal size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Room ID
-                    </span>
-                    <div className="modal-detail-value-wrapper">
-                      <span className="modal-detail-value mono-text">{selectedRoomDetails.roomId || selectedRoomDetails._id}</span>
-                      <button
-                        onClick={(e) => handleCopyId(e, selectedRoomDetails.roomId || selectedRoomDetails._id)}
-                        className="modal-copy-btn"
-                        title="Copy Room ID"
-                      >
-                        {copiedId === (selectedRoomDetails.roomId || selectedRoomDetails._id) ? <Check size={12} style={{ color: "var(--ce-success)" }} /> : <Copy size={12} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="modal-detail-item">
-                    <span className="modal-detail-label">
-                      <Code size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Language
-                    </span>
-                    <span className="modal-detail-value lang-badge-new">{selectedRoomDetails.language?.toUpperCase()}</span>
-                  </div>
-
-                  <div className="modal-detail-item">
-                    <span className="modal-detail-label">
-                      {selectedRoomDetails.isPrivate ? <Lock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> : <Globe size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} />} Visibility
-                    </span>
-                    <span className="modal-detail-value privacy-badge-new">
-                      {selectedRoomDetails.isPrivate ? "Private Room" : "Public Room"}
-                    </span>
-                  </div>
-
-                  <div className="modal-detail-item">
-                    <span className="modal-detail-label">
-                      <User size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Owner
-                    </span>
-                    <span className="modal-detail-value">
-                      {selectedRoomDetails.createdBy?.username || "Collaborator"}
-                    </span>
-                  </div>
-
-                  <div className="modal-detail-item">
-                    <span className="modal-detail-label">
-                      <Clock size={11} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Created At
-                    </span>
-                    <span className="modal-detail-value">
-                      {new Date(selectedRoomDetails.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT SIDE: Dedicated Room Description Card */}
-              <div className="modal-details-right-side">
-                <div className="modal-room-description-card">
-                  <div className="modal-room-desc-header">
-                    <div className="modal-room-desc-title-group">
-                      <FileText size={14} className="modal-room-desc-icon" />
-                      <h4 className="modal-room-desc-heading">ROOM DESCRIPTION</h4>
-                    </div>
-                    {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?._id || user?.id) && selectedRoomDetails.description && selectedRoomDetails.description.trim() ? (
-                      <button
-                        type="button"
-                        className="modal-room-desc-edit-link"
-                        onClick={() => {
-                          const target = selectedRoomDetails;
-                          setSelectedRoomDetails(null);
-                          setEditingRoomTarget(target);
-                        }}
-                        title="Edit Description"
-                      >
-                        <Edit3 size={11} />
-                        <span>Edit</span>
-                      </button>
-                    ) : null}
-                  </div>
-
-                  {selectedRoomDetails.description && selectedRoomDetails.description.trim() ? (
-                    <>
-                      <div className="modal-room-desc-body">
-                        <p className="modal-room-desc-text">
-                          {selectedRoomDetails.description}
-                        </p>
-                      </div>
-                      <div className="modal-room-desc-footer">
-                        <span className="modal-room-desc-length">
-                          {selectedRoomDetails.description.length} / 1000 characters
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="modal-room-desc-empty">
-                      <div className="modal-room-desc-empty-icon">
-                        <FileText size={22} />
-                      </div>
-                      <p className="modal-room-desc-empty-msg">
-                        {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?._id || user?.id)
-                          ? "No description has been added yet."
-                          : "Description hasn't been added yet."}
-                      </p>
-                      {String(selectedRoomDetails.createdBy?._id || selectedRoomDetails.createdBy) === String(user?._id || user?.id) && (
-                        <button
-                          type="button"
-                          className="modal-room-desc-add-btn"
-                          onClick={() => {
-                            const target = selectedRoomDetails;
-                            setSelectedRoomDetails(null);
-                            setEditingRoomTarget(target);
-                          }}
-                        >
-                          <Plus size={13} />
-                          <span>Add Description</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-actions-new">
-              <button onClick={() => {
-                handleJoinRoomDirect(selectedRoomDetails.roomId || selectedRoomDetails._id);
-                setSelectedRoomDetails(null);
-              }} className="modal-join-btn-new">
-                Enter Workspace
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {/* Room Details Modal */}
+      {selectedRoomDetails && (
+        <RoomDetailsModal
+          isOpen={!!selectedRoomDetails}
+          room={selectedRoomDetails}
+          currentUser={user}
+          onClose={() => setSelectedRoomDetails(null)}
+          onEnterWorkspace={(roomId) => {
+            handleJoinRoomDirect(roomId);
+            setSelectedRoomDetails(null);
+          }}
+          onEditRoom={(room) => {
+            setSelectedRoomDetails(null);
+            setEditingRoomTarget(room);
+          }}
+          onRoomUpdated={(updatedRoom) => {
+            if (updatedRoom) {
+              setSelectedRoomDetails(prev => (prev ? { ...prev, ...updatedRoom } : updatedRoom));
+              setUserRooms(prev => prev.map(r => (r.roomId === updatedRoom.roomId || r._id === updatedRoom._id ? { ...r, ...updatedRoom } : r)));
+            }
+          }}
+          onToast={(msg, type) => {
+            setNotification({
+              message: msg,
+              type: type || "success"
+            });
+            setShowNotification(true);
+          }}
+        />
       )}
     </div>
   );

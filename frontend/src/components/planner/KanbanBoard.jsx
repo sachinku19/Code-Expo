@@ -197,8 +197,8 @@ export default function KanbanBoard({
                                 width: "20px",
                                 height: "20px",
                                 borderRadius: "50%",
-                                background: "#4f46e5",
-                                color: "#fff",
+                                background: "#f59e0b",
+                                color: "#000",
                                 fontSize: "0.65rem",
                                 display: "flex",
                                 alignItems: "center",
@@ -223,8 +223,8 @@ export default function KanbanBoard({
                                   <div
                                     className="task-card-avatar"
                                     style={{
-                                      background: "#312e81",
-                                      color: "#a5b4fc",
+                                      background: "rgba(245, 158, 11, 0.2)",
+                                      color: "#fbbf24",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",

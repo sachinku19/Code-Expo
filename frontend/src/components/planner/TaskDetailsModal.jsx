@@ -364,7 +364,7 @@ export default function TaskDetailsModal({
         {/* Header */}
         <div className="modal-header">
           <div>
-            <span style={{ fontSize: "0.75rem", color: "#818cf8", fontWeight: "700", textTransform: "uppercase" }}>
+            <span style={{ fontSize: "0.75rem", color: "#fbbf24", fontWeight: "700", textTransform: "uppercase" }}>
               {taskType === "PersonalTask" ? `Personal Tasks / ${task.category}` : `Room Kanban / Board`}
             </span>
             <h2 className="modal-title-text">
@@ -769,7 +769,7 @@ export default function TaskDetailsModal({
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      color: "#818cf8",
+                      color: "#f59e0b",
                       textDecoration: "underline",
                       display: "flex",
                       alignItems: "center",

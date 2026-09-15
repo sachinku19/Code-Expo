@@ -1605,10 +1605,10 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
           <div className="header-top">
             <h2 className="panel-title">Messages</h2>
             <div className="header-action-buttons">
-              <button className="new-message-purple-btn" onClick={handleOpenNewChat} title="New Message">
+              <button className="new-message-amber-btn new-message-purple-btn" onClick={handleOpenNewChat} title="New Message">
                 <Plus size={14} /> New DM
               </button>
-              <button className="new-group-purple-btn" onClick={handleOpenCreateGroup} title="New Group">
+              <button className="new-group-amber-btn new-group-purple-btn" onClick={handleOpenCreateGroup} title="New Group">
                 <Users size={14} /> Group
               </button>
             </div>
@@ -2311,7 +2311,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
 
                   <button
                     type="submit"
-                    className="chat-send-purple-btn"
+                    className="chat-send-amber-btn chat-send-purple-btn"
                     onClick={handleSendMessage}
                     disabled={(!newMessageText.trim() && !attachment) || isSending}
                   >
@@ -2635,7 +2635,7 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
             <p className="dm-empty-desc">Send private photos, code blocks, or invite links directly to a developer.</p>
             <div className="empty-actions" style={{ display: "flex", gap: "12px", justifyContent: "center", marginBottom: "20px" }}>
               <button className="start-chat-main-btn" onClick={handleOpenNewChat}>Send DM</button>
-              <button className="start-chat-main-btn group-start-btn" onClick={handleOpenCreateGroup} style={{ background: "rgba(139, 92, 246, 0.15)", border: "1px solid rgba(139, 92, 246, 0.4)" }}>Create Group</button>
+              <button className="start-chat-main-btn group-start-btn" onClick={handleOpenCreateGroup} style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.4)", color: "#f59e0b" }}>Create Group</button>
             </div>
 
             {/* Suggested contacts panel */}

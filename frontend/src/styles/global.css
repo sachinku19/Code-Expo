@@ -4,7 +4,22 @@
   box-sizing: border-box;
 }
 
+input,
+textarea,
+select,
+button {
+  outline: none;
+}
 
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
 
 img {
   max-width: 100%;

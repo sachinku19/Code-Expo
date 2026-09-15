@@ -79,12 +79,12 @@ body.light .security-card:hover,
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a78bfa;
+  color: #fbbf24;
   flex-shrink: 0;
 }
 
@@ -98,9 +98,9 @@ body.light .security-card:hover,
 html.light .security-icon-badge,
 body.light .security-icon-badge,
 [data-theme-mode="light"] .security-icon-badge {
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-  color: #7c3aed;
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #f59e0b;
 }
 
 .light .security-icon-badge.key-badge,
@@ -155,9 +155,9 @@ body.light .security-card-desc,
   gap: 6px;
   padding: 2px 8px;
   border-radius: 6px;
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  color: #c4b5fd;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -167,23 +167,23 @@ body.light .security-card-desc,
 html.light .security-badge-offline,
 body.light .security-badge-offline,
 [data-theme-mode="light"] .security-badge-offline {
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-  color: #6d28d9;
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #d97706;
 }
 
 .badge-pulse-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #a78bfa;
+  background: #fbbf24;
 }
 
 .light .badge-pulse-dot,
 html.light .badge-pulse-dot,
 body.light .badge-pulse-dot,
 [data-theme-mode="light"] .badge-pulse-dot {
-  background: #7c3aed;
+  background: #f59e0b;
 }
 
 .recovery-notice-text {
@@ -267,7 +267,7 @@ body.light .security-label,
 }
 
 .security-input:focus {
-  border-color: var(--ce-primary, #7c3aed);
+  border-color: var(--ce-primary, #f59e0b);
 }
 
 .light .security-input,
@@ -284,7 +284,7 @@ html.light .security-input:focus,
 body.light .security-input:focus,
 [data-theme-mode="light"] .security-input:focus {
   background: #ffffff;
-  border-color: #7c3aed;
+  border-color: #f59e0b;
 }
 
 .security-input::placeholder {
@@ -462,13 +462,13 @@ body.light .criteria-pill.met,
 
 /* Primary Button */
 .security-btn.primary {
-  background: #7c3aed;
+  background: #f59e0b;
   color: #ffffff;
-  border-color: #6d28d9;
+  border-color: #d97706;
 }
 
 .security-btn.primary:hover:not(:disabled) {
-  background: #6d28d9;
+  background: #d97706;
 }
 
 .security-btn.primary:disabled {
@@ -814,14 +814,14 @@ body.light .architecture-card,
 }
 
 .architecture-shield-icon {
-  color: #a78bfa;
+  color: #fbbf24;
 }
 
 .light .architecture-shield-icon,
 html.light .architecture-shield-icon,
 body.light .architecture-shield-icon,
 [data-theme-mode="light"] .architecture-shield-icon {
-  color: #7c3aed;
+  color: #f59e0b;
 }
 
 .architecture-title {
@@ -867,7 +867,7 @@ body.light .architecture-item,
 }
 
 .architecture-check {
-  color: #a78bfa;
+  color: #fbbf24;
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -876,7 +876,7 @@ body.light .architecture-item,
 html.light .architecture-check,
 body.light .architecture-check,
 [data-theme-mode="light"] .architecture-check {
-  color: #7c3aed;
+  color: #f59e0b;
 }
 
 /* ==========================================================================

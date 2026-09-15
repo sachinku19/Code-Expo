@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Heart, MessageSquare, Share2, Bookmark, CheckCircle2, Send, Trash2, UserPlus, UserCheck, MessageCircle, BarChart3, Repeat, MoreVertical, Flame, Flag, ChevronLeft, ChevronRight, ThumbsUp, ChevronDown, ChevronUp } from "lucide-react";
+import { Heart, MessageSquare, Share2, Bookmark, CheckCircle2, Send, Trash2, UserPlus, UserCheck, MessageCircle, BarChart3, MoreVertical, Flame, Flag, ChevronLeft, ChevronRight, ThumbsUp, ChevronDown, ChevronUp } from "lucide-react";
 import { toggleLikeCommentPost, deleteCommentPost } from "../../../../services/socialService";
 import { optimizeCloudinaryUrl, getCloudinarySrcSet } from "../../../../utils/imageOptimizer";
 
@@ -601,7 +601,7 @@ const formatTime = (dateStr) => {
 };
 
 const getBadgeStyle = (title) => {
-  const t = (title || "").toLowerCase();
+  const t = String(title || "").toLowerCase();
   if (t === "system admin") {
     return {
       background: "linear-gradient(135deg, #ef4444 0%, #aa3bff 100%)",
@@ -903,16 +903,23 @@ export const PostCard = ({
               onClick={() => onUserClick && onUserClick(authorId)}
             >
               @{author.username || "developer"}
-              {author.isVerified !== false && <CheckCircle2 size={14} color="#3b82f6" />}
+              {author.isVerified !== false && (
+                <CheckCircle2 size={15} color="#0a0c10" fill="#f59e0b" style={{ flexShrink: 0 }} />
+              )}
             </div>
             <div style={{ marginTop: "2px" }}>
               <span
                 className="profile-badge"
                 style={{
-                  ...getBadgeStyle(authorTitle),
-                  fontSize: "0.68rem",
-                  padding: "1px 7px",
-                  borderRadius: "10px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "#94a3b8",
+                  fontSize: "0.66rem",
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                  padding: "2px 8px",
+                  borderRadius: "4px",
+                  letterSpacing: "0.06em",
                   display: "inline-block",
                   lineHeight: "1.3"
                 }}
@@ -944,15 +951,15 @@ export const PostCard = ({
               className="post-follow-btn"
               onClick={() => onFollowToggle && onFollowToggle(authorId)}
               style={{
-                background: isFollowing ? "rgba(255, 255, 255, 0.06)" : "rgba(124, 92, 255, 0.15)",
-                border: `1px solid ${isFollowing ? "rgba(255, 255, 255, 0.12)" : "#7C5CFF"}`,
-                borderRadius: "20px",
-                color: isFollowing ? "#ffffff" : "#7C5CFF",
+                background: isFollowing ? "rgba(255, 255, 255, 0.06)" : "#f59e0b",
+                border: isFollowing ? "1px solid rgba(255, 255, 255, 0.12)" : "none",
+                borderRadius: "6px",
+                color: isFollowing ? "#ffffff" : "#0a0c10",
                 padding: "0 14px",
                 height: "30px",
                 boxSizing: "border-box",
                 fontSize: "0.8rem",
-                fontWeight: "600",
+                fontWeight: "700",
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
@@ -1130,9 +1137,9 @@ export const PostCard = ({
               style={{
                 background: "none",
                 border: "none",
-                color: "#818cf8",
+                color: "#f59e0b",
                 fontWeight: "600",
-                fontSize: "0.84rem",
+                fontSize: "0.86rem",
                 cursor: "pointer",
                 marginTop: "2px",
                 padding: 0,
@@ -1190,21 +1197,22 @@ export const PostCard = ({
       )}
 
       {/* Tech Stack Chips */}
-      {post.techStack && post.techStack.length > 0 && (
+      {Array.isArray(post?.techStack) && post.techStack.length > 0 && (
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", margin: "4px 0" }}>
-          {post.techStack.map((tech) => (
+          {post.techStack.filter(Boolean).map((tech, idx) => (
             <span
-              key={tech}
+              key={idx}
               style={{
-                background: "rgba(124, 92, 255, 0.1)",
-                color: "#7C5CFF",
+                background: "rgba(245, 158, 11, 0.08)",
+                color: "#f59e0b",
                 fontSize: "0.74rem",
                 fontWeight: "600",
                 padding: "3px 10px",
-                borderRadius: "10px"
+                borderRadius: "6px",
+                border: "1px solid rgba(245, 158, 11, 0.2)"
               }}
             >
-              #{tech}
+              #{String(tech)}
             </span>
           ))}
         </div>
@@ -1234,21 +1242,26 @@ export const PostCard = ({
             <span style={{ fontWeight: "600" }}>{countAllComments(commentsList)}</span>
           </button>
 
-          {/* Share */}
-          <button className="post-action-btn" onClick={() => onShare && onShare(post._id)}>
-            <Share2 size={18} />
-            <span style={{ fontWeight: "600" }}>Share</span>
+          {/* Save / Bookmark */}
+          <button
+            className="post-action-btn"
+            onClick={() => onBookmark && onBookmark(post._id)}
+            style={{ color: isBookmarked ? "#f59e0b" : "var(--ce-text-muted, rgba(255, 255, 255, 0.7))" }}
+            title={isBookmarked ? "Remove Bookmark" : "Save Post"}
+          >
+            <Bookmark size={18} fill={isBookmarked ? "#f59e0b" : "none"} color={isBookmarked ? "#f59e0b" : "currentColor"} />
+            <span style={{ fontWeight: "600" }}>{isBookmarked ? "Saved" : "Save"}</span>
           </button>
         </div>
 
-        {/* Bookmark */}
+        {/* Share Button on Far Right */}
         <button
           className="post-action-btn"
-          onClick={() => onBookmark && onBookmark(post._id)}
-          style={{ color: isBookmarked ? "#7C5CFF" : "var(--ce-text-muted, rgba(255, 255, 255, 0.7))" }}
-          title={isBookmarked ? "Remove Bookmark" : "Save Post"}
+          onClick={() => onShare && onShare(post._id)}
+          title="Share Post"
         >
-          <Bookmark size={18} fill={isBookmarked ? "#7C5CFF" : "none"} color={isBookmarked ? "#7C5CFF" : "currentColor"} />
+          <Share2 size={18} />
+          <span style={{ fontWeight: "600" }}>Share</span>
         </button>
       </div>
 

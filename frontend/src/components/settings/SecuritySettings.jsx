@@ -110,7 +110,7 @@ export default function SecuritySettings({ user, addToast }) {
       percent = 75;
     } else if (score >= 4) {
       label = "Very Strong";
-      color = "#7c3aed";
+      color = "#10b981";
       percent = 100;
     }
 

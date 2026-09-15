@@ -897,8 +897,8 @@ export default function MainLayout({
   ];
 
   const roomsNavItems = [
-    { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard/my-rooms" },
     { id: "rooms", label: "Explore Rooms", icon: Globe, path: "/dashboard/rooms" },
+    { id: "myrooms", label: "My Rooms", icon: DoorOpen, path: "/dashboard/my-rooms" },
     { id: "liverooms", label: "Live Now", icon: Radio, path: "/dashboard/live-rooms" },
     { id: "room-requests", label: "Requests", icon: GitPullRequest, path: "/dashboard/room-requests" },
   ];
@@ -1340,13 +1340,18 @@ export default function MainLayout({
       >
         <div className="sidebar-nav-icon-wrapper">
           <Icon size={isSubItem ? 17 : 18} className="sidebar-nav-icon-inner" />
-          {badgeCount > 0 && (
+          {!sidebarExpanded && badgeCount > 0 && (
             <span className="sidebar-icon-badge" aria-label={`${badgeCount} unread`}>
               {displayCount}
             </span>
           )}
         </div>
         <span className="btn-label">{item.label}</span>
+        {sidebarExpanded && badgeCount > 0 && (
+          <span className="sidebar-nav-row-badge" aria-label={`${badgeCount} unread`}>
+            {displayCount}
+          </span>
+        )}
       </button>
     );
   };
@@ -1377,13 +1382,13 @@ export default function MainLayout({
       >
         <div className="drawer-nav-icon-wrapper">
           <Icon size={isSubItem ? 17 : 18} />
-          {badgeCount > 0 && (
-            <span className="sidebar-icon-badge drawer-icon-badge" aria-label={`${badgeCount} unread`}>
-              {displayCount}
-            </span>
-          )}
         </div>
         <span className="btn-label">{item.label}</span>
+        {badgeCount > 0 && (
+          <span className="sidebar-nav-row-badge drawer-row-badge" aria-label={`${badgeCount} unread`}>
+            {displayCount}
+          </span>
+        )}
       </button>
     );
   };
@@ -1909,7 +1914,7 @@ export default function MainLayout({
                   </div>
 
                   <button onClick={() => { setProfileDropdownOpen(false); setIsRatingModalOpen(true); }} className="list-menu-item rating-btn">
-                    <Star size={15} fill={userRating > 0 ? "currentColor" : "transparent"} style={{ color: "#ec4899" }} />
+                    <Star size={15} fill={userRating > 0 ? "currentColor" : "transparent"} style={{ color: "#f59e0b" }} />
                     <span>Rate Us</span>
                   </button>
 
@@ -1969,10 +1974,12 @@ export default function MainLayout({
 
             {/* ROOMS GROUP */}
             <div className="sidebar-nav-section sidebar-nav-group">
-              {sidebarExpanded && (
+              {sidebarExpanded ? (
                 <div className="sidebar-group-header static">
                   <span className="sidebar-group-title">ROOMS</span>
                 </div>
+              ) : (
+                <div className="sidebar-group-collapsed-divider" />
               )}
               <div className="sidebar-group-items">
                 {roomsNavItems.map(item => renderNavBtn(item))}
@@ -1981,10 +1988,12 @@ export default function MainLayout({
 
             {/* NETWORK GROUP */}
             <div className="sidebar-nav-section sidebar-nav-group">
-              {sidebarExpanded && (
+              {sidebarExpanded ? (
                 <div className="sidebar-group-header static">
                   <span className="sidebar-group-title">NETWORK</span>
                 </div>
+              ) : (
+                <div className="sidebar-group-collapsed-divider" />
               )}
               <div className="sidebar-group-items">
                 {networkNavItems.map(item => renderNavBtn(item))}
@@ -2014,6 +2023,7 @@ export default function MainLayout({
                 <span className="btn-label myverse-title">MyVerse</span>
                 <span className="btn-label myverse-subtitle">Workspace</span>
               </div>
+              <ChevronRight size={15} className="myverse-card-chevron" />
             </button>
           </div>
         </aside>
