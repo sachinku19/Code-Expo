@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles, X, Image, Play, Code, BarChart3, GitFork, Calendar,
+  Code2, Sparkles, X, Image, Video, Play, Code, BarChart3, GitBranch, GitFork, Calendar,
   Smile, CheckCircle2, Bookmark, Trash2, Globe, Users, Lock,
   FileText, HelpCircle, Eye, Edit3, Plus, Terminal, Clock, Hash
 } from "lucide-react";
@@ -65,7 +65,7 @@ const SafeAvatar = ({ src, name = "Dev", size = 40 }) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "linear-gradient(135deg, #7C5CFF, #8b5cf6)",
+            background: "linear-gradient(135deg, #d97706, #b45309)",
             color: "#ffffff",
             fontWeight: "700",
             fontSize: `${size * 0.4}px`
@@ -235,8 +235,8 @@ export const CreatePostModal = ({
             {/* 1. Modal Header */}
             <div className="ce-composer-header">
               <div className="composer-header-title-box">
-                <div className="composer-sparkle-badge">
-                  <Sparkles size={16} color="#7C5CFF" />
+                <div className="composer-sparkle-badge" title="Developer Post Composer">
+                  <Code2 size={18} className="composer-badge-icon" strokeWidth={2.2} />
                 </div>
                 <div>
                   <h2 className="composer-header-title">Create Developer Post</h2>
@@ -295,8 +295,8 @@ export const CreatePostModal = ({
                 {/* Write Mode vs Preview Mode */}
                 {activeTab === "write" ? (
                   <div className="composer-editor-wrapper">
-                    {/* Auto-growing Text Editor */}
-                    <div className="composer-textarea-box">
+                    {/* Unified Professional Editor Workspace */}
+                    <div className="composer-unified-editor">
                       <textarea
                         ref={textareaRef}
                         className="composer-textarea"
@@ -305,64 +305,65 @@ export const CreatePostModal = ({
                         onChange={(e) => setInputText(e.target.value)}
                       />
 
-                      {/* Character Counter */}
-                      <div className={`composer-char-counter ${isTextInvalid ? "invalid" : ""}`}>
-                        <span>{textLength} / 5,000</span>
-                      </div>
-                    </div>
+                      {/* Integrated Action Toolbar Strip */}
+                      <div className="composer-editor-toolbar-strip">
+                        <div className="toolbar-left-group">
+                          <button
+                            type="button"
+                            className="toolbar-btn"
+                            title="Add Images (Drag & Drop / Paste)"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Image size={15} strokeWidth={2} />
+                            <span>Image</span>
+                          </button>
 
-                    {/* Live Toolbar */}
-                    <div className="composer-live-toolbar">
-                      <div className="toolbar-left-group">
-                        <button
-                          type="button"
-                          className="toolbar-btn"
-                          title="Add Images (Drag & Drop / Paste)"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          <Image size={16} color="#10b981" />
-                          <span>Image</span>
-                        </button>
+                          <button
+                            type="button"
+                            className={`toolbar-btn ${selectedVideo ? "active" : ""}`}
+                            title="Add Video (MP4 / WebM)"
+                            onClick={() => videoInputRef.current?.click()}
+                          >
+                            <Video size={15} strokeWidth={2} />
+                            <span>Video</span>
+                          </button>
 
-                        <button
-                          type="button"
-                          className={`toolbar-btn ${selectedVideo ? "active" : ""}`}
-                          title="Add Video (MP4 / WebM)"
-                          onClick={() => videoInputRef.current?.click()}
-                        >
-                          <Play size={16} color="#f59e0b" />
-                          <span>Video</span>
-                        </button>
+                          <button
+                            type="button"
+                            className={`toolbar-btn ${showCodeInput ? "active" : ""}`}
+                            title="Attach Code Block"
+                            onClick={() => setShowCodeInput(!showCodeInput)}
+                          >
+                            <Code2 size={15} strokeWidth={2} />
+                            <span>Code</span>
+                          </button>
 
-                        <button
-                          type="button"
-                          className={`toolbar-btn ${showCodeInput ? "active" : ""}`}
-                          title="Attach Code Block"
-                          onClick={() => setShowCodeInput(!showCodeInput)}
-                        >
-                          <Code size={16} color="#7C5CFF" />
-                          <span>Code</span>
-                        </button>
+                          <button
+                            type="button"
+                            className={`toolbar-btn ${showRepoInput ? "active" : ""}`}
+                            title="Attach GitHub Repo"
+                            onClick={() => setShowRepoInput(!showRepoInput)}
+                          >
+                            <GitBranch size={15} strokeWidth={2} />
+                            <span>Repo</span>
+                          </button>
 
-                        <button
-                          type="button"
-                          className={`toolbar-btn ${showRepoInput ? "active" : ""}`}
-                          title="Attach GitHub Repo"
-                          onClick={() => setShowRepoInput(!showRepoInput)}
-                        >
-                          <GitFork size={16} color="#ec4899" />
-                          <span>Repo</span>
-                        </button>
+                          <button
+                            type="button"
+                            className="toolbar-btn"
+                            title="Insert Emoji"
+                            onClick={() => setShowEmojiGrid(!showEmojiGrid)}
+                          >
+                            <Smile size={15} strokeWidth={2} />
+                            <span>Emoji</span>
+                          </button>
+                        </div>
 
-                        <button
-                          type="button"
-                          className="toolbar-btn"
-                          title="Insert Emoji"
-                          onClick={() => setShowEmojiGrid(!showEmojiGrid)}
-                        >
-                          <Smile size={16} color="#eab308" />
-                          <span>Emoji</span>
-                        </button>
+                        <div className="toolbar-right-meta">
+                          <span className={`composer-char-counter ${isTextInvalid ? "invalid" : ""}`}>
+                            {textLength} / 5,000
+                          </span>
+                        </div>
                       </div>
 
                       {/* Emoji Grid Popup */}
@@ -413,7 +414,7 @@ export const CreatePostModal = ({
                       <div className="composer-attachment-card">
                         <div className="attachment-header">
                           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <Terminal size={15} color="#7C5CFF" />
+                            <Terminal size={15} color="#d97706" />
                             <span className="attachment-title">Attach Code Snippet</span>
                           </div>
 
@@ -465,7 +466,7 @@ export const CreatePostModal = ({
                       <div className="composer-attachment-card">
                         <div className="attachment-header">
                           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <GitFork size={15} color="#ec4899" />
+                            <GitBranch size={15} color="#d97706" />
                             <span className="attachment-title">Share GitHub Repository</span>
                           </div>
                         </div>
@@ -491,49 +492,34 @@ export const CreatePostModal = ({
                           className="dropzone-empty-hint"
                           onClick={() => fileInputRef.current?.click()}
                         >
-                          <Image size={24} color="rgba(255,255,255,0.4)" />
+                          <Image size={22} className="dropzone-icon" strokeWidth={1.8} />
                           <span>Drag & drop images here or <strong>browse</strong> (up to 10 images)</span>
                         </div>
                       ) : (
                         <div className="images-preview-grid">
                           {selectedImages.map((imgObj, idx) => (
-                            <div key={idx} className="image-preview-thumb" style={{ position: "relative" }}>
+                            <div key={idx} className="image-preview-thumb">
                               <img src={imgObj.preview} alt="Upload preview" />
-                              <div style={{ position: "absolute", bottom: "4px", left: "4px", right: "4px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
+                              <div className="thumb-actions-bar">
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCropState({ idx, imageSrc: imgObj.preview, file: imgObj.file });
                                   }}
-                                  style={{
-                                    background: "rgba(10, 10, 18, 0.85)",
-                                    backdropFilter: "blur(6px)",
-                                    WebkitBackdropFilter: "blur(6px)",
-                                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                                    color: "#a5b4fc",
-                                    fontSize: "0.68rem",
-                                    fontWeight: "600",
-                                    padding: "3px 7px",
-                                    borderRadius: "6px",
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "3px",
-                                    boxShadow: "0 2px 6px rgba(0,0,0,0.5)"
-                                  }}
+                                  className="thumb-crop-btn"
                                   title="Crop & Edit Image"
                                 >
                                   <Edit3 size={11} /> Crop
                                 </button>
                                 <button
                                   type="button"
-                                  className="remove-thumb-btn"
+                                  className="thumb-remove-btn"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleRemoveSelectedImage(idx);
                                   }}
-                                  style={{ position: "static" }}
+                                  title="Remove image"
                                 >
                                   &times;
                                 </button>
@@ -600,7 +586,7 @@ export const CreatePostModal = ({
                       </div>
 
                       <div className="tech-input-row">
-                        <Hash size={14} color="#7C5CFF" />
+                        <Hash size={14} color="#d97706" />
                         <input
                           type="text"
                           placeholder="Add tech stack tags (React, Node, MERN... Press Enter)"
@@ -612,7 +598,7 @@ export const CreatePostModal = ({
 
                       {/* Autocomplete Tech Tag Suggestions */}
                       <div className="tech-suggestions-row">
-                        <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>Suggestions:</span>
+                        <span className="tech-suggestions-label">Suggestions:</span>
                         {TECH_SUGGESTIONS.slice(0, 8).map((tag) => (
                           <button
                             key={tag}
@@ -680,7 +666,7 @@ export const CreatePostModal = ({
                       {/* Rendered Poll */}
                       {pollQuestionInput && (
                         <div className="preview-poll-box">
-                          <div style={{ fontSize: "0.86rem", fontWeight: "700", color: "#ffffff", marginBottom: "8px" }}>
+                          <div className="preview-poll-question">
                             📊 {pollQuestionInput}
                           </div>
                           {pollOptionsInput.a && <div className="preview-poll-option">{pollOptionsInput.a}</div>}
@@ -706,7 +692,7 @@ export const CreatePostModal = ({
                 {/* Metrics Card */}
                 <div className="sidepanel-card">
                   <div className="sidepanel-card-title">
-                    <Clock size={14} color="#7C5CFF" />
+                    <Clock size={14} color="#d97706" />
                     <span>Live Post Metrics</span>
                   </div>
 
@@ -743,29 +729,53 @@ export const CreatePostModal = ({
                 {/* Markdown Shortcuts Card */}
                 <div className="sidepanel-card">
                   <div className="sidepanel-card-title">
-                    <Terminal size={14} color="#3b82f6" />
+                    <Terminal size={14} color="#d97706" />
                     <span>Markdown Shortcuts</span>
                   </div>
                   <div className="sidepanel-shortcuts-list">
-                    <code># Heading 1</code>
-                    <code>**Bold text**</code>
-                    <code>`inline code`</code>
-                    <code>```js code block```</code>
-                    <code>&gt; Quote block</code>
+                    <div className="sidepanel-shortcut-row">
+                      <code># Heading</code>
+                      <span>H1 Title</span>
+                    </div>
+                    <div className="sidepanel-shortcut-row">
+                      <code>**bold**</code>
+                      <span>Bold</span>
+                    </div>
+                    <div className="sidepanel-shortcut-row">
+                      <code>`code`</code>
+                      <span>Inline code</span>
+                    </div>
+                    <div className="sidepanel-shortcut-row">
+                      <code>```js</code>
+                      <span>Code block</span>
+                    </div>
+                    <div className="sidepanel-shortcut-row">
+                      <code>&gt; quote</code>
+                      <span>Blockquote</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Publishing Tips Card */}
                 <div className="sidepanel-card">
                   <div className="sidepanel-card-title">
-                    <HelpCircle size={14} color="#f59e0b" />
+                    <HelpCircle size={14} color="#d97706" />
                     <span>Publishing Tips</span>
                   </div>
-                  <ul className="sidepanel-tips-list">
-                    <li>Include clear code snippets for higher engagement.</li>
-                    <li>Add relevant tech stack tags (`#react`, `#node`).</li>
-                    <li>Drag & drop media previews to demonstrate your project.</li>
-                  </ul>
+                  <div className="sidepanel-tips-list">
+                    <div className="sidepanel-tip-row">
+                      <span className="tip-square-bullet">▪</span>
+                      <span>Include code snippets for higher engagement.</span>
+                    </div>
+                    <div className="sidepanel-tip-row">
+                      <span className="tip-square-bullet">▪</span>
+                      <span>Add relevant tech stack tags (#react, #node).</span>
+                    </div>
+                    <div className="sidepanel-tip-row">
+                      <span className="tip-square-bullet">▪</span>
+                      <span>Drag & drop media previews to showcase UI.</span>
+                    </div>
+                  </div>
                 </div>
               </aside>
             </div>
@@ -774,7 +784,7 @@ export const CreatePostModal = ({
             <div className="ce-composer-footer">
               <div className="footer-left">
                 <span className="draft-status-badge">
-                  <Bookmark size={13} /> {lastSavedTime}
+                  <Bookmark size={13} color="#d97706" /> {lastSavedTime}
                 </span>
               </div>
 

@@ -3,12 +3,12 @@
   --feed-bg: #0a0c10;
   --feed-card-bg: #0d0f17;
   --feed-card-border: rgba(255, 255, 255, 0.08);
-  --feed-primary: #f59e0b;
+  --feed-primary: #d97706;
   --feed-text: #FFFFFF;
   --feed-text-secondary: #94a3b8;
-  --feed-radius: 12px;
-  --feed-radius-sm: 8px;
-  --feed-radius-xs: 6px;
+  --feed-radius: 8px;
+  --feed-radius-sm: 6px;
+  --feed-radius-xs: 4px;
 }
 
 .light,
@@ -18,7 +18,7 @@ body.light,
   --feed-bg: #f8fafc;
   --feed-card-bg: #ffffff;
   --feed-card-border: rgba(15, 23, 42, 0.08);
-  --feed-primary: #f59e0b;
+  --feed-primary: #d97706;
   --feed-text: #0f172a;
   --feed-text-secondary: #64748b;
 }
@@ -130,7 +130,7 @@ body.light,
   height: 40px;
   border-radius: 50%;
   padding: 2px;
-  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  background: linear-gradient(135deg, #d97706, #b45309);
   flex-shrink: 0;
 }
 
@@ -238,19 +238,19 @@ body.light,
 }
 
 .create-post-submit-btn {
-  background: #f59e0b;
-  color: #0a0c10 !important;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff !important;
   border: none;
   border-radius: var(--feed-radius-xs);
   padding: 6px 18px;
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition: opacity 0.2s ease, transform 0.1s ease;
 }
 
 .create-post-submit-btn:hover {
-  background: #fbbf24;
+  opacity: 0.92;
 }
 
 /* Feed Tabs & Search Filter */
@@ -291,7 +291,7 @@ body.light,
 
 .feed-tab-btn.active {
   color: #ffffff;
-  border-bottom: 2.5px solid #f59e0b;
+  border-bottom: 2.5px solid #d97706;
   font-weight: 700;
 }
 
@@ -674,8 +674,8 @@ body.light .rebuilt-feed-root {
 .light .feed-premium-card:hover,
 .light .rebuilt-post-card:hover,
 .light .create-post-card:hover {
-  border-color: rgba(99, 102, 241, 0.35) !important;
-  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
 }
 
 /* Post Content & Author Info in Light Mode */
@@ -768,13 +768,13 @@ body.light .post-text-body b,
 }
 
 .light .create-post-submit-btn {
-  background: #f59e0b !important;
-  color: #0a0c10 !important;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
 }
 
 .light .create-post-submit-btn:hover {
-  background: #fbbf24 !important;
+  opacity: 0.92 !important;
 }
 
 .light .post-action-btn {
@@ -793,14 +793,14 @@ body.light .post-text-body b,
 }
 
 .light .post-follow-btn {
-  background: #f59e0b !important;
-  color: #0a0c10 !important;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
   border: none !important;
 }
 
 .light .post-follow-btn:hover {
-  background: #fbbf24 !important;
+  opacity: 0.92 !important;
 }
 
 /* Tabs in Light Mode */
@@ -811,7 +811,7 @@ body.light .post-text-body b,
 .light .feed-tab-btn.active {
   color: #0f172a !important;
   background: transparent !important;
-  border-bottom: 2.5px solid #f59e0b !important;
+  border-bottom: 2.5px solid #d97706 !important;
 }
 
 /* Right Sidebar Items in Light Mode */
@@ -831,9 +831,9 @@ body.light .post-text-body b,
 }
 
 .light .tag-chip:hover {
-  background: rgba(245, 158, 11, 0.08) !important;
-  border-color: #f59e0b !important;
-  color: #d97706 !important;
+  background: rgba(217, 119, 6, 0.08) !important;
+  border-color: #d97706 !important;
+  color: #92400e !important;
 }
 
 /* Popup Modals in Light Mode */

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Sparkles, Trash2, Send, Flame, Zap, Heart, MessageSquare, Image, Video, ChevronLeft, ChevronRight, HelpCircle, BarChart3, Bot, Check, Pause, MoreVertical, PlusCircle, FileText, Layers } from "lucide-react";
+import { Plus, X, Sparkles, Trash2, Send, Flame, Zap, Heart, MessageSquare, Image, Video, ChevronLeft, ChevronRight, HelpCircle, BarChart3, Bot, Check, Pause, MoreVertical, PlusCircle, FileText, Layers, Clock, Move, Code2 } from "lucide-react";
 import { createStory, getStories, deleteStory, toggleLikeStory, addCommentStory } from "../../services/socialService";
 import { createPortal } from "react-dom";
 import ImageCropper from "./ImageCropper";
@@ -58,41 +58,33 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
                 width: "60px",
                 height: "60px",
                 borderRadius: "50%",
-                background: "rgba(245, 158, 11, 0.1)",
-                border: "1.5px solid rgba(245, 158, 11, 0.25)",
+                background: "rgba(239, 68, 68, 0.15)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#f59e0b",
-                fontSize: "1.6rem"
+                margin: "0 auto 16px"
               }}
             >
-              ⚠️
+              <Trash2 size={24} style={{ color: "#ef4444" }} />
             </div>
-            <div>
-              <h3 style={{ margin: "0 0 10px 0", color: "#fff", fontSize: "1.25rem", fontWeight: "700", letterSpacing: "-0.02em" }}>{title}</h3>
-              <p style={{ margin: 0, color: "var(--ce-premium-text, #a5b4fc)", fontSize: "0.9rem", lineHeight: "1.55", opacity: 0.85 }}>{message}</p>
-            </div>
+            <h4 style={{ margin: "0 0 8px", color: "#ffffff", fontSize: "1.1rem" }}>{title}</h4>
+            <p style={{ margin: "0 0 20px", color: "rgba(255,255,255,0.7)", fontSize: "0.85rem", lineHeight: "1.5" }}>{message}</p>
             <button
               onClick={onClose}
               style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                background: "linear-gradient(135deg, #ef4444, #dc2626)",
                 border: "none",
-                color: "#fff",
-                padding: "11px 24px",
                 borderRadius: "10px",
-                fontSize: "0.9rem",
+                color: "#ffffff",
+                padding: "8px 24px",
+                fontSize: "0.85rem",
                 fontWeight: "600",
                 cursor: "pointer",
-                transition: "all 0.2s ease",
-                boxShadow: "0 4px 14px rgba(99, 102, 241, 0.25)",
-                width: "100%",
-                marginTop: "4px"
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)"
               }}
-              onMouseOver={(e) => e.currentTarget.style.filter = "brightness(1.15)"}
-              onMouseOut={(e) => e.currentTarget.style.filter = "brightness(1)"}
             >
-              Understand
+              Dismiss
             </button>
           </motion.div>
         </div>
@@ -125,8 +117,8 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
     setShowOptionsDropdown(false);
   }, [activeStoryIndex, currentActiveStory?._id]);
 
-  // Interactive Story additions
-  const [storyTheme, setStoryTheme] = useState("dark-purple");
+  // Interactive Story additions - default to golden amber developer theme
+  const [storyTheme, setStoryTheme] = useState("amber");
   const [storyReply, setStoryReply] = useState("");
   const [showStoryComments, setShowStoryComments] = useState(false);
 
@@ -605,14 +597,15 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
 
   const getThemeGradientClass = () => {
     switch (storyTheme) {
+      case "amber": return "linear-gradient(180deg, #181105 0%, #3b2308 50%, #78350f 100%)";
       case "dark-navy": return "linear-gradient(180deg, #09090e 0%, #1e1e38 100%)";
       case "ocean": return "linear-gradient(180deg, #022c22 0%, #06b6d4 100%)";
       case "matrix": return "linear-gradient(180deg, #022c22 0%, #10b981 100%)";
-      default: return "linear-gradient(180deg, #0a0518 0%, #6366f1 100%)";
+      case "purple":
+      case "dark-purple": return "linear-gradient(180deg, #0a0518 0%, #6366f1 100%)";
+      default: return "linear-gradient(180deg, #181105 0%, #3b2308 50%, #78350f 100%)";
     }
   };
-
-
 
   // Sync loading status of current active story media
   useEffect(() => {
@@ -663,8 +656,8 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
       <svg style={{ position: "absolute", width: 0, height: 0 }}>
         <defs>
           <linearGradient id="story-unread-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#4f46e5" />
-            <stop offset="100%" stopColor="#4f46e5" />
+            <stop offset="0%" stopColor="#d97706" />
+            <stop offset="100%" stopColor="#b45309" />
           </linearGradient>
         </defs>
       </svg>
@@ -883,41 +876,30 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="ce-modal-card"
-                style={{
-                  maxWidth: "680px",
-                  width: "92%",
-                  padding: "22px",
-                  background: "var(--ce-surface-card, rgba(13, 14, 22, 0.96))",
-                  backdropFilter: "blur(24px)",
-                  WebkitBackdropFilter: "blur(24px)",
-                  border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.14))",
-                  borderRadius: "20px",
-                  boxShadow: "0 24px 64px rgba(0, 0, 0, 0.4), 0 0 45px rgba(99, 102, 241, 0.18)",
-                  color: "var(--ce-text, #ffffff)"
-                }}
+                className="ce-modal-card ce-story-creator-card"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div style={{ background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.3)", width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <PlusCircle size={16} style={{ color: "#818cf8" }} />
+                <div className="story-creator-header">
+                  <div className="story-creator-header-left">
+                    <div className="story-creator-badge">
+                      <Code2 size={16} color="#d97706" strokeWidth={2.2} />
                     </div>
-                    <h3 style={{ margin: 0, color: "var(--ce-text, #ffffff)", fontSize: "1.15rem", fontWeight: "700", letterSpacing: "-0.01em" }}>Share Developer Story</h3>
+                    <h3 className="story-creator-title">Share Developer Story</h3>
                   </div>
                   <button
-                    style={{ background: "var(--ce-hover, rgba(255,255,255,0.06))", border: "1px solid var(--ce-border, rgba(255,255,255,0.1))", color: "var(--ce-text-muted, rgba(255,255,255,0.7))", width: "30px", height: "30px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                    className="story-creator-close-btn"
                     onClick={() => setIsAdding(false)}
+                    title="Close"
                   >
-                    <X size={16} />
+                    <X size={15} />
                   </button>
                 </div>
 
-                <div style={{ display: "flex", gap: "26px", flexDirection: "row", alignItems: "flex-start", flexWrap: "wrap" }}>
+                <div className="story-creator-grid">
                   {/* Left Column: Form Controls */}
-                  <div style={{ flex: "1 1 300px", minWidth: "280px" }}>
+                  <div className="story-creator-form-col">
                     {/* Story Type selection */}
-                    <div className="story-type-selection-bar" style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                    <div className="story-type-selection-bar">
                       {[
                         { id: "text", label: "Text Story", icon: FileText },
                         { id: "media", label: "Media Story", icon: Image }
@@ -926,23 +908,9 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                           key={item.id}
                           type="button"
                           onClick={() => setStoryType(item.id)}
-                          style={{
-                            background: storyType === item.id ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" : "var(--ce-surface, rgba(255,255,255,0.04))",
-                            border: storyType === item.id ? "1px solid #818cf8" : "1px solid var(--ce-border, rgba(255,255,255,0.1))",
-                            color: storyType === item.id ? "#ffffff" : "var(--ce-text-muted, rgba(255,255,255,0.65))",
-                            padding: "8px 16px",
-                            borderRadius: "10px",
-                            fontSize: "0.78rem",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            fontWeight: "600",
-                            boxShadow: storyType === item.id ? "0 4px 16px rgba(99,102,241,0.4)" : "none",
-                            transition: "all 0.2s ease"
-                          }}
+                          className={`story-type-btn ${storyType === item.id ? "active" : ""}`}
                         >
-                          <item.icon size={14} />
+                          <item.icon size={14} color={storyType === item.id ? "#ffffff" : "#d97706"} />
                           {item.label}
                         </button>
                       ))}
@@ -950,60 +918,32 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
 
                     <form onSubmit={handleCreateStory}>
                       {storyType === "text" && (
-                        <div style={{ position: "relative", marginBottom: "16px" }}>
+                        <div className="story-textarea-wrapper">
                           <textarea
                             placeholder="Share a status or code milestone update..."
                             value={newStoryText}
                             onChange={(e) => setNewStoryText(e.target.value)}
                             maxLength={120}
-                            style={{
-                              width: "100%",
-                              minHeight: "110px",
-                              background: "var(--ce-surface, rgba(20, 22, 34, 0.85))",
-                              border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.16))",
-                              borderRadius: "12px",
-                              color: "var(--ce-text, #ffffff)",
-                              fontSize: "0.92rem",
-                              lineHeight: "1.5",
-                              padding: "14px 14px 28px 14px",
-                              outline: "none",
-                              resize: "none",
-                              boxSizing: "border-box",
-                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.08)"
-                            }}
+                            className="story-creator-textarea"
                             required
                           />
-                          <span style={{ position: "absolute", bottom: "8px", right: "12px", fontSize: "0.68rem", color: "var(--ce-text-muted, rgba(255,255,255,0.4))", fontWeight: "600" }}>
+                          <span className="story-char-counter">
                             {newStoryText.length} / 120
                           </span>
                         </div>
                       )}
 
                       {storyType === "media" && (
-                        <div style={{ marginBottom: "16px" }}>
-                          <div style={{ position: "relative", marginBottom: "10px" }}>
+                        <div style={{ marginBottom: "14px" }}>
+                          <div className="story-textarea-wrapper" style={{ marginBottom: "8px" }}>
                             <textarea
                               placeholder="Add a caption to your media story..."
                               value={newStoryText}
                               onChange={(e) => setNewStoryText(e.target.value)}
                               maxLength={120}
-                              style={{
-                                width: "100%",
-                                minHeight: "85px",
-                                background: "var(--ce-surface, rgba(20, 22, 34, 0.85))",
-                                border: "1px solid var(--ce-border, rgba(255, 255, 255, 0.16))",
-                                borderRadius: "12px",
-                                color: "var(--ce-text, #ffffff)",
-                                fontSize: "0.9rem",
-                                lineHeight: "1.5",
-                                padding: "12px 14px 26px 14px",
-                                outline: "none",
-                                resize: "none",
-                                boxSizing: "border-box",
-                                boxShadow: "inset 0 2px 4px rgba(0,0,0,0.08)"
-                              }}
+                              className="story-creator-textarea media-mode"
                             />
-                            <span style={{ position: "absolute", bottom: "8px", right: "12px", fontSize: "0.68rem", color: "var(--ce-text-muted, rgba(255,255,255,0.4))", fontWeight: "600" }}>
+                            <span className="story-char-counter">
                               {newStoryText.length} / 120
                             </span>
                           </div>
@@ -1011,24 +951,9 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                           <button
                             type="button"
                             onClick={() => mediaInputRef.current?.click()}
-                            style={{
-                              background: "rgba(99, 102, 241, 0.12)",
-                              border: "1px solid rgba(99, 102, 241, 0.3)",
-                              color: "#818cf8",
-                              padding: "10px 16px",
-                              borderRadius: "10px",
-                              fontSize: "0.82rem",
-                              fontWeight: "600",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                              width: "100%",
-                              justifyContent: "center",
-                              transition: "all 0.2s"
-                            }}
+                            className="story-media-btn"
                           >
-                            <Image size={15} /> {mediaPreview ? "Change Media" : "Select & Crop Image/Video"}
+                            <Image size={15} color="#d97706" /> {mediaPreview ? "Change Media" : "Select & Crop Image/Video"}
                           </button>
                           <input
                             type="file"
@@ -1041,64 +966,39 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                       )}
 
                       {/* Theme selectors */}
-                      <div style={{ marginBottom: "20px", background: "var(--ce-surface, rgba(255,255,255,0.03))", padding: "12px", borderRadius: "12px", border: "1px solid var(--ce-border, rgba(255,255,255,0.06))" }}>
-                        <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted, rgba(255,255,255,0.7))", display: "block", marginBottom: "8px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      <div className="story-theme-section">
+                        <span className="story-theme-title">
                           Background Accent Theme
                         </span>
-                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <div className="story-theme-buttons-row">
                           {[
-                            { id: "dark-purple", label: "Purple", gradient: "linear-gradient(135deg, #7c3aed, #4c1d95)" },
+                            { id: "amber", label: "Amber", gradient: "linear-gradient(135deg, #d97706, #78350f)" },
                             { id: "dark-navy", label: "Navy", gradient: "linear-gradient(135deg, #1e293b, #0f172a)" },
                             { id: "ocean", label: "Ocean", gradient: "linear-gradient(135deg, #0284c7, #075985)" },
-                            { id: "matrix", label: "Matrix", gradient: "linear-gradient(135deg, #16a34a, #14532d)" }
+                            { id: "matrix", label: "Matrix", gradient: "linear-gradient(135deg, #16a34a, #14532d)" },
+                            { id: "purple", label: "Purple", gradient: "linear-gradient(135deg, #7c3aed, #4c1d95)" }
                           ].map(t => (
                             <button
                               key={t.id}
                               type="button"
                               onClick={() => setStoryTheme(t.id)}
-                              style={{
-                                padding: "6px 14px",
-                                borderRadius: "8px",
-                                fontSize: "0.76rem",
-                                fontWeight: "600",
-                                border: storyTheme === t.id ? "1.5px solid #6366f1" : "1px solid var(--ce-border, rgba(255,255,255,0.15))",
-                                background: storyTheme === t.id ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" : "var(--ce-surface, rgba(255,255,255,0.04))",
-                                color: storyTheme === t.id ? "#ffffff" : "var(--ce-text, #334155)",
-                                boxShadow: storyTheme === t.id ? "0 4px 14px rgba(99,102,241,0.35)" : "none",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                transition: "all 0.2s ease"
-                              }}
+                              className={`story-theme-btn ${storyTheme === t.id ? "active" : ""}`}
                             >
-                              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: t.gradient, display: "inline-block", border: "1px solid rgba(255,255,255,0.5)", flexShrink: 0 }} />
+                              <span style={{ width: "9px", height: "9px", borderRadius: "2px", background: t.gradient, display: "inline-block", border: "1px solid rgba(255, 255, 255, 0.3)", flexShrink: 0 }} />
                               {t.label}
                             </button>
                           ))}
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid var(--ce-border, rgba(255,255,255,0.08))" }}>
-                        <span style={{ fontSize: "0.72rem", color: "var(--ce-text-muted, rgba(255,255,255,0.5))", fontWeight: "500" }}>🕒 Expires in 24 hours</span>
+                      <div className="story-footer-bar">
+                        <span className="story-expiry-label">
+                          <Clock size={13} color="#d97706" /> Expires in 24 hours
+                        </span>
                         <button
                           type="submit"
                           disabled={isPosting}
-                          style={{
-                            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                            border: "none",
-                            color: "#ffffff",
-                            padding: "10px 22px",
-                            borderRadius: "10px",
-                            fontSize: "0.85rem",
-                            fontWeight: "700",
-                            cursor: "pointer",
-                            boxShadow: "0 4px 16px rgba(99,102,241,0.45)",
-                            transition: "all 0.2s ease",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px"
-                          }}
+                          className="story-submit-btn"
                         >
                           {isPosting ? "Posting Story..." : "Post Story"}
                         </button>
@@ -1107,41 +1007,33 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                   </div>
 
                   {/* Right Column: Live Story Card Mockup Preview */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", margin: "auto" }}>
-                    <span style={{ fontSize: "0.68rem", color: "#818cf8", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>
+                  <div className="story-preview-col">
+                    <span className="story-preview-tag">
                       Live Story Preview
                     </span>
                     
                     <div
                       ref={previewCardRef}
+                      className="story-live-phone-card"
                       style={{
-                        width: "200px",
-                        height: "355px",
-                        aspectRatio: "9 / 16",
-                        borderRadius: "20px",
-                        background: mediaPreview ? "#000" : getThemeGradientClass(),
-                        position: "relative",
-                        overflow: "hidden",
-                        border: "1.5px solid rgba(255, 255, 255, 0.22)",
-                        boxShadow: "0 20px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(99, 102, 241, 0.2)",
-                        userSelect: "none"
+                        background: mediaPreview ? "#000" : getThemeGradientClass()
                       }}
                     >
                       {/* Live Progress Bar */}
-                      <div style={{ position: "absolute", top: "8px", left: "8px", right: "8px", zIndex: 10, height: "2.5px", background: "rgba(255,255,255,0.25)", borderRadius: "2px", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: "8px", left: "8px", right: "8px", zIndex: 10, height: "2.5px", background: "rgba(255, 255, 255, 0.25)", borderRadius: "2px", overflow: "hidden" }}>
                         <div style={{ height: "100%", width: "45%", background: "#ffffff" }} />
                       </div>
 
                       {/* Live Header */}
                       <div style={{ position: "absolute", top: "16px", left: "8px", right: "8px", zIndex: 10, display: "flex", alignItems: "center", gap: "6px" }}>
                         {user?.avatar ? (
-                          <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 40, height: 40, crop: "fill" })} alt="avatar" style={{ width: "20px", height: "20px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)" }} />
+                          <img src={optimizeCloudinaryUrl(user.avatar, { quality: "best", width: 40, height: 40, crop: "fill" })} alt="avatar" style={{ width: "20px", height: "20px", borderRadius: "50%", border: "1px solid rgba(255, 255, 255, 0.5)" }} />
                         ) : (
-                          <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "#6366f1", color: "#fff", fontSize: "0.65rem", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "linear-gradient(135deg, #d97706, #b45309)", color: "#ffffff", fontSize: "0.65rem", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             {user?.username?.charAt(0).toUpperCase() || "U"}
                           </div>
                         )}
-                        <span style={{ fontSize: "0.7rem", fontWeight: "700", color: "#ffffff", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>@{user?.username || "you"}</span>
+                        <span style={{ fontSize: "0.7rem", fontWeight: "700", color: "#ffffff", textShadow: "0 1px 3px rgba(0, 0, 0, 0.8)" }}>@{user?.username || "you"}</span>
                       </div>
 
                       {/* Live Media Background - Full Bleed Edge-to-Edge */}
@@ -1183,14 +1075,14 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                                 backdropFilter: "none",
                                 WebkitBackdropFilter: "none",
                                 padding: "8px",
-                                border: isDraggingText ? "1.5px dashed #818cf8" : "none",
+                                border: isDraggingText ? "1.5px dashed #d97706" : "none",
                                 boxShadow: "none",
                                 width: "100%",
                                 textAlign: "center",
                                 transition: isDraggingText ? "none" : "border 0.2s"
                               }}
                             >
-                              <p style={{ color: "#ffffff", fontSize: "0.72rem", margin: 0, fontWeight: "600", lineHeight: "1.3", whiteSpace: "pre-wrap", textShadow: "0 2px 6px rgba(0,0,0,0.95)" }}>
+                              <p style={{ color: "#ffffff", fontSize: "0.72rem", margin: 0, fontWeight: "600", lineHeight: "1.3", whiteSpace: "pre-wrap", textShadow: "0 2px 6px rgba(0, 0, 0, 0.95)" }}>
                                 {newStoryText || "Story text..."}
                               </p>
                             </div>
@@ -1203,14 +1095,14 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                         <div style={{ fontSize: "0.62rem", color: "#ffffff", display: "flex", alignItems: "center", gap: "3px", fontWeight: "600" }}>
                           <Heart size={10} fill="#ef4444" color="#ef4444" /> 0
                         </div>
-                        <div style={{ background: "rgba(255,255,255,0.18)", borderRadius: "10px", padding: "3px 8px", fontSize: "0.6rem", color: "#ffffff" }}>
+                        <div style={{ background: "rgba(255, 255, 255, 0.18)", borderRadius: "4px", padding: "3px 8px", fontSize: "0.6rem", color: "#ffffff" }}>
                           Reply...
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc", padding: "5px 12px", borderRadius: "20px", fontSize: "0.68rem", fontWeight: "600", marginTop: "2px" }}>
-                      🖐 Drag text overlay to position anywhere
+                    <div style={{ background: "rgba(217, 119, 6, 0.12)", border: "1px solid rgba(217, 119, 6, 0.3)", color: "#f59e0b", padding: "4px 10px", borderRadius: "5px", fontSize: "0.70rem", fontWeight: "600", marginTop: "2px", display: "flex", alignItems: "center", gap: "5px" }}>
+                      <Move size={12} color="#d97706" /> Drag text overlay to position anywhere
                     </div>
                   </div>
                 </div>
@@ -1320,7 +1212,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                   maxWidth: "92vw",
                   margin: "auto",
                   borderRadius: "24px",
-                  boxShadow: "0 32px 96px rgba(0, 0, 0, 0.95), 0 0 50px rgba(124, 92, 255, 0.25)",
+                  boxShadow: "0 32px 96px rgba(0, 0, 0, 0.95)",
                   position: "relative",
                   overflow: "hidden",
                   border: "1px solid rgba(255, 255, 255, 0.12)",
@@ -1548,7 +1440,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: "pointer",
-                          boxShadow: "0 4px 14px rgba(220, 38, 38, 0.5)",
+                          boxShadow: "0 4px 14px rgba(0, 0, 0, 0.4)",
                           transition: "transform 0.15s ease, background 0.15s ease"
                         }}
                         title="Delete Story"
@@ -1737,7 +1629,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                     {currentActiveStory.text.startsWith("[AI_INSIGHT]") && (() => {
                       const insight = parseAIData(currentActiveStory.text);
                       return (
-                        <div style={{ width: "100%", background: "rgba(10,10,18,0.85)", padding: "20px 16px", borderRadius: "12px", border: "1px dashed rgba(99,102,241,0.4)", textAlign: "center", boxShadow: "0 0 15px rgba(99,102,241,0.2)" }}>
+                        <div style={{ width: "100%", background: "rgba(10,10,18,0.85)", padding: "20px 16px", borderRadius: "12px", border: "1px dashed rgba(99,102,241,0.4)", textAlign: "center", boxShadow: "none" }}>
                           <div style={{ display: "flex", justifyContent: "center", gap: "6px", alignItems: "center", marginBottom: "8px" }}>
                             <Bot size={15} style={{ color: "#06b6d4" }} />
                             <span style={{ fontSize: "0.72rem", color: "#06b6d4", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>AI Dev Predictions</span>
@@ -2022,7 +1914,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                   padding: "22px 24px",
                   width: "330px",
                   maxWidth: "88vw",
-                  boxShadow: "0 20px 48px rgba(0, 0, 0, 0.6), 0 0 30px rgba(239, 68, 68, 0.15)",
+                  boxShadow: "0 20px 48px rgba(0, 0, 0, 0.75)",
                   textAlign: "center",
                   color: "var(--ce-text, #ffffff)"
                 }}
@@ -2088,7 +1980,7 @@ export default function StoriesSystem({ user, addToast, vertical = false, onUser
                       border: "none",
                       color: "#ffffff",
                       cursor: "pointer",
-                      boxShadow: "0 4px 14px rgba(239, 68, 68, 0.35)",
+                      boxShadow: "0 4px 14px rgba(0, 0, 0, 0.4)",
                       transition: "all 0.15s ease",
                       opacity: isDeleting ? 0.6 : 1
                     }}

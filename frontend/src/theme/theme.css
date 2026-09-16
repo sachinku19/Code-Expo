@@ -1,7 +1,7 @@
 /* src/theme/theme.css */
 :root {
-  --color-primary: hsl(250, 70%, 55%); /* blue‑violet */
-  --color-primary-dark: hsl(250, 70%, 45%);
+  --color-primary: hsl(45, 93%, 47%); /* golden yellow / amber */
+  --color-primary-dark: hsl(38, 92%, 45%);
   --color-bg: hsl(230, 15%, 10%);
   --color-surface: hsla(230, 15%, 20%, 0.8);
   --color-text-primary: #e0e0e0;

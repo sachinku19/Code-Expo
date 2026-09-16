@@ -148,7 +148,7 @@ const CodeBlock = ({ lang, code, addToast }) => {
         return `<span style="color:#f472b6; font-weight:600;">${keyword}</span>`;
       }
       if (number) {
-        return `<span style="color:#fbbf24;">${number}</span>`;
+        return `<span style="color:#e59b1a;">${number}</span>`;
       }
       return match;
     });
@@ -517,7 +517,7 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
               padding: "28px 24px",
               width: "420px",
               maxWidth: "90vw",
-              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.6), 0 0 32px rgba(99, 102, 241, 0.08)",
+              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.75)",
               textAlign: "center",
               display: "flex",
               flexDirection: "column",
@@ -531,12 +531,12 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
                 width: "60px",
                 height: "60px",
                 borderRadius: "50%",
-                background: "rgba(245, 158, 11, 0.1)",
-                border: "1.5px solid rgba(245, 158, 11, 0.25)",
+                background: "rgba(217, 119, 6, 0.12)",
+                border: "1.5px solid rgba(217, 119, 6, 0.3)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#f59e0b",
+                color: "#d97706",
                 fontSize: "1.6rem"
               }}
             >
@@ -549,16 +549,16 @@ const WarningModal = ({ isOpen, title, message, onClose }) => {
             <button
               onClick={onClose}
               style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
                 border: "none",
-                color: "#fff",
+                color: "#ffffff",
                 padding: "11px 24px",
-                borderRadius: "10px",
+                borderRadius: "6px",
                 fontSize: "0.9rem",
-                fontWeight: "600",
+                fontWeight: "700",
                 cursor: "pointer",
                 transition: "all 0.2s ease",
-                boxShadow: "0 4px 14px rgba(99, 102, 241, 0.25)",
+                boxShadow: "0 2px 6px rgba(0, 0, 0, 0.3)",
                 width: "100%",
                 marginTop: "4px"
               }}
@@ -1714,7 +1714,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
     html = html.replace(/```([a-zA-Z0-9]*)(?:\r?\n)([\s\S]*?)```/g, (match, lang, code) => {
       const placeholder = `___CODE_BLOCK_${codeBlocks.length}___`;
       codeBlocks.push(
-        `<pre style="background:#09090b; border:1px solid rgba(255,255,255,0.08); padding:12px 14px; border-radius:10px; font-family:'Fira Code', monospace; font-size:0.82rem; overflow:auto; max-height:220px; margin:12px 0; box-sizing:border-box;"><div style="font-size:0.72rem; color:#7C5CFF; font-weight:600; text-transform:uppercase; margin-bottom:6px;">${lang || "code"}</div><code style="color:#e4e4e7; white-space:pre; display:block;">${code.trim()}</code></pre>`
+        `<pre style="background:#09090b; border:1px solid rgba(255,255,255,0.08); padding:12px 14px; border-radius:10px; font-family:'Fira Code', monospace; font-size:0.82rem; overflow:auto; max-height:220px; margin:12px 0; box-sizing:border-box;"><div style="font-size:0.72rem; color:#f59e0b; font-weight:600; text-transform:uppercase; margin-bottom:6px;">${lang || "code"}</div><code style="color:#e4e4e7; white-space:pre; display:block;">${code.trim()}</code></pre>`
       );
       return placeholder;
     });
@@ -1825,7 +1825,7 @@ export default function DeveloperFeed({ user, addToast, followingList = [], hand
         className="premium-repo-embed"
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Star size={16} style={{ color: "#fbbf24" }} />
+          <Star size={16} style={{ color: "#d97706" }} />
           <div>
             <h6 style={{ margin: 0, color: "#60a5fa", fontSize: "0.85rem", fontWeight: "700" }}>{repoName}</h6>
             <span style={{ fontSize: "0.72rem", color: "var(--ce-premium-muted)" }}>GitHub Repository &bull; Click to explore</span>

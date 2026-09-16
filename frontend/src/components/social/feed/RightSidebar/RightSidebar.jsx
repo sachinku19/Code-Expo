@@ -31,7 +31,7 @@ const SafeAvatar = ({ src, name = "Dev", size = 32 }) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "linear-gradient(135deg, #7C5CFF, #8b5cf6)",
+            background: "linear-gradient(135deg, #f59e0b, #d97706)",
             color: "#ffffff",
             fontWeight: "700",
             fontSize: `${size * 0.4}px`

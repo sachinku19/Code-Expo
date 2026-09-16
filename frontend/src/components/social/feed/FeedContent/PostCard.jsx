@@ -4,7 +4,7 @@ import { toggleLikeCommentPost, deleteCommentPost } from "../../../../services/s
 import { optimizeCloudinaryUrl, getCloudinarySrcSet } from "../../../../utils/imageOptimizer";
 
 const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg, #7C5CFF 0%, #6366f1 100%)",
+  "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
   "linear-gradient(135deg, #ec4899 0%, #d946ef 100%)",
   "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
   "linear-gradient(135deg, #10b981 0%, #059669 100%)",
@@ -459,9 +459,8 @@ export const CommentTreeItem = ({
               type="submit"
               disabled={!replyText.trim()}
               style={{
-                background: replyText.trim() ? "#7C5CFF" : "var(--ce-hover, rgba(255, 255, 255, 0.1))",
-                border: "none",
-                color: "#ffffff",
+                background: replyText.trim() ? "#f59e0b" : "var(--ce-hover, rgba(255, 255, 255, 0.1))",
+                color: replyText.trim() ? "#0a0c10" : "#ffffff",
                 borderRadius: "14px",
                 padding: "4px 10px",
                 fontSize: "0.72rem",
@@ -1341,7 +1340,7 @@ export const PostCard = ({
               style={{
                 background: "none",
                 border: "none",
-                color: commentText.trim() ? "#7C5CFF" : "rgba(255, 255, 255, 0.3)",
+                color: commentText.trim() ? "#f59e0b" : "rgba(255, 255, 255, 0.3)",
                 cursor: commentText.trim() ? "pointer" : "default",
                 display: "flex",
                 alignItems: "center",

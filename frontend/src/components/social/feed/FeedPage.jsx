@@ -189,7 +189,7 @@ export const FeedPage = ({
           />
 
           {selectedTag && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", fontSize: "0.84rem", color: "#7C5CFF" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", fontSize: "0.84rem", color: "#f59e0b" }}>
               <span>Filtering by <strong>{selectedTag}</strong></span>
               <button
                 onClick={() => setSelectedTag(null)}

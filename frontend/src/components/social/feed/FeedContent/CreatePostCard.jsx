@@ -31,7 +31,7 @@ const SafeAvatar = ({ src, name = "User", size = 36 }) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "linear-gradient(135deg, #7C5CFF, #8b5cf6)",
+            background: "linear-gradient(135deg, #f59e0b, #d97706)",
             color: "#ffffff",
             fontWeight: "700",
             fontSize: `${size * 0.4}px`
@@ -88,7 +88,7 @@ export const CreatePostCard = ({ user, onSubmitPost, onOpenComposer }) => {
             className="create-option-btn"
             onClick={() => onOpenComposer ? onOpenComposer() : setPostType("code")}
           >
-            <Code size={14} color="#a855f7" />
+            <Code size={14} color="#f59e0b" />
             <span>Code</span>
           </button>
 
