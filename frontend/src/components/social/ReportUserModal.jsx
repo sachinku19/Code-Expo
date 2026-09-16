@@ -1,8 +1,70 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, AlertTriangle, ShieldAlert } from "lucide-react";
+import {
+  X,
+  AlertTriangle,
+  ShieldAlert,
+  Check,
+  Loader2,
+  Flag,
+  Ban,
+  EyeOff,
+  FileWarning,
+  HelpCircle,
+  MessageSquareWarning,
+  ChevronDown,
+  Lock
+} from "lucide-react";
 import { reportUser } from "../../services/socialService";
+import { getAvatarColor, getAvatarInitial } from "../../utils/avatarUtils";
+import { useTheme } from "../../context/ThemeContext";
+import "./ReportUserModal.css";
+
+const REPORT_REASONS = [
+  {
+    id: "Harassment",
+    label: "Harassment or Bullying",
+    desc: "Intimidation, personal attacks, or aggressive behavior",
+    icon: MessageSquareWarning
+  },
+  {
+    id: "Spam",
+    label: "Spam or Promotion",
+    desc: "Unsolicited promotional links, bot behavior, or advertising",
+    icon: Ban
+  },
+  {
+    id: "Hate Speech",
+    label: "Hate Speech & Toxicity",
+    desc: "Discriminatory language, slurs, or targeted hostility",
+    icon: ShieldAlert
+  },
+  {
+    id: "Fraud / Scam",
+    label: "Fraud, Scam or Phishing",
+    desc: "Malicious code, credential harvesting, or fake identity",
+    icon: AlertTriangle
+  },
+  {
+    id: "Inappropriate Content",
+    label: "Inappropriate Content",
+    desc: "Explicit, offensive, or unsafe code/media",
+    icon: EyeOff
+  },
+  {
+    id: "TOS Violation",
+    label: "Terms of Service Violation",
+    desc: "Platform exploit, unauthorized automation, or rule breaking",
+    icon: FileWarning
+  },
+  {
+    id: "Other",
+    label: "Other Community Issue",
+    desc: "Other safety concerns requiring manual moderation",
+    icon: HelpCircle
+  }
+];
 
 export default function ReportUserModal({
   isOpen,
@@ -15,34 +77,87 @@ export default function ReportUserModal({
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [isDropdownOpen]);
+
+  // Reset states on open/close
+  useEffect(() => {
+    if (!isOpen) {
+      setReason("");
+      setDetails("");
+      setIsDropdownOpen(false);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
+  const themeContext = useTheme ? useTheme() : null;
+  const isLight =
+    themeContext?.resolvedTheme === "light" ||
+    (typeof document !== "undefined" &&
+      (document.documentElement.classList.contains("light") ||
+        document.body.classList.contains("light") ||
+        document.documentElement.getAttribute("data-theme-mode") === "light"));
+
+  if (!isOpen || !reportedUser) return null;
+
+  const targetUsername = reportedUser.username || "developer";
+  const targetInitial = getAvatarInitial(targetUsername);
+  const targetAvatarBg = getAvatarColor(targetUsername);
+
+  const selectedCategoryObj = REPORT_REASONS.find((r) => r.id === reason);
+
+  const getEvidenceLabel = () => {
+    const t = String(evidenceType || "").toUpperCase();
+    if (t === "ROOM") return "Workspace Room";
+    if (t === "POST") return "Feed Post";
+    if (t === "COMMENT") return "Comment";
+    if (t === "PROFILE") return "User Profile";
+    return `${t} Incident`;
+  };
+
+  const isDetailsValid = details.trim().length >= 10;
+  const isFormReady = Boolean(reason && isDetailsValid && !isSubmitting);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!reason) {
-      if (addToast) addToast("Please select a reason for reporting", "error");
+      if (addToast) addToast("Please select a reason category for reporting", "error");
       return;
     }
-    if (details.trim().length < 10) {
-      if (addToast) addToast("Please provide at least 10 characters of detail for review", "error");
+    if (!isDetailsValid) {
+      if (addToast) addToast("Please provide at least 10 characters of context for our review", "error");
       return;
     }
 
     setIsSubmitting(true);
     try {
       const targetId = reportedUser.id || reportedUser._id;
-      const res = await reportUser(targetId, reason, details, evidenceType, evidenceId);
-      if (res.success) {
-        if (addToast) addToast(res.message || "Report submitted successfully.", "success");
-        // Reset and close
+      const res = await reportUser(targetId, reason, details.trim(), evidenceType, evidenceId);
+      if (res?.success) {
+        if (addToast) addToast(res.message || "Report submitted securely to our moderation team.", "success");
         setReason("");
         setDetails("");
         onClose();
       } else {
-        if (addToast) addToast(res.message || "Failed to submit report.", "error");
+        if (addToast) addToast(res?.message || "Failed to submit report.", "error");
       }
     } catch (error) {
       console.error("Submit report error:", error);
-      const errMsg = error.response?.data?.message || "Failed to submit report. You may have reported this already.";
+      const errMsg =
+        error.response?.data?.message || "Failed to submit report. You may have already reported this item.";
       if (addToast) addToast(errMsg, "error");
     } finally {
       setIsSubmitting(false);
@@ -51,180 +166,176 @@ export default function ReportUserModal({
 
   return createPortal(
     <AnimatePresence>
-      {isOpen && reportedUser && (
-        <div 
-          className="ce-modal-overlay" 
-          onClick={onClose} 
-          style={{ 
-            position: "fixed", 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            background: "rgba(0,0,0,0.65)", 
-            backdropFilter: "blur(5px)",
-            WebkitBackdropFilter: "blur(5px)",
-            display: "flex", 
-            justifyContent: "center", 
-            alignItems: "center", 
-            zIndex: 999999 
-          }}
+      <div className={`rum-overlay ${isLight ? "light-theme light" : "dark-theme"}`} onClick={onClose}>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          className="rum-card"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-modal-title"
         >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="ce-modal-card"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              maxWidth: "520px",
-              width: "90%",
-              padding: "24px",
-              background: "var(--ce-premium-card, #111827)",
-              border: "1px solid var(--ce-premium-border, #1f2937)",
-              borderRadius: "16px",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.5)"
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <ShieldAlert size={20} style={{ color: "#ef4444" }} />
-                <h3 style={{ margin: 0, color: "var(--ce-premium-text, #fff)", fontSize: "1.2rem", fontWeight: "600" }}>Report User</h3>
-              </div>
-              <button
-                onClick={onClose}
-                style={{ background: "none", border: "none", color: "var(--ce-premium-muted, #9ca3af)", cursor: "pointer" }}
-              >
-                <X size={18} />
-              </button>
+          {/* 1. Header */}
+          <div className="rum-header">
+            <div className="rum-header-left">
+              <ShieldAlert size={16} className="rum-header-icon" />
+              <h3 id="report-modal-title" className="rum-header-title">Report Incident</h3>
             </div>
+            <button
+              type="button"
+              className="rum-close-btn"
+              onClick={onClose}
+              aria-label="Close dialog"
+            >
+              <X size={15} />
+            </button>
+          </div>
 
-            <p style={{ color: "var(--ce-premium-muted, #9ca3af)", fontSize: "0.85rem", marginBottom: "18px" }}>
-              You are reporting <strong style={{ color: "#ef4444" }}>@{reportedUser.username}</strong> for violation of our community standards. Please select the most appropriate category and details.
-            </p>
-
-            <form onSubmit={handleSubmit}>
-              {/* Reason Select */}
-              <div style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", color: "var(--ce-premium-text, #fff)", fontSize: "0.82rem", fontWeight: "600", marginBottom: "6px" }}>
-                  Reason Category <span style={{ color: "#ef4444" }}>*</span>
-                </label>
-                <select
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  required
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--ce-premium-border, #1f2937)",
-                    background: "var(--ce-premium-bg, rgba(0,0,0,0.25))",
-                    color: "var(--ce-premium-text, #fff)",
-                    outline: "none",
-                    fontSize: "0.85rem"
-                  }}
-                >
-                  <option value="" disabled style={{ background: "var(--ce-premium-card, #111827)", color: "var(--ce-premium-text, #fff)" }}>Select a reason...</option>
-                  <option value="Spam" style={{ background: "var(--ce-premium-card, #111827)", color: "var(--ce-premium-text, #fff)" }}>Spam or Advertising</option>
-                  <option value="Harassment" style={{ background: "var(--ce-premium-card, #111827)", color: "var(--ce-premium-text, #fff)" }}>Harassment or Bullying</option>
-                  <option value="Hate Speech" style={{ background: "var(--ce-premium-card, #111827)", color: "var(--ce-premium-text, #fff)" }}>Hate Speech or Discrimination</option>
-                  <option value="Fraud / Scam" style={{ background: "var(--ce-premium-card, #111827)", color: "var(--ce-premium-text, #fff)" }}>Fraud, Scam, or Imitation</option>
-                  <option value="Inappropriate Content" style={{ background: "var(--ce-premium-card, #111827)", color: "var(--ce-premium-text, #fff)" }}>Inappropriate or Nudity</option>
-                  <option value="TOS Violation" style={{ background: "var(--ce-premium-card, #111827)", color: "var(--ce-premium-text, #fff)" }}>Terms of Service Violation</option>
-                  <option value="Other" style={{ background: "var(--ce-premium-card, #111827)", color: "var(--ce-premium-text, #fff)" }}>Other Violation</option>
-                </select>
+          {/* 2. Target Context - Clean inline strip (no heavy box) */}
+          <div className="rum-target-bar">
+            {reportedUser.avatar ? (
+              <img src={reportedUser.avatar} alt={targetUsername} className="rum-target-avatar" />
+            ) : (
+              <div
+                className="rum-target-avatar-fallback"
+                style={{ backgroundColor: targetAvatarBg }}
+              >
+                {targetInitial}
               </div>
+            )}
+            <div className="rum-target-meta">
+              <span className="rum-target-username">@{targetUsername}</span>
+              <span className="rum-target-scope">/ {getEvidenceLabel()}</span>
+            </div>
+          </div>
 
-              {/* Description Details */}
-              <div style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", color: "var(--ce-premium-text, #fff)", fontSize: "0.82rem", fontWeight: "600", marginBottom: "6px" }}>
-                  Explain the details <span style={{ color: "#ef4444" }}>*</span>
+          {/* 3. Form */}
+          <form onSubmit={handleSubmit} className="rum-form">
+            <div className="rum-body">
+              {/* Reason Field */}
+              <div className="rum-field">
+                <label className="rum-label">
+                  Violation Category <span className="rum-req">*</span>
                 </label>
-                <textarea
-                  value={details}
-                  onChange={(e) => setDetails(e.target.value)}
-                  placeholder="Explain the context and specify the violation..."
-                  rows={4}
-                  required
-                  maxLength={1000}
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--ce-premium-border, #1f2937)",
-                    background: "var(--ce-premium-bg, rgba(0,0,0,0.25))",
-                    color: "var(--ce-premium-text, #fff)",
-                    outline: "none",
-                    fontSize: "0.85rem",
-                    resize: "none"
-                  }}
-                />
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", fontSize: "0.75rem", color: "var(--ce-premium-muted, #9ca3af)" }}>
-                  <span>Minimum 10 characters</span>
-                  <span>{details.length}/1000</span>
+
+                <div className="rum-dropdown-container" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    className={`rum-dropdown-trigger ${isDropdownOpen ? "open" : ""} ${reason ? "has-value" : ""}`}
+                    onClick={() => setIsDropdownOpen((prev) => !prev)}
+                    aria-expanded={isDropdownOpen}
+                  >
+                    <div className="rum-trigger-left">
+                      {selectedCategoryObj ? (
+                        <>
+                          <selectedCategoryObj.icon size={15} className="rum-trigger-icon-active" />
+                          <span className="rum-trigger-text-selected">{selectedCategoryObj.label}</span>
+                        </>
+                      ) : (
+                        <span className="rum-trigger-text-placeholder">Select a category...</span>
+                      )}
+                    </div>
+                    <ChevronDown size={14} className={`rum-trigger-chevron ${isDropdownOpen ? "rotated" : ""}`} />
+                  </button>
+
+                  {isDropdownOpen && (
+                    <div className="rum-dropdown-menu">
+                      {REPORT_REASONS.map((r) => {
+                        const IconComponent = r.icon;
+                        const isSelected = reason === r.id;
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            className={`rum-dropdown-item ${isSelected ? "selected" : ""}`}
+                            onClick={() => {
+                              setReason(r.id);
+                              setIsDropdownOpen(false);
+                            }}
+                          >
+                            <div className="rum-item-left">
+                              <IconComponent size={14} className="rum-item-icon" />
+                              <span className="rum-item-title">{r.label}</span>
+                            </div>
+                            {isSelected && <Check size={13} className="rum-item-check" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Fraud warning box */}
-              <div 
-                style={{ 
-                  display: "flex", 
-                  gap: "10px", 
-                  background: "rgba(239, 68, 68, 0.08)", 
-                  border: "1px solid rgba(239, 68, 68, 0.2)", 
-                  padding: "12px", 
-                  borderRadius: "8px", 
-                  marginBottom: "20px" 
-                }}
-              >
-                <AlertTriangle size={18} style={{ color: "#ef4444", flexShrink: 0, marginTop: "2px" }} />
-                <p style={{ margin: 0, fontSize: "0.76rem", color: "#ef4444", lineHeight: "1.3" }}>
-                  <strong>Anti-Fraud Warning:</strong> False or malicious reports are strictly prohibited. Abuse of the reporting system may trigger warning strikes or restriction of your account.
-                </p>
+              {/* Details Field */}
+              <div className="rum-field">
+                <div className="rum-label-row">
+                  <label className="rum-label">
+                    Incident Details <span className="rum-req">*</span>
+                  </label>
+                  <span className="rum-char-count">{details.length} / 1000</span>
+                </div>
+
+                <textarea
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder="Describe what occurred with as much context as possible..."
+                  rows={4}
+                  maxLength={1000}
+                  className="rum-textarea"
+                />
+
+                <div className="rum-field-footer">
+                  {details.trim().length > 0 && details.trim().length < 10 ? (
+                    <span className="rum-min-warn">
+                      Need at least 10 characters ({10 - details.trim().length} more)
+                    </span>
+                  ) : (
+                    <span className="rum-min-info">Minimum 10 characters required</span>
+                  )}
+                </div>
               </div>
 
-              {/* Footer Buttons */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={isSubmitting}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--ce-premium-border, #1f2937)",
-                    background: "none",
-                    color: "var(--ce-premium-text, #fff)",
-                    fontSize: "0.82rem",
-                    cursor: "pointer",
-                    opacity: isSubmitting ? 0.5 : 1
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    border: "none",
-                    background: "#ef4444",
-                    color: "#fff",
-                    fontSize: "0.82rem",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    opacity: isSubmitting ? 0.5 : 1
-                  }}
-                >
-                  {isSubmitting ? "Submitting..." : "Submit Report"}
-                </button>
+              {/* Discreet Note */}
+              <div className="rum-confidential-note">
+                <Lock size={12} className="rum-lock-icon" />
+                <span>Reports are encrypted, confidential, and verified by platform moderators.</span>
               </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
+            </div>
+
+            {/* 4. Footer Actions */}
+            <div className="rum-footer">
+              <button
+                type="button"
+                className="rum-btn-cancel"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rum-btn-submit"
+                disabled={!isFormReady}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={13} className="rum-spinner" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Flag size={13} />
+                    <span>Submit Report</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
     </AnimatePresence>,
     document.body
   );

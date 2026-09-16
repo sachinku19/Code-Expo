@@ -252,18 +252,28 @@
 
 .rdm-title-row {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   margin-top: 2px;
 }
 
-.rdm-terminal-prompt {
-  font-family: var(--font-mono, monospace);
-  font-size: 1.45rem;
-  font-weight: 900;
-  color: #f59e0b;
-  line-height: 1.25;
+.rdm-title-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(217, 119, 6, 0.1);
+  border: 1px solid rgba(217, 119, 6, 0.28);
+  color: var(--ce-accent, #d97706);
   flex-shrink: 0;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.rdm-title-badge:hover {
+  transform: scale(1.05);
+  border-color: rgba(217, 119, 6, 0.45);
 }
 
 .rdm-room-title {
@@ -291,76 +301,119 @@
   justify-content: flex-end;
 }
 
-.rdm-hero-visual-stack {
+/* ICONIC DEVELOPER WORKSPACE INSIGNIA */
+.rdm-hero-insignia {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  height: 84px;
-  width: 175px;
+  justify-content: center;
+  width: 116px;
+  height: 92px;
 }
 
-.rdm-stack-layer {
+.rdm-insignia-backdrop-plate {
   position: absolute;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  pointer-events: none;
-}
-
-.rdm-layer-1 {
-  right: 104px;
-  width: 44px;
-  height: 46px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0%, rgba(245, 158, 11, 0.01) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  opacity: 0.45;
-  transform: rotate(-3deg) translateY(3px);
-}
-
-.rdm-layer-2 {
-  right: 58px;
-  width: 58px;
-  height: 60px;
+  top: 4px;
+  left: 4px;
+  right: -4px;
+  bottom: -4px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(245, 158, 11, 0.02) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(217, 119, 6, 0.03) 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  opacity: 0.72;
-  transform: rotate(-1.5deg) translateY(1px);
+  transform: rotate(-2.5deg);
+  pointer-events: none;
+  transition: transform 0.3s ease;
 }
 
-.rdm-layer-3 {
-  right: 18px;
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(245, 158, 11, 0.03) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  opacity: 0.9;
+.rdm-hero-insignia:hover .rdm-insignia-backdrop-plate {
+  transform: rotate(-4deg) translateY(1px);
 }
 
-.rdm-glowing-gold-card {
+.rdm-insignia-card {
   position: relative;
   z-index: 2;
-  width: 78px;
-  height: 78px;
-  border-radius: 18px;
-  background: radial-gradient(circle at 45% 35%, rgba(245, 158, 11, 0.22) 0%, rgba(13, 18, 29, 0.96) 100%);
-  border: 1.5px solid #f59e0b;
-  box-shadow: 0 0 35px rgba(245, 158, 11, 0.32), inset 0 0 16px rgba(245, 158, 11, 0.1);
+  width: 104px;
+  height: 88px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #131926 0%, #0a0e17 100%);
+  border: 1px solid rgba(217, 119, 6, 0.32);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.rdm-hero-insignia:hover .rdm-insignia-card {
+  transform: translateY(-2px);
+  border-color: rgba(217, 119, 6, 0.55);
+}
+
+.rdm-insignia-header-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding-left: 2px;
+}
+
+.rdm-mac-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.rdm-mac-dot.dot-red {
+  background: #ef4444;
+  opacity: 0.85;
+}
+
+.rdm-mac-dot.dot-yellow {
+  background: #f59e0b;
+  opacity: 0.85;
+}
+
+.rdm-mac-dot.dot-green {
+  background: #10b981;
+  opacity: 0.85;
+}
+
+.rdm-insignia-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.rdm-insignia-icon-glow {
+  color: var(--ce-accent, #d97706);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.2s ease;
 }
 
-.rdm-glowing-gold-card:hover {
-  transform: scale(1.02);
+.rdm-insignia-card:hover .rdm-insignia-icon-glow {
+  transform: scale(1.08);
 }
 
-.rdm-gold-users-icon {
-  color: #f59e0b;
-  filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.4));
+.rdm-insignia-footer-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(217, 119, 6, 0.12);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  color: var(--ce-accent, #d97706);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 /* 3. 2x2 GRID SECTION */
@@ -1218,38 +1271,22 @@
     align-self: flex-start;
   }
 
-  .rdm-hero-visual-stack {
-    height: 64px;
-    width: 140px;
+  .rdm-hero-insignia {
+    width: 96px;
+    height: 78px;
+    transform: scale(0.9);
+    transform-origin: top right;
   }
 
-  .rdm-layer-1 {
-    right: 84px;
-    width: 36px;
-    height: 38px;
+  .rdm-insignia-card {
+    width: 88px;
+    height: 74px;
+    padding: 6px 8px;
   }
 
-  .rdm-layer-2 {
-    right: 48px;
-    width: 48px;
-    height: 50px;
-  }
-
-  .rdm-layer-3 {
-    right: 14px;
-    width: 58px;
-    height: 58px;
-  }
-
-  .rdm-glowing-gold-card {
-    width: 60px;
-    height: 60px;
-    border-radius: 14px;
-  }
-
-  .rdm-gold-users-icon {
-    width: 24px;
-    height: 24px;
+  .rdm-insignia-footer-tag {
+    font-size: 0.6rem;
+    padding: 1px 5px;
   }
 
   .rdm-room-title {
@@ -1375,38 +1412,37 @@
   color: #64748b;
 }
 
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-layer-1,
-.rdm-dialog-card.light .rdm-layer-1 {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(254, 243, 199, 0.4) 100%);
-  border-color: rgba(226, 232, 240, 0.9);
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-title-badge,
+.rdm-dialog-card.light .rdm-title-badge {
+  background: rgba(217, 119, 6, 0.09);
+  border-color: rgba(217, 119, 6, 0.3);
+  color: #b45309;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-insignia-backdrop-plate,
+.rdm-dialog-card.light .rdm-insignia-backdrop-plate {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-layer-2,
-.rdm-dialog-card.light .rdm-layer-2 {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(253, 230, 138, 0.45) 100%);
-  border-color: rgba(203, 213, 225, 0.9);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-insignia-card,
+.rdm-dialog-card.light .rdm-insignia-card {
+  background: linear-gradient(145deg, #ffffff 0%, #fdfbf7 100%);
+  border-color: rgba(217, 119, 6, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-layer-3,
-.rdm-dialog-card.light .rdm-layer-3 {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(252, 211, 77, 0.5) 100%);
-  border-color: rgba(203, 213, 225, 0.9);
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.12);
-}
-
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-glowing-gold-card,
-.rdm-dialog-card.light .rdm-glowing-gold-card {
-  background: radial-gradient(circle at 45% 35%, #fef3c7 0%, #fde68a 100%);
-  border-color: #f59e0b;
-  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.25), inset 0 0 12px rgba(255, 255, 255, 0.8);
-}
-
-:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-gold-users-icon,
-.rdm-dialog-card.light .rdm-gold-users-icon {
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-insignia-icon-glow,
+.rdm-dialog-card.light .rdm-insignia-icon-glow {
   color: #b45309;
-  filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.3));
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-insignia-footer-tag,
+.rdm-dialog-card.light .rdm-insignia-footer-tag {
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.25);
+  color: #92400e;
 }
 
 /* 2x2 Grid Cards in Light Mode */
@@ -1724,4 +1760,416 @@
 :is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-subtext-label,
 .rdm-dialog-card.light .rdm-subtext-label {
   color: #64748b;
+}
+
+/* ==========================================================
+   INVITE COLLABORATORS DIALOG & COPIED STATE
+   ========================================================== */
+
+.rdm-invite-btn.copied {
+  background: rgba(16, 185, 129, 0.14) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #10b981 !important;
+}
+
+.rdm-invite-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  animation: rdm-fade-in 0.2s ease-out;
+}
+
+@keyframes rdm-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rdm-invite-card {
+  width: 92%;
+  max-width: 440px;
+  background: #0f1523;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  animation: rdm-pop-in 0.22s ease-out;
+}
+
+@keyframes rdm-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.rdm-invite-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rdm-invite-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rdm-invite-title-row h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.rdm-invite-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.rdm-invite-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.rdm-invite-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.rdm-invite-link-section {
+  padding: 16px 20px 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rdm-invite-link-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rdm-invite-link-input {
+  flex: 1;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  outline: none;
+}
+
+.rdm-invite-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  background: rgba(217, 119, 6, 0.12);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  border-radius: 8px;
+  color: var(--ce-accent, #d97706);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.rdm-invite-copy-btn:hover {
+  background: rgba(217, 119, 6, 0.22);
+  border-color: rgba(217, 119, 6, 0.5);
+}
+
+.rdm-invite-copy-btn.copied {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #10b981 !important;
+}
+
+.rdm-invite-followers-section {
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rdm-invite-followers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rdm-selected-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ce-accent, #d97706);
+}
+
+.rdm-invite-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rdm-search-icon {
+  position: absolute;
+  left: 10px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.rdm-search-input {
+  width: 100%;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  padding: 0 12px 0 32px;
+  font-size: 0.8rem;
+  color: #f1f5f9;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.rdm-search-input:focus {
+  border-color: var(--ce-accent, #d97706);
+}
+
+.rdm-invite-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.rdm-follower-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.rdm-follower-item:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rdm-follower-item.selected {
+  background: rgba(217, 119, 6, 0.1);
+}
+
+.rdm-follower-item.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rdm-checkbox {
+  cursor: pointer;
+  accent-color: var(--ce-accent, #d97706);
+}
+
+.rdm-follower-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.rdm-follower-avatar-fallback {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.rdm-follower-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.rdm-follower-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.rdm-already-tag {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.rdm-invite-loading,
+.rdm-invite-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.78rem;
+  gap: 4px;
+}
+
+.rdm-invite-empty p {
+  margin: 0;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.rdm-invite-empty span {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.rdm-invite-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.rdm-btn-cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 7px 14px;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rdm-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.rdm-btn-send-invites {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ce-accent, #d97706);
+  border: none;
+  border-radius: 8px;
+  padding: 7px 16px;
+  color: #000000;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rdm-btn-send-invites:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.rdm-btn-send-invites:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Light mode overrides for invite dialog */
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-invite-card,
+.rdm-dialog-card.light .rdm-invite-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-invite-header,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-invite-link-section,
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-invite-footer,
+.rdm-dialog-card.light .rdm-invite-header,
+.rdm-dialog-card.light .rdm-invite-link-section,
+.rdm-dialog-card.light .rdm-invite-footer {
+  border-color: #e2e8f0;
+  background: #fafafa;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-invite-title-row h3,
+.rdm-dialog-card.light .rdm-invite-title-row h3 {
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-invite-link-input,
+.rdm-dialog-card.light .rdm-invite-link-input {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-search-input,
+.rdm-dialog-card.light .rdm-search-input {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-follower-name,
+.rdm-dialog-card.light .rdm-follower-name {
+  color: #1e293b;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-follower-item:hover:not(.disabled),
+.rdm-dialog-card.light .rdm-follower-item:hover:not(.disabled) {
+  background: #f1f5f9;
+}
+
+:is(.light, body.light, html.light, [data-theme-mode="light"], [data-theme="light"], .light-theme, .light-mode) .rdm-btn-cancel,
+.rdm-dialog-card.light .rdm-btn-cancel {
+  border-color: #cbd5e1;
+  color: #475569;
 }

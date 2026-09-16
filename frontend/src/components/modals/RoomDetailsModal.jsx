@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   Share2,
   MoreVertical,
   Users,
+  TerminalSquare,
   Package,
   Globe,
   Lock,
@@ -23,11 +24,12 @@ import {
   ShieldAlert,
   ChevronDown,
   Loader2,
+  Search,
   X
 } from "lucide-react";
 import { getAvatarColor } from "../../utils/avatarUtils";
-import { getRoomSocialStats } from "../../services/socialService";
-import { updateRoomDetails } from "../../services/roomService";
+import { getRoomSocialStats, getFollowers } from "../../services/socialService";
+import { updateRoomDetails, sendWorkspaceInvites } from "../../services/roomService";
 import { useTheme } from "../../context/ThemeContext";
 import "./RoomDetailsModal.css";
 
@@ -127,10 +129,23 @@ const RoomDetailsModal = ({
   const [currentRoom, setCurrentRoom] = useState(room || {});
   const [copiedId, setCopiedId] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedInvite, setCopiedInvite] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [selectedFollowers, setSelectedFollowers] = useState(new Set());
+  const [inviteSearchQuery, setInviteSearchQuery] = useState("");
+  const [sendingInvites, setSendingInvites] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
   const [activeMemberMenuId, setActiveMemberMenuId] = useState(null);
   const [likes, setLikes] = useState(initialLikesList || []);
   const [loadingLikes, setLoadingLikes] = useState(initialIsLoadingLikes);
+
+  const filteredFollowers = useMemo(() => {
+    if (!inviteSearchQuery.trim()) return followers;
+    const q = inviteSearchQuery.toLowerCase();
+    return followers.filter((f) => (f.username || "").toLowerCase().includes(q));
+  }, [followers, inviteSearchQuery]);
 
   // In-place description editor state
   const [isEditingDesc, setIsEditingDesc] = useState(false);
@@ -239,54 +254,123 @@ const RoomDetailsModal = ({
     [onToast]
   );
 
-  const handleCopyId = (e) => {
-    e?.stopPropagation();
-    if (!roomId) return;
-    navigator.clipboard.writeText(roomId).then(() => {
-      setCopiedId(true);
-      triggerToast("Room ID copied to clipboard!", "success");
-      setTimeout(() => setCopiedId(false), 2000);
-    });
+  const copyToClipboard = async (text) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // Fallback below
+      }
+    }
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const success = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      return Boolean(success);
+    } catch {
+      return false;
+    }
   };
 
-  const handleShareRoom = (e) => {
+  const handleCopyId = async (e) => {
+    e?.stopPropagation();
+    if (!roomId) return;
+    await copyToClipboard(roomId);
+    setCopiedId(true);
+    triggerToast("Room ID copied to clipboard!", "success");
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  const handleShareRoom = async (e) => {
     e?.stopPropagation();
     setShowTopMenu(false);
     if (!roomId) return;
 
     const shareUrl = `${window.location.origin}/join/${roomId}`;
     if (navigator.share) {
-      navigator
-        .share({
+      try {
+        await navigator.share({
           title: currentRoom.title || "Code-Expo Room",
           text: `Join my collaborative workspace on Code-Expo!`,
           url: shareUrl
-        })
-        .catch((err) => {
-          if (err.name !== "AbortError") {
-            navigator.clipboard.writeText(shareUrl).then(() => {
-              setCopiedLink(true);
-              triggerToast("Room share link copied to clipboard!", "success");
-              setTimeout(() => setCopiedLink(false), 2000);
-            });
-          }
         });
-    } else {
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        setCopiedLink(true);
-        triggerToast("Room share link copied to clipboard!", "success");
-        setTimeout(() => setCopiedLink(false), 2000);
-      });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
     }
+    await copyToClipboard(shareUrl);
+    setCopiedLink(true);
+    triggerToast("Room share link copied to clipboard!", "success");
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const handleInvite = (e) => {
+  const handleInvite = async (e) => {
     e?.stopPropagation();
     if (!roomId) return;
     const inviteUrl = `${window.location.origin}/join/${roomId}`;
-    navigator.clipboard.writeText(inviteUrl).then(() => {
-      triggerToast("Room invite link copied! Share with collaborators.", "success");
+    await copyToClipboard(inviteUrl);
+    setCopiedInvite(true);
+    triggerToast("Room invite link copied to clipboard!", "success");
+    setTimeout(() => setCopiedInvite(false), 2500);
+
+    // Open invite dialog for follower invitations
+    setIsInviteModalOpen(true);
+    setSelectedFollowers(new Set());
+    setInviteSearchQuery("");
+
+    const userId = currentUser?._id || currentUser?.id;
+    if (userId) {
+      setLoadingFollowers(true);
+      try {
+        const res = await getFollowers(userId);
+        if (res?.success) {
+          setFollowers(res.followers || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch followers for invite:", err);
+      } finally {
+        setLoadingFollowers(false);
+      }
+    }
+  };
+
+  const toggleSelectFollower = (followerId) => {
+    setSelectedFollowers((prev) => {
+      const updated = new Set(prev);
+      if (updated.has(followerId)) {
+        updated.delete(followerId);
+      } else {
+        updated.add(followerId);
+      }
+      return updated;
     });
+  };
+
+  const handleSendInvites = async () => {
+    if (selectedFollowers.size === 0 || sendingInvites) return;
+    setSendingInvites(true);
+    try {
+      const res = await sendWorkspaceInvites(roomId, Array.from(selectedFollowers));
+      if (res?.success) {
+        setIsInviteModalOpen(false);
+        triggerToast("Invitations sent successfully!", "success");
+      } else {
+        triggerToast(res?.message || "Failed to send invites", "error");
+      }
+    } catch (err) {
+      triggerToast(err.response?.data?.message || err.message || "Failed to send invites", "error");
+    } finally {
+      setSendingInvites(false);
+    }
   };
 
   const handleEnter = (e) => {
@@ -478,7 +562,9 @@ const RoomDetailsModal = ({
           <div className="rdm-hero-left">
             <span className="rdm-badge-pill">Room Overview</span>
             <div className="rdm-title-row">
-              <span className="rdm-terminal-prompt">&gt;_</span>
+              <div className="rdm-title-badge" title="Workspace Terminal">
+                <TerminalSquare size={20} strokeWidth={2.2} />
+              </div>
               <h2 className="rdm-room-title">{currentRoom.title || "Untitled Workspace"}</h2>
             </div>
             <p className="rdm-hero-subtitle">
@@ -486,12 +572,23 @@ const RoomDetailsModal = ({
             </p>
           </div>
           <div className="rdm-hero-right">
-            <div className="rdm-hero-visual-stack">
-              <div className="rdm-stack-layer rdm-layer-1" />
-              <div className="rdm-stack-layer rdm-layer-2" />
-              <div className="rdm-stack-layer rdm-layer-3" />
-              <div className="rdm-glowing-gold-card">
-                <Users size={32} className="rdm-gold-users-icon" />
+            <div className="rdm-hero-insignia" aria-hidden="true">
+              <div className="rdm-insignia-backdrop-plate" />
+              <div className="rdm-insignia-card">
+                <div className="rdm-insignia-header-dots">
+                  <span className="rdm-mac-dot dot-red" />
+                  <span className="rdm-mac-dot dot-yellow" />
+                  <span className="rdm-mac-dot dot-green" />
+                </div>
+                <div className="rdm-insignia-body">
+                  <div className="rdm-insignia-icon-glow">
+                    <TerminalSquare size={30} strokeWidth={2} />
+                  </div>
+                </div>
+                <div className="rdm-insignia-footer-tag">
+                  <Users size={11} strokeWidth={2.4} />
+                  <span>{currentRoom.participants?.length || 1} online</span>
+                </div>
               </div>
             </div>
           </div>
@@ -717,9 +814,23 @@ const RoomDetailsModal = ({
                 <Users size={16} className="rdm-icon-gold" />
                 <span>Members ({participants.length})</span>
               </div>
-              <button className="rdm-invite-btn" onClick={handleInvite} title="Invite Collaborators">
-                <Plus size={13} />
-                <span>Invite</span>
+              <button
+                type="button"
+                className={`rdm-invite-btn ${copiedInvite ? "copied" : ""}`}
+                onClick={handleInvite}
+                title="Invite Collaborators"
+              >
+                {copiedInvite ? (
+                  <>
+                    <Check size={13} />
+                    <span>Copied Link!</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={13} />
+                    <span>Invite</span>
+                  </>
+                )}
               </button>
             </div>
 
@@ -873,6 +984,182 @@ const RoomDetailsModal = ({
             <span className="rdm-subtext-line" />
           </div>
         </div>
+
+        {/* 5. INVITE COLLABORATORS MODAL */}
+        {isInviteModalOpen && (
+          <div
+            className="rdm-invite-modal-overlay"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsInviteModalOpen(false);
+            }}
+          >
+            <div className="rdm-invite-card" onClick={(e) => e.stopPropagation()}>
+              <div className="rdm-invite-header">
+                <div className="rdm-invite-title-row">
+                  <Users size={17} className="rdm-icon-gold" />
+                  <h3>Invite to Workspace</h3>
+                </div>
+                <button
+                  type="button"
+                  className="rdm-invite-close-btn"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  aria-label="Close invite modal"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Quick Invite Link Section */}
+              <div className="rdm-invite-link-section">
+                <label className="rdm-invite-label">Room Invite Link</label>
+                <div className="rdm-invite-link-box">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/join/${roomId}`}
+                    className="rdm-invite-link-input"
+                  />
+                  <button
+                    type="button"
+                    className={`rdm-invite-copy-btn ${copiedInvite ? "copied" : ""}`}
+                    onClick={async () => {
+                      const link = `${window.location.origin}/join/${roomId}`;
+                      await copyToClipboard(link);
+                      setCopiedInvite(true);
+                      triggerToast("Invite link copied to clipboard!", "success");
+                      setTimeout(() => setCopiedInvite(false), 2500);
+                    }}
+                  >
+                    {copiedInvite ? (
+                      <>
+                        <Check size={13} />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copy Link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Direct Follower Invite Section */}
+              <div className="rdm-invite-followers-section">
+                <div className="rdm-invite-followers-header">
+                  <label className="rdm-invite-label">Invite Followers</label>
+                  {selectedFollowers.size > 0 && (
+                    <span className="rdm-selected-count">{selectedFollowers.size} selected</span>
+                  )}
+                </div>
+
+                <div className="rdm-invite-search-box">
+                  <Search size={14} className="rdm-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search followers..."
+                    value={inviteSearchQuery}
+                    onChange={(e) => setInviteSearchQuery(e.target.value)}
+                    className="rdm-search-input"
+                  />
+                </div>
+
+                <div className="rdm-invite-list">
+                  {loadingFollowers ? (
+                    <div className="rdm-invite-loading">
+                      <Loader2 size={16} className="rdm-spinner" />
+                      <span>Loading followers...</span>
+                    </div>
+                  ) : followers.length === 0 ? (
+                    <div className="rdm-invite-empty">
+                      <User size={22} style={{ opacity: 0.4, marginBottom: "4px" }} />
+                      <p>You don't have any followers yet.</p>
+                      <span>Share the link above with collaborators directly!</span>
+                    </div>
+                  ) : filteredFollowers.length === 0 ? (
+                    <div className="rdm-invite-empty">
+                      <p>No followers matching "{inviteSearchQuery}"</p>
+                    </div>
+                  ) : (
+                    filteredFollowers.map((follower) => {
+                      const fId = String(follower._id || follower.id);
+                      const isAlreadyIn = participants.some((p) => {
+                        const pId = String(p.user?._id || p.user || p._id || "");
+                        return pId === fId;
+                      }) || String(ownerId) === fId;
+                      const isSelected = selectedFollowers.has(fId);
+
+                      return (
+                        <div
+                          key={fId}
+                          className={`rdm-follower-item ${isSelected ? "selected" : ""} ${isAlreadyIn ? "disabled" : ""}`}
+                          onClick={() => {
+                            if (!isAlreadyIn) {
+                              toggleSelectFollower(fId);
+                            }
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isAlreadyIn ? true : isSelected}
+                            disabled={isAlreadyIn}
+                            onChange={() => {}}
+                            className="rdm-checkbox"
+                          />
+                          {follower.avatar ? (
+                            <img src={follower.avatar} alt={follower.username} className="rdm-follower-avatar" />
+                          ) : (
+                            <div
+                              className="rdm-follower-avatar-fallback"
+                              style={{ backgroundColor: getAvatarColor(follower.username) }}
+                            >
+                              {follower.username?.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="rdm-follower-meta">
+                            <span className="rdm-follower-name">@{follower.username}</span>
+                            {isAlreadyIn && <span className="rdm-already-tag">Already in room</span>}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="rdm-invite-footer">
+                <button
+                  type="button"
+                  className="rdm-btn-cancel"
+                  onClick={() => setIsInviteModalOpen(false)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="rdm-btn-send-invites"
+                  disabled={selectedFollowers.size === 0 || sendingInvites}
+                  onClick={handleSendInvites}
+                >
+                  {sendingInvites ? (
+                    <>
+                      <Loader2 size={13} className="rdm-spinner" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 size={13} />
+                      <span>Send Invites ({selectedFollowers.size})</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body

@@ -71,7 +71,7 @@ import { getPersonalDashboard } from "../services/plannerService";
 import {
   Plus, LogIn, History as HistoryIcon, User,
   Sun, Moon, Sparkles, Globe, Lock, Settings as SettingsIcon,
-  Users, Clock, Terminal, Activity, FolderGit, Check, X, ShieldAlert, UserMinus,
+  Users, Clock, Terminal, TerminalSquare, Activity, FolderGit, Check, X, ShieldAlert, UserMinus,
   Search, SlidersHorizontal, BookOpen, ShieldCheck, Mail, Key, Eye, EyeOff, BellRing, Laptop,
   Palette, Bell, HelpCircle, Copy, Folder, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Code,
   Heart, Bookmark, UserPlus, UserCheck, ArrowLeft, Flame, Trophy, Calendar, Share2,
@@ -197,14 +197,15 @@ const getPostSnippet = (targetPost) => {
 };
 
 const getBannerGradient = (username) => {
+  // Professional, cohesive architectural developer gradients (Obsidian, Slate Bronze, Deep Indigo, Emerald Steel, Titanium Gold)
   const colors = [
-    "linear-gradient(135deg, #3f37c9 0%, #480ca8 100%)",
-    "linear-gradient(135deg, #7209b7 0%, #f72585 100%)",
-    "linear-gradient(135deg, #03045e 0%, #0077b6 100%)",
-    "linear-gradient(135deg, #1b4332 0%, #40916c 100%)",
-    "linear-gradient(135deg, #d90429 0%, #ef233c 100%)",
-    "linear-gradient(135deg, #ffa116 0%, #ff5500 100%)",
-    "linear-gradient(135deg, #240046 0%, #7b2cbf 100%)",
+    "linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%)",
+    "linear-gradient(135deg, #1c1917 0%, #292524 50%, #78350f 100%)",
+    "linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%)",
+    "linear-gradient(135deg, #022c22 0%, #064e3b 60%, #047857 100%)",
+    "linear-gradient(135deg, #18181b 0%, #27272a 50%, #3f3f46 100%)",
+    "linear-gradient(135deg, #451a03 0%, #78350f 50%, #b45309 100%)",
+    "linear-gradient(135deg, #09090b 0%, #1e293b 60%, #334155 100%)",
   ];
   if (!username) return colors[0];
   let hash = 0;
@@ -4577,7 +4578,7 @@ function Dashboard() {
               {langConfig.text === "C++" || langConfig.text === "CPP" ? (
                 <Code size={12} />
               ) : (
-                <Terminal size={12} />
+                <TerminalSquare size={12} />
               )}
               <span>{langConfig.text}</span>
             </div>
@@ -5470,7 +5471,7 @@ function Dashboard() {
                             if (joinedRooms.length === 0) {
                               return (
                                 <div className="empty-state-card" style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                                  <Terminal size={18} className="empty-state-icon" />
+                                  <TerminalSquare size={18} className="empty-state-icon" />
                                   <p>No recently joined rooms. Join rooms from the Explore tab or via room code!</p>
                                 </div>
                               );
@@ -7672,32 +7673,32 @@ function Dashboard() {
                       <div className="network-left-column" style={{ flex: "0 0 70%", minWidth: 0 }}>
 
                         {/* Stats row on top of left column */}
-                        <div className="ce-stats-grid" style={{ marginBottom: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px", width: "100%" }}>
-                          <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
-                            <div className="stat-card-icon-wrapper blue-theme-wrapper" style={{ width: "32px", height: "32px" }}>
-                              <UserCheck size={14} />
+                        <div className="network-quick-stats-grid">
+                          <div className="network-quick-stat">
+                            <div className="network-stat-icon-box">
+                              <UserCheck size={15} />
                             </div>
-                            <div className="stat-card-info">
-                              <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Following</span>
-                              <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>{followingList.length}</span>
-                            </div>
-                          </div>
-                          <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
-                            <div className="stat-card-icon-wrapper green-theme-wrapper" style={{ width: "32px", height: "32px" }}>
-                              <Users size={14} />
-                            </div>
-                            <div className="stat-card-info">
-                              <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Followers</span>
-                              <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>{followersList.length}</span>
+                            <div className="network-stat-meta">
+                              <span className="network-stat-label">Following</span>
+                              <span className="network-stat-val">{followingList.length}</span>
                             </div>
                           </div>
-                          <div className="compact-stat-card" style={{ padding: "10px 12px" }}>
-                            <div className="stat-card-icon-wrapper purple-theme-wrapper" style={{ width: "32px", height: "32px" }}>
-                              <span className="live-indicator-dot" style={{ margin: 0, width: "8px", height: "8px" }} />
+                          <div className="network-quick-stat">
+                            <div className="network-stat-icon-box">
+                              <Users size={15} />
                             </div>
-                            <div className="stat-card-info" style={{ marginLeft: "6px" }}>
-                              <span className="stat-card-label" style={{ fontSize: "0.65rem" }}>Online</span>
-                              <span className="stat-card-val" style={{ fontSize: "0.95rem" }}>
+                            <div className="network-stat-meta">
+                              <span className="network-stat-label">Followers</span>
+                              <span className="network-stat-val">{followersList.length}</span>
+                            </div>
+                          </div>
+                          <div className="network-quick-stat">
+                            <div className="network-stat-icon-box">
+                              <span className="network-online-dot" />
+                            </div>
+                            <div className="network-stat-meta">
+                              <span className="network-stat-label">Online</span>
+                              <span className="network-stat-val">
                                 {followingList.filter(f => f.isOnline === true || f.isOnline === "true").length}
                               </span>
                             </div>
@@ -7865,7 +7866,7 @@ function Dashboard() {
                                               <span className="dev-follows-you-pill">Follows You</span>
                                             )}
                                           </div>
-                                          <span className="dev-card-title" style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", marginBottom: "8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{dev.title || "Developer"}</span>
+                                          <span className="dev-card-title">{dev.title || "Developer"}</span>
                                           <p className="dev-card-bio">{dev.bio || "No bio description set yet."}</p>
 
                                           {dev.programmingLanguages && dev.programmingLanguages.length > 0 && (
@@ -7899,7 +7900,7 @@ function Dashboard() {
                                             }}
                                             className="dev-btn-message"
                                           >
-                                            <MessageSquare size={14} /> Message
+                                            <MessageSquare size={13} /> Message
                                           </button>
                                           <div className="dev-card-secondary-actions">
                                             <button
@@ -7936,74 +7937,42 @@ function Dashboard() {
                       </div>
 
                       {/* 30% Right Column */}
-                      <div className="network-right-column" style={{ flex: "0 0 30%", display: "flex", flexDirection: "column", gap: "20px", minWidth: "260px" }}>
+                      <div className="network-right-column">
 
-                        {/* POWERFUL WIDGET 1: Profile Invite Link */}
-                        <div style={{
-                          background: "linear-gradient(135deg, rgba(88, 166, 255, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)",
-                          border: "1px solid rgba(88, 166, 255, 0.15)",
-                          borderRadius: "12px",
-                          padding: "16px",
-                          boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "12px"
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <Sparkles size={16} style={{ color: "var(--ce-primary)" }} />
-                            <h4 style={{ margin: 0, fontSize: "0.85rem", fontWeight: "700", color: "var(--ce-text-h)" }}>Network Overview</h4>
+                        {/* WIDGET 1: Network Overview & Profile Invite Link */}
+                        <div className="network-overview-card">
+                          <div className="network-overview-header">
+                            <Sparkles size={15} className="network-overview-icon" />
+                            <h4 className="network-overview-title">Network Overview</h4>
                           </div>
 
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                            <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
-                              <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block" }}>Followers</span>
-                              <strong style={{ fontSize: "1.1rem", color: "var(--ce-text-h)" }}>{followersList.length}</strong>
+                          <div className="network-overview-stats">
+                            <div className="network-overview-stat-box">
+                              <span className="network-overview-stat-label">Followers</span>
+                              <strong className="network-overview-stat-val">{followersList.length}</strong>
                             </div>
-                            <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--ce-border)" }}>
-                              <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block" }}>Following</span>
-                              <strong style={{ fontSize: "1.1rem", color: "var(--ce-text-h)" }}>{followingList.length}</strong>
+                            <div className="network-overview-stat-box">
+                              <span className="network-overview-stat-label">Following</span>
+                              <strong className="network-overview-stat-val">{followingList.length}</strong>
                             </div>
                           </div>
 
-                          <div style={{
-                            background: "rgba(0,0,0,0.15)",
-                            borderRadius: "8px",
-                            padding: "10px",
-                            border: "1px solid rgba(255,255,255,0.03)"
-                          }}>
-                            <span style={{ fontSize: "0.65rem", color: "var(--ce-text-muted)", display: "block", marginBottom: "4px" }}>Share Profile Invite Link</span>
-                            <div style={{ display: "flex", gap: "6px" }}>
+                          <div className="network-invite-container">
+                            <span className="network-invite-label">Share Profile Invite Link</span>
+                            <div className="network-invite-row">
                               <input
                                 type="text"
                                 readOnly
                                 value={`${window.location.origin}/user/${user?.id || user?._id}`}
-                                style={{
-                                  flex: 1,
-                                  background: "rgba(0,0,0,0.2)",
-                                  border: "1px solid var(--ce-border)",
-                                  borderRadius: "4px",
-                                  padding: "4px 8px",
-                                  fontSize: "0.65rem",
-                                  color: "var(--ce-text-muted)",
-                                  textOverflow: "ellipsis"
-                                }}
+                                className="network-invite-input"
                               />
                               <button
                                 type="button"
-                                onClick={(e) => {
+                                onClick={() => {
                                   navigator.clipboard.writeText(`${window.location.origin}/user/${user?.id || user?._id}`);
                                   addToast("Profile invite link copied!", "success");
                                 }}
-                                style={{
-                                  padding: "4px 8px",
-                                  background: "var(--ce-primary)",
-                                  color: "#fff",
-                                  border: "none",
-                                  borderRadius: "4px",
-                                  fontSize: "0.65rem",
-                                  fontWeight: "600",
-                                  cursor: "pointer"
-                                }}
+                                className="network-invite-copy-btn"
                               >
                                 Copy
                               </button>
@@ -8013,21 +7982,16 @@ function Dashboard() {
 
                         {/* SUGGESTED DEVELOPERS IN FOLLOWING TAB */}
                         {suggestions.length > 0 && (
-                          <div className="suggested-developers-section" style={{
-                            background: "rgba(255,255,255,0.01)",
-                            border: "1px solid var(--ce-border)",
-                            borderRadius: "12px",
-                            padding: "16px"
-                          }}>
-                            <div className="section-header" style={{ marginBottom: "16px" }}>
-                              <Compass size={16} className="brand-logo" style={{ color: "var(--ce-warning)" }} />
-                              <h3 className="section-title" style={{ fontSize: "0.85rem" }}>Suggested Developers</h3>
+                          <div className="suggested-developers-section">
+                            <div className="suggested-section-header">
+                              <Compass size={15} className="suggested-section-icon" />
+                              <h3 className="suggested-section-title">Suggested Developers</h3>
                             </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            <div className="suggested-devs-list">
                               {suggestions.slice(0, 5).map(dev => (
                                 <div key={dev._id} className="suggested-dev-card-compact">
-                                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                                    <div className="suggested-avatar-wrapper" style={{ position: "relative" }}>
+                                  <div className="suggested-dev-info-row">
+                                    <div className="suggested-avatar-wrapper">
                                       {dev.avatar ? (
                                         <img src={dev.avatar} alt={dev.username} className="suggested-avatar" />
                                       ) : (
@@ -8037,14 +8001,14 @@ function Dashboard() {
                                       )}
                                       <span className={`dev-online-status-badge mini ${dev.isOnline === true || dev.isOnline === "true" ? "online" : "offline"}`} />
                                     </div>
-                                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                                      <span className="suggested-username" style={{ fontWeight: 700, color: "var(--ce-text-h)", fontSize: "0.8rem" }}>@{dev.username}</span>
-                                      <span className="suggested-bio" style={{ fontSize: "0.68rem", color: "var(--ce-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    <div className="suggested-meta">
+                                      <span className="suggested-username">@{dev.username}</span>
+                                      <span className="suggested-bio">
                                         {dev.bio || "Full stack developer"}
                                       </span>
                                     </div>
                                   </div>
-                                  <div className="suggested-actions" style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                                  <div className="suggested-actions">
                                     <button
                                       onClick={() => handleViewUserProfile(dev._id || dev.id)}
                                       className="suggested-btn-profile"
@@ -8469,7 +8433,7 @@ function Dashboard() {
                 title: "Script Master",
                 description: "Execute compilation script 10 or more times",
                 rarity: "COMMON",
-                icon: Terminal,
+                icon: TerminalSquare,
                 color: "#f59e0b",
                 condition: (stats.executions || 0) >= 10,
                 current: stats.executions || 0,
@@ -9375,7 +9339,7 @@ function Dashboard() {
                           </div>
                         ) : mySentRequests.length === 0 ? (
                           <div className="empty-state-card">
-                            <Terminal size={18} className="empty-state-icon" />
+                            <TerminalSquare size={18} className="empty-state-icon" />
                             <p>You haven't requested to join any private rooms yet.</p>
                           </div>
                         ) : (
@@ -9497,8 +9461,15 @@ function Dashboard() {
                                     return (
                                       <tr key={room.roomId} style={{ borderBottom: "1px solid var(--ce-border)", transition: "background 0.2s" }} className="table-row-hover">
                                         <td style={{ padding: "14px 16px" }}>
-                                          <div style={{ fontWeight: "700", fontSize: "0.92rem", color: "var(--ce-text)", display: "flex", alignItems: "center", gap: "6px" }}><Terminal size={14} style={{ color: "var(--ce-accent)" }} /> {room.title}</div>
-                                          <div style={{ fontSize: "0.72rem", color: "var(--ce-text-muted)", marginTop: "2px" }}>{room.roomId}</div>
+                                          <div className="room-table-item">
+                                            <div className="room-table-icon-badge" title="Workspace Room">
+                                              <TerminalSquare size={14} strokeWidth={2} />
+                                            </div>
+                                            <div className="room-table-info">
+                                              <div className="table-room-title">{room.title}</div>
+                                              <div className="table-room-id">{room.roomId}</div>
+                                            </div>
+                                          </div>
                                         </td>
                                         <td style={{ padding: "14px 16px" }}>
                                           <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", textTransform: "uppercase", fontWeight: "600", color: "var(--ce-text-muted)" }}>{room.language?.toUpperCase()}</span>
@@ -9612,8 +9583,15 @@ function Dashboard() {
                           return (
                             <tr key={room.roomId}>
                               <td>
-                                <div className="table-room-title"><Terminal size={13} style={{ marginRight: "6px", color: "var(--ce-accent)", verticalAlign: "middle" }} />{room.title}</div>
-                                <div className="table-room-id">{room.roomId}</div>
+                                <div className="room-table-item">
+                                  <div className="room-table-icon-badge" title="Workspace Room">
+                                    <TerminalSquare size={14} strokeWidth={2} />
+                                  </div>
+                                  <div className="room-table-info">
+                                    <div className="table-room-title">{room.title}</div>
+                                    <div className="table-room-id">{room.roomId}</div>
+                                  </div>
+                                </div>
                               </td>
                               <td>
                                 <span className="lang-badge-small">{room.language?.toUpperCase()}</span>
@@ -12045,9 +12023,7 @@ function Dashboard() {
             likesList={selectedRoomLikes}
             isLoadingLikes={isLoadingRoomLikes}
             onToast={(msg, type) => {
-              setAlertMessage(msg);
-              setAlertType(type || "success");
-              setShowAlert(true);
+              addToast(msg, type || "success");
             }}
           />
         )}
