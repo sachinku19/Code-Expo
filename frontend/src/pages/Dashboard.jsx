@@ -6455,14 +6455,18 @@ function Dashboard() {
               >
                 <div className="room-requests-section-container">
                   {/* 1. TOP HEADER SECTION */}
-                  <div className="ce-live-header-section">
-                    <div className="ce-live-header-left">
-                      <h2 className="ce-live-title">Room Requests & Workspaces</h2>
-                      <p className="ce-live-subtitle">Manage workspace permissions, review developer join requests, and track your sent requests.</p>
+                  <div className="ce-req-header-section">
+                    <div className="ce-req-header-left">
+                      <div className="ce-req-eyebrow">
+                        <Sparkles size={13} className="ce-req-eyebrow-icon" />
+                        <span>Collaborative Workspace Hub</span>
+                      </div>
+                      <h2 className="ce-req-title">Room Requests & Workspaces</h2>
+                      <p className="ce-req-subtitle">Manage workspace permissions, review developer join requests, and track your sent requests.</p>
                     </div>
-                    <div className="ce-live-header-right">
+                    <div className="ce-req-header-right">
                       <button
-                        className="ce-live-launch-btn"
+                        className="ce-req-create-btn"
                         onClick={() => {
                           setFormData({ title: "", language: "javascript", isPrivate: false });
                           setShowQuickCreateModal(true);
@@ -6478,92 +6482,92 @@ function Dashboard() {
                   {/* 2. STATS CARDS GRID (4 HORIZONTAL CARDS) */}
                   <div className="ce-req-stats-grid">
                     {/* Card 1: My Workspaces */}
-                    <div className="ce-live-stat-card">
-                      <div className="ce-live-stat-icon-wrap purple">
-                        <FolderGit size={20} />
+                    <div className="ce-req-stat-card">
+                      <div className="ce-req-stat-icon-wrap purple">
+                        <FolderGit size={22} />
                       </div>
-                      <div className="ce-live-stat-content">
-                        <span className="ce-live-stat-label">My Workspaces</span>
-                        <span className="ce-live-stat-val">{ownedRooms.length}</span>
-                        <span className="ce-live-stat-sub">Total rooms created by you</span>
+                      <div className="ce-req-stat-content">
+                        <span className="ce-req-stat-label">My Workspaces</span>
+                        <span className="ce-req-stat-val">{ownedRooms.length}</span>
+                        <span className="ce-req-stat-sub">Total rooms created by you</span>
                       </div>
                     </div>
 
                     {/* Card 2: Pending Requests */}
-                    <div className="ce-live-stat-card">
-                      <div className="ce-live-stat-icon-wrap yellow">
-                        <ShieldAlert size={20} />
+                    <div className="ce-req-stat-card">
+                      <div className="ce-req-stat-icon-wrap yellow">
+                        <ShieldAlert size={22} />
                       </div>
-                      <div className="ce-live-stat-content">
-                        <span className="ce-live-stat-label">Pending Requests</span>
-                        <span className="ce-live-stat-val">{joinRequests.length}</span>
-                        <span className="ce-live-stat-sub">Requests waiting for approval</span>
+                      <div className="ce-req-stat-content">
+                        <span className="ce-req-stat-label">Pending Requests</span>
+                        <span className="ce-req-stat-val">{joinRequests.length}</span>
+                        <span className="ce-req-stat-sub">Requests waiting for approval</span>
                       </div>
                     </div>
 
                     {/* Card 3: Private Rooms */}
-                    <div className="ce-live-stat-card">
-                      <div className="ce-live-stat-icon-wrap indigo">
-                        <Lock size={20} />
+                    <div className="ce-req-stat-card">
+                      <div className="ce-req-stat-icon-wrap indigo">
+                        <Lock size={22} />
                       </div>
-                      <div className="ce-live-stat-content">
-                        <span className="ce-live-stat-label">Private Rooms</span>
-                        <span className="ce-live-stat-val">{ownedRooms.filter(r => r.isPrivate).length}</span>
-                        <span className="ce-live-stat-sub">Rooms with access control</span>
+                      <div className="ce-req-stat-content">
+                        <span className="ce-req-stat-label">Private Rooms</span>
+                        <span className="ce-req-stat-val">{ownedRooms.filter(r => r.isPrivate).length}</span>
+                        <span className="ce-req-stat-sub">Rooms with access control</span>
                       </div>
                     </div>
 
                     {/* Card 4: Live Active Rooms */}
-                    <div className="ce-live-stat-card">
-                      <div className="ce-live-stat-icon-wrap green">
-                        <Radio size={20} />
+                    <div className="ce-req-stat-card">
+                      <div className="ce-req-stat-icon-wrap green">
+                        <Radio size={22} />
                       </div>
-                      <div className="ce-live-stat-content">
-                        <span className="ce-live-stat-label">Live Active Rooms</span>
-                        <span className="ce-live-stat-val">
+                      <div className="ce-req-stat-content">
+                        <span className="ce-req-stat-label">Live Active Rooms</span>
+                        <span className="ce-req-stat-val">
                           {ownedRooms.filter(r => liveRooms.some(lr => lr.roomId === r.roomId && (lr.activeUsersCount || 0) > 0)).length}
                         </span>
-                        <span className="ce-live-stat-sub">Rooms currently active</span>
+                        <span className="ce-req-stat-sub">Rooms currently active</span>
                       </div>
                     </div>
                   </div>
 
                   {/* 3. TABS & SEARCH BAR */}
-                  <div className="ce-live-tabs-bar">
-                    <div className="ce-live-tab-buttons">
+                  <div className="ce-req-tabs-bar">
+                    <div className="ce-req-tab-buttons">
                       <button
-                        className={`ce-live-tab-btn ${roomRequestsTab === "myrooms" ? "active" : ""}`}
+                        className={`ce-req-tab-btn ${roomRequestsTab === "myrooms" ? "active" : ""}`}
                         onClick={() => setRoomRequestsTab("myrooms")}
                         type="button"
                       >
-                        <FolderGit size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                        <FolderGit size={15} />
                         My Created Rooms
-                        <span className="ce-tab-badge">{ownedRooms.length}</span>
+                        <span className="ce-req-tab-badge">{ownedRooms.length}</span>
                       </button>
                       <button
-                        className={`ce-live-tab-btn ${roomRequestsTab === "incoming" ? "active" : ""}`}
+                        className={`ce-req-tab-btn ${roomRequestsTab === "incoming" ? "active" : ""}`}
                         onClick={() => setRoomRequestsTab("incoming")}
                         type="button"
                       >
-                        <ShieldAlert size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                        <ShieldAlert size={15} />
                         Incoming Requests
-                        <span className={`ce-tab-badge ${joinRequests.length > 0 ? "highlight" : ""}`}>
+                        <span className={`ce-req-tab-badge ${joinRequests.length > 0 ? "highlight" : ""}`}>
                           {joinRequests.length}
                         </span>
                       </button>
                       <button
-                        className={`ce-live-tab-btn ${roomRequestsTab === "sent" ? "active" : ""}`}
+                        className={`ce-req-tab-btn ${roomRequestsTab === "sent" ? "active" : ""}`}
                         onClick={() => setRoomRequestsTab("sent")}
                         type="button"
                       >
-                        <Send size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                        <Send size={15} />
                         Sent Requests
-                        <span className="ce-tab-badge">{mySentRequests.length}</span>
+                        <span className="ce-req-tab-badge">{mySentRequests.length}</span>
                       </button>
                     </div>
 
-                    <div className="ce-live-controls-right">
-                      <div className="ce-live-search-box">
+                    <div className="ce-req-controls-right">
+                      <div className="ce-req-search-box">
                         <Search size={14} color="#64748b" />
                         <input
                           type="text"
@@ -6583,7 +6587,7 @@ function Dashboard() {
                               setRoomRequestsSearch(e.target.value);
                             }
                           }}
-                          className="ce-live-search-input"
+                          className="ce-req-search-input"
                         />
                       </div>
                     </div>
@@ -6594,7 +6598,7 @@ function Dashboard() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                       {/* Filter Chips */}
                       <div className="ce-req-filter-chips-wrap">
-                        <span style={{ fontSize: "0.78rem", fontWeight: "600", color: "#94a3b8", marginRight: "4px" }}>Filter:</span>
+                        <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "#94a3b8", marginRight: "4px" }}>Filter:</span>
                         {[
                           { id: "all", label: `All Rooms (${ownedRooms.length})` },
                           { id: "pending", label: `Pending Requests (${joinRequests.length})` },
@@ -6630,7 +6634,7 @@ function Dashboard() {
                             Create your first collaborative code room to start inviting developers and receiving join requests!
                           </p>
                           <button
-                            className="ce-live-launch-btn"
+                            className="ce-req-create-btn"
                             type="button"
                             onClick={() => {
                               setFormData({ title: "", language: "javascript", isPrivate: false });
@@ -6662,83 +6666,84 @@ function Dashboard() {
 
                             const langColor = isJS ? "#f59e0b" : isPy ? "#3b82f6" : isCpp ? "#06b6d4" : isJava ? "#ef4444" : isHtml ? "#f97316" : "#a855f7";
                             const langBg = isJS ? "rgba(245, 158, 11, 0.12)" : isPy ? "rgba(59, 130, 246, 0.12)" : isCpp ? "rgba(6, 182, 212, 0.12)" : isJava ? "rgba(239, 68, 68, 0.12)" : isHtml ? "rgba(249, 115, 22, 0.12)" : "rgba(168, 85, 247, 0.12)";
-                            const langBorder = isJS ? "1px solid rgba(245, 158, 11, 0.25)" : isPy ? "1px solid rgba(59, 130, 246, 0.25)" : isCpp ? "1px solid rgba(6, 182, 212, 0.25)" : isJava ? "1px solid rgba(239, 68, 68, 0.25)" : isHtml ? "1px solid rgba(249, 115, 22, 0.25)" : "1px solid rgba(168, 85, 247, 0.25)";
+                            const langBorder = isJS ? "rgba(245, 158, 11, 0.3)" : isPy ? "rgba(59, 130, 246, 0.3)" : isCpp ? "rgba(6, 182, 212, 0.3)" : isJava ? "rgba(239, 68, 68, 0.3)" : isHtml ? "rgba(249, 115, 22, 0.3)" : "rgba(168, 85, 247, 0.3)";
 
                             return (
                               <div
                                 key={room.roomId || room._id}
                                 className={`ce-req-room-card ${roomPendingRequests.length > 0 ? "has-pending" : ""}`}
                               >
-                                {/* Card Header */}
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-                                  <div style={{ minWidth: 0 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "6px" }}>
-                                      <h3 style={{ fontSize: "1.05rem", fontWeight: "800", color: "var(--ce-text-h, #ffffff)", margin: 0 }}>
-                                        {room.title}
-                                      </h3>
-                                      <span style={{ fontSize: "0.68rem", fontWeight: "700", textTransform: "uppercase", padding: "2px 8px", borderRadius: "6px", background: langBg, color: langColor, border: langBorder }}>
-                                        {room.language || "javascript"}
-                                      </span>
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", color: "#94a3b8" }}>
-                                      <span>ID: <code style={{ background: "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: "4px", color: "#cbd5e1" }}>{room.roomId}</code></span>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navigator.clipboard.writeText(room.roomId);
-                                          addToast("Room ID copied to clipboard!", "success");
-                                        }}
-                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#f59e0b", display: "flex", alignItems: "center" }}
-                                        title="Copy Room ID"
-                                        type="button"
-                                      >
-                                        <Copy size={12} />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0 }}>
+                                {/* Card Header with Badges and Title */}
+                                <div className="ce-req-card-top">
+                                  <div className="ce-req-card-badges-row">
+                                    <span className="ce-req-lang-badge" style={{ background: langBg, color: langColor, borderColor: langBorder }}>
+                                      <span className="ce-req-lang-dot" style={{ background: langColor }} />
+                                      {room.language || "javascript"}
+                                    </span>
                                     {room.isPrivate ? (
-                                      <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "3px 8px", borderRadius: "12px", background: "rgba(239, 68, 68, 0.12)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.22)", display: "flex", alignItems: "center", gap: "4px" }}>
+                                      <span className="ce-req-visibility-badge private">
                                         <Lock size={11} /> Private
                                       </span>
                                     ) : (
-                                      <span style={{ fontSize: "0.72rem", fontWeight: "700", padding: "3px 8px", borderRadius: "12px", background: "rgba(16, 185, 129, 0.12)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.22)", display: "flex", alignItems: "center", gap: "4px" }}>
+                                      <span className="ce-req-visibility-badge public">
                                         <Globe size={11} /> Public
                                       </span>
                                     )}
-
-                                    <span style={{ fontSize: "0.72rem", fontWeight: "600", color: isLive ? "#10b981" : "#64748b", display: "flex", alignItems: "center", gap: "5px" }}>
-                                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isLive ? "#10b981" : "#64748b" }} />
+                                    <span className={`ce-req-live-badge ${isLive ? "live" : "idle"}`}>
+                                      <span className={`ce-req-live-dot ${isLive ? "live-pulse" : ""}`} />
                                       {isLive ? `${activeCount} Online` : "Idle"}
                                     </span>
+                                  </div>
+                                  <h3 className="ce-req-card-title" title={room.title}>
+                                    {room.title}
+                                  </h3>
+                                </div>
+
+                                {/* Room Meta / ID Row */}
+                                <div className="ce-req-meta-row">
+                                  <div className="ce-req-id-pill">
+                                    <span className="ce-req-id-label">ID:</span>
+                                    <code className="ce-req-id-code">{room.roomId}</code>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(room.roomId);
+                                        addToast("Room ID copied to clipboard!", "success");
+                                      }}
+                                      className="ce-req-copy-btn"
+                                      title="Copy Room ID"
+                                      type="button"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
                                   </div>
                                 </div>
 
                                 {/* Room Code Info for Private Rooms */}
                                 {room.isPrivate && room.joinCode && (
                                   <div className="ce-req-code-box">
-                                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: "600" }}>Private Join Code:</span>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                      <code style={{ fontSize: "0.82rem", fontWeight: "700", color: "#f59e0b", letterSpacing: "1px" }}>{room.joinCode}</code>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navigator.clipboard.writeText(room.joinCode);
-                                          addToast("Private code copied!", "success");
-                                        }}
-                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#f59e0b", display: "flex" }}
-                                        title="Copy Join Code"
-                                        type="button"
-                                      >
-                                        <Copy size={12} />
-                                      </button>
+                                    <div className="ce-req-code-left">
+                                      <Lock size={12} className="ce-req-code-lock-icon" />
+                                      <span className="ce-req-code-label">Access Code:</span>
+                                      <code className="ce-req-code-val">{room.joinCode}</code>
                                     </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(room.joinCode);
+                                        addToast("Private code copied!", "success");
+                                      }}
+                                      className="ce-req-code-copy-btn"
+                                      title="Copy Join Code"
+                                      type="button"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
                                   </div>
                                 )}
 
                                 {/* Action Buttons Footer */}
-                                <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "4px" }}>
+                                <div className="ce-req-card-actions">
                                   <button
                                     onClick={() => handleJoinRoomDirect(room)}
                                     className="ce-req-btn-enter"
@@ -6756,7 +6761,11 @@ function Dashboard() {
                                       type="button"
                                       title="Manage Pending Access Requests"
                                     >
-                                      <ShieldAlert size={14} /> Requests ({roomPendingRequests.length})
+                                      <ShieldAlert size={14} />
+                                      <span>Requests</span>
+                                      {roomPendingRequests.length > 0 && (
+                                        <span className="ce-req-badge-counter">{roomPendingRequests.length}</span>
+                                      )}
                                     </button>
                                   )}
                                   <button
