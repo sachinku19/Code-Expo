@@ -4276,16 +4276,18 @@ function Dashboard() {
 
   const handleJoinRoomDirect = (targetRoomId) => {
     if (!targetRoomId) return;
-    const id = typeof targetRoomId === "object" ? targetRoomId.roomId : targetRoomId;
-    const title = typeof targetRoomId === "object" ? (targetRoomId.title || targetRoomId.name || "Workspace Room") : "Workspace Room";
+    const id = typeof targetRoomId === "object" ? (targetRoomId.roomId || targetRoomId._id) : targetRoomId;
+    const title = typeof targetRoomId === "object" ? (targetRoomId.title || targetRoomId.roomName || targetRoomId.name || "Workspace Room") : "Workspace Room";
 
     saveJoinedCodeToHistory(id);
 
-    const room = (liveRooms && liveRooms.find(r => r && (r.roomId === id || r._id === id))) ||
+    const room = (typeof targetRoomId === "object" && (targetRoomId.roomId || targetRoomId.title)) ? targetRoomId :
+      (liveRooms && liveRooms.find(r => r && (r.roomId === id || r._id === id))) ||
       (historyRooms && historyRooms.find(r => r && (r.roomId === id || r._id === id))) ||
       (publicRooms && publicRooms.find(r => r && (r.roomId === id || r._id === id))) ||
       (recentRooms && recentRooms.find(r => r && (r.roomId === id || r._id === id))) ||
-      (typeof targetRoomId === "object" ? targetRoomId : { roomId: id, title });
+      (myRooms && myRooms.find(r => r && (r.roomId === id || r._id === id))) ||
+      { roomId: id, title };
 
     setJoinTargetRoom(room);
     setShowJoinConfirmModal(true);
@@ -6738,7 +6740,7 @@ function Dashboard() {
                                 {/* Action Buttons Footer */}
                                 <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "4px" }}>
                                   <button
-                                    onClick={() => proceedJoinRoom(room.roomId)}
+                                    onClick={() => handleJoinRoomDirect(room)}
                                     className="ce-req-btn-enter"
                                     type="button"
                                   >
@@ -7160,7 +7162,7 @@ function Dashboard() {
                                 )}
                                 {req.status === "accepted" && (
                                   <button
-                                    onClick={() => proceedJoinRoom(req.roomId)}
+                                    onClick={() => handleJoinRoomDirect(req.roomId)}
                                     className="ce-req-btn-success"
                                     style={{ padding: "6px 16px", borderRadius: "8px", fontSize: "0.8rem" }}
                                     type="button"
@@ -9394,7 +9396,7 @@ function Dashboard() {
                                         Request Accepted
                                       </span>
                                       <button
-                                        onClick={() => proceedJoinRoom(req.roomId)}
+                                        onClick={() => handleJoinRoomDirect(req.roomId)}
                                         className="ce-btn-primary"
                                         style={{
                                           padding: "6px 16px",
@@ -12210,7 +12212,7 @@ function Dashboard() {
                   </div>
                   <h2 className="modal-confirm-title">Join Workspace?</h2>
                   <p className="modal-confirm-desc">
-                    Are you sure you want to join <strong>{joinTargetRoom.title}</strong>? You will connect to this collaborative sandbox.
+                    Are you sure you want to join <strong>{joinTargetRoom.title || joinTargetRoom.roomName || joinTargetRoom.name || joinTargetRoom.roomId || "Workspace"}</strong>? You will connect to this collaborative sandbox.
                   </p>
                   <div className="modal-confirm-actions">
                     <button
