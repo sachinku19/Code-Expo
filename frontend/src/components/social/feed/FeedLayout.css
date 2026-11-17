@@ -9,6 +9,12 @@
   --feed-radius: 8px;
   --feed-radius-sm: 6px;
   --feed-radius-xs: 4px;
+  --feed-btn-follow-bg: #f59e0b;
+  --feed-btn-follow-color: #0a0c10;
+  --feed-btn-follow-border: none;
+  --feed-btn-following-bg: rgba(255, 255, 255, 0.06);
+  --feed-btn-following-border: 1px solid rgba(255, 255, 255, 0.12);
+  --feed-btn-following-color: #ffffff;
 }
 
 .light,
@@ -21,6 +27,12 @@ body.light,
   --feed-primary: #d97706;
   --feed-text: #0f172a;
   --feed-text-secondary: #64748b;
+  --feed-btn-follow-bg: #f59e0b;
+  --feed-btn-follow-color: #0a0c10;
+  --feed-btn-follow-border: none;
+  --feed-btn-following-bg: #f1f5f9;
+  --feed-btn-following-border: 1px solid #cbd5e1;
+  --feed-btn-following-color: #0f172a;
 }
 
 /* Base Feed Layout Container */
@@ -374,21 +386,46 @@ body.light,
   font-weight: 500;
 }
 
-.post-follow-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  padding: 5px 14px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #ffffff;
+.post-follow-btn,
+.feed-sidebar-follow-btn,
+.suggestion-follow-btn {
+  background: var(--feed-btn-follow-bg, #f59e0b);
+  border: var(--feed-btn-follow-border, none);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--feed-btn-follow-color, #0a0c10);
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  user-select: none;
 }
 
-.post-follow-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.25);
+.post-follow-btn:hover,
+.feed-sidebar-follow-btn:hover,
+.suggestion-follow-btn:hover {
+  background: #d97706;
+  color: #0a0c10;
+}
+
+.post-follow-btn.following,
+.feed-sidebar-follow-btn.following,
+.suggestion-follow-btn.following {
+  background: var(--feed-btn-following-bg, rgba(255, 255, 255, 0.06));
+  border: var(--feed-btn-following-border, 1px solid rgba(255, 255, 255, 0.12));
+  color: var(--feed-btn-following-color, #ffffff);
+}
+
+.post-follow-btn.following:hover,
+.feed-sidebar-follow-btn.following:hover,
+.suggestion-follow-btn.following:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
 }
 
 .post-title,
@@ -792,15 +829,105 @@ body.light .post-text-body b,
   border: none !important;
 }
 
-.light .post-follow-btn {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
-  color: #ffffff !important;
+/* Follow & Following Buttons in Light Mode */
+.light .post-follow-btn,
+.light .feed-sidebar-follow-btn,
+.light .suggestion-follow-btn,
+body.light .post-follow-btn,
+body.light .feed-sidebar-follow-btn,
+body.light .suggestion-follow-btn,
+.light-mode .post-follow-btn,
+.light-mode .feed-sidebar-follow-btn,
+.light-mode .suggestion-follow-btn,
+[data-theme="light"] .post-follow-btn,
+[data-theme="light"] .feed-sidebar-follow-btn,
+[data-theme="light"] .suggestion-follow-btn {
+  background: #f59e0b !important;
+  color: #0a0c10 !important;
   font-weight: 700 !important;
   border: none !important;
 }
 
-.light .post-follow-btn:hover {
-  opacity: 0.92 !important;
+.light .post-follow-btn:hover,
+.light .feed-sidebar-follow-btn:hover,
+.light .suggestion-follow-btn:hover,
+body.light .post-follow-btn:hover,
+body.light .feed-sidebar-follow-btn:hover,
+body.light .suggestion-follow-btn:hover,
+.light-mode .post-follow-btn:hover,
+.light-mode .feed-sidebar-follow-btn:hover,
+.light-mode .suggestion-follow-btn:hover,
+[data-theme="light"] .post-follow-btn:hover,
+[data-theme="light"] .feed-sidebar-follow-btn:hover,
+[data-theme="light"] .suggestion-follow-btn:hover {
+  background: #d97706 !important;
+  color: #0a0c10 !important;
+  opacity: 1 !important;
+}
+
+.light .post-follow-btn.following,
+.light .feed-sidebar-follow-btn.following,
+.light .suggestion-follow-btn.following,
+body.light .post-follow-btn.following,
+body.light .feed-sidebar-follow-btn.following,
+body.light .suggestion-follow-btn.following,
+.light-mode .post-follow-btn.following,
+.light-mode .feed-sidebar-follow-btn.following,
+.light-mode .suggestion-follow-btn.following,
+[data-theme="light"] .post-follow-btn.following,
+[data-theme="light"] .feed-sidebar-follow-btn.following,
+[data-theme="light"] .suggestion-follow-btn.following {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+}
+
+.light .post-follow-btn.following span,
+.light .feed-sidebar-follow-btn.following span,
+.light .suggestion-follow-btn.following span,
+body.light .post-follow-btn.following span,
+body.light .feed-sidebar-follow-btn.following span,
+body.light .suggestion-follow-btn.following span,
+.light-mode .post-follow-btn.following span,
+.light-mode .feed-sidebar-follow-btn.following span,
+.light-mode .suggestion-follow-btn.following span,
+[data-theme="light"] .post-follow-btn.following span,
+[data-theme="light"] .feed-sidebar-follow-btn.following span,
+[data-theme="light"] .suggestion-follow-btn.following span {
+  color: #0f172a !important;
+}
+
+.light .post-follow-btn.following:hover,
+.light .feed-sidebar-follow-btn.following:hover,
+.light .suggestion-follow-btn.following:hover,
+body.light .post-follow-btn.following:hover,
+body.light .feed-sidebar-follow-btn.following:hover,
+body.light .suggestion-follow-btn.following:hover,
+.light-mode .post-follow-btn.following:hover,
+.light-mode .feed-sidebar-follow-btn.following:hover,
+.light-mode .suggestion-follow-btn.following:hover,
+[data-theme="light"] .post-follow-btn.following:hover,
+[data-theme="light"] .feed-sidebar-follow-btn.following:hover,
+[data-theme="light"] .suggestion-follow-btn.following:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  color: #dc2626 !important;
+}
+
+.light .post-follow-btn.following:hover span,
+.light .feed-sidebar-follow-btn.following:hover span,
+.light .suggestion-follow-btn.following:hover span,
+body.light .post-follow-btn.following:hover span,
+body.light .feed-sidebar-follow-btn.following:hover span,
+body.light .suggestion-follow-btn.following:hover span,
+.light-mode .post-follow-btn.following:hover span,
+.light-mode .feed-sidebar-follow-btn.following:hover span,
+.light-mode .suggestion-follow-btn.following:hover span,
+[data-theme="light"] .post-follow-btn.following:hover span,
+[data-theme="light"] .feed-sidebar-follow-btn.following:hover span,
+[data-theme="light"] .suggestion-follow-btn.following:hover span {
+  color: #dc2626 !important;
 }
 
 /* Tabs in Light Mode */

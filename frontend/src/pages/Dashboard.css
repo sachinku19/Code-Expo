@@ -4724,10 +4724,28 @@
   border-radius: 6px;
 }
 
+.light .ce-modal-follow-btn.following,
+body.light .ce-modal-follow-btn.following,
+.light-mode .ce-modal-follow-btn.following,
+[data-theme="light"] .ce-modal-follow-btn.following {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
 .ce-modal-follow-btn.following:hover {
   background-color: rgba(239, 68, 68, 0.1);
   color: var(--ce-danger, #ef4444);
   border-color: rgba(239, 68, 68, 0.3);
+}
+
+.light .ce-modal-follow-btn.following:hover,
+body.light .ce-modal-follow-btn.following:hover,
+.light-mode .ce-modal-follow-btn.following:hover,
+[data-theme="light"] .ce-modal-follow-btn.following:hover {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
 }
 
 .profile-follow-btn {

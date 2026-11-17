@@ -104,10 +104,11 @@ export default function NetworkSidebar({
                   </div>
                   <button 
                     onClick={() => handleFollowToggle(devId)} 
+                    className={`suggestion-follow-btn ${isFollowed ? "following" : ""}`}
                     style={{
-                      background: isFollowed ? "rgba(255, 255, 255, 0.05)" : "#6366f1",
-                      border: isFollowed ? "1px solid rgba(255, 255, 255, 0.06)" : "none",
-                      color: "#ffffff",
+                      background: isFollowed ? "var(--feed-btn-following-bg, rgba(255, 255, 255, 0.05))" : "#6366f1",
+                      border: isFollowed ? "var(--feed-btn-following-border, 1px solid rgba(255, 255, 255, 0.06))" : "none",
+                      color: isFollowed ? "var(--feed-btn-following-color, #ffffff)" : "#ffffff",
                       fontSize: "0.76rem",
                       fontWeight: "600",
                       padding: "6px 14px",

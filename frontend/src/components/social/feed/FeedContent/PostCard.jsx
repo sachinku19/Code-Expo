@@ -947,13 +947,13 @@ export const PostCard = ({
           {!isOwner && (
             <button
               type="button"
-              className="post-follow-btn"
+              className={`post-follow-btn ${isFollowing ? "following" : ""}`}
               onClick={() => onFollowToggle && onFollowToggle(authorId)}
               style={{
-                background: isFollowing ? "rgba(255, 255, 255, 0.06)" : "#f59e0b",
-                border: isFollowing ? "1px solid rgba(255, 255, 255, 0.12)" : "none",
+                background: isFollowing ? "var(--feed-btn-following-bg, rgba(255, 255, 255, 0.06))" : "var(--feed-btn-follow-bg, #f59e0b)",
+                border: isFollowing ? "var(--feed-btn-following-border, 1px solid rgba(255, 255, 255, 0.12))" : "none",
                 borderRadius: "6px",
-                color: isFollowing ? "#ffffff" : "#0a0c10",
+                color: isFollowing ? "var(--feed-btn-following-color, #ffffff)" : "var(--feed-btn-follow-color, #0a0c10)",
                 padding: "0 14px",
                 height: "30px",
                 boxSizing: "border-box",

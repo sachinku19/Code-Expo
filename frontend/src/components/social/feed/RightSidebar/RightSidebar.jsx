@@ -215,7 +215,7 @@ export const RightSidebar = ({
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: showAllSuggested ? "360px" : "none", overflowY: showAllSuggested ? "auto" : "visible" }}>
           {visibleSuggested.map((u, i) => {
             const uId = u._id || u.id;
-            const isFollowing = followingList.some(f => String(f._id || f) === String(uId));
+            const isFollowing = followingList.some(f => String(f?._id || f?.id || f) === String(uId)) || u.isFollowing === true;
 
             return (
               <div
@@ -270,11 +270,12 @@ export const RightSidebar = ({
                   <button
                     type="button"
                     onClick={() => onFollowToggle && onFollowToggle(uId)}
+                    className={`suggestion-follow-btn feed-sidebar-follow-btn ${isFollowing ? "following" : ""}`}
                     style={{
-                      background: isFollowing ? "rgba(255, 255, 255, 0.06)" : "#f59e0b",
-                      border: isFollowing ? "1px solid rgba(255, 255, 255, 0.12)" : "none",
+                      background: isFollowing ? "var(--feed-btn-following-bg, rgba(255, 255, 255, 0.06))" : "var(--feed-btn-follow-bg, #f59e0b)",
+                      border: isFollowing ? "var(--feed-btn-following-border, 1px solid rgba(255, 255, 255, 0.12))" : "none",
                       borderRadius: "6px",
-                      color: isFollowing ? "#ffffff" : "#0a0c10",
+                      color: isFollowing ? "var(--feed-btn-following-color, #ffffff)" : "var(--feed-btn-follow-color, #0a0c10)",
                       padding: "6px 14px",
                       fontSize: "0.78rem",
                       fontWeight: "700",

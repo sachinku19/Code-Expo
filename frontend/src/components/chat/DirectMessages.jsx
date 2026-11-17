@@ -2629,37 +2629,48 @@ export default function DirectMessages({ preselectedUser, onChatLoaded, onViewPr
         ) : (
           <div className="dm-empty-state">
             <div className="instagram-dm-icon-wrapper">
-              <MessageSquare size={48} className="dm-icon" />
+              <MessageSquare size={34} className="dm-icon" />
             </div>
-            <h3>Your Messages</h3>
-            <p className="dm-empty-desc">Send private photos, code blocks, or invite links directly to a developer.</p>
-            <div className="empty-actions" style={{ display: "flex", gap: "12px", justifyContent: "center", marginBottom: "20px" }}>
-              <button className="start-chat-main-btn" onClick={handleOpenNewChat}>Send DM</button>
-              <button className="start-chat-main-btn group-start-btn" onClick={handleOpenCreateGroup} style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.4)", color: "#f59e0b" }}>Create Group</button>
+            <h3 className="dm-empty-title">Your Messages</h3>
+            <p className="dm-empty-desc">Send private messages, share code snippets, and collaborate directly with other developers.</p>
+            <div className="empty-actions">
+              <button className="start-chat-main-btn" onClick={handleOpenNewChat} type="button">
+                <Plus size={15} /> Send DM
+              </button>
+              <button className="start-chat-group-btn" onClick={handleOpenCreateGroup} type="button">
+                <Users size={15} /> Create Group
+              </button>
             </div>
 
             {/* Suggested contacts panel */}
             <div className="dm-empty-suggestions-section">
-              <h4 className="suggestions-title">Quick Connect Suggestions</h4>
+              <h4 className="suggestions-title">Quick Connect</h4>
               {candidates.length > 0 ? (
                 <div className="suggestions-horizontal-scroll">
-                  {candidates.slice(0, 5).map((candidate) => (
+                  {candidates.slice(0, 6).map((candidate) => (
                     <div key={candidate._id} className="suggestion-card" onClick={() => handleStartChatWith(candidate)}>
-                      <SafeAvatar
-                        src={candidate.avatar}
-                        name={candidate.username}
-                        className="suggestion-avatar"
-                        size={44}
-                      />
-                      <span className="suggestion-username">@{candidate.username}</span>
-                      <span className="suggestion-bio">{candidate.bio || "Developer"}</span>
-                      <button className="suggestion-chat-btn">Chat</button>
+                      <div className="suggestion-card-body">
+                        <SafeAvatar
+                          src={candidate.avatar}
+                          name={candidate.username}
+                          className="suggestion-avatar"
+                          size={46}
+                          userId={candidate._id || candidate.id}
+                        />
+                        <span className="suggestion-username" title={`@${candidate.username}`}>
+                          @{candidate.username}
+                        </span>
+                        {candidate.bio && candidate.bio.trim() && candidate.bio.toLowerCase() !== "developer" ? (
+                          <span className="suggestion-bio" title={candidate.bio}>{candidate.bio}</span>
+                        ) : null}
+                      </div>
+                      <button className="suggestion-chat-btn" type="button">Chat</button>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="suggestions-empty-box">
-                  <p>You haven't followed any developers yet. Follow other developers from the Dashboard or search connections to grow your network!</p>
+                  <p>No connections yet. Connect with developers across the community to start messaging.</p>
                 </div>
               )}
             </div>
